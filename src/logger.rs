@@ -1,5 +1,6 @@
 use chrono::Local;
 use log::{LevelFilter, Log, Metadata, Record};
+use std::collections::VecDeque;
 use std::sync::{Arc, LazyLock, RwLock};
 
 #[derive(Debug, Clone)]
@@ -11,11 +12,13 @@ pub struct LogEntry {
 }
 
 pub struct GlobalLogger {
-    pub entries: Arc<RwLock<Vec<LogEntry>>>,
+    pub entries: Arc<RwLock<VecDeque<LogEntry>>>,
 }
 
-pub static LOG_BUFFER: LazyLock<Arc<RwLock<Vec<LogEntry>>>> =
-    LazyLock::new(|| Arc::new(RwLock::new(Vec::new())));
+pub const MAX_LOGS: usize = 1000;
+
+pub static LOG_BUFFER: LazyLock<Arc<RwLock<VecDeque<LogEntry>>>> =
+    LazyLock::new(|| Arc::new(RwLock::new(VecDeque::with_capacity(MAX_LOGS))));
 
 impl Log for GlobalLogger {
     fn enabled(&self, _metadata: &Metadata) -> bool {
@@ -24,30 +27,23 @@ impl Log for GlobalLogger {
 
     fn log(&self, record: &Record) {
         if self.enabled(record.metadata()) {
+            if !self.enabled(record.metadata()) {
+                return;
+            }
+                
             let target = record.target();
 
             // Whitelist: only these named targets appear in the in-app console
-            let allowed_targets = [
-                "App",
-                "UI",
-                "HID",
-                "TabletManager",
-                "Pipeline",
-                "Config",
-                "Startup",
-                "Update",
-                "Stats",
-                "Tray",
-                "Timer",
-                "WebSocket",
-                "Telemetry",
-                "Driver",
-                "Detect",
-            ];
-            let is_allowed = allowed_targets
-                .iter()
-                .any(|&t| target == t || target.starts_with(&format!("{}::", t)))
-                || target.starts_with("NextTabletDriver");
+            let is_allowed = [
+                    "App", "UI", "HID", "TabletManager", "Pipeline", "Config",
+                    "Startup", "Update", "Stats", "Tray", "Timer", "WebSocket",
+                    "Telemetry", "Driver", "Detect",
+            ].iter().any(|&t| target == t || target.starts_with(&format!("{}::", t)))
+            || target.starts_with("NextTabletDriver");
+
+            if !is_allowed {
+                return;
+            }
 
             let entry = LogEntry {
                 time: Local::now().format("%H:%M:%S").to_string(),
@@ -63,6 +59,19 @@ impl Log for GlobalLogger {
                 );
                 println!("{}", log_line);
 
+                // TODO: Optimize file rotation frequency.
+                // Calling `metadata()` on every log entry is expensive under high throughput (HID events).
+                // 1. Use a static AtomicUsize counter.
+                // 2. Only check file size/rotate every 100 or 500 logs using `fetch_add` and modulo.
+                // 3. This reduces syscall overhead while keeping the log file size capped.
+                // 
+                // if let Ok(path) = std::path::Path::new("debug.log").metadata() {
+                //     // 10 MB (10 * 1024 * 1024 Bytes)
+                //     if path.len() > 10_485_760 {
+                //         let _ = std::fs::rename("debug.log", "debug.log.old");
+                //     }
+                // }
+
                 if let Ok(mut file) = std::fs::OpenOptions::new()
                     .create(true)
                     .append(true)
@@ -73,13 +82,11 @@ impl Log for GlobalLogger {
                 }
             }
 
-            if is_allowed && let Ok(mut entries) = self.entries.write() {
-                entries.push(entry);
-
-                // Ring buffer: evict oldest when full
-                if entries.len() > 500 {
-                    entries.remove(0);
+            if let Ok(mut entries) = self.entries.write() {
+                if entries.len() >= MAX_LOGS {
+                    entries.pop_front();
                 }
+                entries.push_back(entry);
             }
         }
     }

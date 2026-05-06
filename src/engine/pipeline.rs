@@ -11,28 +11,6 @@ use std::sync::Arc;
 use std::time::Duration;
 use std::time::Instant;
 
-/// Internal stage tracking for debug telemetry.
-#[cfg(debug_assertions)]
-#[derive(Debug, Clone, Copy)]
-pub enum DebugStage {
-    Normalize,
-    Filter,
-    Project,
-    Inject,
-}
-
-#[cfg(debug_assertions)]
-impl DebugStage {
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            DebugStage::Normalize => "Normalize",
-            DebugStage::Filter => "Filter",
-            DebugStage::Project => "Project",
-            DebugStage::Inject => "Inject",
-        }
-    }
-}
-
 /// A structure to hold the intermediate results of the pipeline processing.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct ProcessedFrame {
@@ -90,12 +68,9 @@ impl Pipeline {
         filters: &mut crate::filters::FilterPipeline,
         #[allow(unused_variables)] shared: &Arc<crate::engine::state::SharedState>,
     ) {
-        #[cfg(debug_assertions)]
-        let pipeline_start = Instant::now();
-
         if !data.is_connected {
             injector.set_left_button(false);
-            self.reset_relative();
+            // self.reset_relative();
             filters.reset();
             return;
         }
@@ -106,9 +81,6 @@ impl Pipeline {
             return;
         }
 
-        #[cfg(debug_assertions)]
-        self.emit_debug_stage(DebugStage::Normalize, shared);
-
         let (max_w, max_h, max_p) = driver.get_specs();
         let (phys_w, phys_h) = driver.get_physical_specs();
 
@@ -118,16 +90,10 @@ impl Pipeline {
         // Normalize
         let (u, v) = self.normalize(x_mm, y_mm, config, shared);
 
-        #[cfg(debug_assertions)]
-        self.emit_debug_stage(DebugStage::Filter, shared);
-
-        // 2. Filter
+        // Filter
         let (u, v) = self.filter(u, v, config, filters, shared);
 
-        #[cfg(debug_assertions)]
-        self.emit_debug_stage(DebugStage::Project, shared);
-
-        // 3. Project
+        // Project
         let mut frame = ProcessedFrame {
             u,
             v,
@@ -146,28 +112,12 @@ impl Pipeline {
             DriverMode::Relative => {
                 let (dx, dy) = self.project_relative(x_mm, y_mm, config);
                 injector.move_relative(dx, dy);
-
-                // Update approximate absolute screen position for debug telemetry
-                #[cfg(debug_assertions)]
-                {
-                    if let Ok(mut debug_sc) = shared.debug_last_screen.write() {
-                        frame.screen_x = debug_sc.0 + dx;
-                        frame.screen_y = debug_sc.1 + dy;
-                        *debug_sc = (frame.screen_x, frame.screen_y);
-                    }
-                }
             }
         }
 
-        #[cfg(debug_assertions)]
-        self.emit_debug_stage(DebugStage::Inject, shared);
-
-        // 4. Pressure & Injection
+        // Pressure & Injection
         frame.is_down = self.evaluate_pressure(data.pressure, max_p, config);
         injector.set_left_button(frame.is_down);
-
-        #[cfg(debug_assertions)]
-        self.emit_final_debug_telemetry(pipeline_start, shared);
     }
 
     fn normalize(
@@ -177,9 +127,6 @@ impl Pipeline {
         config: &MappingConfig,
         #[allow(unused_variables)] shared: &Arc<crate::engine::state::SharedState>,
     ) -> (f32, f32) {
-        #[cfg(debug_assertions)]
-        let start = Instant::now();
-
         let (u, v) = crate::core::math::transform::physical_to_normalized(
             x_mm,
             y_mm,
@@ -189,17 +136,6 @@ impl Pipeline {
             config.active_area.h,
             config.active_area.rotation,
         );
-
-        #[cfg(debug_assertions)]
-        {
-            if let Ok(mut debug_uv) = shared.debug_last_uv.write() {
-                *debug_uv = (u, v);
-            }
-            shared.debug_transform_time_ns.store(
-                start.elapsed().as_nanos() as u64,
-                std::sync::atomic::Ordering::Relaxed,
-            );
-        }
 
         (u, v)
     }
@@ -212,21 +148,7 @@ impl Pipeline {
         filters: &mut crate::filters::FilterPipeline,
         #[allow(unused_variables)] shared: &Arc<crate::engine::state::SharedState>,
     ) -> (f32, f32) {
-        #[cfg(debug_assertions)]
-        let start = Instant::now();
-
         let (nu, nv) = filters.process(u, v, config);
-
-        #[cfg(debug_assertions)]
-        {
-            shared.debug_filter_time_ns.store(
-                start.elapsed().as_nanos() as u64,
-                std::sync::atomic::Ordering::Relaxed,
-            );
-            if let Ok(mut fuv) = shared.debug_last_filtered_uv.write() {
-                *fuv = (nu, nv);
-            }
-        }
 
         (nu, nv)
     }
@@ -246,11 +168,6 @@ impl Pipeline {
             config.target_area.w,
             config.target_area.h,
         );
-
-        #[cfg(debug_assertions)]
-        if let Ok(mut debug_sc) = shared.debug_last_screen.write() {
-            *debug_sc = (sx, sy);
-        }
 
         (sx, sy)
     }
@@ -291,29 +208,6 @@ impl Pipeline {
         let threshold_raw = (config.tip_threshold as f32 / 100.0) * max_p;
         pressure as f32 > threshold_raw
     }
-
-    #[cfg(debug_assertions)]
-    #[inline(always)]
-    fn emit_debug_stage(&self, stage: DebugStage, shared: &Arc<crate::engine::state::SharedState>) {
-        if let Ok(mut s) = shared.debug_pipeline_stage.write() {
-            *s = stage.as_str().to_string();
-        }
-    }
-
-    #[cfg(debug_assertions)]
-    fn emit_final_debug_telemetry(
-        &self,
-        start_time: Instant,
-        shared: &Arc<crate::engine::state::SharedState>,
-    ) {
-        shared
-            .debug_inject_count
-            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-        shared.debug_pipeline_time_ns.store(
-            start_time.elapsed().as_nanos() as u64,
-            std::sync::atomic::Ordering::Relaxed,
-        );
-    }
 }
 
 #[cfg(test)]
@@ -322,7 +216,6 @@ mod tests {
     use crate::core::config::models::MappingConfig;
     use crate::drivers::TabletData;
     use crate::engine::injector::Injector;
-    use crate::engine::state::LockResultExt;
     use crate::engine::state::SharedState;
     use crate::filters::FilterPipeline;
 
@@ -375,13 +268,6 @@ mod tests {
             &mut filters,
             &shared,
         );
-
-        #[cfg(debug_assertions)]
-        {
-            let uv = *shared.debug_last_uv.read().ignore_poison();
-            assert!((uv.0 - 0.5).abs() < 1e-6);
-            assert!((uv.1 - 0.5).abs() < 1e-6);
-        }
     }
 
     #[test]

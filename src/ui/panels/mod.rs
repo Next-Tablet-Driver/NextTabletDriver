@@ -5,8 +5,7 @@
 
 pub mod console;
 pub mod debugger;
-#[cfg(debug_assertions)]
-pub mod developer;
+
 pub mod filters;
 pub mod output;
 pub mod pen_settings;
@@ -15,7 +14,6 @@ pub mod release;
 pub mod settings;
 
 pub use debugger::render_debugger_panel;
-#[cfg(debug_assertions)]
-pub use developer::render_developer_panel;
+
 pub use performance::render_performance_panel;
 pub use release::render_release_panel;

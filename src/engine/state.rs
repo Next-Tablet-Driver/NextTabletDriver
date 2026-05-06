@@ -6,8 +6,6 @@
 use crate::core::config::models::MappingConfig;
 use crate::drivers::TabletData;
 use std::sync::atomic::AtomicU32;
-#[cfg(debug_assertions)]
-use std::sync::atomic::AtomicU64;
 use std::sync::{LockResult, RwLock};
 
 /// Extension trait to handle poisoned locks gracefully.
@@ -48,22 +46,6 @@ impl SharedState {
             packet_count: AtomicU32::new(0),
             stats: RwLock::new(crate::drivers::DriverStats::default()),
 
-            #[cfg(debug_assertions)]
-            debug_pipeline_stage: RwLock::new("Idle".to_string()),
-            #[cfg(debug_assertions)]
-            debug_last_uv: RwLock::new((0.0, 0.0)),
-            #[cfg(debug_assertions)]
-            debug_last_filtered_uv: RwLock::new((0.0, 0.0)),
-            #[cfg(debug_assertions)]
-            debug_last_screen: RwLock::new((0.0, 0.0)),
-            #[cfg(debug_assertions)]
-            debug_inject_count: AtomicU32::new(0),
-            #[cfg(debug_assertions)]
-            debug_filter_time_ns: AtomicU64::new(0),
-            #[cfg(debug_assertions)]
-            debug_transform_time_ns: AtomicU64::new(0),
-            #[cfg(debug_assertions)]
-            debug_pipeline_time_ns: AtomicU64::new(0),
         }
     }
 
@@ -101,30 +83,4 @@ pub struct SharedState {
     pub packet_count: AtomicU32,
     /// Tracking statistics for developer debugging (e.g., dropped packets, parse errors).
     pub stats: RwLock<crate::drivers::DriverStats>,
-
-    // === Debug-only pipeline instrumentation (stripped from release builds) ===
-    /// Current pipeline stage label (e.g., "Normalize", "Filter", "Project", "Inject").
-    #[cfg(debug_assertions)]
-    pub debug_pipeline_stage: RwLock<String>,
-    /// Normalized UV coordinates right after physical_to_normalized (pre-filter).
-    #[cfg(debug_assertions)]
-    pub debug_last_uv: RwLock<(f32, f32)>,
-    /// Normalized UV coordinates after the filter pipeline (post-filter).
-    #[cfg(debug_assertions)]
-    pub debug_last_filtered_uv: RwLock<(f32, f32)>,
-    /// Final screen pixel coordinates sent to the OS injector.
-    #[cfg(debug_assertions)]
-    pub debug_last_screen: RwLock<(f32, f32)>,
-    /// Monotonic counter of OS injection calls since startup.
-    #[cfg(debug_assertions)]
-    pub debug_inject_count: AtomicU32,
-    /// Time spent in the filter pipeline per packet (nanoseconds).
-    #[cfg(debug_assertions)]
-    pub debug_filter_time_ns: AtomicU64,
-    /// Time spent in coordinate transform per packet (nanoseconds).
-    #[cfg(debug_assertions)]
-    pub debug_transform_time_ns: AtomicU64,
-    /// Time spent in the entire pipeline.process() call (nanoseconds).
-    #[cfg(debug_assertions)]
-    pub debug_pipeline_time_ns: AtomicU64,
 }

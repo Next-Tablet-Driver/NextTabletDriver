@@ -398,6 +398,22 @@ impl MappingConfig {
             ));
             self.relative_config.y_sensitivity = defaults.relative_config.y_sensitivity;
         }
+        if self.tip_threshold == 0 || self.tip_threshold > 1024 { 
+            corrections.push(format!("tip_threshold was {}, reset to {}", self.tip_threshold, defaults.tip_threshold));
+            self.tip_threshold = defaults.tip_threshold;
+        }
+        if self.eraser_threshold == 0 || self.eraser_threshold > 1024 {
+            corrections.push(format!("eraser_threshold was {}, reset to {}", self.eraser_threshold, defaults.eraser_threshold));
+            self.eraser_threshold = defaults.eraser_threshold;
+        }
+        if self.websocket.port == 0 {
+            corrections.push(format!("websocket.port was 0, reset to {}", defaults.websocket.port));
+            self.websocket.port = defaults.websocket.port;
+        }
+        if self.relative_config.reset_time_ms == 0 {
+            corrections.push(format!("relative_config.reset_time_ms was 0, reset to {}", defaults.relative_config.reset_time_ms));
+            self.relative_config.reset_time_ms = defaults.relative_config.reset_time_ms;
+        }
 
         corrections
     }

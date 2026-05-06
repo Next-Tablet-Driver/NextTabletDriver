@@ -158,13 +158,16 @@ pub fn render_debugger_panel(snapshot: &UiSnapshot, displayed_hz: f32, ui: &mut 
                     .weak()
                     .size(11.0),
             );
-            let binary_string = tablet_data
-                .raw_data
-                .split_whitespace()
-                .filter_map(|hex| u8::from_str_radix(hex, 16).ok())
-                .map(|byte| format!("{:08b}", byte))
-                .collect::<Vec<String>>()
-                .join(" ");
+            let mut binary_string = String::with_capacity(tablet_data.raw_data.len() * 3);
+            for (i, hex) in tablet_data.raw_data.split_whitespace().enumerate() {
+                if let Ok(byte) = u8::from_str_radix(hex, 16) {
+                    use std::fmt::Write;
+                    if i > 0 {
+                        let _ = write!(&mut binary_string, " ");
+                    }
+                    let _ = write!(&mut binary_string, "{:08b}", byte);
+                }
+            }
 
             ui.label(
                 egui::RichText::new(binary_string)

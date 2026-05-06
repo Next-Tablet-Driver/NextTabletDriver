@@ -8,8 +8,6 @@ use display_info::DisplayInfo;
 use std::sync::Arc;
 use std::sync::RwLock;
 use std::sync::atomic::AtomicU32;
-#[cfg(debug_assertions)]
-use std::sync::atomic::AtomicU64;
 use std::thread;
 use std::time::Instant;
 
@@ -99,24 +97,7 @@ impl TabletMapperApp {
             hardware_size: RwLock::new((32767.0, 32767.0)),
             is_first_run: RwLock::new(is_first_run),
             packet_count: AtomicU32::new(0),
-            stats: RwLock::new(crate::drivers::DriverStats::default()),
-
-            #[cfg(debug_assertions)]
-            debug_pipeline_stage: RwLock::new("Idle".to_string()),
-            #[cfg(debug_assertions)]
-            debug_last_uv: RwLock::new((0.0, 0.0)),
-            #[cfg(debug_assertions)]
-            debug_last_filtered_uv: RwLock::new((0.0, 0.0)),
-            #[cfg(debug_assertions)]
-            debug_last_screen: RwLock::new((0.0, 0.0)),
-            #[cfg(debug_assertions)]
-            debug_inject_count: AtomicU32::new(0),
-            #[cfg(debug_assertions)]
-            debug_filter_time_ns: AtomicU64::new(0),
-            #[cfg(debug_assertions)]
-            debug_transform_time_ns: AtomicU64::new(0),
-            #[cfg(debug_assertions)]
-            debug_pipeline_time_ns: AtomicU64::new(0),
+            stats: RwLock::new(crate::drivers::DriverStats::default())
         });
 
         let (tablet_sender, tablet_receiver) = crossbeam_channel::unbounded();
@@ -283,20 +264,14 @@ impl TabletMapperApp {
             console_show_error: true,
             console_show_debug: true,
             console_autoscroll: true,
+            console_cache_log_count: 0,
+            console_cache_search: String::new(),
+            console_cache_filters: (true, true, true, true),
+            console_cache_filtered: Vec::new(),
+            console_cache_full_text: String::new(),
             tray_icon,
             show_close_confirm: false,
             force_close: false,
-
-            #[cfg(debug_assertions)]
-            dev_pause_pipeline: false,
-            #[cfg(debug_assertions)]
-            dev_raw_hid_history: std::collections::VecDeque::with_capacity(50),
-            #[cfg(debug_assertions)]
-            dev_pipeline_log: std::collections::VecDeque::with_capacity(30),
-            #[cfg(debug_assertions)]
-            dev_show_full_config: false,
-            #[cfg(debug_assertions)]
-            dev_filter_details_open: false,
         }
     }
 }

@@ -8,7 +8,7 @@ use std::collections::HashMap;
 use std::net::TcpListener;
 use std::sync::Arc;
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use serde::Serialize;
 use tungstenite::protocol::WebSocket;
@@ -53,6 +53,8 @@ pub fn websocket_loop(shared: Arc<SharedState>) {
     let mut next_client_id = 0;
 
     loop {
+        let frame_start = Instant::now();
+        
         let (enabled, port, hz, send_coords, send_pressure, _send_tilt, send_status) = {
             let config = shared.config.read().ignore_poison();
             let ws = &config.websocket;
@@ -94,6 +96,11 @@ pub fn websocket_loop(shared: Arc<SharedState>) {
         if let Some(l) = &listener {
             match l.accept() {
                 Ok((stream, addr)) => {
+                    if clients.len() >= 10 {
+                        log::warn!(target: "WebSocket", "Max clients reached (10), rejecting {}", addr);
+                        continue;
+                    }
+                            
                     log::info!(target: "WebSocket", "New connection from {}", addr);
                     stream
                         .set_nonblocking(false)
@@ -159,7 +166,13 @@ pub fn websocket_loop(shared: Arc<SharedState>) {
             }
         }
 
-        let sleep_ms = 1000 / hz;
-        thread::sleep(Duration::from_millis(sleep_ms as u64));
+        let target_duration = Duration::from_micros(1_000_000 / hz as u64);
+        let elapsed = frame_start.elapsed();
+        
+        if elapsed < target_duration {
+            thread::sleep(target_duration - elapsed);
+        } else {
+            log::trace!(target: "WebSocket", "Broadcast too slow, frame took {:?}", elapsed);
+        }
     }
 }

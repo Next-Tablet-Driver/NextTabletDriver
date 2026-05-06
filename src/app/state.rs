@@ -33,24 +33,6 @@ pub struct UiSnapshot {
     pub stats: crate::drivers::DriverStats,
     pub packet_count: u32,
     pub is_first_run: bool,
-
-    // Debug-only instrumentation
-    #[cfg(debug_assertions)]
-    pub debug_pipeline_stage: String,
-    #[cfg(debug_assertions)]
-    pub debug_last_uv: (f32, f32),
-    #[cfg(debug_assertions)]
-    pub debug_last_filtered_uv: (f32, f32),
-    #[cfg(debug_assertions)]
-    pub debug_last_screen: (f32, f32),
-    #[cfg(debug_assertions)]
-    pub debug_inject_count: u32,
-    #[cfg(debug_assertions)]
-    pub debug_filter_time_ns: u64,
-    #[cfg(debug_assertions)]
-    pub debug_transform_time_ns: u64,
-    #[cfg(debug_assertions)]
-    pub debug_pipeline_time_ns: u64,
 }
 
 impl UiSnapshot {
@@ -70,23 +52,6 @@ impl UiSnapshot {
             stats: *shared.stats.read().ignore_poison(),
             packet_count: shared.packet_count.load(Ordering::Relaxed),
             is_first_run: *shared.is_first_run.read().ignore_poison(),
-
-            #[cfg(debug_assertions)]
-            debug_pipeline_stage: shared.debug_pipeline_stage.read().ignore_poison().clone(),
-            #[cfg(debug_assertions)]
-            debug_last_uv: *shared.debug_last_uv.read().ignore_poison(),
-            #[cfg(debug_assertions)]
-            debug_last_filtered_uv: *shared.debug_last_filtered_uv.read().ignore_poison(),
-            #[cfg(debug_assertions)]
-            debug_last_screen: *shared.debug_last_screen.read().ignore_poison(),
-            #[cfg(debug_assertions)]
-            debug_inject_count: shared.debug_inject_count.load(Ordering::Relaxed),
-            #[cfg(debug_assertions)]
-            debug_filter_time_ns: shared.debug_filter_time_ns.load(Ordering::Relaxed),
-            #[cfg(debug_assertions)]
-            debug_transform_time_ns: shared.debug_transform_time_ns.load(Ordering::Relaxed),
-            #[cfg(debug_assertions)]
-            debug_pipeline_time_ns: shared.debug_pipeline_time_ns.load(Ordering::Relaxed),
         }
     }
 }
@@ -108,9 +73,6 @@ pub enum AppTab {
     Settings,
     /// Changelog and update installation dialog.
     Release,
-    #[cfg(debug_assertions)]
-    /// Developer diagnostics and pipeline inspection.
-    Developer,
 }
 
 /// Tracks the state of the currently active user profile.
@@ -265,6 +227,13 @@ pub struct TabletMapperApp {
     pub console_show_error: bool,
     pub console_show_debug: bool,
     pub console_autoscroll: bool,
+    
+    // Console Cache
+    pub console_cache_log_count: usize,
+    pub console_cache_search: String,
+    pub console_cache_filters: (bool, bool, bool, bool),
+    pub console_cache_filtered: Vec<crate::logger::LogEntry>,
+    pub console_cache_full_text: String,
 
     // System Tray
     /// Kept alive to prevent the tray icon from being dropped.
@@ -275,18 +244,6 @@ pub struct TabletMapperApp {
     pub show_close_confirm: bool,
     /// If true, bypasses the close confirmation intercept.
     pub force_close: bool,
-
-    // Developer UI State (Debug only)
-    #[cfg(debug_assertions)]
-    pub dev_pause_pipeline: bool,
-    #[cfg(debug_assertions)]
-    pub dev_raw_hid_history: std::collections::VecDeque<String>,
-    #[cfg(debug_assertions)]
-    pub dev_pipeline_log: std::collections::VecDeque<String>,
-    #[cfg(debug_assertions)]
-    pub dev_show_full_config: bool,
-    #[cfg(debug_assertions)]
-    pub dev_filter_details_open: bool,
 }
 
 const MAX_TOASTS: usize = 3;
@@ -367,7 +324,9 @@ impl TabletMapperApp {
             match crate::settings::save_to_path(path, &config) {
                 Ok(()) => {
                     self.profile.mark_saved(&config);
-                    let _ = self.save_sender.try_send(config);
+                    if self.save_sender.try_send(config).is_err() {
+                        log::warn!(target: "Config", "Save queue full, config change dropped");
+                    }
                     self.push_toast("Settings saved".to_string(), ToastLevel::Info);
                 }
                 Err(e) => {
@@ -393,7 +352,9 @@ impl TabletMapperApp {
                     }
                     self.profile.path = Some(path);
                     self.profile.mark_saved(&config);
-                    let _ = self.save_sender.try_send(config);
+                    if self.save_sender.try_send(config).is_err() {
+                        log::warn!(target: "Config", "Save queue full, config change dropped");
+                    }
 
                     crate::settings::save_session_meta(&crate::settings::SessionMeta {
                         profile_name: self.profile.name.clone(),
@@ -469,9 +430,28 @@ impl TabletMapperApp {
 
     /// Filters the global log buffer based on current UI settings and search query.
     /// Returns (total_count, filtered_logs, full_log_text).
-    pub fn get_filtered_logs(&self) -> (usize, Vec<crate::logger::LogEntry>, String) {
+    pub fn get_filtered_logs(&mut self) -> (usize, &[crate::logger::LogEntry], &str) {
         use crate::engine::state::LockResultExt;
         let logs = crate::logger::LOG_BUFFER.read().ignore_poison();
+        
+        let current_filters = (
+            self.console_show_info,
+            self.console_show_warn,
+            self.console_show_error,
+            self.console_show_debug,
+        );
+
+        if self.console_cache_log_count == logs.len()
+            && self.console_cache_search == self.console_search
+            && self.console_cache_filters == current_filters
+        {
+            return (
+                self.console_cache_log_count,
+                &self.console_cache_filtered,
+                &self.console_cache_full_text,
+            );
+        }
+
         let search_lower = self.console_search.to_lowercase();
 
         let mut filtered: Vec<_> = logs
@@ -504,7 +484,17 @@ impl TabletMapperApp {
             .collect::<Vec<_>>()
             .join("\n");
 
-        (logs.len(), filtered, full_text)
+        self.console_cache_log_count = logs.len();
+        self.console_cache_search = self.console_search.clone();
+        self.console_cache_filters = current_filters;
+        self.console_cache_filtered = filtered;
+        self.console_cache_full_text = full_text;
+
+        (
+            self.console_cache_log_count,
+            &self.console_cache_filtered,
+            &self.console_cache_full_text,
+        )
     }
 
     /// Initiates the download and installation of an available update in a background thread.

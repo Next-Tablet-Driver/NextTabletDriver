@@ -7,8 +7,7 @@
 use crate::app::state::{AppTab, TabletMapperApp, ToastLevel, UiSnapshot};
 use crate::engine::state::LockResultExt;
 use crate::ui::panels::console::render_console_panel;
-#[cfg(debug_assertions)]
-use crate::ui::panels::developer::render_developer_panel;
+
 use crate::ui::panels::filters::render_filters_panel;
 use crate::ui::panels::output::render_output_panel;
 use crate::ui::panels::pen_settings::render_pen_settings_panel;
@@ -75,18 +74,16 @@ impl TabletMapperApp {
                     .update_latency(receive_time.elapsed().as_secs_f32() * 1000.0);
             }
 
-            #[cfg(debug_assertions)]
-            if !self.dev_pause_pipeline {
-                self.dev_raw_hid_history.push_front(data.raw_data.clone());
-                if self.dev_raw_hid_history.len() > 50 {
-                    self.dev_raw_hid_history.pop_back();
-                }
-            }
-
             let mut shared_data = self.shared.tablet_data.write().ignore_poison();
             *shared_data = data;
 
-            ctx.request_repaint();
+            let needs_live_update = self.show_debugger
+                || self.show_latency_stats
+                || self.active_tab == AppTab::Console;
+
+            if needs_live_update {
+                ctx.request_repaint_after(Duration::from_millis(16));
+            }
         }
 
         // Check for updates
@@ -164,12 +161,7 @@ impl TabletMapperApp {
                     render_release_panel(self, ui);
                 });
             }
-            #[cfg(debug_assertions)]
-            AppTab::Developer => {
-                egui::ScrollArea::vertical().show(ui, |ui| {
-                    render_developer_panel(self, ui, snapshot);
-                });
-            }
+
         });
     }
 
@@ -372,7 +364,9 @@ impl TabletMapperApp {
                 *shared_config = config.clone();
                 self.shared.config_version.fetch_add(1, Ordering::SeqCst);
             }
-            let _ = self.save_sender.try_send(config);
+            if self.save_sender.try_send(config).is_err() {
+                log::warn!(target: "Config", "Save queue full, config change dropped");
+            }
         }
     }
 

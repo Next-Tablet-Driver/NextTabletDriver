@@ -67,9 +67,16 @@ pub fn run_manager(
 
                 // Drain stale packets left by init sequence to prevent cursor teleport
                 let mut drain_buf = [0u8; 64];
-                while let Ok(len) = device.read_timeout(&mut drain_buf, 10) {
-                    if len == 0 {
-                        break;
+                // while let Ok(len) = device.read_timeout(&mut drain_buf, 10) {
+                //     if len == 0 {
+                //         break;
+                //     }
+                // }
+                let drain_deadline = Instant::now() + Duration::from_millis(100);
+                while Instant::now() < drain_deadline {
+                    match device.read_timeout(&mut drain_buf, 10) {
+                        Ok(0) | Err(_) => break,
+                        Ok(_) => continue,
                     }
                 }
                 pipeline.reset_relative();

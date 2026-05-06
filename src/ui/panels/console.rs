@@ -192,7 +192,7 @@ pub fn render_console_panel(app: &mut TabletMapperApp, ui: &mut egui::Ui) {
         {
             ui.output_mut(|o| {
                 o.commands
-                    .push(egui::OutputCommand::CopyText(full_log_text))
+                    .push(egui::OutputCommand::CopyText(full_log_text.to_string()))
             });
         }
 
