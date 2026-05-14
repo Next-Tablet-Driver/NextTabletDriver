@@ -16,10 +16,10 @@ use std::process::Command;
 /// - The downloaded file's SHA256 checksum does not match the expected hash.
 /// - The installer process fails to launch.
 pub fn download_and_install(
-    release: Release,
-    status_sender: crossbeam_channel::Sender<UpdateStatus>,
+    release: &Release,
+    status_sender: &crossbeam_channel::Sender<UpdateStatus>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let asset = find_platform_asset(&release)?;
+    let asset = find_platform_asset(release)?;
     let download_url = &asset.browser_download_url;
 
     // Mandatory: Look for a .sha256 file in release assets
@@ -85,14 +85,13 @@ pub fn download_and_install(
     let actual = hex::encode(hasher.finalize());
     if actual.to_lowercase() != expected_hash.to_lowercase() {
         let _ = fs::remove_file(&temp_path);
-        return Err(format!(
-            "Checksum mismatch! Expected: {expected_hash}, Actual: {actual}"
-        )
-        .into());
+        return Err(
+            format!("Checksum mismatch! Expected: {expected_hash}, Actual: {actual}").into(),
+        );
     }
     log::info!(target: "Update::Verify", "SHA256 integrity verified successfully.");
 
-    log::info!(target: "Update::Download", "Download complete, saved to {temp_path:?}");
+    log::info!(target: "Update::Download", "Download complete, saved to {}", temp_path.display());
 
     // Make the file executable on Linux
     #[cfg(target_os = "linux")]
@@ -124,7 +123,11 @@ fn find_platform_asset(release: &Release) -> Result<&Asset, Box<dyn std::error::
         release
             .assets
             .iter()
-            .find(|a| a.name.ends_with(".exe"))
+            .find(|a| {
+                std::path::Path::new(&a.name)
+                    .extension()
+                    .is_some_and(|ext| ext.eq_ignore_ascii_case("exe"))
+            })
             .ok_or_else(|| "No suitable installer (.exe) asset found in release".into())
     }
 

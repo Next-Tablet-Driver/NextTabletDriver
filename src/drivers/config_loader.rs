@@ -30,7 +30,7 @@ fn load_and_index_configurations() -> ConfigIndex {
     index
 }
 
-#[must_use] 
+#[must_use]
 pub fn load_configurations() -> Vec<TabletConfiguration> {
     let global_start = Instant::now();
     let mut configs = Vec::new();
@@ -122,11 +122,11 @@ fn load_from_disk_recursive(
                             }
                         }
                         Err(e) => {
-                            log::error!(target: "Driver", "Failed to parse disk config {p:?}: {e}");
+                            log::error!(target: "Driver", "Failed to parse disk config {}: {e}", p.display());
                         }
                     },
                     Err(e) => {
-                        log::error!(target: "Driver", "Failed to read disk config {p:?}: {e}");
+                        log::error!(target: "Driver", "Failed to read disk config {}: {e}", p.display());
                     }
                 }
             }

@@ -180,7 +180,7 @@ pub fn render_tablet_section(ui: &mut egui::Ui, config: &mut MappingConfig, snap
                     let mut h = config.active_area.h;
 
                     ui_input_box(ui, "Width", &mut w, "mm");
-                    if w != config.active_area.w {
+                    if (w - config.active_area.w).abs() > f32::EPSILON {
                         config.active_area.w = w;
                         if config.lock_aspect_ratio {
                             let ratio = config.target_area.w / config.target_area.h;
@@ -191,7 +191,7 @@ pub fn render_tablet_section(ui: &mut egui::Ui, config: &mut MappingConfig, snap
                     }
 
                     ui_input_box(ui, "Height", &mut h, "mm");
-                    if h != config.active_area.h {
+                    if (h - config.active_area.h).abs() > f32::EPSILON {
                         config.active_area.h = h;
                         if config.lock_aspect_ratio {
                             let ratio = config.target_area.w / config.target_area.h;

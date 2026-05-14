@@ -9,7 +9,7 @@ pub struct IntuosProParser {
 }
 
 impl IntuosProParser {
-    #[must_use] 
+    #[must_use]
     pub const fn new() -> Self {
         Self {
             inner_v1: IntuosV1Parser::new(),
@@ -27,12 +27,12 @@ impl IntuosProParser {
     fn parse_internal(&self, data: &[u8], raw: String) -> Option<TabletData> {
         match data {
             [0x02 | 0x10, ..] => self.inner_v1.parse_internal(data, raw),
-            [0x03, ..] => self.parse_aux(data, raw),
+            [0x03, ..] => Self::parse_aux(data, raw),
             _ => None,
         }
     }
 
-    fn parse_aux(&self, data: &[u8], raw: String) -> Option<TabletData> {
+    fn parse_aux(data: &[u8], raw: String) -> Option<TabletData> {
         match data {
             [_, _, _, _, b4, ..] => Some(TabletData {
                 status: "Aux".to_string(),
@@ -62,7 +62,7 @@ pub struct WacomDriverIntuosProParser {
 }
 
 impl WacomDriverIntuosProParser {
-    #[must_use] 
+    #[must_use]
     pub const fn new() -> Self {
         Self {
             inner: IntuosProParser::new(),

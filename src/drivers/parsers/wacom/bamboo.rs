@@ -12,7 +12,7 @@ pub struct BambooTabletReport {
 }
 
 impl BambooTabletReport {
-    #[must_use] 
+    #[must_use]
     pub fn new(report: &[u8]) -> Option<Self> {
         match report {
             [_, b1, x_lo, x_hi, y_lo, y_hi, p_lo, p_hi_aux, ..] => {

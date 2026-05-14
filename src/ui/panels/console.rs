@@ -2,6 +2,33 @@ use crate::app::state::TabletMapperApp;
 use eframe::egui;
 
 pub fn render_console_panel(app: &mut TabletMapperApp, ui: &mut egui::Ui) {
+    fn level_button(ui: &mut egui::Ui, selected: &mut bool, label: &str, color: egui::Color32) {
+        let stroke_color = if *selected {
+            color.gamma_multiply(0.8)
+        } else {
+            egui::Color32::from_white_alpha(20)
+        };
+        let fill_color = if *selected {
+            color.gamma_multiply(0.15)
+        } else {
+            egui::Color32::TRANSPARENT
+        };
+        let text_color = if *selected {
+            color
+        } else {
+            ui.visuals().text_color().gamma_multiply(0.4)
+        };
+
+        let button = egui::Button::new(egui::RichText::new(label).color(text_color).strong())
+            .fill(fill_color)
+            .stroke(egui::Stroke::new(1.0, stroke_color))
+            .corner_radius(4.0);
+
+        if ui.add(button).clicked() {
+            *selected = !*selected;
+        }
+    }
+
     ui.add_space(5.0);
 
     ui.horizontal(|ui| {
@@ -18,33 +45,6 @@ pub fn render_console_panel(app: &mut TabletMapperApp, ui: &mut egui::Ui) {
         ui.add_space(10.0);
         ui.separator();
         ui.add_space(10.0);
-
-        fn level_button(ui: &mut egui::Ui, selected: &mut bool, label: &str, color: egui::Color32) {
-            let stroke_color = if *selected {
-                color.gamma_multiply(0.8)
-            } else {
-                egui::Color32::from_white_alpha(20)
-            };
-            let fill_color = if *selected {
-                color.gamma_multiply(0.15)
-            } else {
-                egui::Color32::TRANSPARENT
-            };
-            let text_color = if *selected {
-                color
-            } else {
-                ui.visuals().text_color().gamma_multiply(0.4)
-            };
-
-            let button = egui::Button::new(egui::RichText::new(label).color(text_color).strong())
-                .fill(fill_color)
-                .stroke(egui::Stroke::new(1.0, stroke_color))
-                .corner_radius(4.0);
-
-            if ui.add(button).clicked() {
-                *selected = !*selected;
-            }
-        }
 
         level_button(
             ui,

@@ -23,8 +23,8 @@ impl ReportParser for XpPenStarG640Parser {
         };
 
         // Tilt (X at 8, Y at 9) - optional/dynamic
-        let tilt_x = data.get(8).copied().unwrap_or(0) as i8;
-        let tilt_y = data.get(9).copied().unwrap_or(0) as i8;
+        let tilt_x = data.get(8).copied().unwrap_or(0).cast_signed();
+        let tilt_y = data.get(9).copied().unwrap_or(0).cast_signed();
 
         // Raw hex string for debugging
         let raw = data

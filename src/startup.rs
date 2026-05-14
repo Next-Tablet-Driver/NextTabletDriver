@@ -18,7 +18,7 @@ const APP_NAME: &str = "NextTabletDriver";
 // Windows Implementation .lnk shortcut in Startup folder
 #[cfg(windows)]
 mod platform {
-    use super::{PathBuf, UserDirs, APP_NAME, env, fs};
+    use super::{APP_NAME, PathBuf, UserDirs, env, fs};
     use std::process::Command;
 
     /// Returns the Windows Startup folder path for the current user.
@@ -93,10 +93,10 @@ mod platform {
                 return Err("Failed to create startup shortcut".into());
             }
 
-            log::info!(target: "Startup", "Created startup shortcut: {shortcut_path:?}");
+            log::info!(target: "Startup", "Created startup shortcut: {}", shortcut_path.display());
         } else if shortcut_path.exists() {
             fs::remove_file(&shortcut_path)?;
-            log::info!(target: "Startup", "Removed startup shortcut: {shortcut_path:?}");
+            log::info!(target: "Startup", "Removed startup shortcut: {}", shortcut_path.display());
         }
         Ok(())
     }

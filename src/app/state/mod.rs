@@ -7,7 +7,7 @@ pub use snapshot::*;
 use crate::core::config::models::MappingConfig;
 use crossbeam_channel::Receiver;
 use display_info::DisplayInfo;
-use std::path::PathBuf;
+use std::path::Path;
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -16,6 +16,7 @@ use crate::drivers::TabletData;
 use crate::engine::state::{LockRecoveryExt, SharedState};
 
 /// The core application state structure used by the `eframe` (egui) integration.
+#[allow(clippy::struct_excessive_bools)]
 pub struct TabletMapperApp {
     // Shared State
     pub shared: Arc<SharedState>,
@@ -89,14 +90,14 @@ impl TabletMapperApp {
         });
     }
 
-    pub fn load_profile_at_path(&mut self, path: PathBuf) {
-        match crate::settings::load_settings_from_file(&path) {
+    pub fn load_profile_at_path(&mut self, path: &Path) {
+        match crate::settings::load_settings_from_file(path) {
             Ok((cfg, corrections)) => {
                 self.apply_config(cfg.clone());
                 if let Some(name) = path.file_stem().and_then(|s| s.to_str()) {
                     self.profile.name = name.to_string();
                 }
-                self.profile.path = Some(path.clone());
+                self.profile.path = Some(path.to_path_buf());
                 self.profile.mark_saved(&cfg);
                 crate::settings::save_session_meta(&crate::settings::SessionMeta {
                     profile_name: self.profile.name.clone(),
@@ -128,7 +129,7 @@ impl TabletMapperApp {
             .add_filter("JSON", &["json"])
             .pick_file()
         {
-            self.load_profile_at_path(path);
+            self.load_profile_at_path(&path);
         }
     }
 
@@ -297,7 +298,7 @@ impl TabletMapperApp {
             let sender = self.update_sender.clone();
             std::thread::spawn(move || {
                 if let Err(e) =
-                    crate::app::autoupdate::download_and_install(release_clone, sender.clone())
+                    crate::app::autoupdate::download_and_install(&release_clone, &sender)
                 {
                     let _ = sender.send(UpdateStatus::Error(e.to_string()));
                 }

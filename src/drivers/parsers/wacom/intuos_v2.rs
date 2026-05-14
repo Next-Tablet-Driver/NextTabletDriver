@@ -6,7 +6,7 @@ use crate::drivers::parsers::ReportParser;
 pub struct IntuosV2Parser;
 
 impl IntuosV2Parser {
-    #[must_use] 
+    #[must_use]
     pub const fn new() -> Self {
         Self
     }
@@ -19,7 +19,7 @@ impl Default for IntuosV2Parser {
 }
 
 impl IntuosV2Parser {
-    fn parse_internal(&self, data: &[u8], raw: String) -> Option<TabletData> {
+    fn parse_internal(data: &[u8], raw: String) -> Option<TabletData> {
         match data {
             [
                 0x10,
@@ -61,8 +61,8 @@ impl IntuosV2Parser {
                     x: x.min(0xFFFF) as u16,
                     y: y.min(0xFFFF) as u16,
                     pressure,
-                    tilt_x: *t_x as i8,
-                    tilt_y: *t_y as i8,
+                    tilt_x: t_x.cast_signed(),
+                    tilt_y: t_y.cast_signed(),
                     buttons,
                     eraser,
                     hover_distance: *h_dist,
@@ -113,8 +113,8 @@ impl IntuosV2Parser {
                     x: x.min(0xFFFF) as u16,
                     y: y.min(0xFFFF) as u16,
                     pressure,
-                    tilt_x: *t_x as i8,
-                    tilt_y: *t_y as i8,
+                    tilt_x: t_x.cast_signed(),
+                    tilt_y: t_y.cast_signed(),
                     buttons,
                     eraser,
                     hover_distance: *t_x,
@@ -142,20 +142,16 @@ impl ReportParser for IntuosV2Parser {
             .map(|b| format!("{b:02X}"))
             .collect::<Vec<_>>()
             .join(" ");
-        self.parse_internal(data, raw)
+        Self::parse_internal(data, raw)
     }
 }
 
-pub struct WacomDriverIntuosV2Parser {
-    inner: IntuosV2Parser,
-}
+pub struct WacomDriverIntuosV2Parser;
 
 impl WacomDriverIntuosV2Parser {
-    #[must_use] 
+    #[must_use]
     pub const fn new() -> Self {
-        Self {
-            inner: IntuosV2Parser::new(),
-        }
+        Self
     }
 }
 
@@ -174,7 +170,7 @@ impl ReportParser for WacomDriverIntuosV2Parser {
             .join(" ");
 
         match data {
-            [_, rest @ ..] => self.inner.parse_internal(rest, raw),
+            [_, rest @ ..] => IntuosV2Parser::parse_internal(rest, raw),
             _ => None,
         }
     }

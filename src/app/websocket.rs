@@ -47,7 +47,7 @@ struct WsPayload {
 /// # Networking
 /// - Binds to `127.0.0.1` (localhost only) for security.
 /// - Uses non-blocking sockets to allow for graceful client disconnection and reconnects.
-pub fn websocket_loop(shared: Arc<SharedState>) {
+pub fn websocket_loop(shared: &Arc<SharedState>) {
     let mut current_port = 0;
     let mut listener: Option<TcpListener> = None;
     let mut clients: HashMap<usize, WebSocket<std::net::TcpStream>> = HashMap::new();
@@ -182,7 +182,7 @@ pub fn websocket_loop(shared: Arc<SharedState>) {
         let elapsed = frame_start.elapsed();
 
         if elapsed < target_duration {
-            thread::sleep(target_duration.checked_sub(elapsed).unwrap());
+            thread::sleep(target_duration.checked_sub(elapsed).unwrap_or_default());
         } else {
             log::trace!(target: "WebSocket", "Broadcast too slow, frame took {elapsed:?}");
         }

@@ -6,7 +6,7 @@ use crate::drivers::parsers::ReportParser;
 pub struct IntuosV3Parser;
 
 impl IntuosV3Parser {
-    #[must_use] 
+    #[must_use]
     pub const fn new() -> Self {
         Self
     }
@@ -19,16 +19,16 @@ impl Default for IntuosV3Parser {
 }
 
 impl IntuosV3Parser {
-    fn parse_internal(&self, data: &[u8], raw: String) -> Option<TabletData> {
+    fn parse_internal(data: &[u8], raw: String) -> Option<TabletData> {
         match data {
-            [0x11, ..] => self.parse_aux(data, raw),
-            [0x1E, ..] => self.parse_extended(data, raw),
-            [0x1F, 0x01, ..] => self.parse_tablet(data, raw),
+            [0x11, ..] => Self::parse_aux(data, raw),
+            [0x1E, ..] => Self::parse_extended(data, raw),
+            [0x1F, 0x01, ..] => Self::parse_tablet(data, raw),
             _ => None,
         }
     }
 
-    fn parse_tablet(&self, data: &[u8], raw: String) -> Option<TabletData> {
+    fn parse_tablet(data: &[u8], raw: String) -> Option<TabletData> {
         match data {
             [
                 _,
@@ -54,12 +54,12 @@ impl IntuosV3Parser {
                 let tilt_x = if (*t_x & 0x80) != 0 {
                     (i16::from(*t_x) - 0xFF) as i8
                 } else {
-                    *t_x as i8
+                    t_x.cast_signed()
                 };
                 let tilt_y = if (*t_y & 0x80) != 0 {
                     (i16::from(*t_y) - 0xFF) as i8
                 } else {
-                    *t_y as i8
+                    t_y.cast_signed()
                 };
 
                 let mut buttons: u8 = 0;
@@ -92,7 +92,7 @@ impl IntuosV3Parser {
         }
     }
 
-    fn parse_extended(&self, data: &[u8], raw: String) -> Option<TabletData> {
+    fn parse_extended(data: &[u8], raw: String) -> Option<TabletData> {
         match data {
             [
                 _,
@@ -156,7 +156,7 @@ impl IntuosV3Parser {
         }
     }
 
-    fn parse_aux(&self, data: &[u8], raw: String) -> Option<TabletData> {
+    fn parse_aux(data: &[u8], raw: String) -> Option<TabletData> {
         match data {
             [_, b1, _, b2, ..] => {
                 let mut buttons: u16 = 0;
@@ -205,20 +205,20 @@ impl ReportParser for IntuosV3Parser {
             .map(|b| format!("{b:02X}"))
             .collect::<Vec<_>>()
             .join(" ");
-        self.parse_internal(data, raw)
+        Self::parse_internal(data, raw)
     }
 }
 
-pub struct WacomDriverIntuosV3Parser {
-    inner: IntuosV3Parser,
-}
+pub struct WacomDriverIntuosV3Parser;
 
 impl WacomDriverIntuosV3Parser {
-    #[must_use] 
+    #[must_use]
     pub const fn new() -> Self {
-        Self {
-            inner: IntuosV3Parser::new(),
-        }
+        Self
+    }
+
+    fn parse_internal(data: &[u8], raw: String) -> Option<TabletData> {
+        IntuosV3Parser::parse_internal(data, raw)
     }
 }
 
@@ -238,7 +238,7 @@ impl ReportParser for WacomDriverIntuosV3Parser {
 
         // Skip the first byte safely
         match data {
-            [_, rest @ ..] => self.inner.parse_internal(rest, raw),
+            [_, rest @ ..] => Self::parse_internal(rest, raw),
             _ => None,
         }
     }

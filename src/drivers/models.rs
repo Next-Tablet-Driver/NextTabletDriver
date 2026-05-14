@@ -83,10 +83,10 @@ impl DriverStats {
         let dist = self.total_distance_mm;
         if dist < 1000.0 {
             (format!("{dist:.1}"), "mm")
-        } else if dist < 1000000.0 {
-            (format!("{:.3}", dist / 1000.0), "m")
+        } else if dist < 1_000_000.0 {
+            (format!("{:.3}", dist / 1_000.0), "m")
         } else {
-            (format!("{:.3}", dist / 1000000.0), "km")
+            (format!("{:.3}", dist / 1_000_000.0), "km")
         }
     }
 }

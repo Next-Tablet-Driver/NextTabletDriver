@@ -4,9 +4,7 @@ const OWNER: &str = "Next-Tablet-Driver";
 const REPO: &str = "NextTabletDriver";
 
 fn github_api_url() -> String {
-    format!(
-        "https://api.github.com/repos/{OWNER}/{REPO}/releases/latest"
-    )
+    format!("https://api.github.com/repos/{OWNER}/{REPO}/releases/latest")
 }
 
 /// Queries the GitHub API to check if a newer version is available.

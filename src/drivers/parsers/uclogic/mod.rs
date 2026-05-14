@@ -35,7 +35,7 @@ fn parse_uclogic_tablet(data: &[u8], raw: String, has_tilt: bool) -> Option<Tabl
 
             let (tilt_x, tilt_y) = if has_tilt {
                 match rest {
-                    [_, _, tx, ty, ..] => (*tx as i8, *ty as i8),
+                    [_, _, tx, ty, ..] => (tx.cast_signed(), ty.cast_signed()),
                     _ => (0, 0),
                 }
             } else {

@@ -52,7 +52,7 @@ pub fn render_menu_bar(app: &mut TabletMapperApp, ctx: &egui::Context, snapshot:
                             for (name, path) in profiles {
                                 if ui.button(name).clicked() {
                                     ui.close();
-                                    app.load_profile_at_path(path);
+                                    app.load_profile_at_path(&path);
                                 }
                             }
                         }

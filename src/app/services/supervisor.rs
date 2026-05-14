@@ -21,7 +21,7 @@ impl ThreadSupervisor {
     pub fn spawn_websocket(shared: Arc<SharedState>) {
         log::info!(target: "WebSocket", "Spawning WebSocket thread");
         std::thread::spawn(move || {
-            crate::app::websocket::websocket_loop(shared);
+            crate::app::websocket::websocket_loop(&shared);
         });
     }
 

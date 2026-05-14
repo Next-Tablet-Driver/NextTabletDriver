@@ -9,7 +9,7 @@ pub struct Intuos4Parser {
 }
 
 impl Intuos4Parser {
-    #[must_use] 
+    #[must_use]
     pub const fn new() -> Self {
         Self {
             inner_v1: IntuosV1Parser::new(),
@@ -26,14 +26,14 @@ impl Default for Intuos4Parser {
 impl Intuos4Parser {
     fn parse_internal(&self, data: &[u8], raw: String) -> Option<TabletData> {
         match data {
-            [0x02, 0xEC | 0xAC, ..] => self.parse_mouse(data, raw),
+            [0x02, 0xEC | 0xAC, ..] => Self::parse_mouse(data, raw),
             [0x02 | 0x10, ..] => self.inner_v1.parse_internal(data, raw),
-            [0x0C, ..] => self.parse_aux(data, raw),
+            [0x0C, ..] => Self::parse_aux(data, raw),
             _ => None,
         }
     }
 
-    fn parse_mouse(&self, data: &[u8], raw: String) -> Option<TabletData> {
+    fn parse_mouse(data: &[u8], raw: String) -> Option<TabletData> {
         match data {
             [_, _, b2, b3, b4, b5, b6, _, _, b9, ..] => {
                 let x = ((u16::from(*b2) << 8) | u16::from(*b3)) << 1 | u16::from((*b9 >> 1) & 1);
@@ -69,7 +69,7 @@ impl Intuos4Parser {
         }
     }
 
-    fn parse_aux(&self, data: &[u8], raw: String) -> Option<TabletData> {
+    fn parse_aux(data: &[u8], raw: String) -> Option<TabletData> {
         match data {
             [_, _, _, b3, ..] => Some(TabletData {
                 status: "Aux".to_string(),
@@ -99,7 +99,7 @@ pub struct WacomDriverIntuos4Parser {
 }
 
 impl WacomDriverIntuos4Parser {
-    #[must_use] 
+    #[must_use]
     pub const fn new() -> Self {
         Self {
             inner: Intuos4Parser::new(),

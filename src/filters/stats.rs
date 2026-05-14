@@ -52,7 +52,7 @@ impl SpeedStatsFilter {
         log::info!(target: "Stats", "Configuring WebSocket stats server on {ip}:{port}");
         self.server = None; // Drop old server (triggering shutdown)
 
-        match StatsServer::start(ip.to_string(), port) {
+        match StatsServer::start(ip, port) {
             Ok(server) => {
                 self.server = Some(server);
                 self.current_config = Some((ip.to_string(), port));

@@ -7,7 +7,7 @@ pub struct ConfigService {
 }
 
 impl ConfigService {
-    #[must_use] 
+    #[must_use]
     pub fn load() -> Self {
         let loaded = load_last_session();
         let (config, corrections) = if let Some((cfg, corrections)) = loaded {

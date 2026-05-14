@@ -6,6 +6,7 @@ pub struct TrayService {
 }
 
 impl TrayService {
+    #[must_use]
     pub fn new(ctx: Context) -> Self {
         let icon_bytes = include_bytes!("../../../resources/icon.png");
         let tray_icon = match image::load_from_memory(icon_bytes) {
@@ -19,13 +20,13 @@ impl TrayService {
                         .build()
                         .ok(),
                     Err(e) => {
-                        log::error!(target: "Tray", "Failed to create tray icon: {}", e);
+                        log::error!(target: "Tray", "Failed to create tray icon: {e}");
                         None
                     }
                 }
             }
             Err(e) => {
-                log::error!(target: "Tray", "Failed to load tray icon image: {}", e);
+                log::error!(target: "Tray", "Failed to load tray icon image: {e}");
                 None
             }
         };
@@ -36,7 +37,7 @@ impl TrayService {
                 let receiver = TrayIconEvent::receiver();
                 log::info!(target: "Tray", "System Tray listener background thread started");
                 while let Ok(event) = receiver.recv() {
-                    log::info!(target: "Tray", "Received Tray Event: {:?}", event);
+                    log::info!(target: "Tray", "Received Tray Event: {event:?}");
 
                     let matches = matches!(
                         event,
@@ -67,11 +68,10 @@ impl TrayService {
                             }
                             let title = format!("NextTabletDriver v{}\0", crate::VERSION);
                             // SAFETY: Finding the window by its title.
-                            let hwnd = unsafe {
-                                FindWindowA(std::ptr::null(), title.as_ptr() as *const _)
-                            };
+                            let hwnd =
+                                unsafe { FindWindowA(std::ptr::null(), title.as_ptr().cast()) };
                             if hwnd != 0 {
-                                log::info!(target: "Tray", "Native window found (HWND: {}), restoring...", hwnd);
+                                log::info!(target: "Tray", "Native window found (HWND: {hwnd}), restoring...");
                                 // SAFETY: Restoring the window to its normal state.
                                 unsafe { ShowWindow(hwnd, 9) }; // SW_RESTORE
                                 // SAFETY: Brining the window to the foreground.

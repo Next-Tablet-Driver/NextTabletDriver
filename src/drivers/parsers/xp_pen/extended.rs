@@ -1,15 +1,15 @@
 use crate::drivers::TabletData;
 use crate::drivers::parsers::{ReportParser, xp_pen::standard::parse as standard_parse};
 
-fn parse_aux(data: &[u8], raw: String, offset: usize) -> Option<TabletData> {
+fn parse_aux(data: &[u8], raw: String, offset: usize) -> TabletData {
     let buttons = data.get(offset).copied().unwrap_or(0);
-    Some(TabletData {
+    TabletData {
         status: "Aux".to_string(),
         buttons,
         raw_data: raw,
         is_connected: true,
         ..Default::default()
-    })
+    }
 }
 
 fn parse_gen2(data: &[u8], raw: String) -> Option<TabletData> {
@@ -52,8 +52,8 @@ fn parse_gen2(data: &[u8], raw: String) -> Option<TabletData> {
                 x: x.min(0xFFFF) as u16,
                 y: y.min(0xFFFF) as u16,
                 pressure,
-                tilt_x: *t_x as i8,
-                tilt_y: *t_y as i8,
+                tilt_x: t_x.cast_signed(),
+                tilt_y: t_y.cast_signed(),
                 buttons,
                 eraser,
                 raw_data: raw,
@@ -83,8 +83,8 @@ fn parse_offset_pressure(data: &[u8], raw: String, has_tilt: bool) -> Option<Tab
 
             let (tilt_x, tilt_y) = if has_tilt {
                 match rest {
-                    [tx, ty, ..] => (*tx as i8, *ty as i8),
-                    [tx, ..] => (*tx as i8, 0),
+                    [tx, ty, ..] => (tx.cast_signed(), ty.cast_signed()),
+                    [tx, ..] => (tx.cast_signed(), 0),
                     _ => (0, 0),
                 }
             } else {
@@ -122,7 +122,7 @@ impl ReportParser for XpPenGen2Parser {
             .join(" ");
 
         match data {
-            [_, 0xF0, ..] => parse_aux(data, raw, 2),
+            [_, 0xF0, ..] => Some(parse_aux(data, raw, 2)),
             [_, b1, ..] if (*b1 & 0xF0) == 0xA0 => parse_gen2(data, raw),
             _ => standard_parse(data),
         }
@@ -140,8 +140,8 @@ impl ReportParser for XpPenDeco03Parser {
             .join(" ");
 
         match data {
-            [_, 0xF0, ..] => parse_aux(data, raw, 2),
-            [_, b1, ..] if (*b1 & 0x10) != 0 => parse_aux(data, raw, 2),
+            [_, 0xF0, ..] => Some(parse_aux(data, raw, 2)),
+            [_, b1, ..] if (*b1 & 0x10) != 0 => Some(parse_aux(data, raw, 2)),
             _ => standard_parse(data),
         }
     }
@@ -158,7 +158,7 @@ impl ReportParser for XpPenOffsetPressureParser {
             .join(" ");
 
         match data {
-            [_, b1, ..] if (*b1 & 0x10) != 0 => parse_aux(data, raw, 2),
+            [_, b1, ..] if (*b1 & 0x10) != 0 => Some(parse_aux(data, raw, 2)),
             _ if data.len() >= 10 => parse_offset_pressure(data, raw, true),
             _ => parse_offset_pressure(data, raw, false),
         }
@@ -176,7 +176,7 @@ impl ReportParser for XpPenOffsetAuxParser {
             .join(" ");
 
         match data {
-            [_, b1, ..] if (*b1 & 0x20) != 0 => parse_aux(data, raw, 4),
+            [_, b1, ..] if (*b1 & 0x20) != 0 => Some(parse_aux(data, raw, 4)),
             _ => standard_parse(data),
         }
     }
@@ -193,7 +193,7 @@ impl ReportParser for XpPenParser {
             .join(" ");
 
         match data {
-            [_, b1, ..] if (*b1 & 0x10) != 0 => parse_aux(data, raw, 2),
+            [_, b1, ..] if (*b1 & 0x10) != 0 => Some(parse_aux(data, raw, 2)),
             _ => standard_parse(data),
         }
     }

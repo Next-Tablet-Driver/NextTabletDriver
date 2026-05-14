@@ -60,18 +60,18 @@ pub fn get_settings_dir() -> PathBuf {
 /// or the final rename operation fails.
 pub fn save_to_path(path: &Path, config: &MappingConfig) -> Result<(), String> {
     let json = serde_json::to_string_pretty(config).map_err(|e| {
-        log::error!(target: "Config", "Failed to serialize config for {path:?}: {e}");
+        log::error!(target: "Config", "Failed to serialize config for {}: {e}", path.display());
         e.to_string()
     })?;
 
     let tmp_path = path.with_extension("json.tmp");
     fs::write(&tmp_path, &json).map_err(|e| {
-        log::error!(target: "Config", "Failed to write temp file {tmp_path:?}: {e}");
+        log::error!(target: "Config", "Failed to write temp file {}: {e}", tmp_path.display());
         e.to_string()
     })?;
 
     fs::rename(&tmp_path, path).map_err(|e| {
-        log::error!(target: "Config", "Failed to rename {tmp_path:?} -> {path:?}: {e}");
+        log::error!(target: "Config", "Failed to rename {}: {e}", tmp_path.display());
         // Clean up the orphaned temp file on rename failure
         let _ = fs::remove_file(&tmp_path);
         e.to_string()
@@ -81,7 +81,7 @@ pub fn save_to_path(path: &Path, config: &MappingConfig) -> Result<(), String> {
 }
 
 /// Sanitizes a string for use as a filename, removing path separators and reserved characters.
-#[must_use] 
+#[must_use]
 pub fn sanitize_profile_name(name: &str) -> String {
     let mut sanitized: String = name
         .chars()
@@ -122,7 +122,7 @@ pub fn save_settings(name: &str, config: &MappingConfig) -> Result<(), String> {
     let path = dir.join(&filename);
 
     save_to_path(&path, config)?;
-    log::info!(target: "Config", "Saved preset '{name}' (sanitized: '{sanitized_name}') to {path:?}");
+    log::info!(target: "Config", "Saved preset '{name}' (sanitized: '{sanitized_name}') to {}", path.display());
     Ok(())
 }
 
@@ -147,7 +147,7 @@ pub fn save_last_session(config: &MappingConfig) -> Result<(), String> {
 pub fn load_last_session() -> Option<(MappingConfig, Vec<String>)> {
     let path = get_settings_dir().join("last_session.json");
     if !path.exists() {
-        log::debug!(target: "Config", "No last session file found at {path:?}");
+        log::debug!(target: "Config", "No last session file found at {}", path.display());
         return None;
     }
 
@@ -158,7 +158,7 @@ pub fn load_last_session() -> Option<(MappingConfig, Vec<String>)> {
                 if !corrections.is_empty() {
                     log::warn!(target: "Config", "Last session config had {} field(s) repaired", corrections.len());
                 }
-                log::info!(target: "Config", "Loaded last session from {path:?}");
+                log::info!(target: "Config", "Loaded last session from {}", path.display());
                 Some((config, corrections))
             }
             Err(e) => {
@@ -181,20 +181,20 @@ pub fn load_last_session() -> Option<(MappingConfig, Vec<String>)> {
 /// Returns an error if the file cannot be read or if the JSON content is invalid.
 pub fn load_settings_from_file(path: &Path) -> Result<(MappingConfig, Vec<String>), String> {
     let content = fs::read_to_string(path).map_err(|e| {
-        log::error!(target: "Config", "Failed to read settings file {path:?}: {e}");
+        log::error!(target: "Config", "Failed to read settings file {}: {e}", path.display());
         e.to_string()
     })?;
     let mut config: MappingConfig = serde_json::from_str(&content).map_err(|e| {
-        log::error!(target: "Config", "Failed to parse settings JSON from {path:?}: {e}");
+        log::error!(target: "Config", "Failed to parse settings JSON from {}: {e}", path.display());
         e.to_string()
     })?;
 
     let corrections = config.validate_and_repair();
     if !corrections.is_empty() {
-        log::warn!(target: "Config", "Config from {path:?} had {} field(s) repaired", corrections.len());
+        log::warn!(target: "Config", "Config from {} had {} field(s) repaired", path.display(), corrections.len());
     }
 
-    log::info!(target: "Config", "Loaded settings from {path:?}");
+    log::info!(target: "Config", "Loaded settings from {}", path.display());
     Ok((config, corrections))
 }
 
@@ -209,7 +209,7 @@ pub fn list_profiles() -> Vec<(String, PathBuf)> {
     let entries = match fs::read_dir(&dir) {
         Ok(entries) => entries,
         Err(e) => {
-            log::error!(target: "Config", "Failed to list profiles in {dir:?}: {e}");
+            log::error!(target: "Config", "Failed to list profiles in {}: {e}", dir.display());
             return profiles;
         }
     };

@@ -167,6 +167,7 @@ const fn default_ws_hz() -> u32 {
 
 /// Configuration for the embedded WebSocket server.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[allow(clippy::struct_excessive_bools)]
 pub struct WebSocketConfig {
     #[serde(default = "default_false")]
     pub enabled: bool,
@@ -270,6 +271,7 @@ impl Default for SpeedStatsConfig {
 /// primary object serialized to disk. Default struct fields are provided by individual functions
 /// to facilitate serde compatibility for adding new fields to older config files.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[allow(clippy::struct_excessive_bools)]
 pub struct MappingConfig {
     #[serde(default)]
     pub mode: DriverMode,
@@ -337,7 +339,7 @@ impl Default for MappingConfig {
 
 impl MappingConfig {
     /// Alias for `Default::default()`, kept for backward compatibility with tests.
-    #[must_use] 
+    #[must_use]
     pub fn default_test() -> Self {
         Self::default()
     }

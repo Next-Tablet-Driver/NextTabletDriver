@@ -7,7 +7,7 @@ pub struct AcepenParser {
 }
 
 impl AcepenParser {
-    #[must_use] 
+    #[must_use]
     pub const fn new() -> Self {
         Self {
             aux_state: AtomicU8::new(0),
@@ -64,8 +64,8 @@ impl ReportParser for AcepenParser {
                     x,
                     y,
                     pressure,
-                    tilt_x: *t_x as i8,
-                    tilt_y: *t_y as i8,
+                    tilt_x: t_x.cast_signed(),
+                    tilt_y: t_y.cast_signed(),
                     buttons,
                     raw_data: raw,
                     is_connected: true,

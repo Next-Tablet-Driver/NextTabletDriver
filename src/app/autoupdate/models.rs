@@ -29,7 +29,7 @@ pub enum UpdateStatus {
 }
 
 impl UpdateStatus {
-    #[must_use] 
+    #[must_use]
     pub const fn as_release(&self) -> Option<&Release> {
         if let Self::Available(release) = self {
             Some(release)
@@ -49,7 +49,7 @@ pub struct Version {
 }
 
 impl Version {
-    #[must_use] 
+    #[must_use]
     pub fn parse(s: &str) -> Option<Self> {
         let s = s.trim_start_matches('v');
         let parts: Vec<&str> = s.split('.').collect();

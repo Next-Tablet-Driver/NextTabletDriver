@@ -28,11 +28,11 @@ pub struct ProcessedFrame {
 /// filters -> transformation -> OS injection.
 pub struct Pipeline {
     /// The last known absolute screen position (pixels), used for relative mode fallback.
-    last_abs_screen: Option<(f32, f32)>,
+    abs_screen: Option<(f32, f32)>,
     /// The last known physical position (mm), used for calculating relative deltas.
-    last_rel_mm: Option<(f32, f32)>,
+    rel_mm: Option<(f32, f32)>,
     /// The timestamp of the previous packet, used to reset relative tracking after inactivity.
-    last_packet_time: Instant,
+    packet_time: Instant,
 }
 
 impl Default for Pipeline {
@@ -45,9 +45,9 @@ impl Pipeline {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            last_abs_screen: None,
-            last_rel_mm: None,
-            last_packet_time: Instant::now(),
+            abs_screen: None,
+            rel_mm: None,
+            packet_time: Instant::now(),
         }
     }
 
@@ -55,8 +55,8 @@ impl Pipeline {
     /// This prevents massive cursor jumps when the pen is lifted and placed back
     /// down on a different part of the tablet.
     pub const fn reset_relative(&mut self) {
-        self.last_abs_screen = None;
-        self.last_rel_mm = None;
+        self.abs_screen = None;
+        self.rel_mm = None;
     }
 
     /// Processes a single hardware packet through the entire stack.
@@ -89,10 +89,10 @@ impl Pipeline {
         let y_mm = (f32::from(data.y) / max_h) * phys_h;
 
         // Normalize
-        let (u, v) = self.normalize(x_mm, y_mm, config, shared);
+        let (u, v) = Self::normalize(x_mm, y_mm, config, shared);
 
         // Filter
-        let (u, v) = self.filter(u, v, config, filters, shared);
+        let (u, v) = Self::filter(u, v, config, filters, shared);
 
         // Project
         let mut frame = ProcessedFrame {
@@ -103,12 +103,12 @@ impl Pipeline {
 
         match config.mode {
             DriverMode::Absolute => {
-                let (sx, sy) = self.project_absolute(u, v, config, shared);
+                let (sx, sy) = Self::project_absolute(u, v, config, shared);
                 frame.screen_x = sx;
                 frame.screen_y = sy;
                 injector.move_absolute(sx, sy, u, v);
 
-                self.last_abs_screen = Some((sx, sy));
+                self.abs_screen = Some((sx, sy));
             }
             DriverMode::Relative => {
                 let (dx, dy) = self.project_relative(x_mm, y_mm, config);
@@ -117,12 +117,11 @@ impl Pipeline {
         }
 
         // Pressure & Injection
-        frame.is_down = self.evaluate_pressure(data.pressure, max_p, config);
+        frame.is_down = Self::evaluate_pressure(data.pressure, max_p, config);
         injector.set_left_button(frame.is_down);
     }
 
     fn normalize(
-        &self,
         x_mm: f32,
         y_mm: f32,
         config: &MappingConfig,
@@ -142,7 +141,6 @@ impl Pipeline {
     }
 
     fn filter(
-        &self,
         u: f32,
         v: f32,
         config: &MappingConfig,
@@ -155,7 +153,6 @@ impl Pipeline {
     }
 
     fn project_absolute(
-        &self,
         u: f32,
         v: f32,
         config: &MappingConfig,
@@ -175,14 +172,14 @@ impl Pipeline {
 
     fn project_relative(&mut self, x_mm: f32, y_mm: f32, config: &MappingConfig) -> (f32, f32) {
         let now = Instant::now();
-        if now.duration_since(self.last_packet_time)
+        if now.duration_since(self.packet_time)
             > Duration::from_millis(u64::from(config.relative_config.reset_time_ms))
         {
             self.reset_relative();
         }
-        self.last_packet_time = now;
+        self.packet_time = now;
 
-        let delta = if let Some((lx, ly)) = self.last_rel_mm {
+        let delta = if let Some((lx, ly)) = self.rel_mm {
             crate::core::math::transform::apply_relative_delta(
                 x_mm,
                 y_mm,
@@ -196,11 +193,11 @@ impl Pipeline {
             (0.0, 0.0)
         };
 
-        self.last_rel_mm = Some((x_mm, y_mm));
+        self.rel_mm = Some((x_mm, y_mm));
         delta
     }
 
-    fn evaluate_pressure(&self, pressure_raw: u16, max_p: f32, config: &MappingConfig) -> bool {
+    fn evaluate_pressure(pressure_raw: u16, max_p: f32, config: &MappingConfig) -> bool {
         let pressure = if config.disable_pressure {
             max_p as u16
         } else {
@@ -273,23 +270,21 @@ mod tests {
 
     #[test]
     fn test_pipeline_pressure_threshold() {
-        let pipeline = Pipeline::new();
         let mut config = MappingConfig::default_test();
         config.tip_threshold = 50; // 50%
 
         // max_p = 1000.0, so threshold = 500.0
-        assert!(pipeline.evaluate_pressure(501, 1000.0, &config));
-        assert!(!pipeline.evaluate_pressure(499, 1000.0, &config));
+        assert!(Pipeline::evaluate_pressure(501, 1000.0, &config));
+        assert!(!Pipeline::evaluate_pressure(499, 1000.0, &config));
     }
 
     #[test]
     fn test_pipeline_disable_pressure() {
-        let pipeline = Pipeline::new();
         let mut config = MappingConfig::default_test();
         config.disable_pressure = true;
         config.tip_threshold = 50;
 
         // Should always be true (down) regardless of raw pressure
-        assert!(pipeline.evaluate_pressure(0, 1000.0, &config));
+        assert!(Pipeline::evaluate_pressure(0, 1000.0, &config));
     }
 }

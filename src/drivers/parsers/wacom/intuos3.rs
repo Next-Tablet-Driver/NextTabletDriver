@@ -9,7 +9,7 @@ pub struct Intuos3Parser {
 }
 
 impl Intuos3Parser {
-    #[must_use] 
+    #[must_use]
     pub const fn new() -> Self {
         Self {
             inner_v1: IntuosV1Parser::new(),
@@ -27,16 +27,16 @@ impl Intuos3Parser {
     pub(crate) fn parse_internal(&self, data: &[u8], raw: String) -> Option<TabletData> {
         match data {
             [0x02, b1, ..] if (0xF0..=0xFF).contains(b1) || (0xB0..=0xBF).contains(b1) => {
-                self.parse_mouse(data, raw)
+                Self::parse_mouse(data, raw)
             }
             [0x02 | 0x10, ..] => self.inner_v1.parse_internal(data, raw),
-            [0x03, ..] => self.inner_v1.parse_aux(data, raw),
-            [0x0C, ..] => self.parse_aux(data, raw, false),
+            [0x03, ..] => IntuosV1Parser::parse_aux(data, raw),
+            [0x0C, ..] => Self::parse_aux(data, raw, false),
             _ => None,
         }
     }
 
-    fn parse_mouse(&self, data: &[u8], raw: String) -> Option<TabletData> {
+    fn parse_mouse(data: &[u8], raw: String) -> Option<TabletData> {
         match data {
             [_, _, b2, b3, b4, b5, _, _, b8, b9, ..] => {
                 let x = ((u16::from(*b2) << 8) | u16::from(*b3)) << 1 | u16::from((*b9 >> 1) & 1);
@@ -72,7 +72,7 @@ impl Intuos3Parser {
         }
     }
 
-    pub(crate) fn parse_aux(&self, data: &[u8], raw: String, extra: bool) -> Option<TabletData> {
+    pub(crate) fn parse_aux(data: &[u8], raw: String, extra: bool) -> Option<TabletData> {
         match data {
             [_, _, _, _, _, b5, b6, ..] => {
                 let mut buttons: u16 = 0;
@@ -139,7 +139,7 @@ pub struct Intuos3ExtraAuxParser {
 }
 
 impl Intuos3ExtraAuxParser {
-    #[must_use] 
+    #[must_use]
     pub const fn new() -> Self {
         Self {
             inner: Intuos3Parser::new(),
@@ -161,7 +161,7 @@ impl ReportParser for Intuos3ExtraAuxParser {
             .collect::<Vec<_>>()
             .join(" ");
         match data {
-            [0x0C, ..] => self.inner.parse_aux(data, raw, true),
+            [0x0C, ..] => Intuos3Parser::parse_aux(data, raw, true),
             _ => self.inner.parse_internal(data, raw),
         }
     }
@@ -172,7 +172,7 @@ pub struct WacomDriverIntuos3Parser {
 }
 
 impl WacomDriverIntuos3Parser {
-    #[must_use] 
+    #[must_use]
     pub const fn new() -> Self {
         Self {
             inner: Intuos3Parser::new(),

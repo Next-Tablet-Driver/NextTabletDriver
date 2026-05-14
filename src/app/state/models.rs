@@ -21,12 +21,12 @@ pub struct ProfileState {
 }
 
 impl ProfileState {
-    #[must_use] 
+    #[must_use]
     pub fn is_dirty(&self, current: &MappingConfig) -> bool {
         *current != self.last_saved
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn display_name(&self, current: &MappingConfig) -> String {
         let base = if self.path.is_some() {
             &self.name

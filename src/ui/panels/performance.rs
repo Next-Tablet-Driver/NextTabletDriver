@@ -12,7 +12,7 @@ pub fn render_performance_panel(
     max_ui_latency: f32,
     avg_ui_latency: f32,
     ui: &mut egui::Ui,
-    shared: Arc<SharedState>,
+    shared: &Arc<SharedState>,
 ) -> bool {
     let tablet_data = &snapshot.tablet_data;
     let stats = &snapshot.stats;
@@ -63,7 +63,7 @@ pub fn render_performance_panel(
                 ui.label(
                     egui::RichText::new(format!(
                         "{:.3}ms",
-                        if stats.min_hid_read_ms == f32::MAX {
+                        if (stats.min_hid_read_ms - f32::MAX).abs() < f32::EPSILON {
                             0.0
                         } else {
                             stats.min_hid_read_ms
@@ -87,7 +87,7 @@ pub fn render_performance_panel(
                 ui.label(
                     egui::RichText::new(format!(
                         "{:.3}ms",
-                        if stats.min_parser_ms == f32::MAX {
+                        if (stats.min_parser_ms - f32::MAX).abs() < f32::EPSILON {
                             0.0
                         } else {
                             stats.min_parser_ms
@@ -110,7 +110,7 @@ pub fn render_performance_panel(
                 ui.label(
                     egui::RichText::new(format!(
                         "{:.3}ms",
-                        if min_ui_latency == f32::MAX {
+                        if (min_ui_latency - f32::MAX).abs() < f32::EPSILON {
                             0.0
                         } else {
                             min_ui_latency

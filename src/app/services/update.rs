@@ -13,7 +13,7 @@ impl Default for UpdateService {
 }
 
 impl UpdateService {
-    #[must_use] 
+    #[must_use]
     pub fn new() -> Self {
         let (update_sender, update_receiver) = bounded(1);
         Self {

@@ -79,7 +79,7 @@ pub fn run_manager(
                     }
                     match device.read_timeout(&mut drain_buf, 10) {
                         Ok(0) | Err(_) => break,
-                        Ok(_) => continue,
+                        Ok(_) => (),
                     }
                 }
                 pipeline.reset_relative();

@@ -6,20 +6,20 @@ use std::sync::Mutex;
 // Intuos V1
 
 pub struct IntuosV1Parser {
-    prev_pressure: Mutex<u16>,
-    prev_tilt_x: Mutex<i8>,
-    prev_tilt_y: Mutex<i8>,
-    prev_buttons: Mutex<u8>,
+    pressure: Mutex<u16>,
+    tilt_x: Mutex<i8>,
+    tilt_y: Mutex<i8>,
+    buttons: Mutex<u8>,
 }
 
 impl IntuosV1Parser {
-    #[must_use] 
+    #[must_use]
     pub const fn new() -> Self {
         Self {
-            prev_pressure: Mutex::new(0),
-            prev_tilt_x: Mutex::new(0),
-            prev_tilt_y: Mutex::new(0),
-            prev_buttons: Mutex::new(0),
+            pressure: Mutex::new(0),
+            tilt_x: Mutex::new(0),
+            tilt_y: Mutex::new(0),
+            buttons: Mutex::new(0),
         }
     }
 }
@@ -34,21 +34,21 @@ impl IntuosV1Parser {
     pub(crate) fn parse_internal(&self, data: &[u8], raw: String) -> Option<TabletData> {
         match data {
             [0x02 | 0x10, ..] => self.parse_tool(data, raw),
-            [0x03, ..] => self.parse_aux(data, raw),
+            [0x03, ..] => Self::parse_aux(data, raw),
             _ => None,
         }
     }
 
     fn parse_tool(&self, data: &[u8], raw: String) -> Option<TabletData> {
         match data {
-            [0x10, 0x20, ..] => None,
-            [_, 0x80, ..] => None, // Out of range
+            [0x10, 0x20, ..] | [_, 0x80, ..] => None,
             [_id, b1, b2, b3, b4, b5, b6, b7, b8, b9, ..] => {
                 let is_rotation = (*b1 & 0x02) != 0 && (*b1 & 0x08) != 0;
                 let is_tablet = (*b1 & 0x20) != 0;
 
                 if is_tablet {
-                    let x = ((u16::from(*b2) << 8) | u16::from(*b3)) << 1 | u16::from((*b9 >> 1) & 1);
+                    let x =
+                        ((u16::from(*b2) << 8) | u16::from(*b3)) << 1 | u16::from((*b9 >> 1) & 1);
                     let y = ((u16::from(*b4) << 8) | u16::from(*b5)) << 1 | u16::from(*b9 & 1);
 
                     let tilt_x = (i16::from(((*b7 << 1) & 0x7E) | (*b8 >> 7)) - 64) as i8;
@@ -65,16 +65,10 @@ impl IntuosV1Parser {
                         buttons |= 1 << 1;
                     }
 
-                    *self
-                        .prev_pressure
-                        .lock()
-                        .unwrap_or_reset("wacom_prev_pressure") = pressure;
-                    *self.prev_tilt_x.lock().unwrap_or_reset("wacom_prev_tilt_x") = tilt_x;
-                    *self.prev_tilt_y.lock().unwrap_or_reset("wacom_prev_tilt_y") = tilt_y;
-                    *self
-                        .prev_buttons
-                        .lock()
-                        .unwrap_or_reset("wacom_prev_buttons") = buttons;
+                    *self.pressure.lock().unwrap_or_reset("wacom_prev_pressure") = pressure;
+                    *self.tilt_x.lock().unwrap_or_reset("wacom_prev_tilt_x") = tilt_x;
+                    *self.tilt_y.lock().unwrap_or_reset("wacom_tilt_y") = tilt_y;
+                    *self.buttons.lock().unwrap_or_reset("wacom_buttons") = buttons;
 
                     let status = if pressure > 0 { "Contact" } else { "Hover" };
 
@@ -92,20 +86,18 @@ impl IntuosV1Parser {
                         ..Default::default()
                     })
                 } else if is_rotation {
-                    let x = ((u16::from(*b2) << 8) | u16::from(*b3)) << 1 | u16::from((*b9 >> 1) & 1);
+                    let x =
+                        ((u16::from(*b2) << 8) | u16::from(*b3)) << 1 | u16::from((*b9 >> 1) & 1);
                     let y = ((u16::from(*b4) << 8) | u16::from(*b5)) << 1 | u16::from(*b9 & 1);
 
                     Some(TabletData {
                         status: "Rotation".to_string(),
                         x,
                         y,
-                        pressure: *self
-                            .prev_pressure
-                            .lock()
-                            .unwrap_or_log("wacom_prev_pressure"),
-                        tilt_x: *self.prev_tilt_x.lock().unwrap_or_log("wacom_prev_tilt_x"),
-                        tilt_y: *self.prev_tilt_y.lock().unwrap_or_log("wacom_prev_tilt_y"),
-                        buttons: *self.prev_buttons.lock().unwrap_or_log("wacom_prev_buttons"),
+                        pressure: *self.pressure.lock().unwrap_or_log("wacom_prev_pressure"),
+                        tilt_x: *self.tilt_x.lock().unwrap_or_log("wacom_prev_tilt_x"),
+                        tilt_y: *self.tilt_y.lock().unwrap_or_log("wacom_tilt_y"),
+                        buttons: *self.buttons.lock().unwrap_or_log("wacom_buttons"),
                         hover_distance: *b9,
                         raw_data: raw,
                         is_connected: true,
@@ -128,7 +120,7 @@ impl IntuosV1Parser {
         }
     }
 
-    pub(crate) fn parse_aux(&self, data: &[u8], raw: String) -> Option<TabletData> {
+    pub(crate) fn parse_aux(data: &[u8], raw: String) -> Option<TabletData> {
         match data {
             [_, _, _, _, b4, ..] => Some(TabletData {
                 status: "Aux".to_string(),
@@ -158,7 +150,7 @@ pub struct WacomDriverIntuosV1Parser {
 }
 
 impl WacomDriverIntuosV1Parser {
-    #[must_use] 
+    #[must_use]
     pub const fn new() -> Self {
         Self {
             inner: IntuosV1Parser::new(),

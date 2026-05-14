@@ -37,7 +37,7 @@ impl eframe::App for TabletMapperApp {
         self.render_overlays(ctx, &snapshot);
 
         // 6. State Persistence (Sync config back if changed)
-        self.sync_config(ctx, config, initial_config);
+        self.sync_config(ctx, config, &initial_config);
 
         // 7. Repaint Strategy
         ctx.request_repaint_after(Duration::from_secs(1));
@@ -49,13 +49,11 @@ impl TabletMapperApp {
         &self,
         ctx: &egui::Context,
         config: crate::core::config::models::MappingConfig,
-        initial: crate::core::config::models::MappingConfig,
+        initial: &crate::core::config::models::MappingConfig,
     ) {
-        if config != initial {
+        if config != *initial {
             let is_interacting = ctx.input(|i| i.pointer.any_down());
-            if !is_interacting
-                && self.metrics.last_hz_update.elapsed() > Duration::from_secs(1)
-            {
+            if !is_interacting && self.metrics.last_hz_update.elapsed() > Duration::from_secs(1) {
                 log::info!(target: "Config", "Configuration changed via UI");
             }
             if config.theme != initial.theme {

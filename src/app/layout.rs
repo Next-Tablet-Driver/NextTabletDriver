@@ -222,7 +222,7 @@ impl TabletMapperApp {
                         self.metrics.max_ui_latency_ms,
                         self.metrics.avg_ui_latency_ms,
                         ui,
-                        self.shared.clone(),
+                        &self.shared,
                     ) {
                         self.metrics.reset_ui_latency();
                     }
@@ -235,7 +235,7 @@ impl TabletMapperApp {
         }
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn calculate_display_bounds(&self) -> (f32, f32, f32, f32) {
         let (mut min_x, mut min_y, mut max_x, mut max_y) = (0.0, 0.0, 1920.0, 1080.0);
         if !self.displays.is_empty() {
@@ -246,8 +246,8 @@ impl TabletMapperApp {
             for d in &self.displays {
                 mx = mx.min(d.x);
                 my = my.min(d.y);
-                ax = ax.max(d.x + d.width as i32);
-                ay = ay.max(d.y + d.height as i32);
+                ax = ax.max(d.x + d.width.cast_signed());
+                ay = ay.max(d.y + d.height.cast_signed());
             }
             min_x = mx as f32;
             min_y = my as f32;

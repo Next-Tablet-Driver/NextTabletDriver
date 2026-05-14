@@ -22,7 +22,7 @@ pub struct GenericNextTabletDriver {
 }
 
 impl GenericNextTabletDriver {
-    #[must_use] 
+    #[must_use]
     pub fn new(config: TabletConfiguration, vid: u16, pid: u16) -> Self {
         let parser_name = config
             .digitizer_identifiers

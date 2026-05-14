@@ -58,8 +58,8 @@ impl ReportParser for InspiroyParser {
                 let y = u32::from(*y_low) | (u32::from(*y_high) << 8) | u32::from(b9 & 1) << 16;
                 let pressure = u16::from(*p_low) | (u16::from(*p_high) << 8);
 
-                let tilt_x = (tx as i8).wrapping_mul(-1);
-                let tilt_y = (ty as i8).wrapping_mul(-1);
+                let tilt_x = tx.cast_signed().wrapping_mul(-1);
+                let tilt_y = ty.cast_signed().wrapping_mul(-1);
 
                 let buttons = (*b1 >> 1) & 0x07;
                 let eraser = (*b1 & 0x10) != 0;

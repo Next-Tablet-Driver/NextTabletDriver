@@ -1,15 +1,15 @@
 use crate::drivers::TabletData;
 use crate::drivers::parsers::ReportParser;
 
-fn parse_veikk_aux(data: &[u8], raw: String, offset: usize) -> Option<TabletData> {
+fn parse_veikk_aux(data: &[u8], raw: String, offset: usize) -> TabletData {
     let buttons = data.get(offset).copied().unwrap_or(0);
-    Some(TabletData {
+    TabletData {
         status: "Aux".to_string(),
         buttons,
         raw_data: raw,
         is_connected: true,
         ..Default::default()
-    })
+    }
 }
 
 fn parse_veikk_tablet(data: &[u8], raw: String, has_tilt: bool) -> Option<TabletData> {
@@ -35,8 +35,8 @@ fn parse_veikk_tablet(data: &[u8], raw: String, has_tilt: bool) -> Option<Tablet
 
             let (tilt_x, tilt_y) = if has_tilt {
                 match rest {
-                    [tx, ty, ..] => (*tx as i8, *ty as i8),
-                    [tx, ..] => (*tx as i8, 0),
+                    [tx, ty, ..] => (tx.cast_signed(), ty.cast_signed()),
+                    [tx, ..] => (tx.cast_signed(), 0),
                     _ => (0, 0),
                 }
             } else {
@@ -79,7 +79,7 @@ impl ReportParser for VeikkParser {
         match data {
             [_, 0x43, ..] => None, // Touchpad ignore
             [_, _, b2, ..] if (*b2 & 0x20) != 0 => parse_veikk_tablet(data, raw, false),
-            [_, _, 0x01, ..] => parse_veikk_aux(data, raw, 4),
+            [_, _, 0x01, ..] => Some(parse_veikk_aux(data, raw, 4)),
             _ => None,
         }
     }
@@ -96,7 +96,7 @@ impl ReportParser for VeikkV1Parser {
             .join(" ");
 
         match data {
-            [0x03, ..] => parse_veikk_aux(data, raw, 1),
+            [0x03, ..] => Some(parse_veikk_aux(data, raw, 1)),
             [_, 0x41, 0xC0, ..] => None, // Out of Range
             [_, 0x41, ..] => parse_veikk_tablet(data, raw, false),
             _ => None,
@@ -117,7 +117,7 @@ impl ReportParser for VeikkA15Parser {
         match data {
             [_, 0x43, ..] => None, // Touchpad ignore
             [_, _, b2, ..] if (*b2 & 0x20) != 0 => parse_veikk_tablet(data, raw, false),
-            [_, _, 0x01, ..] => parse_veikk_aux(data, raw, 4),
+            [_, _, 0x01, ..] => Some(parse_veikk_aux(data, raw, 4)),
             _ => None,
         }
     }
@@ -134,10 +134,9 @@ impl ReportParser for VeikkTiltParser {
             .join(" ");
 
         match data {
-            [_, 0x41, 0xC0, ..] => None,
+            [_, 0x41, 0xC0, ..] | [_, 0x43, ..] => None, // Out of Range or Touchpad ignore
             [_, 0x41, ..] => parse_veikk_tablet(data, raw, true),
-            [_, 0x42, ..] => parse_veikk_aux(data, raw, 4),
-            [_, 0x43, ..] => None, // Touchpad ignore
+            [_, 0x42, ..] => Some(parse_veikk_aux(data, raw, 4)),
             _ => None,
         }
     }

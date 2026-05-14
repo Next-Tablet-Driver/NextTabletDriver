@@ -6,6 +6,7 @@ use std::time::{Duration, Instant};
 
 #[must_use]
 pub fn detect_tablet(api: &HidApi) -> Option<(HidDevice, Box<dyn NextTabletDriver>, u16, u16)> {
+    use base64::{Engine as _, engine::general_purpose};
     let global_start = Instant::now();
     let devices: Vec<_> = api.device_list().collect();
     let enum_duration = global_start.elapsed();
@@ -47,7 +48,6 @@ pub fn detect_tablet(api: &HidApi) -> Option<(HidDevice, Box<dyn NextTabletDrive
                     Ok(device) => {
                         let open_duration = open_start.elapsed();
                         let mut init_success = true;
-                        use base64::{Engine as _, engine::general_purpose};
 
                         let init_start = Instant::now();
 
