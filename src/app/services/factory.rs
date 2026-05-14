@@ -16,7 +16,8 @@ impl SharedStateFactory {
             device_state: RwLock::new(crate::engine::state::DeviceState::default()),
             is_first_run: RwLock::new(is_first_run),
             packet_count: AtomicU32::new(0),
-            stats: RwLock::new(crate::drivers::DriverStats::default())
+            stats: RwLock::new(crate::drivers::DriverStats::default()),
+            shutdown_requested: std::sync::atomic::AtomicBool::new(false),
         })
     }
 }

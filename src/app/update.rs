@@ -12,6 +12,12 @@ use std::time::Duration;
 impl eframe::App for TabletMapperApp {
     /// The main application loop called by egui.
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        // 0. Handle graceful shutdown signal
+        if ctx.input(|i| i.viewport().close_requested()) && !self.force_close {
+            log::info!(target: "App", "Shutdown requested via window close");
+            self.shared.shutdown_requested.store(true, Ordering::SeqCst);
+        }
+
         // 1. Capture snapshot for the entire frame
         let snapshot = UiSnapshot::capture(&self.shared);
 

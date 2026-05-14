@@ -60,6 +60,11 @@ pub fn run_manager(
         let mut filters = init_filter_pipeline(&shared, &local_config);
 
         loop {
+            if shared.shutdown_requested.load(Ordering::Relaxed) {
+                log::info!(target: "TabletManager", "Shutdown requested, exiting manager loop");
+                break;
+            }
+
             if let Some((device, driver, vid, pid)) = detect_tablet(&hid_api) {
                 log::info!(target: "HID", "Device connected: {vid:04x}:{pid:04x}");
                 on_device_connected(&shared, driver.as_ref(), vid, pid, &mut local_config);
@@ -67,13 +72,9 @@ pub fn run_manager(
 
                 // Drain stale packets left by init sequence to prevent cursor teleport
                 let mut drain_buf = [0u8; 64];
-                // while let Ok(len) = device.read_timeout(&mut drain_buf, 10) {
-                //     if len == 0 {
-                //         break;
-                //     }
-                // }
                 let drain_deadline = Instant::now() + Duration::from_millis(100);
                 while Instant::now() < drain_deadline {
+                    if shared.shutdown_requested.load(Ordering::Relaxed) { break; }
                     match device.read_timeout(&mut drain_buf, 10) {
                         Ok(0) | Err(_) => break,
                         Ok(_) => continue,
@@ -92,11 +93,16 @@ pub fn run_manager(
                     &mut local_config,
                     &mut local_config_version,
                 );
+
+                if shared.shutdown_requested.load(Ordering::Relaxed) {
+                    log::info!(target: "TabletManager", "Shutdown requested, exiting manager loop after polling");
+                    break;
+                }
                 log::warn!(target: "HID", "Polling loop exited, restarting...");
             }
 
             on_disconnected(&shared);
-            thread::sleep(Duration::from_secs(1));
+            thread::sleep(Duration::from_millis(500));
         }
     });
 
@@ -178,7 +184,7 @@ fn on_device_connected(
 fn on_disconnected(shared: &Arc<SharedState>) {
     log::info!(target: "HID", "Device disconnected, resetting shared state");
     *shared.device_state.write().unwrap_or_reset("device_state") = crate::engine::state::DeviceState::default();
-    *shared.tablet_data.write().unwrap_or_reset("tablet_data") = TabletData::default();
+    *shared.tablet_data.write().unwrap_or_reset("tablet_data") = crate::drivers::TabletData::default();
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -198,8 +204,13 @@ fn run_polling_loop(
     let mut last_stats_update = Instant::now();
 
     loop {
+        if shared.shutdown_requested.load(Ordering::Relaxed) {
+            log::debug!(target: "TabletManager", "Shutdown requested, exiting polling loop");
+            break;
+        }
+
         let read_start = Instant::now();
-        match device.read_timeout(&mut buf, 1000) {
+        match device.read_timeout(&mut buf, 500) { // Reduced from 1000 to 500 for faster shutdown check
             Ok(len) if len > 0 => {
                 let read_duration = read_start.elapsed();
                 if let Err(e) = panic::catch_unwind(panic::AssertUnwindSafe(|| {

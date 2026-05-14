@@ -7,6 +7,7 @@
 use std::collections::HashMap;
 use std::net::TcpListener;
 use std::sync::Arc;
+use std::sync::atomic::Ordering;
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -53,6 +54,11 @@ pub fn websocket_loop(shared: Arc<SharedState>) {
     let mut next_client_id = 0;
 
     loop {
+        if shared.shutdown_requested.load(Ordering::Relaxed) {
+            log::info!(target: "WebSocket", "Shutdown requested, exiting WebSocket loop");
+            break;
+        }
+
         let frame_start = Instant::now();
         
         let (enabled, port, hz, send_coords, send_pressure, _send_tilt, send_status) = {

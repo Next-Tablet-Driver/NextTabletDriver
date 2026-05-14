@@ -104,7 +104,7 @@ impl SharedState {
             is_first_run: RwLock::new(false),
             packet_count: AtomicU32::new(0),
             stats: RwLock::new(crate::drivers::DriverStats::default()),
-
+            shutdown_requested: std::sync::atomic::AtomicBool::new(false),
         }
     }
 
@@ -135,4 +135,6 @@ pub struct SharedState {
     pub packet_count: AtomicU32,
     /// Tracking statistics for developer debugging (e.g., dropped packets, parse errors).
     pub stats: RwLock<crate::drivers::DriverStats>,
+    /// Flag indicating that the application is shutting down and threads should terminate.
+    pub shutdown_requested: std::sync::atomic::AtomicBool,
 }
