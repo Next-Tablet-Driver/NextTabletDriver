@@ -7,6 +7,15 @@ use eframe::egui;
 pub fn render_tablet_section(ui: &mut egui::Ui, config: &mut MappingConfig, snapshot: &UiSnapshot) {
     ui_section_header(ui, "Tablet");
 
+    if let crate::engine::state::EngineStatus::Failed(ref reason) = snapshot.engine_status {
+        ui.add(egui::Label::new(
+            egui::RichText::new(format!("Engine Failed: {reason}"))
+                .color(ui.visuals().error_fg_color)
+                .heading(),
+        ));
+        ui.add_space(10.0);
+    }
+
     let (phys_w, phys_h) = snapshot.physical_size;
     let tablet_data = &snapshot.tablet_data;
 

@@ -43,9 +43,20 @@ pub fn run_manager(
     let result = panic::catch_unwind(move || {
         let hid_init_start = Instant::now();
         let hid_api = match hidapi::HidApi::new() {
-            Ok(api) => api,
+            Ok(api) => {
+                *shared
+                    .engine_status
+                    .write()
+                    .unwrap_or_reset("engine_status") = crate::engine::state::EngineStatus::Running;
+                api
+            }
             Err(e) => {
                 log::error!(target: "HID", "CRITICAL: Failed to initialise HID API: {e}");
+                *shared
+                    .engine_status
+                    .write()
+                    .unwrap_or_reset("engine_status") =
+                    crate::engine::state::EngineStatus::Failed(e.to_string());
                 return;
             }
         };

@@ -15,6 +15,7 @@ pub struct UiSnapshot {
     pub stats: crate::drivers::DriverStats,
     pub packet_count: u32,
     pub is_first_run: bool,
+    pub engine_status: crate::engine::state::EngineStatus,
 }
 
 impl UiSnapshot {
@@ -43,6 +44,11 @@ impl UiSnapshot {
             stats: *shared.stats.read().unwrap_or_log("stats"),
             packet_count: shared.packet_count.load(Ordering::Relaxed),
             is_first_run: *shared.is_first_run.read().unwrap_or_log("is_first_run"),
+            engine_status: shared
+                .engine_status
+                .read()
+                .unwrap_or_log("engine_status")
+                .clone(),
         }
     }
 }

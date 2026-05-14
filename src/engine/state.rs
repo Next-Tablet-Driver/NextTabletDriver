@@ -65,6 +65,18 @@ impl<'a, T: Default> WriteRecoverExt for LockResult<std::sync::MutexGuard<'a, T>
     }
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub enum EngineStatus {
+    Running,
+    Failed(String),
+}
+
+impl Default for EngineStatus {
+    fn default() -> Self {
+        Self::Running
+    }
+}
+
 /// An atomic snapshot of device properties.
 #[derive(Clone, Debug, PartialEq)]
 pub struct DeviceState {
@@ -104,6 +116,7 @@ impl SharedState {
             is_first_run: RwLock::new(false),
             packet_count: AtomicU32::new(0),
             stats: RwLock::new(crate::drivers::DriverStats::default()),
+            engine_status: RwLock::new(EngineStatus::default()),
             shutdown_requested: std::sync::atomic::AtomicBool::new(false),
         }
     }
@@ -135,6 +148,8 @@ pub struct SharedState {
     pub packet_count: AtomicU32,
     /// Tracking statistics for developer debugging (e.g., dropped packets, parse errors).
     pub stats: RwLock<crate::drivers::DriverStats>,
+    /// Status of the background polling engine (e.g. HID API initialization failure).
+    pub engine_status: RwLock<EngineStatus>,
     /// Flag indicating that the application is shutting down and threads should terminate.
     pub shutdown_requested: std::sync::atomic::AtomicBool,
 }
