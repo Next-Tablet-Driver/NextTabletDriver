@@ -77,8 +77,12 @@ impl Pipeline {
         }
 
         // Skip non-positional reports (aux, tool ID, out-of-range)
-        let status = data.status.as_str();
-        if !matches!(status, "Contact" | "Hover" | "Active") {
+        if !matches!(
+            data.status,
+            crate::drivers::TabletStatus::Contact
+                | crate::drivers::TabletStatus::Hover
+                | crate::drivers::TabletStatus::Active
+        ) {
             return;
         }
 
@@ -252,7 +256,7 @@ mod tests {
 
         let data = TabletData {
             is_connected: true,
-            status: "Contact".to_string(),
+            status: crate::drivers::TabletStatus::Contact,
             x: 500, // Center (50mm)
             y: 500, // Center (50mm)
             ..Default::default()

@@ -150,7 +150,7 @@ pub fn websocket_loop(shared: &Arc<SharedState>) {
                         None
                     },
                     status: if send_status {
-                        Some(data.status.clone())
+                        Some(data.status.to_string())
                     } else {
                         None
                     },

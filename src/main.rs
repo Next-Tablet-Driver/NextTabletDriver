@@ -95,7 +95,10 @@ fn set_fast_timer(enable: u8) {
 /// 3. Configures the GUI window options (icon, dimensions, title).
 /// 4. Enters the `eframe::run_native` GUI event loop.
 fn main() -> eframe::Result {
-    logger::init();
+    if let Err(e) = logger::init() {
+        eprintln!("CRITICAL: Failed to initialize logger: {e}");
+        std::process::exit(1);
+    }
 
     #[cfg(windows)]
     {

@@ -26,32 +26,23 @@ impl ReportParser for XpPenStarG640Parser {
         let tilt_x = data.get(8).copied().unwrap_or(0).cast_signed();
         let tilt_y = data.get(9).copied().unwrap_or(0).cast_signed();
 
-        // Raw hex string for debugging
-        let raw = data
-            .iter()
-            .take(14)
-            .map(|b| format!("{b:02X}"))
-            .collect::<Vec<_>>()
-            .join(" ");
-
         let status = match data.get(1) {
-            Some(0xA0) => "Hover",
-            Some(0xA1) => "Contact",
-            Some(0xC0 | 0x00) => "Out of Range",
+            Some(0xA0) => crate::drivers::TabletStatus::Hover,
+            Some(0xA1) => crate::drivers::TabletStatus::Contact,
+            Some(0xC0 | 0x00) => crate::drivers::TabletStatus::OutOfRange,
             Some(b1) => {
                 if (b1 & 0x80) != 0 {
-                    "Out of Range"
+                    crate::drivers::TabletStatus::OutOfRange
                 } else {
-                    "Active"
+                    crate::drivers::TabletStatus::Active
                 }
             }
-            None => "Disconnected",
-        }
-        .to_string();
+            None => crate::drivers::TabletStatus::Disconnected,
+        };
 
-        let is_connected = status != "Out of Range";
+        let is_connected = status != crate::drivers::TabletStatus::OutOfRange;
 
-        Some(TabletData {
+        let mut tablet_data = TabletData {
             status,
             x,
             y,
@@ -61,9 +52,11 @@ impl ReportParser for XpPenStarG640Parser {
             buttons,
             eraser,
             hover_distance: 0, // Not provided in this report
-            raw_data: raw,
             is_connected,
             ..Default::default()
-        })
+        };
+        tablet_data.set_raw(data);
+
+        Some(tablet_data)
     }
 }

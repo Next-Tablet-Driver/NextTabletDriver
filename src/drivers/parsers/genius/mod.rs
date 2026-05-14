@@ -9,12 +9,6 @@ impl ReportParser for GeniusParserV1 {
             return None;
         }
 
-        let raw = data
-            .iter()
-            .map(|b| format!("{b:02X}"))
-            .collect::<Vec<_>>()
-            .join(" ");
-
         match data {
             [0x10, b1, b2, b3, b4, b5, b6, b7, ..] => {
                 // Tablet Report
@@ -34,18 +28,23 @@ impl ReportParser for GeniusParserV1 {
                     buttons |= 1 << 1;
                 }
 
-                let status = if pressure > 0 { "Contact" } else { "Hover" };
+                let status = if pressure > 0 {
+                    crate::drivers::TabletStatus::Contact
+                } else {
+                    crate::drivers::TabletStatus::Hover
+                };
 
-                Some(TabletData {
-                    status: status.to_string(),
+                let mut tablet_data = TabletData {
+                    status,
                     x,
                     y,
                     pressure,
                     buttons,
-                    raw_data: raw,
                     is_connected: true,
                     ..Default::default()
-                })
+                };
+                tablet_data.set_raw(data);
+                Some(tablet_data)
             }
             [0x11, b1, _, x_lo, x_hi, y_lo, y_hi, ..] => {
                 // Mouse Report
@@ -63,15 +62,16 @@ impl ReportParser for GeniusParserV1 {
                     buttons |= 1 << 2;
                 }
 
-                Some(TabletData {
-                    status: "Mouse".to_string(),
+                let mut tablet_data = TabletData {
+                    status: crate::drivers::TabletStatus::Mouse,
                     x,
                     y,
                     buttons,
-                    raw_data: raw,
                     is_connected: true,
                     ..Default::default()
-                })
+                };
+                tablet_data.set_raw(data);
+                Some(tablet_data)
             }
             _ => None,
         }
@@ -85,12 +85,6 @@ impl ReportParser for GeniusParserV2 {
         if data.is_empty() {
             return None;
         }
-
-        let raw = data
-            .iter()
-            .map(|b| format!("{b:02X}"))
-            .collect::<Vec<_>>()
-            .join(" ");
 
         match data {
             [0x02, b1, b2, b3, b4, b5, b6, b7, ..] => {
@@ -111,18 +105,23 @@ impl ReportParser for GeniusParserV2 {
                     buttons |= 1 << 1;
                 }
 
-                let status = if pressure > 0 { "Contact" } else { "Hover" };
+                let status = if pressure > 0 {
+                    crate::drivers::TabletStatus::Contact
+                } else {
+                    crate::drivers::TabletStatus::Hover
+                };
 
-                Some(TabletData {
-                    status: status.to_string(),
+                let mut tablet_data = TabletData {
+                    status,
                     x,
                     y,
                     pressure,
                     buttons,
-                    raw_data: raw,
                     is_connected: true,
                     ..Default::default()
-                })
+                };
+                tablet_data.set_raw(data);
+                Some(tablet_data)
             }
             [0x05, _, _, aux_byte, ..] => {
                 // Aux Report
@@ -135,13 +134,14 @@ impl ReportParser for GeniusParserV2 {
                     }
                 }
 
-                Some(TabletData {
-                    status: "Aux".to_string(),
+                let mut tablet_data = TabletData {
+                    status: crate::drivers::TabletStatus::Aux,
                     buttons,
-                    raw_data: raw,
                     is_connected: true,
                     ..Default::default()
-                })
+                };
+                tablet_data.set_raw(data);
+                Some(tablet_data)
             }
             _ => None,
         }
@@ -161,7 +161,7 @@ mod tests {
         let report = parser
             .parse(&data)
             .ok_or("Genius V1 parser failed to parse tablet packet")?;
-        assert_eq!(report.status, "Contact");
+        assert_eq!(report.status, crate::drivers::TabletStatus::Contact);
         assert_eq!(report.x, 258);
         assert_eq!(report.y, 772);
         assert_eq!(report.pressure, 1);
@@ -176,7 +176,7 @@ mod tests {
         let report = parser
             .parse(&data)
             .ok_or("Genius V2 parser failed to parse tablet packet")?;
-        assert_eq!(report.status, "Contact");
+        assert_eq!(report.status, crate::drivers::TabletStatus::Contact);
         assert_eq!(report.x, 258);
         Ok(())
     }

@@ -5,12 +5,6 @@ pub struct BambooPadParser;
 
 impl ReportParser for BambooPadParser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
-        let raw = data
-            .iter()
-            .map(|b| format!("{b:02X}"))
-            .collect::<Vec<_>>()
-            .join(" ");
-
         match data {
             // Tablet Report
             [0x10, 0x01, b2, x_lo, x_hi, y_lo, y_hi, p_lo, p_hi, ..] => {
@@ -24,19 +18,24 @@ impl ReportParser for BambooPadParser {
                 }
                 let eraser = (*b2 & 0x08) != 0;
 
-                let status = if pressure > 0 { "Contact" } else { "Hover" };
+                let status = if pressure > 0 {
+                    crate::drivers::TabletStatus::Contact
+                } else {
+                    crate::drivers::TabletStatus::Hover
+                };
 
-                Some(TabletData {
-                    status: status.to_string(),
+                let mut tablet_data = TabletData {
+                    status,
                     x,
                     y,
                     pressure,
                     buttons,
                     eraser,
-                    raw_data: raw,
                     is_connected: true,
                     ..Default::default()
-                })
+                };
+                tablet_data.set_raw(data);
+                Some(tablet_data)
             }
             // Aux Report - needs to check index 23
             [0x10, 0x06, .., b23] if data.len() >= 24 => {
@@ -48,13 +47,14 @@ impl ReportParser for BambooPadParser {
                     buttons |= 1 << 1;
                 }
 
-                Some(TabletData {
-                    status: "Aux".to_string(),
+                let mut tablet_data = TabletData {
+                    status: crate::drivers::TabletStatus::Aux,
                     buttons,
-                    raw_data: raw,
                     is_connected: true,
                     ..Default::default()
-                })
+                };
+                tablet_data.set_raw(data);
+                Some(tablet_data)
             }
             _ => None,
         }

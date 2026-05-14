@@ -5,13 +5,6 @@ pub struct FallbackParser;
 
 impl ReportParser for FallbackParser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
-        let raw = data
-            .iter()
-            .take(10)
-            .map(|b| format!("{b:02X}"))
-            .collect::<Vec<_>>()
-            .join(" ");
-
         match data {
             [_, status_byte, x_lo, x_hi, y_lo, y_hi, p_lo, p_hi, ..] => {
                 let x = u16::from_le_bytes([*x_lo, *x_hi]);
@@ -19,16 +12,16 @@ impl ReportParser for FallbackParser {
                 let pressure = u16::from_le_bytes([*p_lo, *p_hi]);
 
                 let status = if *status_byte == 0xC0 || *status_byte == 0x00 {
-                    "Out of Range".to_string()
+                    crate::drivers::TabletStatus::OutOfRange
                 } else if (*status_byte & 0x01) != 0 || pressure > 0 {
-                    "Contact".to_string()
+                    crate::drivers::TabletStatus::Contact
                 } else {
-                    "Hover".to_string()
+                    crate::drivers::TabletStatus::Hover
                 };
 
-                let is_connected = status != "Out of Range";
+                let is_connected = status != crate::drivers::TabletStatus::OutOfRange;
 
-                Some(TabletData {
+                let mut tablet_data = TabletData {
                     status,
                     x,
                     y,
@@ -38,10 +31,11 @@ impl ReportParser for FallbackParser {
                     buttons: 0,
                     eraser: false,
                     hover_distance: 0,
-                    raw_data: raw,
                     is_connected,
                     ..Default::default()
-                })
+                };
+                tablet_data.set_raw(data);
+                Some(tablet_data)
             }
             _ => None,
         }

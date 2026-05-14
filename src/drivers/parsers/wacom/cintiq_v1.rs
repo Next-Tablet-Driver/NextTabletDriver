@@ -23,12 +23,6 @@ impl Default for CintiqV1Parser {
 
 impl ReportParser for CintiqV1Parser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
-        let raw = data
-            .iter()
-            .map(|b| format!("{b:02X}"))
-            .collect::<Vec<_>>()
-            .join(" ");
-
         match data {
             [0x02 | 0x10, ..] => self.inner_v1.parse(data), // reuse v1 tablet parsing
             [0x0C, _, _, _, _, b5, b6, _, _, h_dist, ..] => {
@@ -61,14 +55,15 @@ impl ReportParser for CintiqV1Parser {
                     buttons |= 1 << 8;
                 }
 
-                Some(TabletData {
-                    status: "Aux".to_string(),
+                let mut tablet_data = TabletData {
+                    status: crate::drivers::TabletStatus::Aux,
                     buttons: buttons as u8,
                     hover_distance: *h_dist,
-                    raw_data: raw,
                     is_connected: true,
                     ..Default::default()
-                })
+                };
+                tablet_data.set_raw(data);
+                Some(tablet_data)
             }
             _ => None,
         }

@@ -49,23 +49,19 @@ pub struct BambooParser;
 
 impl ReportParser for BambooParser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
-        let raw = data
-            .iter()
-            .map(|b| format!("{b:02X}"))
-            .collect::<Vec<_>>()
-            .join(" ");
-
         match data {
             [0x02, ..] => {
                 let report = BambooTabletReport::new(data)?;
-                Some(TabletData {
-                    status: if report.pressure > 0 {
-                        "Contact".to_string()
-                    } else if report.near_proximity {
-                        "Hover".to_string()
-                    } else {
-                        "Out of Range".to_string()
-                    },
+                let status = if report.pressure > 0 {
+                    crate::drivers::TabletStatus::Contact
+                } else if report.near_proximity {
+                    crate::drivers::TabletStatus::Hover
+                } else {
+                    crate::drivers::TabletStatus::OutOfRange
+                };
+
+                let mut tablet_data = TabletData {
+                    status,
                     x: report.x,
                     y: report.y,
                     pressure: report.pressure,
@@ -74,10 +70,11 @@ impl ReportParser for BambooParser {
                     buttons: report.buttons,
                     eraser: report.eraser,
                     hover_distance: 0,
-                    raw_data: raw,
                     is_connected: true,
                     ..Default::default()
-                })
+                };
+                tablet_data.set_raw(data);
+                Some(tablet_data)
             }
             _ => None,
         }

@@ -72,11 +72,18 @@ impl Log for GlobalLogger {
     fn flush(&self) {}
 }
 
-pub fn init() {
+/// Initializes the global logger.
+///
+/// # Errors
+///
+/// This function returns an error if:
+/// - It fails to spawn the background logger worker thread.
+/// - It fails to set the global logger instance.
+pub fn init() -> Result<(), String> {
     let (sender, receiver) = crossbeam_channel::unbounded::<LogEntry>();
 
     // Spawn the logger worker thread
-    thread::Builder::new()
+    let spawn_result = thread::Builder::new()
         .name("LoggerWorker".to_string())
         .spawn(move || {
             while let Ok(entry) = receiver.recv() {
@@ -106,14 +113,15 @@ pub fn init() {
                     entries.push_back(entry);
                 }
             }
-        })
-        .expect("Failed to spawn logger worker thread");
+        });
+
+    if let Err(e) = spawn_result {
+        return Err(format!("Failed to spawn logger worker thread: {e}"));
+    }
 
     let logger = GlobalLogger { sender };
 
-    if let Err(e) =
-        log::set_boxed_logger(Box::new(logger)).map(|()| log::set_max_level(LevelFilter::Debug))
-    {
-        eprintln!("CRITICAL: Failed to initialize logger: {e}");
-    }
+    log::set_boxed_logger(Box::new(logger))
+        .map(|()| log::set_max_level(LevelFilter::Debug))
+        .map_err(|e| format!("Logger initialization failed: {e}"))
 }

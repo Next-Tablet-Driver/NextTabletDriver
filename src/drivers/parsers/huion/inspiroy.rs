@@ -5,34 +5,33 @@ pub struct InspiroyParser;
 
 impl ReportParser for InspiroyParser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
-        let raw = data
-            .iter()
-            .take(14)
-            .map(|b| format!("{b:02X}"))
-            .collect::<Vec<_>>()
-            .join(" ");
-
         match data {
             // Out of range
             [_, 0x00, ..] => None,
 
             // Aux Report
-            [_, 0xE0 | 0xE3, _, _, b4, ..] => Some(TabletData {
-                status: "Aux".to_string(),
-                buttons: *b4,
-                raw_data: raw,
-                is_connected: true,
-                ..Default::default()
-            }),
+            [_, 0xE0 | 0xE3, _, _, b4, ..] => {
+                let mut tablet_data = TabletData {
+                    status: crate::drivers::TabletStatus::Aux,
+                    buttons: *b4,
+                    is_connected: true,
+                    ..Default::default()
+                };
+                tablet_data.set_raw(data);
+                Some(tablet_data)
+            }
 
             // Wheel Report
-            [_, 0xF1 | 0xF0, ..] => Some(TabletData {
-                status: "Aux".to_string(),
-                buttons: 0,
-                raw_data: raw,
-                is_connected: true,
-                ..Default::default()
-            }),
+            [_, 0xF1 | 0xF0, ..] => {
+                let mut tablet_data = TabletData {
+                    status: crate::drivers::TabletStatus::Aux,
+                    buttons: 0,
+                    is_connected: true,
+                    ..Default::default()
+                };
+                tablet_data.set_raw(data);
+                Some(tablet_data)
+            }
 
             // Standard Tablet Report
             [
@@ -65,15 +64,14 @@ impl ReportParser for InspiroyParser {
                 let eraser = (*b1 & 0x10) != 0;
 
                 let status = if pressure > 0 {
-                    "Contact"
+                    crate::drivers::TabletStatus::Contact
                 } else if (*b1 & 0x01) != 0 {
-                    "Hover"
+                    crate::drivers::TabletStatus::Hover
                 } else {
-                    "Out of Range"
-                }
-                .to_string();
+                    crate::drivers::TabletStatus::OutOfRange
+                };
 
-                Some(TabletData {
+                let mut tablet_data = TabletData {
                     status,
                     x: x as u16,
                     y: y as u16,
@@ -82,10 +80,11 @@ impl ReportParser for InspiroyParser {
                     tilt_y,
                     buttons,
                     eraser,
-                    raw_data: raw,
                     is_connected: true,
                     ..Default::default()
-                })
+                };
+                tablet_data.set_raw(data);
+                Some(tablet_data)
             }
             _ => None,
         }
@@ -103,7 +102,7 @@ mod tests {
         let report = parser
             .parse(&data)
             .ok_or("Inspiroy parser failed to parse tablet packet")?;
-        assert_eq!(report.status, "Contact");
+        assert_eq!(report.status, crate::drivers::TabletStatus::Contact);
         assert_eq!(report.x, 258);
         assert_eq!(report.pressure, 3);
         Ok(())

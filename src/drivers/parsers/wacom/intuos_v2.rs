@@ -19,7 +19,7 @@ impl Default for IntuosV2Parser {
 }
 
 impl IntuosV2Parser {
-    fn parse_internal(data: &[u8], raw: String) -> Option<TabletData> {
+    fn parse_internal(data: &[u8]) -> Option<TabletData> {
         match data {
             [
                 0x10,
@@ -54,10 +54,14 @@ impl IntuosV2Parser {
                 }
                 let eraser = (*b1 & 0x10) != 0;
 
-                let status = if pressure > 0 { "Contact" } else { "Hover" };
+                let status = if pressure > 0 {
+                    crate::drivers::TabletStatus::Contact
+                } else {
+                    crate::drivers::TabletStatus::Hover
+                };
 
-                Some(TabletData {
-                    status: status.to_string(),
+                let mut tablet_data = TabletData {
+                    status,
                     x: x.min(0xFFFF) as u16,
                     y: y.min(0xFFFF) as u16,
                     pressure,
@@ -66,10 +70,11 @@ impl IntuosV2Parser {
                     buttons,
                     eraser,
                     hover_distance: *h_dist,
-                    raw_data: raw,
                     is_connected: true,
                     ..Default::default()
-                })
+                };
+                tablet_data.set_raw(data);
+                Some(tablet_data)
             }
             [
                 0x1E,
@@ -103,13 +108,14 @@ impl IntuosV2Parser {
                 }
                 let eraser = (*b1 & 0x10) != 0;
 
-                let status = if pressure > 0 { "Contact" } else { "Hover" };
-                // hover_distance for offset report is also at index 11 (t_x) in original code?
-                // data[11] was tx. Original code: let hover_distance = if offset { data[11] } else { data[16] };
-                // So h_dist is same as t_x here.
+                let status = if pressure > 0 {
+                    crate::drivers::TabletStatus::Contact
+                } else {
+                    crate::drivers::TabletStatus::Hover
+                };
 
-                Some(TabletData {
-                    status: status.to_string(),
+                let mut tablet_data = TabletData {
+                    status,
                     x: x.min(0xFFFF) as u16,
                     y: y.min(0xFFFF) as u16,
                     pressure,
@@ -118,18 +124,22 @@ impl IntuosV2Parser {
                     buttons,
                     eraser,
                     hover_distance: *t_x,
-                    raw_data: raw,
                     is_connected: true,
                     ..Default::default()
-                })
+                };
+                tablet_data.set_raw(data);
+                Some(tablet_data)
             }
-            [0x11, b1, ..] => Some(TabletData {
-                status: "Aux".to_string(),
-                buttons: *b1,
-                raw_data: raw,
-                is_connected: true,
-                ..Default::default()
-            }),
+            [0x11, b1, ..] => {
+                let mut tablet_data = TabletData {
+                    status: crate::drivers::TabletStatus::Aux,
+                    buttons: *b1,
+                    is_connected: true,
+                    ..Default::default()
+                };
+                tablet_data.set_raw(data);
+                Some(tablet_data)
+            }
             _ => None,
         }
     }
@@ -137,12 +147,7 @@ impl IntuosV2Parser {
 
 impl ReportParser for IntuosV2Parser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
-        let raw = data
-            .iter()
-            .map(|b| format!("{b:02X}"))
-            .collect::<Vec<_>>()
-            .join(" ");
-        Self::parse_internal(data, raw)
+        Self::parse_internal(data)
     }
 }
 
@@ -163,14 +168,8 @@ impl Default for WacomDriverIntuosV2Parser {
 
 impl ReportParser for WacomDriverIntuosV2Parser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
-        let raw = data
-            .iter()
-            .map(|b| format!("{b:02X}"))
-            .collect::<Vec<_>>()
-            .join(" ");
-
         match data {
-            [_, rest @ ..] => IntuosV2Parser::parse_internal(rest, raw),
+            [_, rest @ ..] => IntuosV2Parser::parse_internal(rest),
             _ => None,
         }
     }

@@ -19,7 +19,7 @@ pub use config::TabletConfiguration;
 pub use config_loader::load_configurations;
 pub use detection::detect_tablet;
 pub use generic::GenericNextTabletDriver;
-pub use models::{DriverStats, TabletData};
+pub use models::{DriverStats, TabletData, TabletStatus};
 
 /// The trait that all tablet-specific driver implementations must satisfy.
 ///

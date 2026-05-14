@@ -5,12 +5,6 @@ pub struct XenxParser;
 
 impl ReportParser for XenxParser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
-        let raw = data
-            .iter()
-            .map(|b| format!("{b:02X}"))
-            .collect::<Vec<_>>()
-            .join(" ");
-
         match data {
             // Tablet Report
             [0x01, b1, x_lo, x_hi, y_lo, y_hi, p_lo, p_hi, ..] => {
@@ -31,19 +25,24 @@ impl ReportParser for XenxParser {
                 }
                 let eraser = (*b1 & 0x40) != 0;
 
-                let status = if pressure > 0 { "Contact" } else { "Hover" };
+                let status = if pressure > 0 {
+                    crate::drivers::TabletStatus::Contact
+                } else {
+                    crate::drivers::TabletStatus::Hover
+                };
 
-                Some(TabletData {
-                    status: status.to_string(),
+                let mut tablet_data = TabletData {
+                    status,
                     x,
                     y,
                     pressure,
                     buttons,
                     eraser,
-                    raw_data: raw,
                     is_connected: true,
                     ..Default::default()
-                })
+                };
+                tablet_data.set_raw(data);
+                Some(tablet_data)
             }
             // Aux Report
             [0x02, _, aux_data @ ..] if aux_data.len() >= 8 => {
@@ -54,13 +53,14 @@ impl ReportParser for XenxParser {
                     }
                 }
 
-                Some(TabletData {
-                    status: "Aux".to_string(),
+                let mut tablet_data = TabletData {
+                    status: crate::drivers::TabletStatus::Aux,
                     buttons,
-                    raw_data: raw,
                     is_connected: true,
                     ..Default::default()
-                })
+                };
+                tablet_data.set_raw(data);
+                Some(tablet_data)
             }
             _ => None,
         }
@@ -78,7 +78,7 @@ mod tests {
         let report = parser
             .parse(&data)
             .ok_or("Xenx parser failed to parse tablet packet")?;
-        assert_eq!(report.status, "Contact");
+        assert_eq!(report.status, crate::drivers::TabletStatus::Contact);
         assert_eq!(report.x, 258);
         assert_eq!(report.pressure, 1);
         assert_eq!(report.buttons, 3);

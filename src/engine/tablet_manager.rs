@@ -253,7 +253,7 @@ fn run_polling_loop(
             Ok(_) => {
                 // Out of range event
                 let out = TabletData {
-                    status: "Out of Range".to_string(),
+                    status: crate::drivers::TabletStatus::OutOfRange,
                     ..Default::default()
                 };
                 pipeline.process(&out, driver, local_config, injector, filters, shared);

@@ -5,12 +5,6 @@ pub struct TenMoonParser;
 
 impl ReportParser for TenMoonParser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
-        let raw = data
-            .iter()
-            .map(|b| format!("{b:02X}"))
-            .collect::<Vec<_>>()
-            .join(" ");
-
         match data {
             [_, _, _, _, _, _, _, _, _, _, _, b11, b12, ..] if *b11 != 0xFF => {
                 // Aux Report
@@ -40,13 +34,14 @@ impl ReportParser for TenMoonParser {
                     buttons |= 1 << 7;
                 }
 
-                Some(TabletData {
-                    status: "Aux".to_string(),
+                let mut tablet_data = TabletData {
+                    status: crate::drivers::TabletStatus::Aux,
                     buttons,
-                    raw_data: raw,
                     is_connected: true,
                     ..Default::default()
-                })
+                };
+                tablet_data.set_raw(data);
+                Some(tablet_data)
             }
             [_, b1, b2, b3, b4, b5, b6, _, _, b9, ..] => {
                 // Tablet Report
@@ -72,18 +67,23 @@ impl ReportParser for TenMoonParser {
                     buttons |= 1 << 1;
                 }
 
-                let status = if pressure > 0 { "Contact" } else { "Hover" };
+                let status = if pressure > 0 {
+                    crate::drivers::TabletStatus::Contact
+                } else {
+                    crate::drivers::TabletStatus::Hover
+                };
 
-                Some(TabletData {
-                    status: status.to_string(),
+                let mut tablet_data = TabletData {
+                    status,
                     x,
                     y,
                     pressure,
                     buttons,
-                    raw_data: raw,
                     is_connected: true,
                     ..Default::default()
-                })
+                };
+                tablet_data.set_raw(data);
+                Some(tablet_data)
             }
             _ => None,
         }
@@ -101,7 +101,7 @@ mod tests {
         let report = parser
             .parse(&data)
             .ok_or("TenMoon parser failed to parse tablet packet")?;
-        assert_eq!(report.status, "Contact");
+        assert_eq!(report.status, crate::drivers::TabletStatus::Contact);
         assert_eq!(report.x, 258);
         assert_eq!(report.y, 772);
         assert_eq!(report.pressure, 414); // 1650 - (1286 - 50)

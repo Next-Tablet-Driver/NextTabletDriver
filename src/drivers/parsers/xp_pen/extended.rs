@@ -1,18 +1,19 @@
 use crate::drivers::TabletData;
 use crate::drivers::parsers::{ReportParser, xp_pen::standard::parse as standard_parse};
 
-fn parse_aux(data: &[u8], raw: String, offset: usize) -> TabletData {
+fn parse_aux(data: &[u8], offset: usize) -> TabletData {
     let buttons = data.get(offset).copied().unwrap_or(0);
-    TabletData {
-        status: "Aux".to_string(),
+    let mut tablet_data = TabletData {
+        status: crate::drivers::TabletStatus::Aux,
         buttons,
-        raw_data: raw,
         is_connected: true,
         ..Default::default()
-    }
+    };
+    tablet_data.set_raw(data);
+    tablet_data
 }
 
-fn parse_gen2(data: &[u8], raw: String) -> Option<TabletData> {
+fn parse_gen2(data: &[u8]) -> Option<TabletData> {
     match data {
         [
             _,
@@ -45,10 +46,14 @@ fn parse_gen2(data: &[u8], raw: String) -> Option<TabletData> {
             }
             let eraser = (*b1 & 0x08) != 0;
 
-            let status = if pressure > 0 { "Contact" } else { "Hover" };
+            let status = if pressure > 0 {
+                crate::drivers::TabletStatus::Contact
+            } else {
+                crate::drivers::TabletStatus::Hover
+            };
 
-            Some(TabletData {
-                status: status.to_string(),
+            let mut tablet_data = TabletData {
+                status,
                 x: x.min(0xFFFF) as u16,
                 y: y.min(0xFFFF) as u16,
                 pressure,
@@ -56,16 +61,17 @@ fn parse_gen2(data: &[u8], raw: String) -> Option<TabletData> {
                 tilt_y: t_y.cast_signed(),
                 buttons,
                 eraser,
-                raw_data: raw,
                 is_connected: true,
                 ..Default::default()
-            })
+            };
+            tablet_data.set_raw(data);
+            Some(tablet_data)
         }
         _ => None,
     }
 }
 
-fn parse_offset_pressure(data: &[u8], raw: String, has_tilt: bool) -> Option<TabletData> {
+fn parse_offset_pressure(data: &[u8], has_tilt: bool) -> Option<TabletData> {
     match data {
         [_, b1, x_lo, x_hi, y_lo, y_hi, p_lo, p_hi, rest @ ..] => {
             let x = u16::from_le_bytes([*x_lo, *x_hi]);
@@ -91,10 +97,14 @@ fn parse_offset_pressure(data: &[u8], raw: String, has_tilt: bool) -> Option<Tab
                 (0, 0)
             };
 
-            let status = if pressure > 0 { "Contact" } else { "Hover" };
+            let status = if pressure > 0 {
+                crate::drivers::TabletStatus::Contact
+            } else {
+                crate::drivers::TabletStatus::Hover
+            };
 
-            Some(TabletData {
-                status: status.to_string(),
+            let mut tablet_data = TabletData {
+                status,
                 x,
                 y,
                 pressure,
@@ -102,10 +112,11 @@ fn parse_offset_pressure(data: &[u8], raw: String, has_tilt: bool) -> Option<Tab
                 tilt_y,
                 buttons,
                 eraser,
-                raw_data: raw,
                 is_connected: true,
                 ..Default::default()
-            })
+            };
+            tablet_data.set_raw(data);
+            Some(tablet_data)
         }
         _ => None,
     }
@@ -115,15 +126,9 @@ pub struct XpPenGen2Parser;
 
 impl ReportParser for XpPenGen2Parser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
-        let raw = data
-            .iter()
-            .map(|b| format!("{b:02X}"))
-            .collect::<Vec<_>>()
-            .join(" ");
-
         match data {
-            [_, 0xF0, ..] => Some(parse_aux(data, raw, 2)),
-            [_, b1, ..] if (*b1 & 0xF0) == 0xA0 => parse_gen2(data, raw),
+            [_, 0xF0, ..] => Some(parse_aux(data, 2)),
+            [_, b1, ..] if (*b1 & 0xF0) == 0xA0 => parse_gen2(data),
             _ => standard_parse(data),
         }
     }
@@ -133,15 +138,9 @@ pub struct XpPenDeco03Parser;
 
 impl ReportParser for XpPenDeco03Parser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
-        let raw = data
-            .iter()
-            .map(|b| format!("{b:02X}"))
-            .collect::<Vec<_>>()
-            .join(" ");
-
         match data {
-            [_, 0xF0, ..] => Some(parse_aux(data, raw, 2)),
-            [_, b1, ..] if (*b1 & 0x10) != 0 => Some(parse_aux(data, raw, 2)),
+            [_, 0xF0, ..] => Some(parse_aux(data, 2)),
+            [_, b1, ..] if (*b1 & 0x10) != 0 => Some(parse_aux(data, 2)),
             _ => standard_parse(data),
         }
     }
@@ -151,16 +150,10 @@ pub struct XpPenOffsetPressureParser;
 
 impl ReportParser for XpPenOffsetPressureParser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
-        let raw = data
-            .iter()
-            .map(|b| format!("{b:02X}"))
-            .collect::<Vec<_>>()
-            .join(" ");
-
         match data {
-            [_, b1, ..] if (*b1 & 0x10) != 0 => Some(parse_aux(data, raw, 2)),
-            _ if data.len() >= 10 => parse_offset_pressure(data, raw, true),
-            _ => parse_offset_pressure(data, raw, false),
+            [_, b1, ..] if (*b1 & 0x10) != 0 => Some(parse_aux(data, 2)),
+            _ if data.len() >= 10 => parse_offset_pressure(data, true),
+            _ => parse_offset_pressure(data, false),
         }
     }
 }
@@ -169,14 +162,8 @@ pub struct XpPenOffsetAuxParser;
 
 impl ReportParser for XpPenOffsetAuxParser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
-        let raw = data
-            .iter()
-            .map(|b| format!("{b:02X}"))
-            .collect::<Vec<_>>()
-            .join(" ");
-
         match data {
-            [_, b1, ..] if (*b1 & 0x20) != 0 => Some(parse_aux(data, raw, 4)),
+            [_, b1, ..] if (*b1 & 0x20) != 0 => Some(parse_aux(data, 4)),
             _ => standard_parse(data),
         }
     }
@@ -186,14 +173,8 @@ pub struct XpPenParser;
 
 impl ReportParser for XpPenParser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
-        let raw = data
-            .iter()
-            .map(|b| format!("{b:02X}"))
-            .collect::<Vec<_>>()
-            .join(" ");
-
         match data {
-            [_, b1, ..] if (*b1 & 0x10) != 0 => Some(parse_aux(data, raw, 2)),
+            [_, b1, ..] if (*b1 & 0x10) != 0 => Some(parse_aux(data, 2)),
             _ => standard_parse(data),
         }
     }
@@ -212,7 +193,7 @@ mod tests {
         let report = parser
             .parse(&data)
             .ok_or("XP-Pen Gen2 parser failed to parse tablet packet")?;
-        assert_eq!(report.status, "Contact");
+        assert_eq!(report.status, crate::drivers::TabletStatus::Contact);
         assert_eq!(report.x, 0xFFFF); // overflow u16 max clamped
         assert_eq!(report.buttons, 1);
         Ok(())

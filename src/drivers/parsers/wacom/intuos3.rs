@@ -24,19 +24,19 @@ impl Default for Intuos3Parser {
 }
 
 impl Intuos3Parser {
-    pub(crate) fn parse_internal(&self, data: &[u8], raw: String) -> Option<TabletData> {
+    pub(crate) fn parse_internal(&self, data: &[u8]) -> Option<TabletData> {
         match data {
             [0x02, b1, ..] if (0xF0..=0xFF).contains(b1) || (0xB0..=0xBF).contains(b1) => {
-                Self::parse_mouse(data, raw)
+                Self::parse_mouse(data)
             }
-            [0x02 | 0x10, ..] => self.inner_v1.parse_internal(data, raw),
-            [0x03, ..] => IntuosV1Parser::parse_aux(data, raw),
-            [0x0C, ..] => Self::parse_aux(data, raw, false),
+            [0x02 | 0x10, ..] => self.inner_v1.parse_internal(data),
+            [0x03, ..] => IntuosV1Parser::parse_aux(data),
+            [0x0C, ..] => Self::parse_aux(data, false),
             _ => None,
         }
     }
 
-    fn parse_mouse(data: &[u8], raw: String) -> Option<TabletData> {
+    fn parse_mouse(data: &[u8]) -> Option<TabletData> {
         match data {
             [_, _, b2, b3, b4, b5, _, _, b8, b9, ..] => {
                 let x = ((u16::from(*b2) << 8) | u16::from(*b3)) << 1 | u16::from((*b9 >> 1) & 1);
@@ -58,21 +58,22 @@ impl Intuos3Parser {
                     buttons |= 1 << 4;
                 }
 
-                Some(TabletData {
-                    status: "Mouse".to_string(),
+                let mut tablet_data = TabletData {
+                    status: crate::drivers::TabletStatus::Mouse,
                     x,
                     y,
                     buttons,
-                    raw_data: raw,
                     is_connected: true,
                     ..Default::default()
-                })
+                };
+                tablet_data.set_raw(data);
+                Some(tablet_data)
             }
             _ => None,
         }
     }
 
-    pub(crate) fn parse_aux(data: &[u8], raw: String, extra: bool) -> Option<TabletData> {
+    pub(crate) fn parse_aux(data: &[u8], extra: bool) -> Option<TabletData> {
         match data {
             [_, _, _, _, _, b5, b6, ..] => {
                 let mut buttons: u16 = 0;
@@ -110,13 +111,14 @@ impl Intuos3Parser {
                     }
                 }
 
-                Some(TabletData {
-                    status: "Aux".to_string(),
+                let mut tablet_data = TabletData {
+                    status: crate::drivers::TabletStatus::Aux,
                     buttons: buttons as u8,
-                    raw_data: raw,
                     is_connected: true,
                     ..Default::default()
-                })
+                };
+                tablet_data.set_raw(data);
+                Some(tablet_data)
             }
             _ => None,
         }
@@ -125,12 +127,7 @@ impl Intuos3Parser {
 
 impl ReportParser for Intuos3Parser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
-        let raw = data
-            .iter()
-            .map(|b| format!("{b:02X}"))
-            .collect::<Vec<_>>()
-            .join(" ");
-        self.parse_internal(data, raw)
+        self.parse_internal(data)
     }
 }
 
@@ -155,14 +152,9 @@ impl Default for Intuos3ExtraAuxParser {
 
 impl ReportParser for Intuos3ExtraAuxParser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
-        let raw = data
-            .iter()
-            .map(|b| format!("{b:02X}"))
-            .collect::<Vec<_>>()
-            .join(" ");
         match data {
-            [0x0C, ..] => Intuos3Parser::parse_aux(data, raw, true),
-            _ => self.inner.parse_internal(data, raw),
+            [0x0C, ..] => Intuos3Parser::parse_aux(data, true),
+            _ => self.inner.parse_internal(data),
         }
     }
 }
@@ -188,14 +180,8 @@ impl Default for WacomDriverIntuos3Parser {
 
 impl ReportParser for WacomDriverIntuos3Parser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
-        let raw = data
-            .iter()
-            .map(|b| format!("{b:02X}"))
-            .collect::<Vec<_>>()
-            .join(" ");
-
         match data {
-            [_, rest @ ..] => self.inner.parse_internal(rest, raw),
+            [_, rest @ ..] => self.inner.parse_internal(rest),
             _ => None,
         }
     }

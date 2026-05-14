@@ -26,12 +26,6 @@ impl Default for PLParser {
 
 impl ReportParser for PLParser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
-        let raw = data
-            .iter()
-            .map(|b| format!("{b:02X}"))
-            .collect::<Vec<_>>()
-            .join(" ");
-
         match data {
             [_, b1, b2, b3, b4, b5, b6, b7, ..] => {
                 if (*b1 & 0x40) == 0 {
@@ -74,19 +68,24 @@ impl ReportParser for PLParser {
                 }
 
                 let eraser = (*b4 & 0x20) != 0 && is_initial_eraser;
-                let status = if pressure > 0 { "Contact" } else { "Hover" };
+                let status = if pressure > 0 {
+                    crate::drivers::TabletStatus::Contact
+                } else {
+                    crate::drivers::TabletStatus::Hover
+                };
 
-                Some(TabletData {
-                    status: status.to_string(),
+                let mut tablet_data = TabletData {
+                    status,
                     x: x as u16,
                     y: y as u16,
                     pressure: pressure as u16,
                     buttons,
                     eraser,
-                    raw_data: raw,
                     is_connected: true,
                     ..Default::default()
-                })
+                };
+                tablet_data.set_raw(data);
+                Some(tablet_data)
             }
             _ => None,
         }

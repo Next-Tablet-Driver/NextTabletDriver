@@ -5,12 +5,6 @@ pub struct Wacom64bAuxParser;
 
 impl ReportParser for Wacom64bAuxParser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
-        let raw = data
-            .iter()
-            .map(|b| format!("{b:02X}"))
-            .collect::<Vec<_>>()
-            .join(" ");
-
         match data {
             [_, _, 0x81, ..] => None,
             [_, n_chunks, rest @ ..] => {
@@ -37,13 +31,14 @@ impl ReportParser for Wacom64bAuxParser {
                     }
                 }
 
-                Some(TabletData {
-                    status: "Aux".to_string(),
+                let mut tablet_data = TabletData {
+                    status: crate::drivers::TabletStatus::Aux,
                     buttons,
-                    raw_data: raw,
                     is_connected: true,
                     ..Default::default()
-                })
+                };
+                tablet_data.set_raw(data);
+                Some(tablet_data)
             }
             _ => None,
         }

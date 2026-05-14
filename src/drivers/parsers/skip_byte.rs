@@ -13,11 +13,7 @@ impl ReportParser for SkipByteParser {
         let mut parsed = data.get(1..).and_then(|sub| fallback.parse(sub));
         if let Some(ref mut p) = parsed {
             // Restore raw data to include the skipped byte
-            p.raw_data = data
-                .iter()
-                .map(|b| format!("{b:02X}"))
-                .collect::<Vec<_>>()
-                .join(" ");
+            p.set_raw(data);
         }
         parsed
     }
@@ -35,7 +31,7 @@ mod tests {
         let report = parser
             .parse(&data)
             .ok_or("SkipByte parser failed to parse packet")?;
-        assert_eq!(report.status, "Contact");
+        assert_eq!(report.status, crate::drivers::TabletStatus::Contact);
         assert_eq!(report.x, 258);
         assert_eq!(report.pressure, 1);
         Ok(())

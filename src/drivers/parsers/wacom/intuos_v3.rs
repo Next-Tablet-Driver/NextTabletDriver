@@ -19,16 +19,16 @@ impl Default for IntuosV3Parser {
 }
 
 impl IntuosV3Parser {
-    fn parse_internal(data: &[u8], raw: String) -> Option<TabletData> {
+    fn parse_internal(data: &[u8]) -> Option<TabletData> {
         match data {
-            [0x11, ..] => Self::parse_aux(data, raw),
-            [0x1E, ..] => Self::parse_extended(data, raw),
-            [0x1F, 0x01, ..] => Self::parse_tablet(data, raw),
+            [0x11, ..] => Self::parse_aux(data),
+            [0x1E, ..] => Self::parse_extended(data),
+            [0x1F, 0x01, ..] => Self::parse_tablet(data),
             _ => None,
         }
     }
 
-    fn parse_tablet(data: &[u8], raw: String) -> Option<TabletData> {
+    fn parse_tablet(data: &[u8]) -> Option<TabletData> {
         match data {
             [
                 _,
@@ -71,10 +71,14 @@ impl IntuosV3Parser {
                 }
                 let eraser = (*b2 & 0x20) != 0;
 
-                let status = if pressure > 0 { "Contact" } else { "Hover" };
+                let status = if pressure > 0 {
+                    crate::drivers::TabletStatus::Contact
+                } else {
+                    crate::drivers::TabletStatus::Hover
+                };
 
-                Some(TabletData {
-                    status: status.to_string(),
+                let mut tablet_data = TabletData {
+                    status,
                     x,
                     y,
                     pressure,
@@ -83,16 +87,17 @@ impl IntuosV3Parser {
                     buttons,
                     eraser,
                     hover_distance: *h_dist,
-                    raw_data: raw,
                     is_connected: true,
                     ..Default::default()
-                })
+                };
+                tablet_data.set_raw(data);
+                Some(tablet_data)
             }
             _ => None,
         }
     }
 
-    fn parse_extended(data: &[u8], raw: String) -> Option<TabletData> {
+    fn parse_extended(data: &[u8]) -> Option<TabletData> {
         match data {
             [
                 _,
@@ -135,10 +140,14 @@ impl IntuosV3Parser {
                 }
                 let eraser = (*b2 & 0x20) != 0;
 
-                let status = if pressure > 0 { "Contact" } else { "Hover" };
+                let status = if pressure > 0 {
+                    crate::drivers::TabletStatus::Contact
+                } else {
+                    crate::drivers::TabletStatus::Hover
+                };
 
-                Some(TabletData {
-                    status: status.to_string(),
+                let mut tablet_data = TabletData {
+                    status,
                     x: x.min(0xFFFF) as u16,
                     y: y.min(0xFFFF) as u16,
                     pressure,
@@ -147,16 +156,17 @@ impl IntuosV3Parser {
                     buttons,
                     eraser,
                     hover_distance: *h_dist,
-                    raw_data: raw,
                     is_connected: true,
                     ..Default::default()
-                })
+                };
+                tablet_data.set_raw(data);
+                Some(tablet_data)
             }
             _ => None,
         }
     }
 
-    fn parse_aux(data: &[u8], raw: String) -> Option<TabletData> {
+    fn parse_aux(data: &[u8]) -> Option<TabletData> {
         match data {
             [_, b1, _, b2, ..] => {
                 let mut buttons: u16 = 0;
@@ -185,13 +195,14 @@ impl IntuosV3Parser {
                     buttons |= 1 << 7;
                 }
 
-                Some(TabletData {
-                    status: "Aux".to_string(),
+                let mut tablet_data = TabletData {
+                    status: crate::drivers::TabletStatus::Aux,
                     buttons: buttons as u8,
-                    raw_data: raw,
                     is_connected: true,
                     ..Default::default()
-                })
+                };
+                tablet_data.set_raw(data);
+                Some(tablet_data)
             }
             _ => None,
         }
@@ -200,12 +211,7 @@ impl IntuosV3Parser {
 
 impl ReportParser for IntuosV3Parser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
-        let raw = data
-            .iter()
-            .map(|b| format!("{b:02X}"))
-            .collect::<Vec<_>>()
-            .join(" ");
-        Self::parse_internal(data, raw)
+        Self::parse_internal(data)
     }
 }
 
@@ -217,8 +223,8 @@ impl WacomDriverIntuosV3Parser {
         Self
     }
 
-    fn parse_internal(data: &[u8], raw: String) -> Option<TabletData> {
-        IntuosV3Parser::parse_internal(data, raw)
+    fn parse_internal(data: &[u8]) -> Option<TabletData> {
+        IntuosV3Parser::parse_internal(data)
     }
 }
 
@@ -230,15 +236,9 @@ impl Default for WacomDriverIntuosV3Parser {
 
 impl ReportParser for WacomDriverIntuosV3Parser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
-        let raw = data
-            .iter()
-            .map(|b| format!("{b:02X}"))
-            .collect::<Vec<_>>()
-            .join(" ");
-
         // Skip the first byte safely
         match data {
-            [_, rest @ ..] => Self::parse_internal(rest, raw),
+            [_, rest @ ..] => Self::parse_internal(rest),
             _ => None,
         }
     }

@@ -31,15 +31,15 @@ impl Default for IntuosV1Parser {
 }
 
 impl IntuosV1Parser {
-    pub(crate) fn parse_internal(&self, data: &[u8], raw: String) -> Option<TabletData> {
+    pub(crate) fn parse_internal(&self, data: &[u8]) -> Option<TabletData> {
         match data {
-            [0x02 | 0x10, ..] => self.parse_tool(data, raw),
-            [0x03, ..] => Self::parse_aux(data, raw),
+            [0x02 | 0x10, ..] => self.parse_tool(data),
+            [0x03, ..] => Self::parse_aux(data),
             _ => None,
         }
     }
 
-    fn parse_tool(&self, data: &[u8], raw: String) -> Option<TabletData> {
+    fn parse_tool(&self, data: &[u8]) -> Option<TabletData> {
         match data {
             [0x10, 0x20, ..] | [_, 0x80, ..] => None,
             [_id, b1, b2, b3, b4, b5, b6, b7, b8, b9, ..] => {
@@ -70,10 +70,14 @@ impl IntuosV1Parser {
                     *self.tilt_y.lock().unwrap_or_reset("wacom_tilt_y") = tilt_y;
                     *self.buttons.lock().unwrap_or_reset("wacom_buttons") = buttons;
 
-                    let status = if pressure > 0 { "Contact" } else { "Hover" };
+                    let status = if pressure > 0 {
+                        crate::drivers::TabletStatus::Contact
+                    } else {
+                        crate::drivers::TabletStatus::Hover
+                    };
 
-                    Some(TabletData {
-                        status: status.to_string(),
+                    let mut tablet_data = TabletData {
+                        status,
                         x,
                         y,
                         pressure,
@@ -81,17 +85,18 @@ impl IntuosV1Parser {
                         tilt_y,
                         buttons,
                         hover_distance: *b9,
-                        raw_data: raw,
                         is_connected: true,
                         ..Default::default()
-                    })
+                    };
+                    tablet_data.set_raw(data);
+                    Some(tablet_data)
                 } else if is_rotation {
                     let x =
                         ((u16::from(*b2) << 8) | u16::from(*b3)) << 1 | u16::from((*b9 >> 1) & 1);
                     let y = ((u16::from(*b4) << 8) | u16::from(*b5)) << 1 | u16::from(*b9 & 1);
 
-                    Some(TabletData {
-                        status: "Rotation".to_string(),
+                    let mut tablet_data = TabletData {
+                        status: crate::drivers::TabletStatus::Rotation,
                         x,
                         y,
                         pressure: *self.pressure.lock().unwrap_or_log("wacom_prev_pressure"),
@@ -99,19 +104,21 @@ impl IntuosV1Parser {
                         tilt_y: *self.tilt_y.lock().unwrap_or_log("wacom_tilt_y"),
                         buttons: *self.buttons.lock().unwrap_or_log("wacom_buttons"),
                         hover_distance: *b9,
-                        raw_data: raw,
                         is_connected: true,
                         ..Default::default()
-                    })
+                    };
+                    tablet_data.set_raw(data);
+                    Some(tablet_data)
                 } else if *b1 == 0xC2 {
                     let eraser = (*b3 & 0x80) != 0;
-                    Some(TabletData {
-                        status: "Tool".to_string(),
+                    let mut tablet_data = TabletData {
+                        status: crate::drivers::TabletStatus::Tool,
                         eraser,
-                        raw_data: raw,
                         is_connected: true,
                         ..Default::default()
-                    })
+                    };
+                    tablet_data.set_raw(data);
+                    Some(tablet_data)
                 } else {
                     None
                 }
@@ -120,15 +127,18 @@ impl IntuosV1Parser {
         }
     }
 
-    pub(crate) fn parse_aux(data: &[u8], raw: String) -> Option<TabletData> {
+    pub(crate) fn parse_aux(data: &[u8]) -> Option<TabletData> {
         match data {
-            [_, _, _, _, b4, ..] => Some(TabletData {
-                status: "Aux".to_string(),
-                buttons: *b4,
-                raw_data: raw,
-                is_connected: true,
-                ..Default::default()
-            }),
+            [_, _, _, _, b4, ..] => {
+                let mut tablet_data = TabletData {
+                    status: crate::drivers::TabletStatus::Aux,
+                    buttons: *b4,
+                    is_connected: true,
+                    ..Default::default()
+                };
+                tablet_data.set_raw(data);
+                Some(tablet_data)
+            }
             _ => None,
         }
     }
@@ -136,12 +146,7 @@ impl IntuosV1Parser {
 
 impl ReportParser for IntuosV1Parser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
-        let raw = data
-            .iter()
-            .map(|b| format!("{b:02X}"))
-            .collect::<Vec<_>>()
-            .join(" ");
-        self.parse_internal(data, raw)
+        self.parse_internal(data)
     }
 }
 
@@ -166,14 +171,8 @@ impl Default for WacomDriverIntuosV1Parser {
 
 impl ReportParser for WacomDriverIntuosV1Parser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
-        let raw = data
-            .iter()
-            .map(|b| format!("{b:02X}"))
-            .collect::<Vec<_>>()
-            .join(" ");
-
         match data {
-            [_, rest @ ..] => self.inner.parse_internal(rest, raw),
+            [_, rest @ ..] => self.inner.parse_internal(rest),
             _ => None,
         }
     }
@@ -200,7 +199,7 @@ mod tests {
         let result = parser
             .parse(&data)
             .ok_or("Intuos V1 parser failed to parse tablet report")?;
-        assert_eq!(result.status, "Contact");
+        assert_eq!(result.status, crate::drivers::TabletStatus::Contact);
         Ok(())
     }
 }

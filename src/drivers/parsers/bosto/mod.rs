@@ -5,12 +5,6 @@ pub struct BostoParser;
 
 impl ReportParser for BostoParser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
-        let raw = data
-            .iter()
-            .map(|b| format!("{b:02X}"))
-            .collect::<Vec<_>>()
-            .join(" ");
-
         match data {
             [_, b1, x_lo, x_hi, y_lo, y_hi, p_lo, p_hi, ..] if *b1 != 0x00 => {
                 let x = u16::from_le_bytes([*x_lo, *x_hi]);
@@ -25,20 +19,25 @@ impl ReportParser for BostoParser {
                     buttons |= 1 << 1;
                 }
 
-                let status = if pressure > 0 { "Contact" } else { "Hover" };
+                let status = if pressure > 0 {
+                    crate::drivers::TabletStatus::Contact
+                } else {
+                    crate::drivers::TabletStatus::Hover
+                };
 
-                Some(TabletData {
-                    status: status.to_string(),
+                let mut tablet_data = TabletData {
+                    status,
                     x,
                     y,
                     pressure,
                     tilt_x: 0,
                     tilt_y: 0,
                     buttons,
-                    raw_data: raw,
                     is_connected: true,
                     ..Default::default()
-                })
+                };
+                tablet_data.set_raw(data);
+                Some(tablet_data)
             }
             _ => None,
         }
@@ -56,7 +55,7 @@ mod tests {
         let report = parser
             .parse(&data)
             .ok_or("Bosto parser failed to parse contact packet")?;
-        assert_eq!(report.status, "Contact");
+        assert_eq!(report.status, crate::drivers::TabletStatus::Contact);
         assert_eq!(report.x, 258);
         assert_eq!(report.y, 772);
         assert_eq!(report.pressure, 1);

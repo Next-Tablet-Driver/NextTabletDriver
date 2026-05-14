@@ -35,7 +35,10 @@ pub fn render_debugger_panel(snapshot: &UiSnapshot, displayed_hz: f32, ui: &mut 
             y_pct.mul_add(rect.height(), rect.top()),
         );
 
-        if tablet_data.status == "Contact" || tablet_data.pressure > 0 {
+        let is_down =
+            tablet_data.status == crate::drivers::TabletStatus::Contact || tablet_data.pressure > 0;
+
+        if is_down {
             ui.painter().circle_filled(
                 dot_pos,
                 10.0,
@@ -71,7 +74,7 @@ pub fn render_debugger_panel(snapshot: &UiSnapshot, displayed_hz: f32, ui: &mut 
                 status_card(
                     ui,
                     "REPORT STATUS",
-                    &tablet_data.status,
+                    tablet_data.status.as_str(),
                     if ui.visuals().dark_mode {
                         egui::Color32::LIGHT_GREEN
                     } else {
@@ -147,7 +150,7 @@ pub fn render_debugger_panel(snapshot: &UiSnapshot, displayed_hz: f32, ui: &mut 
 
             ui.label(egui::RichText::new("Raw Tablet Stream").weak().size(11.0));
             ui.label(
-                egui::RichText::new(&tablet_data.raw_data)
+                egui::RichText::new(tablet_data.raw_hex())
                     .code()
                     .size(12.0)
                     .color(ui.visuals().text_color()),
@@ -160,9 +163,10 @@ pub fn render_debugger_panel(snapshot: &UiSnapshot, displayed_hz: f32, ui: &mut 
                     .weak()
                     .size(11.0),
             );
-            let mut binary_string = String::with_capacity(tablet_data.raw_data.len() * 3);
-            for (i, hex) in tablet_data.raw_data.split_whitespace().enumerate() {
-                if let Ok(byte) = u8::from_str_radix(hex, 16) {
+
+            let mut binary_string = String::with_capacity(usize::from(tablet_data.raw_len) * 9);
+            if let Some(raw_slice) = tablet_data.raw_data.get(..tablet_data.raw_len as usize) {
+                for (i, &byte) in raw_slice.iter().enumerate() {
                     use std::fmt::Write;
                     if i > 0 {
                         let _ = write!(&mut binary_string, " ");

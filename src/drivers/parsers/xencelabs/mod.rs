@@ -5,21 +5,18 @@ pub struct XenceLabsParser;
 
 impl ReportParser for XenceLabsParser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
-        let raw = data
-            .iter()
-            .map(|b| format!("{b:02X}"))
-            .collect::<Vec<_>>()
-            .join(" ");
-
         match data {
             // Aux Report
-            [_, report_byte, b2, ..] if (*report_byte & 0xF0) == 0xF0 => Some(TabletData {
-                status: "Aux".to_string(),
-                buttons: *b2,
-                raw_data: raw,
-                is_connected: true,
-                ..Default::default()
-            }),
+            [_, report_byte, b2, ..] if (*report_byte & 0xF0) == 0xF0 => {
+                let mut tablet_data = TabletData {
+                    status: crate::drivers::TabletStatus::Aux,
+                    buttons: *b2,
+                    is_connected: true,
+                    ..Default::default()
+                };
+                tablet_data.set_raw(data);
+                Some(tablet_data)
+            }
             // Tablet Report
             [
                 _,
@@ -51,10 +48,14 @@ impl ReportParser for XenceLabsParser {
 
                 let eraser = (*report_byte & 0x40) != 0;
 
-                let status = if pressure > 0 { "Contact" } else { "Hover" };
+                let status = if pressure > 0 {
+                    crate::drivers::TabletStatus::Contact
+                } else {
+                    crate::drivers::TabletStatus::Hover
+                };
 
-                Some(TabletData {
-                    status: status.to_string(),
+                let mut tablet_data = TabletData {
+                    status,
                     x,
                     y,
                     pressure,
@@ -62,10 +63,11 @@ impl ReportParser for XenceLabsParser {
                     tilt_y: t_y.cast_signed(),
                     buttons,
                     eraser,
-                    raw_data: raw,
                     is_connected: true,
                     ..Default::default()
-                })
+                };
+                tablet_data.set_raw(data);
+                Some(tablet_data)
             }
             _ => None,
         }
@@ -83,7 +85,7 @@ mod tests {
         let report = parser
             .parse(&data)
             .ok_or("XenceLabs parser failed to parse tablet packet")?;
-        assert_eq!(report.status, "Contact");
+        assert_eq!(report.status, crate::drivers::TabletStatus::Contact);
         assert_eq!(report.x, 258);
         assert_eq!(report.pressure, 1);
         assert_eq!(report.buttons, 7);

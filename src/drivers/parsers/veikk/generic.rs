@@ -1,18 +1,19 @@
 use crate::drivers::TabletData;
 use crate::drivers::parsers::ReportParser;
 
-fn parse_veikk_aux(data: &[u8], raw: String, offset: usize) -> TabletData {
+fn parse_veikk_aux(data: &[u8], offset: usize) -> TabletData {
     let buttons = data.get(offset).copied().unwrap_or(0);
-    TabletData {
-        status: "Aux".to_string(),
+    let mut tablet_data = TabletData {
+        status: crate::drivers::TabletStatus::Aux,
         buttons,
-        raw_data: raw,
         is_connected: true,
         ..Default::default()
-    }
+    };
+    tablet_data.set_raw(data);
+    tablet_data
 }
 
-fn parse_veikk_tablet(data: &[u8], raw: String, has_tilt: bool) -> Option<TabletData> {
+fn parse_veikk_tablet(data: &[u8], has_tilt: bool) -> Option<TabletData> {
     match data {
         [
             _,
@@ -44,23 +45,28 @@ fn parse_veikk_tablet(data: &[u8], raw: String, has_tilt: bool) -> Option<Tablet
             };
 
             let status = if (*b2 & 0x20) != 0 {
-                if pressure > 0 { "Contact" } else { "Hover" }
+                if pressure > 0 {
+                    crate::drivers::TabletStatus::Contact
+                } else {
+                    crate::drivers::TabletStatus::Hover
+                }
             } else {
-                "Out of Range"
+                crate::drivers::TabletStatus::OutOfRange
             };
 
-            Some(TabletData {
-                status: status.to_string(),
+            let mut tablet_data = TabletData {
+                status,
                 x: x as u16,
                 y: y as u16,
                 pressure,
                 tilt_x,
                 tilt_y,
                 buttons,
-                raw_data: raw,
                 is_connected: true,
                 ..Default::default()
-            })
+            };
+            tablet_data.set_raw(data);
+            Some(tablet_data)
         }
         _ => None,
     }
@@ -70,16 +76,10 @@ pub struct VeikkParser;
 
 impl ReportParser for VeikkParser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
-        let raw = data
-            .iter()
-            .map(|b| format!("{b:02X}"))
-            .collect::<Vec<_>>()
-            .join(" ");
-
         match data {
             [_, 0x43, ..] => None, // Touchpad ignore
-            [_, _, b2, ..] if (*b2 & 0x20) != 0 => parse_veikk_tablet(data, raw, false),
-            [_, _, 0x01, ..] => Some(parse_veikk_aux(data, raw, 4)),
+            [_, _, b2, ..] if (*b2 & 0x20) != 0 => parse_veikk_tablet(data, false),
+            [_, _, 0x01, ..] => Some(parse_veikk_aux(data, 4)),
             _ => None,
         }
     }
@@ -89,16 +89,10 @@ pub struct VeikkV1Parser;
 
 impl ReportParser for VeikkV1Parser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
-        let raw = data
-            .iter()
-            .map(|b| format!("{b:02X}"))
-            .collect::<Vec<_>>()
-            .join(" ");
-
         match data {
-            [0x03, ..] => Some(parse_veikk_aux(data, raw, 1)),
+            [0x03, ..] => Some(parse_veikk_aux(data, 1)),
             [_, 0x41, 0xC0, ..] => None, // Out of Range
-            [_, 0x41, ..] => parse_veikk_tablet(data, raw, false),
+            [_, 0x41, ..] => parse_veikk_tablet(data, false),
             _ => None,
         }
     }
@@ -108,16 +102,10 @@ pub struct VeikkA15Parser;
 
 impl ReportParser for VeikkA15Parser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
-        let raw = data
-            .iter()
-            .map(|b| format!("{b:02X}"))
-            .collect::<Vec<_>>()
-            .join(" ");
-
         match data {
             [_, 0x43, ..] => None, // Touchpad ignore
-            [_, _, b2, ..] if (*b2 & 0x20) != 0 => parse_veikk_tablet(data, raw, false),
-            [_, _, 0x01, ..] => Some(parse_veikk_aux(data, raw, 4)),
+            [_, _, b2, ..] if (*b2 & 0x20) != 0 => parse_veikk_tablet(data, false),
+            [_, _, 0x01, ..] => Some(parse_veikk_aux(data, 4)),
             _ => None,
         }
     }
@@ -127,16 +115,10 @@ pub struct VeikkTiltParser;
 
 impl ReportParser for VeikkTiltParser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
-        let raw = data
-            .iter()
-            .map(|b| format!("{b:02X}"))
-            .collect::<Vec<_>>()
-            .join(" ");
-
         match data {
             [_, 0x41, 0xC0, ..] | [_, 0x43, ..] => None, // Out of Range or Touchpad ignore
-            [_, 0x41, ..] => parse_veikk_tablet(data, raw, true),
-            [_, 0x42, ..] => Some(parse_veikk_aux(data, raw, 4)),
+            [_, 0x41, ..] => parse_veikk_tablet(data, true),
+            [_, 0x42, ..] => Some(parse_veikk_aux(data, 4)),
             _ => None,
         }
     }
@@ -155,7 +137,7 @@ mod tests {
         let report = parser
             .parse(&data)
             .ok_or("Veikk parser failed to parse tablet packet")?;
-        assert_eq!(report.status, "Contact");
+        assert_eq!(report.status, crate::drivers::TabletStatus::Contact);
         assert_eq!(report.x, 258);
         assert_eq!(report.pressure, 1);
         Ok(())

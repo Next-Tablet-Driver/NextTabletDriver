@@ -27,25 +27,17 @@ pub fn parse(data: &[u8]) -> Option<TabletData> {
             let buttons = (*b1 >> 1) & 0x03;
             let eraser = (*b1 & 0x08) != 0;
 
-            let raw = data
-                .iter()
-                .take(14)
-                .map(|b| format!("{b:02X}"))
-                .collect::<Vec<_>>()
-                .join(" ");
-
             let status = match b1 {
-                0xA0 => "Hover",
-                0xA1 => "Contact",
-                0xC0 | 0x00 => "Out of Range",
-                _ if (*b1 & 0x80) != 0 => "Out of Range",
-                _ => "Active",
-            }
-            .to_string();
+                0xA0 => crate::drivers::TabletStatus::Hover,
+                0xA1 => crate::drivers::TabletStatus::Contact,
+                0xC0 | 0x00 => crate::drivers::TabletStatus::OutOfRange,
+                _ if (*b1 & 0x80) != 0 => crate::drivers::TabletStatus::OutOfRange,
+                _ => crate::drivers::TabletStatus::Active,
+            };
 
-            let is_connected = status != "Out of Range";
+            let is_connected = status != crate::drivers::TabletStatus::OutOfRange;
 
-            Some(TabletData {
+            let mut tablet_data = TabletData {
                 status,
                 x,
                 y,
@@ -55,10 +47,11 @@ pub fn parse(data: &[u8]) -> Option<TabletData> {
                 buttons,
                 eraser,
                 hover_distance: 0,
-                raw_data: raw,
                 is_connected,
                 ..Default::default()
-            })
+            };
+            tablet_data.set_raw(data);
+            Some(tablet_data)
         }
         _ => None,
     }

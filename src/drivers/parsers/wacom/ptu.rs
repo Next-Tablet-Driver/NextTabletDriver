@@ -5,12 +5,6 @@ pub struct PTUParser;
 
 impl ReportParser for PTUParser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
-        let raw = data
-            .iter()
-            .map(|b| format!("{b:02X}"))
-            .collect::<Vec<_>>()
-            .join(" ");
-
         match data {
             [0x02, b1, x_lo, x_hi, y_lo, y_hi, p_lo, p_hi, ..] => {
                 let x = u16::from_le_bytes([*x_lo, *x_hi]);
@@ -27,19 +21,24 @@ impl ReportParser for PTUParser {
 
                 let eraser = (*b1 & 0x04) != 0;
 
-                let status = if pressure > 0 { "Contact" } else { "Hover" };
+                let status = if pressure > 0 {
+                    crate::drivers::TabletStatus::Contact
+                } else {
+                    crate::drivers::TabletStatus::Hover
+                };
 
-                Some(TabletData {
-                    status: status.to_string(),
+                let mut tablet_data = TabletData {
+                    status,
                     x,
                     y,
                     pressure,
                     buttons,
                     eraser,
-                    raw_data: raw,
                     is_connected: true,
                     ..Default::default()
-                })
+                };
+                tablet_data.set_raw(data);
+                Some(tablet_data)
             }
             _ => None,
         }

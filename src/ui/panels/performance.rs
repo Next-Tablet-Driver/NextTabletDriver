@@ -168,7 +168,10 @@ pub fn render_performance_panel(
                     (max_w.max(0.0)) as u32,
                     (max_h.max(0.0)) as u32
                 ));
-                ui.label(format!("Current Pen Status: {}", tablet_data.status));
+                ui.label(format!(
+                    "Current Pen Status: {}",
+                    tablet_data.status.as_str()
+                ));
                 ui.label(format!(
                     "Connected: {}",
                     if tablet_data.is_connected {
@@ -215,7 +218,7 @@ pub fn render_performance_panel(
                 ui.add_space(10.0);
                 ui.label(egui::RichText::new("RAW BYTES").weak().size(9.0));
                 ui.label(
-                    egui::RichText::new(&tablet_data.raw_data)
+                    egui::RichText::new(tablet_data.raw_hex())
                         .code()
                         .size(11.0)
                         .color(egui::Color32::LIGHT_GRAY),

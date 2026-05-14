@@ -24,16 +24,16 @@ impl Default for Intuos4Parser {
 }
 
 impl Intuos4Parser {
-    fn parse_internal(&self, data: &[u8], raw: String) -> Option<TabletData> {
+    fn parse_internal(&self, data: &[u8]) -> Option<TabletData> {
         match data {
-            [0x02, 0xEC | 0xAC, ..] => Self::parse_mouse(data, raw),
-            [0x02 | 0x10, ..] => self.inner_v1.parse_internal(data, raw),
-            [0x0C, ..] => Self::parse_aux(data, raw),
+            [0x02, 0xEC | 0xAC, ..] => Self::parse_mouse(data),
+            [0x02 | 0x10, ..] => self.inner_v1.parse_internal(data),
+            [0x0C, ..] => Self::parse_aux(data),
             _ => None,
         }
     }
 
-    fn parse_mouse(data: &[u8], raw: String) -> Option<TabletData> {
+    fn parse_mouse(data: &[u8]) -> Option<TabletData> {
         match data {
             [_, _, b2, b3, b4, b5, b6, _, _, b9, ..] => {
                 let x = ((u16::from(*b2) << 8) | u16::from(*b3)) << 1 | u16::from((*b9 >> 1) & 1);
@@ -55,29 +55,33 @@ impl Intuos4Parser {
                     buttons |= 1 << 4;
                 }
 
-                Some(TabletData {
-                    status: "Mouse".to_string(),
+                let mut tablet_data = TabletData {
+                    status: crate::drivers::TabletStatus::Mouse,
                     x,
                     y,
                     buttons,
-                    raw_data: raw,
                     is_connected: true,
                     ..Default::default()
-                })
+                };
+                tablet_data.set_raw(data);
+                Some(tablet_data)
             }
             _ => None,
         }
     }
 
-    fn parse_aux(data: &[u8], raw: String) -> Option<TabletData> {
+    fn parse_aux(data: &[u8]) -> Option<TabletData> {
         match data {
-            [_, _, _, b3, ..] => Some(TabletData {
-                status: "Aux".to_string(),
-                buttons: *b3,
-                raw_data: raw,
-                is_connected: true,
-                ..Default::default()
-            }),
+            [_, _, _, b3, ..] => {
+                let mut tablet_data = TabletData {
+                    status: crate::drivers::TabletStatus::Aux,
+                    buttons: *b3,
+                    is_connected: true,
+                    ..Default::default()
+                };
+                tablet_data.set_raw(data);
+                Some(tablet_data)
+            }
             _ => None,
         }
     }
@@ -85,12 +89,7 @@ impl Intuos4Parser {
 
 impl ReportParser for Intuos4Parser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
-        let raw = data
-            .iter()
-            .map(|b| format!("{b:02X}"))
-            .collect::<Vec<_>>()
-            .join(" ");
-        self.parse_internal(data, raw)
+        self.parse_internal(data)
     }
 }
 
@@ -115,14 +114,8 @@ impl Default for WacomDriverIntuos4Parser {
 
 impl ReportParser for WacomDriverIntuos4Parser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
-        let raw = data
-            .iter()
-            .map(|b| format!("{b:02X}"))
-            .collect::<Vec<_>>()
-            .join(" ");
-
         match data {
-            [_, rest @ ..] => self.inner.parse_internal(rest, raw),
+            [_, rest @ ..] => self.inner.parse_internal(rest),
             _ => None,
         }
     }

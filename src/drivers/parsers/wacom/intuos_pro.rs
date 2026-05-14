@@ -24,23 +24,26 @@ impl Default for IntuosProParser {
 }
 
 impl IntuosProParser {
-    fn parse_internal(&self, data: &[u8], raw: String) -> Option<TabletData> {
+    fn parse_internal(&self, data: &[u8]) -> Option<TabletData> {
         match data {
-            [0x02 | 0x10, ..] => self.inner_v1.parse_internal(data, raw),
-            [0x03, ..] => Self::parse_aux(data, raw),
+            [0x02 | 0x10, ..] => self.inner_v1.parse_internal(data),
+            [0x03, ..] => Self::parse_aux(data),
             _ => None,
         }
     }
 
-    fn parse_aux(data: &[u8], raw: String) -> Option<TabletData> {
+    fn parse_aux(data: &[u8]) -> Option<TabletData> {
         match data {
-            [_, _, _, _, b4, ..] => Some(TabletData {
-                status: "Aux".to_string(),
-                buttons: *b4,
-                raw_data: raw,
-                is_connected: true,
-                ..Default::default()
-            }),
+            [_, _, _, _, b4, ..] => {
+                let mut tablet_data = TabletData {
+                    status: crate::drivers::TabletStatus::Aux,
+                    buttons: *b4,
+                    is_connected: true,
+                    ..Default::default()
+                };
+                tablet_data.set_raw(data);
+                Some(tablet_data)
+            }
             _ => None,
         }
     }
@@ -48,12 +51,7 @@ impl IntuosProParser {
 
 impl ReportParser for IntuosProParser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
-        let raw = data
-            .iter()
-            .map(|b| format!("{b:02X}"))
-            .collect::<Vec<_>>()
-            .join(" ");
-        self.parse_internal(data, raw)
+        self.parse_internal(data)
     }
 }
 
@@ -78,14 +76,8 @@ impl Default for WacomDriverIntuosProParser {
 
 impl ReportParser for WacomDriverIntuosProParser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
-        let raw = data
-            .iter()
-            .map(|b| format!("{b:02X}"))
-            .collect::<Vec<_>>()
-            .join(" ");
-
         match data {
-            [_, rest @ ..] => self.inner.parse_internal(rest, raw),
+            [_, rest @ ..] => self.inner.parse_internal(rest),
             _ => None,
         }
     }
