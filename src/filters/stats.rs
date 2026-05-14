@@ -68,7 +68,10 @@ impl SpeedStatsFilter {
                     let msg = serde_json::json!({
                         "handspeed": speed,
                         "total_distance": total_dist,
-                        "timestamp": Instant::now().elapsed().as_millis()
+                        "timestamp": std::time::SystemTime::now()
+                            .duration_since(std::time::UNIX_EPOCH)
+                            .unwrap_or_default()
+                            .as_millis()
                     })
                     .to_string();
 
