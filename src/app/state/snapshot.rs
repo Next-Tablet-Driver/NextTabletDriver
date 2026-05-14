@@ -22,13 +22,21 @@ impl UiSnapshot {
     pub fn capture(shared: &SharedState) -> Self {
         use std::sync::atomic::Ordering;
 
-        let device = shared.device_state.read().unwrap_or_log("device_state").clone();
+        let device = shared
+            .device_state
+            .read()
+            .unwrap_or_log("device_state")
+            .clone();
 
         Self {
             tablet_name: device.name,
             tablet_vid: device.vid,
             tablet_pid: device.pid,
-            tablet_data: shared.tablet_data.read().unwrap_or_log("tablet_data").clone(),
+            tablet_data: shared
+                .tablet_data
+                .read()
+                .unwrap_or_log("tablet_data")
+                .clone(),
             config: shared.config.read().unwrap_or_log("config").clone(),
             physical_size: device.physical_size,
             hardware_size: device.hardware_size,

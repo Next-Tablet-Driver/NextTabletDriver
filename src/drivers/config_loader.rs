@@ -1,7 +1,5 @@
-use crate::drivers::config::{
-    DigitizerIdentifier, TabletConfiguration,
-};
-use include_dir::{include_dir, Dir, DirEntry};
+use crate::drivers::config::{DigitizerIdentifier, TabletConfiguration};
+use include_dir::{Dir, DirEntry, include_dir};
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::Path;
@@ -21,7 +19,8 @@ fn load_and_index_configurations() -> ConfigIndex {
 
     for config in configs {
         for digitizer in &config.digitizer_identifiers {
-            index.entry((digitizer.vendor_id, digitizer.product_id))
+            index
+                .entry((digitizer.vendor_id, digitizer.product_id))
                 .or_insert_with(Vec::new)
                 .push((config.clone(), digitizer.clone()));
         }

@@ -12,29 +12,34 @@ pub struct BambooTabletReport {
 }
 
 impl BambooTabletReport {
-    pub fn new(report: &[u8]) -> Self {
-        let x = u16::from_le_bytes([report[2], report[3]]);
-        let y = u16::from_le_bytes([report[4], report[5]]);
+    pub fn new(report: &[u8]) -> Option<Self> {
+        match report {
+            [_, b1, x_lo, x_hi, y_lo, y_hi, p_lo, p_hi_aux, ..] => {
+                let x = u16::from_le_bytes([*x_lo, *x_hi]);
+                let y = u16::from_le_bytes([*y_lo, *y_hi]);
 
-        let pressure = if (report[1] & 0x01) != 0 {
-            (report[6] as u16) | (((report[7] & 0x03) as u16) << 8)
-        } else {
-            0
-        };
+                let pressure = if (*b1 & 0x01) != 0 {
+                    (*p_lo as u16) | (((*p_hi_aux & 0x03) as u16) << 8)
+                } else {
+                    0
+                };
 
-        Self {
-            x,
-            y,
-            pressure,
-            eraser: (report[1] & 0x20) != 0,
-            near_proximity: (report[1] & 0x80) != 0,
-            buttons: (report[1] >> 1) & 0x03,
-            aux_buttons: [
-                (report[7] & 0x08) != 0,
-                (report[7] & 0x10) != 0,
-                (report[7] & 0x20) != 0,
-                (report[7] & 0x40) != 0,
-            ],
+                Some(Self {
+                    x,
+                    y,
+                    pressure,
+                    eraser: (*b1 & 0x20) != 0,
+                    near_proximity: (*b1 & 0x80) != 0,
+                    buttons: (*b1 >> 1) & 0x03,
+                    aux_buttons: [
+                        (*p_hi_aux & 0x08) != 0,
+                        (*p_hi_aux & 0x10) != 0,
+                        (*p_hi_aux & 0x20) != 0,
+                        (*p_hi_aux & 0x40) != 0,
+                    ],
+                })
+            }
+            _ => None,
         }
     }
 }
@@ -43,19 +48,15 @@ pub struct BambooParser;
 
 impl ReportParser for BambooParser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
-        if data.len() < 8 {
-            return None;
-        }
+        let raw = data
+            .iter()
+            .map(|b| format!("{:02X}", b))
+            .collect::<Vec<_>>()
+            .join(" ");
 
-        match data[0] {
-            0x02 => {
-                let report = BambooTabletReport::new(data);
-                let raw = data
-                    .iter()
-                    .map(|b| format!("{:02X}", b))
-                    .collect::<Vec<_>>()
-                    .join(" ");
-
+        match data {
+            [0x02, ..] => {
+                let report = BambooTabletReport::new(data)?;
                 Some(TabletData {
                     status: if report.pressure > 0 {
                         "Contact".to_string()

@@ -71,8 +71,10 @@ impl Filter for DevocubAntichatter {
         let mut out_y = avg_y * conf.antichatter_multiplier + conf.antichatter_offset_y / 100.0;
 
         // 4. Prediction (Simplified)
-        if conf.prediction_enabled && self.history.len() >= 2 {
-            let (px, py) = self.history[self.history.len() - 2];
+        if conf.prediction_enabled
+            && self.history.len() >= 2
+            && let Some(&(px, py)) = self.history.iter().rev().nth(1)
+        {
             let vx = x - px;
             let vy = y - py;
 

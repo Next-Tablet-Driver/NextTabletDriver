@@ -1,10 +1,10 @@
+use crate::engine::state::WriteRecoverExt;
+use crossbeam_channel::{Sender, select, unbounded};
 use std::net::{TcpListener, TcpStream};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread::{self, JoinHandle};
-use std::sync::atomic::{AtomicBool, Ordering};
-use crossbeam_channel::{Sender, unbounded, select};
-use tungstenite::{accept, WebSocket, Message};
-use crate::engine::state::WriteRecoverExt;
+use tungstenite::{Message, WebSocket, accept};
 
 pub struct StatsServer {
     shutdown_flag: Arc<AtomicBool>,
@@ -16,15 +16,17 @@ impl StatsServer {
     pub fn start(ip: String, port: u16) -> Result<Self, String> {
         let addr = format!("{ip}:{port}");
         let listener = TcpListener::bind(&addr).map_err(|e| format!("Failed to bind: {e}"))?;
-        listener.set_nonblocking(true).map_err(|e| format!("Failed to set non-blocking: {e}"))?;
+        listener
+            .set_nonblocking(true)
+            .map_err(|e| format!("Failed to set non-blocking: {e}"))?;
 
         let shutdown_flag = Arc::new(AtomicBool::new(false));
         let (tx, rx) = unbounded::<(f32, f32)>();
-        
+
         let shutdown_server = Arc::clone(&shutdown_flag);
         let handle = thread::spawn(move || {
             let clients = Arc::new(Mutex::new(Vec::new()));
-            
+
             // Broadcast loop
             let clients_broadcast = Arc::clone(&clients);
             let shutdown_broadcast = Arc::clone(&shutdown_server);
@@ -58,16 +60,14 @@ impl StatsServer {
             // Accept loop
             while !shutdown_server.load(Ordering::SeqCst) {
                 match listener.accept() {
-                    Ok((stream, _)) => {
-                        match accept(stream) {
-                            Ok(ws) => {
-                                let mut clients = clients.lock().unwrap_or_reset("stats_clients");
-                                clients.push(ws);
-                                log::debug!(target: "Stats", "New WebSocket client connected");
-                            }
-                            Err(e) => log::error!(target: "Stats", "WebSocket accept error: {e}"),
+                    Ok((stream, _)) => match accept(stream) {
+                        Ok(ws) => {
+                            let mut clients = clients.lock().unwrap_or_reset("stats_clients");
+                            clients.push(ws);
+                            log::debug!(target: "Stats", "New WebSocket client connected");
                         }
-                    }
+                        Err(e) => log::error!(target: "Stats", "WebSocket accept error: {e}"),
+                    },
                     Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
                         thread::sleep(std::time::Duration::from_millis(100));
                     }

@@ -51,28 +51,28 @@ impl Version {
     pub fn parse(s: &str) -> Option<Self> {
         let s = s.trim_start_matches('v');
         let parts: Vec<&str> = s.split('.').collect();
-        if parts.len() != 4 {
-            return None;
+        match parts.as_slice() {
+            [major_s, year_s, ddmm, patch_s] => {
+                let major = major_s.parse().ok()?;
+                let year = year_s.parse().ok()?;
+
+                if ddmm.len() != 4 {
+                    return None;
+                }
+                let day = ddmm.get(0..2)?.parse().ok()?;
+                let month = ddmm.get(2..4)?.parse().ok()?;
+
+                let patch = patch_s.parse().ok()?;
+
+                Some(Self {
+                    major,
+                    year,
+                    month,
+                    day,
+                    patch,
+                })
+            }
+            _ => None,
         }
-
-        let major = parts[0].parse().ok()?;
-        let year = parts[1].parse().ok()?;
-
-        let ddmm = parts[2];
-        if ddmm.len() != 4 {
-            return None;
-        }
-        let day = ddmm[0..2].parse().ok()?;
-        let month = ddmm[2..4].parse().ok()?;
-
-        let patch = parts[3].parse().ok()?;
-
-        Some(Self {
-            major,
-            year,
-            month,
-            day,
-            patch,
-        })
     }
 }

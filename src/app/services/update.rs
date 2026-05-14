@@ -1,5 +1,5 @@
 use crate::app::autoupdate::{self, UpdateStatus};
-use crossbeam_channel::{bounded, Receiver, Sender};
+use crossbeam_channel::{Receiver, Sender, bounded};
 
 pub struct UpdateService {
     pub receiver: Receiver<UpdateStatus>,

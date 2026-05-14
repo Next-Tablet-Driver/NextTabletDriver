@@ -74,7 +74,9 @@ pub fn run_manager(
                 let mut drain_buf = [0u8; 64];
                 let drain_deadline = Instant::now() + Duration::from_millis(100);
                 while Instant::now() < drain_deadline {
-                    if shared.shutdown_requested.load(Ordering::Relaxed) { break; }
+                    if shared.shutdown_requested.load(Ordering::Relaxed) {
+                        break;
+                    }
                     match device.read_timeout(&mut drain_buf, 10) {
                         Ok(0) | Err(_) => break,
                         Ok(_) => continue,
@@ -183,8 +185,10 @@ fn on_device_connected(
 
 fn on_disconnected(shared: &Arc<SharedState>) {
     log::info!(target: "HID", "Device disconnected, resetting shared state");
-    *shared.device_state.write().unwrap_or_reset("device_state") = crate::engine::state::DeviceState::default();
-    *shared.tablet_data.write().unwrap_or_reset("tablet_data") = crate::drivers::TabletData::default();
+    *shared.device_state.write().unwrap_or_reset("device_state") =
+        crate::engine::state::DeviceState::default();
+    *shared.tablet_data.write().unwrap_or_reset("tablet_data") =
+        crate::drivers::TabletData::default();
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -210,23 +214,26 @@ fn run_polling_loop(
         }
 
         let read_start = Instant::now();
-        match device.read_timeout(&mut buf, 500) { // Reduced from 1000 to 500 for faster shutdown check
+        match device.read_timeout(&mut buf, 500) {
+            // Reduced from 1000 to 500 for faster shutdown check
             Ok(len) if len > 0 => {
                 let read_duration = read_start.elapsed();
                 if let Err(e) = panic::catch_unwind(panic::AssertUnwindSafe(|| {
-                    process_packet(
-                        &buf[..len],
-                        read_start,
-                        read_duration,
-                        driver,
-                        shared,
-                        tablet_sender,
-                        pipeline,
-                        injector,
-                        filters,
-                        local_config,
-                        &mut last_stats_update,
-                    );
+                    if let Some(slice) = buf.get(..len) {
+                        process_packet(
+                            slice,
+                            read_start,
+                            read_duration,
+                            driver,
+                            shared,
+                            tablet_sender,
+                            pipeline,
+                            injector,
+                            filters,
+                            local_config,
+                            &mut last_stats_update,
+                        );
+                    }
                     maybe_reload_config(
                         shared,
                         filters,

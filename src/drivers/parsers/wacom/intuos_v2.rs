@@ -19,91 +19,123 @@ impl Default for IntuosV2Parser {
 
 impl IntuosV2Parser {
     fn parse_internal(&self, data: &[u8], raw: String) -> Option<TabletData> {
-        match data[0] {
-            0x10 => self.parse_tablet(data, raw, false),
-            0x1E => self.parse_tablet(data, raw, true),
-            0x11 => self.parse_aux(data, raw),
+        match data {
+            [
+                0x10,
+                b1,
+                x_lo,
+                _,
+                x_hi,
+                y_lo,
+                _,
+                y_hi,
+                p_lo,
+                p_hi,
+                t_x,
+                t_y,
+                _,
+                _,
+                _,
+                _,
+                h_dist,
+                ..,
+            ] => {
+                let x = (*x_lo as u32) | ((*x_hi as u32) << 16);
+                let y = (*y_lo as u32) | ((*y_hi as u32) << 16);
+                let pressure = (*p_lo as u16) | ((*p_hi as u16) << 8);
+
+                let mut buttons: u8 = 0;
+                if (*b1 & 0x02) != 0 {
+                    buttons |= 1 << 0;
+                }
+                if (*b1 & 0x04) != 0 {
+                    buttons |= 1 << 1;
+                }
+                let eraser = (*b1 & 0x10) != 0;
+
+                let status = if pressure > 0 { "Contact" } else { "Hover" };
+
+                Some(TabletData {
+                    status: status.to_string(),
+                    x: x.min(0xFFFF) as u16,
+                    y: y.min(0xFFFF) as u16,
+                    pressure,
+                    tilt_x: *t_x as i8,
+                    tilt_y: *t_y as i8,
+                    buttons,
+                    eraser,
+                    hover_distance: *h_dist,
+                    raw_data: raw,
+                    is_connected: true,
+                    ..Default::default()
+                })
+            }
+            [
+                0x1E,
+                b1,
+                _,
+                x_lo,
+                _,
+                x_hi,
+                y_lo,
+                _,
+                y_hi,
+                p_lo,
+                p_hi,
+                t_x,
+                t_y,
+                ..,
+            ] => {
+                let x = (*x_lo as u32) | ((*x_hi as u32) << 16);
+                let y = (*y_lo as u32) | ((*y_hi as u32) << 16);
+                let pressure = (*p_lo as u16) | ((*p_hi as u16) << 8);
+
+                let mut buttons: u8 = 0;
+                if (*b1 & 0x02) != 0 {
+                    buttons |= 1 << 0;
+                }
+                if (*b1 & 0x04) != 0 {
+                    buttons |= 1 << 1;
+                }
+                if (*b1 & 0x08) != 0 {
+                    buttons |= 1 << 2;
+                }
+                let eraser = (*b1 & 0x10) != 0;
+
+                let status = if pressure > 0 { "Contact" } else { "Hover" };
+                // hover_distance for offset report is also at index 11 (t_x) in original code?
+                // data[11] was tx. Original code: let hover_distance = if offset { data[11] } else { data[16] };
+                // So h_dist is same as t_x here.
+
+                Some(TabletData {
+                    status: status.to_string(),
+                    x: x.min(0xFFFF) as u16,
+                    y: y.min(0xFFFF) as u16,
+                    pressure,
+                    tilt_x: *t_x as i8,
+                    tilt_y: *t_y as i8,
+                    buttons,
+                    eraser,
+                    hover_distance: *t_x,
+                    raw_data: raw,
+                    is_connected: true,
+                    ..Default::default()
+                })
+            }
+            [0x11, b1, ..] => Some(TabletData {
+                status: "Aux".to_string(),
+                buttons: *b1,
+                raw_data: raw,
+                is_connected: true,
+                ..Default::default()
+            }),
             _ => None,
         }
-    }
-
-    fn parse_tablet(&self, data: &[u8], raw: String, offset: bool) -> Option<TabletData> {
-        let min_len = if offset { 13 } else { 17 };
-        if data.len() < min_len {
-            return None;
-        }
-
-        let (x_low, x_high, y_low, y_high, p_low, p_high, tx, ty, btn_byte, eraser_bit) = if offset
-        {
-            (
-                data[3], data[5], data[6], data[8], data[9], data[10], data[11], data[12], data[2],
-                4,
-            )
-        } else {
-            (
-                data[2], data[4], data[5], data[7], data[8], data[9], data[10], data[11], data[1],
-                4,
-            )
-        };
-
-        let x = (x_low as u32) | ((x_high as u32) << 16);
-        let y = (y_low as u32) | ((y_high as u32) << 16);
-        let pressure = (p_low as u16) | ((p_high as u16) << 8);
-
-        let tilt_x = tx as i8;
-        let tilt_y = ty as i8;
-
-        let mut buttons: u8 = 0;
-        if (btn_byte & 0x02) != 0 {
-            buttons |= 1 << 0;
-        }
-        if (btn_byte & 0x04) != 0 {
-            buttons |= 1 << 1;
-        }
-        if offset && (btn_byte & 0x08) != 0 {
-            buttons |= 1 << 2;
-        }
-
-        let eraser = (btn_byte & (1 << eraser_bit)) != 0;
-        let status = if pressure > 0 { "Contact" } else { "Hover" };
-        let hover_distance = if offset { data[11] } else { data[16] };
-
-        Some(TabletData {
-            status: status.to_string(),
-            x: x.min(0xFFFF) as u16,
-            y: y.min(0xFFFF) as u16,
-            pressure,
-            tilt_x,
-            tilt_y,
-            buttons,
-            eraser,
-            hover_distance,
-            raw_data: raw,
-            is_connected: true,
-            ..Default::default()
-        })
-    }
-
-    fn parse_aux(&self, data: &[u8], raw: String) -> Option<TabletData> {
-        if data.len() < 2 {
-            return None;
-        }
-        let buttons = data[1];
-        Some(TabletData {
-            status: "Aux".to_string(),
-            buttons,
-            raw_data: raw,
-            is_connected: true,
-            ..Default::default()
-        })
     }
 }
 
 impl ReportParser for IntuosV2Parser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
-        if data.is_empty() {
-            return None;
-        }
         let raw = data
             .iter()
             .map(|b| format!("{:02X}", b))
@@ -133,15 +165,16 @@ impl Default for WacomDriverIntuosV2Parser {
 
 impl ReportParser for WacomDriverIntuosV2Parser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
-        if data.len() < 2 {
-            return None;
-        }
         let raw = data
             .iter()
             .map(|b| format!("{:02X}", b))
             .collect::<Vec<_>>()
             .join(" ");
-        self.inner.parse_internal(&data[1..], raw)
+
+        match data {
+            [_, rest @ ..] => self.inner.parse_internal(rest, raw),
+            _ => None,
+        }
     }
 }
 

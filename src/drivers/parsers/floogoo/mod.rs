@@ -5,55 +5,64 @@ pub struct FlooGooParser;
 
 impl ReportParser for FlooGooParser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
-        if data.len() < 12 || data[0] != 0x01 {
-            return None;
-        }
-
         let raw = data
             .iter()
             .map(|b| format!("{:02X}", b))
             .collect::<Vec<_>>()
             .join(" ");
 
-        // Bit 5 of data[1] is set when pen is in range
-        if (data[1] & 0x20) == 0 {
-            return None; // Out of range
+        match data {
+            [
+                0x01,
+                b1,
+                x_lo,
+                x_hi,
+                y_lo,
+                y_hi,
+                p_lo,
+                p_hi,
+                tx_lo,
+                tx_hi,
+                ty_lo,
+                ty_hi,
+                ..,
+            ] if (*b1 & 0x20) != 0 => {
+                let x = u16::from_le_bytes([*x_lo, *x_hi]);
+                let y = u16::from_le_bytes([*y_lo, *y_hi]);
+                let pressure = u16::from_le_bytes([*p_lo, *p_hi]);
+
+                let raw_tilt_x = i16::from_le_bytes([*tx_lo, *tx_hi]);
+                let raw_tilt_y = i16::from_le_bytes([*ty_lo, *ty_hi]);
+                let tilt_x = (raw_tilt_x as f32 * 0.01).round() as i8;
+                let tilt_y = (raw_tilt_y as f32 * 0.01).round() as i8;
+
+                let mut buttons: u8 = 0;
+                if (*b1 & 0x02) != 0 {
+                    buttons |= 1 << 0;
+                }
+                if (*b1 & 0x04) != 0 {
+                    buttons |= 1 << 1;
+                }
+
+                let eraser = (*b1 & 0x08) != 0;
+                let status = if pressure > 0 { "Contact" } else { "Hover" };
+
+                Some(TabletData {
+                    status: status.to_string(),
+                    x,
+                    y,
+                    pressure,
+                    tilt_x,
+                    tilt_y,
+                    buttons,
+                    eraser,
+                    raw_data: raw,
+                    is_connected: true,
+                    ..Default::default()
+                })
+            }
+            _ => None,
         }
-
-        let x = u16::from_le_bytes([data[2], data[3]]);
-        let y = u16::from_le_bytes([data[4], data[5]]);
-        let pressure = u16::from_le_bytes([data[6], data[7]]);
-
-        // Unit is [-9000..9000]x10^-3 degrees = [-90..=90] degrees. Cast direct to i8
-        let raw_tilt_x = i16::from_le_bytes([data[8], data[9]]);
-        let raw_tilt_y = i16::from_le_bytes([data[10], data[11]]);
-        let tilt_x = (raw_tilt_x as f32 * 0.01).round() as i8;
-        let tilt_y = (raw_tilt_y as f32 * 0.01).round() as i8;
-
-        let mut buttons: u8 = 0;
-        if (data[1] & 0x02) != 0 {
-            buttons |= 1 << 0;
-        }
-        if (data[1] & 0x04) != 0 {
-            buttons |= 1 << 1;
-        }
-
-        let eraser = (data[1] & 0x08) != 0;
-        let status = if pressure > 0 { "Contact" } else { "Hover" };
-
-        Some(TabletData {
-            status: status.to_string(),
-            x,
-            y,
-            pressure,
-            tilt_x,
-            tilt_y,
-            buttons,
-            eraser,
-            raw_data: raw,
-            is_connected: true,
-            ..Default::default()
-        })
     }
 }
 

@@ -19,7 +19,9 @@ pub fn download_and_install(
         .assets
         .iter()
         .find(|a| a.name == format!("{}.sha256", asset.name))
-        .ok_or("Security Error: No .sha256 checksum file found for this asset. Installation aborted.")?;
+        .ok_or(
+            "Security Error: No .sha256 checksum file found for this asset. Installation aborted.",
+        )?;
 
     log::info!(target: "Update::Download", "Found checksum asset: {}", checksum_asset.name);
     let resp = ureq::get(&checksum_asset.browser_download_url)
@@ -58,8 +60,10 @@ pub fn download_and_install(
             if bytes_read == 0 {
                 break;
             }
-            file.write_all(&buffer[..bytes_read])?;
-            hasher.update(&buffer[..bytes_read]);
+            if let Some(chunk) = buffer.get(..bytes_read) {
+                file.write_all(chunk)?;
+                hasher.update(chunk);
+            }
             downloaded += bytes_read as u64;
 
             if total_size > 0 {
@@ -95,6 +99,7 @@ pub fn download_and_install(
     match status {
         Ok(_) => {
             log::info!(target: "Update::Process", "Installer launched, exiting...");
+            #[allow(clippy::exit)]
             std::process::exit(0);
         }
         Err(e) => {

@@ -1,5 +1,5 @@
 use eframe::egui::Context;
-use tray_icon::{TrayIcon, TrayIconBuilder, TrayIconEvent, MouseButton};
+use tray_icon::{MouseButton, TrayIcon, TrayIconBuilder, TrayIconEvent};
 
 pub struct TrayService {
     pub tray_icon: Option<TrayIcon>,

@@ -117,48 +117,58 @@ pub fn render_console_panel(app: &mut TabletMapperApp, ui: &mut egui::Ui) {
                         })
                         .body(|body| {
                             body.rows(24.0, filtered_logs.len(), |mut row| {
-                                let log = &filtered_logs[row.index()];
+                                let index = row.index();
+                                if let Some(log) = filtered_logs.get(index) {
+                                    row.col(|ui| {
+                                        ui.label(
+                                            egui::RichText::new(&log.time).monospace().size(13.0),
+                                        );
+                                    });
 
-                                row.col(|ui| {
-                                    ui.label(egui::RichText::new(&log.time).monospace().size(13.0));
-                                });
+                                    row.col(|ui| {
+                                        let (color, text) = match log.level.as_str() {
+                                            "Error" => {
+                                                (egui::Color32::from_rgb(243, 139, 168), "ERROR")
+                                            }
+                                            "Warn" => {
+                                                (egui::Color32::from_rgb(249, 226, 175), "WARN")
+                                            }
+                                            "Info" => {
+                                                (egui::Color32::from_rgb(137, 180, 250), "INFO")
+                                            }
+                                            "Debug" => {
+                                                (egui::Color32::from_rgb(166, 172, 205), "DEBUG")
+                                            }
+                                            _ => (ui.visuals().text_color(), log.level.as_str()),
+                                        };
+                                        ui.label(
+                                            egui::RichText::new(text)
+                                                .color(color)
+                                                .strong()
+                                                .size(12.0),
+                                        );
+                                    });
 
-                                row.col(|ui| {
-                                    let (color, text) = match log.level.as_str() {
-                                        "Error" => {
-                                            (egui::Color32::from_rgb(243, 139, 168), "ERROR")
+                                    row.col(|ui| {
+                                        ui.label(
+                                            egui::RichText::new(&log.group)
+                                                .color(ui.visuals().strong_text_color())
+                                                .size(13.0),
+                                        );
+                                    });
+
+                                    row.col(|ui| {
+                                        let label = ui.label(
+                                            egui::RichText::new(&log.message)
+                                                .monospace()
+                                                .size(13.0)
+                                                .color(ui.visuals().text_color()),
+                                        );
+                                        if log.message.len() > 50 {
+                                            label.on_hover_text(&log.message);
                                         }
-                                        "Warn" => (egui::Color32::from_rgb(249, 226, 175), "WARN"),
-                                        "Info" => (egui::Color32::from_rgb(137, 180, 250), "INFO"),
-                                        "Debug" => {
-                                            (egui::Color32::from_rgb(166, 172, 205), "DEBUG")
-                                        }
-                                        _ => (ui.visuals().text_color(), log.level.as_str()),
-                                    };
-                                    ui.label(
-                                        egui::RichText::new(text).color(color).strong().size(12.0),
-                                    );
-                                });
-
-                                row.col(|ui| {
-                                    ui.label(
-                                        egui::RichText::new(&log.group)
-                                            .color(ui.visuals().strong_text_color())
-                                            .size(13.0),
-                                    );
-                                });
-
-                                row.col(|ui| {
-                                    let label = ui.label(
-                                        egui::RichText::new(&log.message)
-                                            .monospace()
-                                            .size(13.0)
-                                            .color(ui.visuals().text_color()),
-                                    );
-                                    if log.message.len() > 50 {
-                                        label.on_hover_text(&log.message);
-                                    }
-                                });
+                                    });
+                                }
                             });
                         });
                 });

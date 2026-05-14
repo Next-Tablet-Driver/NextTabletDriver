@@ -89,62 +89,58 @@ pub fn render_tablet_section(ui: &mut egui::Ui, config: &mut MappingConfig, snap
             };
 
             let rot_rad = config.active_area.rotation.to_radians();
-            let left_mid = egui::pos2(
-                (points[0].x + points[3].x) / 2.0,
-                (points[0].y + points[3].y) / 2.0,
-            );
-            let galley = ui.fonts_mut(|f| {
-                let text = format!("{:.2}", config.active_area.h)
+            if let [p0, p1, _, p3, ..] = points.as_slice() {
+                let left_mid = egui::pos2((p0.x + p3.x) / 2.0, (p0.y + p3.y) / 2.0);
+                let galley = ui.fonts_mut(|f| {
+                    let text = format!("{:.2}", config.active_area.h)
+                        .trim_end_matches('0')
+                        .trim_end_matches('.')
+                        .replace('.', ",")
+                        + "mm";
+                    f.layout_no_wrap(text, font_id.clone(), color)
+                });
+                ui.painter().add(egui::epaint::TextShape {
+                    pos: left_mid
+                        + egui::vec2(
+                            5.0 * rot_rad.cos() - 2.0 * rot_rad.sin(),
+                            5.0 * rot_rad.sin() + 2.0 * rot_rad.cos(),
+                        ),
+                    galley,
+                    underline: egui::Stroke::NONE,
+                    override_text_color: None,
+                    angle: -std::f32::consts::FRAC_PI_2 + rot_rad,
+                    fallback_color: color,
+                    opacity_factor: 1.0,
+                });
+
+                let ratio = if config.active_area.h == 0.0 {
+                    0.0
+                } else {
+                    config.active_area.w / config.active_area.h
+                };
+
+                ui.painter().text(
+                    egui::pos2(geo.aa_center_x, geo.aa_center_y + 12.0),
+                    egui::Align2::CENTER_CENTER,
+                    format!("{ratio:.4}").replace('.', ","),
+                    font_id.clone(),
+                    color,
+                );
+
+                let top_mid = egui::pos2((p0.x + p1.x) / 2.0, (p0.y + p1.y) / 2.0);
+                let text_w = format!("{:.2}", config.active_area.w)
                     .trim_end_matches('0')
                     .trim_end_matches('.')
                     .replace('.', ",")
                     + "mm";
-                f.layout_no_wrap(text, font_id.clone(), color)
-            });
-            ui.painter().add(egui::epaint::TextShape {
-                pos: left_mid
-                    + egui::vec2(
-                        5.0 * rot_rad.cos() - 2.0 * rot_rad.sin(),
-                        5.0 * rot_rad.sin() + 2.0 * rot_rad.cos(),
-                    ),
-                galley,
-                underline: egui::Stroke::NONE,
-                override_text_color: None,
-                angle: -std::f32::consts::FRAC_PI_2 + rot_rad,
-                fallback_color: color,
-                opacity_factor: 1.0,
-            });
-
-            let ratio = if config.active_area.h == 0.0 {
-                0.0
-            } else {
-                config.active_area.w / config.active_area.h
-            };
-
-            ui.painter().text(
-                egui::pos2(geo.aa_center_x, geo.aa_center_y + 12.0),
-                egui::Align2::CENTER_CENTER,
-                format!("{ratio:.4}").replace('.', ","),
-                font_id.clone(),
-                color,
-            );
-
-            let top_mid = egui::pos2(
-                (points[0].x + points[1].x) / 2.0,
-                (points[0].y + points[1].y) / 2.0,
-            );
-            let text_w = format!("{:.2}", config.active_area.w)
-                .trim_end_matches('0')
-                .trim_end_matches('.')
-                .replace('.', ",")
-                + "mm";
-            ui.painter().text(
-                top_mid + egui::vec2(5.0 * rot_rad.sin(), 5.0 * rot_rad.cos()),
-                egui::Align2::CENTER_TOP,
-                text_w,
-                font_id,
-                color,
-            );
+                ui.painter().text(
+                    top_mid + egui::vec2(5.0 * rot_rad.sin(), 5.0 * rot_rad.cos()),
+                    egui::Align2::CENTER_TOP,
+                    text_w,
+                    font_id,
+                    color,
+                );
+            }
 
             handle_tablet_drag(ui, &response, &points, geo.scale, phys_w, phys_h, config);
 

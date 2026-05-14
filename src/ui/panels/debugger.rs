@@ -66,74 +66,76 @@ pub fn render_debugger_panel(snapshot: &UiSnapshot, displayed_hz: f32, ui: &mut 
     ui.add_space(20.0);
 
     ui.columns(2, |cols| {
-        cols[0].vertical(|ui| {
-            status_card(
-                ui,
-                "REPORT STATUS",
-                &tablet_data.status,
-                if ui.visuals().dark_mode {
-                    egui::Color32::LIGHT_GREEN
-                } else {
-                    egui::Color32::from_rgb(0, 120, 0)
-                },
-            );
-            ui.add_space(10.0);
-            status_card(
-                ui,
-                "COORDINATES",
-                &format!("X: {}, Y: {}", tablet_data.x, tablet_data.y),
-                ui.visuals().strong_text_color(),
-            );
-            ui.add_space(10.0);
-            let tilt_str = format!("X: {}, Y: {}", tablet_data.tilt_x, tablet_data.tilt_y);
-            status_card(
-                ui,
-                "PEN TILT",
-                &tilt_str,
-                if ui.visuals().dark_mode {
-                    egui::Color32::from_rgb(255, 100, 255)
-                } else {
-                    egui::Color32::from_rgb(180, 0, 180)
-                },
-            );
-        });
-        cols[1].vertical(|ui| {
-            status_card(
-                ui,
-                "REPORT RATE",
-                &format!("{displayed_hz:.0} Hz"),
-                if ui.visuals().dark_mode {
-                    egui::Color32::GOLD
-                } else {
-                    egui::Color32::from_rgb(180, 140, 0)
-                },
-            );
-            ui.add_space(10.0);
-            status_card(
-                ui,
-                "PRESSURE",
-                &format!("{} / {}", tablet_data.pressure, max_p as u16),
-                if ui.visuals().dark_mode {
-                    egui::Color32::LIGHT_BLUE
-                } else {
-                    egui::Color32::from_rgb(0, 100, 180)
-                },
-            );
-            ui.add_space(10.0);
-            let b1 = (tablet_data.buttons & 0x01) != 0;
-            let b2 = (tablet_data.buttons & 0x02) != 0;
-            let btn_str = format!("B1: {b1} | B2: {b2}");
-            status_card(
-                ui,
-                "BUTTONS",
-                &btn_str,
-                if b1 || b2 {
-                    ui.visuals().selection.bg_fill
-                } else {
-                    ui.visuals().weak_text_color()
-                },
-            );
-        });
+        if let [col0, col1, ..] = cols {
+            col0.vertical(|ui| {
+                status_card(
+                    ui,
+                    "REPORT STATUS",
+                    &tablet_data.status,
+                    if ui.visuals().dark_mode {
+                        egui::Color32::LIGHT_GREEN
+                    } else {
+                        egui::Color32::from_rgb(0, 120, 0)
+                    },
+                );
+                ui.add_space(10.0);
+                status_card(
+                    ui,
+                    "COORDINATES",
+                    &format!("X: {}, Y: {}", tablet_data.x, tablet_data.y),
+                    ui.visuals().strong_text_color(),
+                );
+                ui.add_space(10.0);
+                let tilt_str = format!("X: {}, Y: {}", tablet_data.tilt_x, tablet_data.tilt_y);
+                status_card(
+                    ui,
+                    "PEN TILT",
+                    &tilt_str,
+                    if ui.visuals().dark_mode {
+                        egui::Color32::from_rgb(255, 100, 255)
+                    } else {
+                        egui::Color32::from_rgb(180, 0, 180)
+                    },
+                );
+            });
+            col1.vertical(|ui| {
+                status_card(
+                    ui,
+                    "REPORT RATE",
+                    &format!("{displayed_hz:.0} Hz"),
+                    if ui.visuals().dark_mode {
+                        egui::Color32::GOLD
+                    } else {
+                        egui::Color32::from_rgb(180, 140, 0)
+                    },
+                );
+                ui.add_space(10.0);
+                status_card(
+                    ui,
+                    "PRESSURE",
+                    &format!("{} / {}", tablet_data.pressure, max_p as u16),
+                    if ui.visuals().dark_mode {
+                        egui::Color32::LIGHT_BLUE
+                    } else {
+                        egui::Color32::from_rgb(0, 100, 180)
+                    },
+                );
+                ui.add_space(10.0);
+                let b1 = (tablet_data.buttons & 0x01) != 0;
+                let b2 = (tablet_data.buttons & 0x02) != 0;
+                let btn_str = format!("B1: {b1} | B2: {b2}");
+                status_card(
+                    ui,
+                    "BUTTONS",
+                    &btn_str,
+                    if b1 || b2 {
+                        ui.visuals().selection.bg_fill
+                    } else {
+                        ui.visuals().weak_text_color()
+                    },
+                );
+            });
+        }
     });
 
     ui.add_space(20.0);

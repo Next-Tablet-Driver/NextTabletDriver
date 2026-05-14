@@ -5,39 +5,40 @@ pub struct RobotPenParser;
 
 impl ReportParser for RobotPenParser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
-        if data.len() < 12 || data[1] != 0x42 {
-            return None;
-        }
-
         let raw = data
             .iter()
             .map(|b| format!("{:02X}", b))
             .collect::<Vec<_>>()
             .join(" ");
 
-        let x = u16::from_le_bytes([data[6], data[7]]);
-        let y = u16::from_le_bytes([data[8], data[9]]);
-        let pressure = u16::from_le_bytes([data[10], data[11]]);
+        match data {
+            [_, 0x42, _, _, _, _, x_lo, x_hi, y_lo, y_hi, p_lo, p_hi, ..] => {
+                let x = u16::from_le_bytes([*x_lo, *x_hi]);
+                let y = u16::from_le_bytes([*y_lo, *y_hi]);
+                let pressure = u16::from_le_bytes([*p_lo, *p_hi]);
 
-        let mut buttons: u8 = 0;
-        if (data[11] & 0x02) != 0 {
-            buttons |= 1 << 0;
+                let mut buttons: u8 = 0;
+                if (*p_hi & 0x02) != 0 {
+                    buttons |= 1 << 0;
+                }
+
+                let status = if pressure > 0 { "Contact" } else { "Hover" };
+
+                Some(TabletData {
+                    status: status.to_string(),
+                    x,
+                    y,
+                    pressure,
+                    tilt_x: 0,
+                    tilt_y: 0,
+                    buttons,
+                    raw_data: raw,
+                    is_connected: true,
+                    ..Default::default()
+                })
+            }
+            _ => None,
         }
-
-        let status = if pressure > 0 { "Contact" } else { "Hover" };
-
-        Some(TabletData {
-            status: status.to_string(),
-            x,
-            y,
-            pressure,
-            tilt_x: 0,
-            tilt_y: 0,
-            buttons,
-            raw_data: raw,
-            is_connected: true,
-            ..Default::default()
-        })
     }
 }
 

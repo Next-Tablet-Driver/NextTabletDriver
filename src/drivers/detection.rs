@@ -1,6 +1,6 @@
+use crate::drivers::NextTabletDriver;
 use crate::drivers::config_loader::INDEXED_CONFIGS;
 use crate::drivers::generic::GenericNextTabletDriver;
-use crate::drivers::NextTabletDriver;
 use hidapi::{HidApi, HidDevice};
 use std::time::{Duration, Instant};
 
@@ -118,11 +118,7 @@ pub fn detect_tablet(api: &HidApi) -> Option<(HidDevice, Box<dyn NextTabletDrive
 
                         return Some((
                             device,
-                            Box::new(GenericNextTabletDriver::new(
-                                config.clone(),
-                                vid,
-                                pid,
-                            )),
+                            Box::new(GenericNextTabletDriver::new(config.clone(), vid, pid)),
                             vid,
                             pid,
                         ));
@@ -136,4 +132,3 @@ pub fn detect_tablet(api: &HidApi) -> Option<(HidDevice, Box<dyn NextTabletDrive
     }
     None
 }
-

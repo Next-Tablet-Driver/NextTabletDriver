@@ -1,14 +1,6 @@
 use evdev::{
-    AbsInfo,
-    AbsoluteAxisCode,
-    AttributeSet,
-    BusType,
-    InputEvent,
-    InputId,
-    KeyCode,
-    RelativeAxisCode,
-    UinputAbsSetup,
-    uinput::VirtualDevice,
+    AbsInfo, AbsoluteAxisCode, AttributeSet, BusType, InputEvent, InputId, KeyCode,
+    RelativeAxisCode, UinputAbsSetup, uinput::VirtualDevice,
 };
 
 /// Maximum value for absolute axes (standard high-resolution range).

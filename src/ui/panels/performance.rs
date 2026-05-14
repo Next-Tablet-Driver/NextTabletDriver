@@ -145,34 +145,36 @@ pub fn render_performance_panel(
     ui.add_space(20.0);
 
     ui.columns(2, |cols| {
-        cols[0].group(|ui| {
-            ui.label(egui::RichText::new("Packet Flow").strong());
-            ui.add_space(5.0);
-            ui.label(format!("Total Count: {}", stats.total_packets));
-            ui.label(format!("Polling Rate: {displayed_hz:.1} Hz"));
+        if let [col0, col1, ..] = cols {
+            col0.group(|ui| {
+                ui.label(egui::RichText::new("Packet Flow").strong());
+                ui.add_space(5.0);
+                ui.label(format!("Total Count: {}", stats.total_packets));
+                ui.label(format!("Polling Rate: {displayed_hz:.1} Hz"));
 
-            if displayed_hz > 1.0 {
-                let interval = 1000.0 / displayed_hz;
-                ui.label(format!("Avg Interval: {interval:.2} ms"));
-            } else {
-                ui.label("Avg Interval: Static / Idle");
-            }
-        });
-
-        cols[1].group(|ui| {
-            ui.label(egui::RichText::new("Hardware Info").strong());
-            ui.add_space(5.0);
-            ui.label(format!("Resolution: {} x {}", max_w as u32, max_h as u32));
-            ui.label(format!("Current Pen Status: {}", tablet_data.status));
-            ui.label(format!(
-                "Connected: {}",
-                if tablet_data.is_connected {
-                    "Yes"
+                if displayed_hz > 1.0 {
+                    let interval = 1000.0 / displayed_hz;
+                    ui.label(format!("Avg Interval: {interval:.2} ms"));
                 } else {
-                    "No"
+                    ui.label("Avg Interval: Static / Idle");
                 }
-            ));
-        });
+            });
+
+            col1.group(|ui| {
+                ui.label(egui::RichText::new("Hardware Info").strong());
+                ui.add_space(5.0);
+                ui.label(format!("Resolution: {} x {}", max_w as u32, max_h as u32));
+                ui.label(format!("Current Pen Status: {}", tablet_data.status));
+                ui.label(format!(
+                    "Connected: {}",
+                    if tablet_data.is_connected {
+                        "Yes"
+                    } else {
+                        "No"
+                    }
+                ));
+            });
+        }
     });
 
     ui.add_space(20.0);

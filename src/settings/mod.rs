@@ -87,7 +87,10 @@ pub fn sanitize_profile_name(name: &str) -> String {
         .collect();
 
     // Prevent directory traversal sequences and hidden files
-    sanitized = sanitized.replace("..", "").trim_start_matches('.').to_string();
+    sanitized = sanitized
+        .replace("..", "")
+        .trim_start_matches('.')
+        .to_string();
 
     // Fallback if the name becomes empty after sanitization
     if sanitized.is_empty() {
@@ -101,13 +104,13 @@ pub fn sanitize_profile_name(name: &str) -> String {
 pub fn save_settings(name: &str, config: &MappingConfig) -> Result<(), String> {
     let dir = get_settings_dir();
     let sanitized_name = sanitize_profile_name(name);
-    
+
     let filename = if sanitized_name.to_lowercase().ends_with(".json") {
         sanitized_name.clone()
     } else {
         format!("{sanitized_name}.json")
     };
-    
+
     let path = dir.join(&filename);
 
     save_to_path(&path, config)?;

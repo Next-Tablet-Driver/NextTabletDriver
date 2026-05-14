@@ -30,16 +30,30 @@ impl Log for GlobalLogger {
             if !self.enabled(record.metadata()) {
                 return;
             }
-                
+
             let target = record.target();
 
             // Whitelist: only these named targets appear in the in-app console
             let is_allowed = [
-                    "App", "UI", "HID", "TabletManager", "Pipeline", "Config",
-                    "Startup", "Update", "Stats", "Tray", "Timer", "WebSocket",
-                    "Telemetry", "Driver", "Detect",
-            ].iter().any(|&t| target == t || target.starts_with(&format!("{t}::")))
-            || target.starts_with("NextTabletDriver");
+                "App",
+                "UI",
+                "HID",
+                "TabletManager",
+                "Pipeline",
+                "Config",
+                "Startup",
+                "Update",
+                "Stats",
+                "Tray",
+                "Timer",
+                "WebSocket",
+                "Telemetry",
+                "Driver",
+                "Detect",
+            ]
+            .iter()
+            .any(|&t| target == t || target.starts_with(&format!("{t}::")))
+                || target.starts_with("NextTabletDriver");
 
             if !is_allowed {
                 return;
@@ -85,8 +99,8 @@ pub fn init() {
     let logger = GlobalLogger {
         entries: LOG_BUFFER.clone(),
     };
-    if let Err(e) = log::set_boxed_logger(Box::new(logger))
-        .map(|()| log::set_max_level(LevelFilter::Debug))
+    if let Err(e) =
+        log::set_boxed_logger(Box::new(logger)).map(|()| log::set_max_level(LevelFilter::Debug))
     {
         eprintln!("CRITICAL: Failed to initialize logger: {e}");
     }

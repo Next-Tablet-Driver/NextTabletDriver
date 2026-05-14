@@ -53,7 +53,9 @@ impl TabletMapperApp {
     ) {
         if config != initial {
             let is_interacting = ctx.input(|i| i.pointer.any_down());
-            if !is_interacting && self.metrics.last_hz_update.elapsed() > Duration::from_millis(1000) {
+            if !is_interacting
+                && self.metrics.last_hz_update.elapsed() > Duration::from_millis(1000)
+            {
                 log::info!(target: "Config", "Configuration changed via UI");
             }
             if config.theme != initial.theme {

@@ -5,72 +5,69 @@ pub struct XenceLabsParser;
 
 impl ReportParser for XenceLabsParser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
-        if data.len() < 2 {
-            return None;
-        }
-
         let raw = data
             .iter()
             .map(|b| format!("{:02X}", b))
             .collect::<Vec<_>>()
             .join(" ");
 
-        let report_byte = data[1];
-
-        if (report_byte & 0xF0) == 0xF0 {
-            // XP_PenAuxReport style
-            if data.len() < 3 {
-                return None;
-            }
-            Some(TabletData {
+        match data {
+            // Aux Report
+            [_, report_byte, b2, ..] if (*report_byte & 0xF0) == 0xF0 => Some(TabletData {
                 status: "Aux".to_string(),
-                buttons: data[2], // Default XP_PenAuxReport maps data[2] to first 8 buttons
+                buttons: *b2,
                 raw_data: raw,
                 is_connected: true,
                 ..Default::default()
-            })
-        } else if (report_byte & 0x20) != 0 {
-            // XenceLabsTabletReport
-            if data.len() < 10 {
-                return None;
+            }),
+            // Tablet Report
+            [
+                _,
+                report_byte,
+                x_lo,
+                x_hi,
+                y_lo,
+                y_hi,
+                p_lo,
+                p_hi,
+                t_x,
+                t_y,
+                ..,
+            ] if (*report_byte & 0x20) != 0 => {
+                let x = u16::from_le_bytes([*x_lo, *x_hi]);
+                let y = u16::from_le_bytes([*y_lo, *y_hi]);
+                let pressure = u16::from_le_bytes([*p_lo, *p_hi]);
+
+                let mut buttons: u8 = 0;
+                if (*report_byte & 0x02) != 0 {
+                    buttons |= 1 << 0;
+                }
+                if (*report_byte & 0x04) != 0 {
+                    buttons |= 1 << 1;
+                }
+                if (*report_byte & 0x08) != 0 {
+                    buttons |= 1 << 2;
+                }
+
+                let eraser = (*report_byte & 0x40) != 0;
+
+                let status = if pressure > 0 { "Contact" } else { "Hover" };
+
+                Some(TabletData {
+                    status: status.to_string(),
+                    x,
+                    y,
+                    pressure,
+                    tilt_x: *t_x as i8,
+                    tilt_y: *t_y as i8,
+                    buttons,
+                    eraser,
+                    raw_data: raw,
+                    is_connected: true,
+                    ..Default::default()
+                })
             }
-            let x = u16::from_le_bytes([data[2], data[3]]);
-            let y = u16::from_le_bytes([data[4], data[5]]);
-            let pressure = u16::from_le_bytes([data[6], data[7]]);
-
-            let mut buttons: u8 = 0;
-            if (report_byte & 0x02) != 0 {
-                buttons |= 1 << 0;
-            }
-            if (report_byte & 0x04) != 0 {
-                buttons |= 1 << 1;
-            }
-            if (report_byte & 0x08) != 0 {
-                buttons |= 1 << 2;
-            }
-
-            let eraser = (report_byte & 0x40) != 0;
-
-            let tilt_x = data[8] as i8;
-            let tilt_y = data[9] as i8;
-
-            let status = if pressure > 0 { "Contact" } else { "Hover" };
-
-            Some(TabletData {
-                status: status.to_string(),
-                x,
-                y,
-                pressure,
-                tilt_x,
-                tilt_y,
-                buttons,
-                eraser,
-                raw_data: raw,
-                is_connected: true,
-                ..Default::default()
-            })
-        } else {
-            None
+            _ => None,
         }
     }
 }

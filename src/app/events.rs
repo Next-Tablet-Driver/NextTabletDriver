@@ -1,4 +1,4 @@
-use crate::app::state::{TabletMapperApp, UiSnapshot, AppTab};
+use crate::app::state::{AppTab, TabletMapperApp, UiSnapshot};
 use crate::engine::state::WriteRecoverExt;
 use eframe::egui;
 use std::time::Duration;
@@ -28,12 +28,15 @@ impl TabletMapperApp {
                     .update_latency(receive_time.elapsed().as_secs_f32() * 1000.0);
             }
 
-            let mut shared_data = self.shared.tablet_data.write().unwrap_or_reset("tablet_data");
+            let mut shared_data = self
+                .shared
+                .tablet_data
+                .write()
+                .unwrap_or_reset("tablet_data");
             *shared_data = data;
 
-            let needs_live_update = self.show_debugger
-                || self.show_latency_stats
-                || self.active_tab == AppTab::Console;
+            let needs_live_update =
+                self.show_debugger || self.show_latency_stats || self.active_tab == AppTab::Console;
 
             if needs_live_update {
                 ctx.request_repaint_after(Duration::from_millis(16));

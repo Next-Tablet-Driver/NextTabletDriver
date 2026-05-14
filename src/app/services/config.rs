@@ -19,6 +19,9 @@ impl ConfigService {
             };
             (cfg, Vec::new())
         };
-        Self { config, corrections }
+        Self {
+            config,
+            corrections,
+        }
     }
 }

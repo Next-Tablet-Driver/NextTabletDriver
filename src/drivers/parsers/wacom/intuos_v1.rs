@@ -31,120 +31,118 @@ impl Default for IntuosV1Parser {
 
 impl IntuosV1Parser {
     pub(crate) fn parse_internal(&self, data: &[u8], raw: String) -> Option<TabletData> {
-        match data[0] {
-            0x02 | 0x10 => self.parse_tool(data, raw),
-            0x03 => self.parse_aux(data, raw),
+        match data {
+            [0x02, ..] | [0x10, ..] => self.parse_tool(data, raw),
+            [0x03, ..] => self.parse_aux(data, raw),
             _ => None,
         }
     }
 
     fn parse_tool(&self, data: &[u8], raw: String) -> Option<TabletData> {
-        if data.len() < 10 {
-            return None;
-        }
-        if data[0] == 0x10 && data[1] == 0x20 {
-            return None;
-        }
-        if data[1] == 0x80 {
-            return None;
-        } // Out of range
+        match data {
+            [0x10, 0x20, ..] => None,
+            [_, 0x80, ..] => None, // Out of range
+            [_id, b1, b2, b3, b4, b5, b6, b7, b8, b9, ..] => {
+                let is_rotation = (*b1 & 0x02) != 0 && (*b1 & 0x08) != 0;
+                let is_tablet = (*b1 & 0x20) != 0;
 
-        let is_rotation = (data[1] & 0x02) != 0 && (data[1] & 0x08) != 0;
-        let is_tablet = (data[1] & 0x20) != 0;
+                if is_tablet {
+                    let x = (((*b2 as u16) << 8) | (*b3 as u16)) << 1 | (((*b9 >> 1) & 1) as u16);
+                    let y = (((*b4 as u16) << 8) | (*b5 as u16)) << 1 | ((*b9 & 1) as u16);
 
-        if is_tablet {
-            let x =
-                (((data[2] as u16) << 8) | (data[3] as u16)) << 1 | (((data[9] >> 1) & 1) as u16);
-            let y = (((data[4] as u16) << 8) | (data[5] as u16)) << 1 | ((data[9] & 1) as u16);
+                    let tilt_x = ((((*b7 << 1) & 0x7E) | (*b8 >> 7)) as i16 - 64) as i8;
+                    let tilt_y = ((*b8 & 0x7F) as i16 - 64) as i8;
 
-            let tilt_x = ((((data[7] << 1) & 0x7E) | (data[8] >> 7)) as i16 - 64) as i8;
-            let tilt_y = ((data[8] & 0x7F) as i16 - 64) as i8;
+                    let pressure =
+                        ((*b6 as u16) << 3) | (((*b7 & 0xC0) >> 5) as u16) | ((*b1 & 1) as u16);
 
-            let pressure =
-                ((data[6] as u16) << 3) | (((data[7] & 0xC0) >> 5) as u16) | ((data[1] & 1) as u16);
+                    let mut buttons: u8 = 0;
+                    if (*b1 & 0x02) != 0 {
+                        buttons |= 1 << 0;
+                    }
+                    if (*b1 & 0x04) != 0 {
+                        buttons |= 1 << 1;
+                    }
 
-            let mut buttons: u8 = 0;
-            if (data[1] & 0x02) != 0 {
-                buttons |= 1 << 0;
+                    *self
+                        .prev_pressure
+                        .lock()
+                        .unwrap_or_reset("wacom_prev_pressure") = pressure;
+                    *self.prev_tilt_x.lock().unwrap_or_reset("wacom_prev_tilt_x") = tilt_x;
+                    *self.prev_tilt_y.lock().unwrap_or_reset("wacom_prev_tilt_y") = tilt_y;
+                    *self
+                        .prev_buttons
+                        .lock()
+                        .unwrap_or_reset("wacom_prev_buttons") = buttons;
+
+                    let status = if pressure > 0 { "Contact" } else { "Hover" };
+
+                    Some(TabletData {
+                        status: status.to_string(),
+                        x,
+                        y,
+                        pressure,
+                        tilt_x,
+                        tilt_y,
+                        buttons,
+                        hover_distance: *b9,
+                        raw_data: raw,
+                        is_connected: true,
+                        ..Default::default()
+                    })
+                } else if is_rotation {
+                    let x = (((*b2 as u16) << 8) | (*b3 as u16)) << 1 | (((*b9 >> 1) & 1) as u16);
+                    let y = (((*b4 as u16) << 8) | (*b5 as u16)) << 1 | ((*b9 & 1) as u16);
+
+                    Some(TabletData {
+                        status: "Rotation".to_string(),
+                        x,
+                        y,
+                        pressure: *self
+                            .prev_pressure
+                            .lock()
+                            .unwrap_or_log("wacom_prev_pressure"),
+                        tilt_x: *self.prev_tilt_x.lock().unwrap_or_log("wacom_prev_tilt_x"),
+                        tilt_y: *self.prev_tilt_y.lock().unwrap_or_log("wacom_prev_tilt_y"),
+                        buttons: *self.prev_buttons.lock().unwrap_or_log("wacom_prev_buttons"),
+                        hover_distance: *b9,
+                        raw_data: raw,
+                        is_connected: true,
+                        ..Default::default()
+                    })
+                } else if *b1 == 0xC2 {
+                    let eraser = (*b3 & 0x80) != 0;
+                    Some(TabletData {
+                        status: "Tool".to_string(),
+                        eraser,
+                        raw_data: raw,
+                        is_connected: true,
+                        ..Default::default()
+                    })
+                } else {
+                    None
+                }
             }
-            if (data[1] & 0x04) != 0 {
-                buttons |= 1 << 1;
-            }
-
-            *self.prev_pressure.lock().unwrap_or_reset("wacom_prev_pressure") = pressure;
-            *self.prev_tilt_x.lock().unwrap_or_reset("wacom_prev_tilt_x") = tilt_x;
-            *self.prev_tilt_y.lock().unwrap_or_reset("wacom_prev_tilt_y") = tilt_y;
-            *self.prev_buttons.lock().unwrap_or_reset("wacom_prev_buttons") = buttons;
-
-            let status = if pressure > 0 { "Contact" } else { "Hover" };
-            let hover_distance = data[9];
-
-            Some(TabletData {
-                status: status.to_string(),
-                x,
-                y,
-                pressure,
-                tilt_x,
-                tilt_y,
-                buttons,
-                hover_distance,
-                raw_data: raw,
-                is_connected: true,
-                ..Default::default()
-            })
-        } else if is_rotation {
-            let x =
-                (((data[2] as u16) << 8) | (data[3] as u16)) << 1 | (((data[9] >> 1) & 1) as u16);
-            let y = (((data[4] as u16) << 8) | (data[5] as u16)) << 1 | ((data[9] & 1) as u16);
-
-            Some(TabletData {
-                status: "Rotation".to_string(),
-                x,
-                y,
-                pressure: *self.prev_pressure.lock().unwrap_or_log("wacom_prev_pressure"),
-                tilt_x: *self.prev_tilt_x.lock().unwrap_or_log("wacom_prev_tilt_x"),
-                tilt_y: *self.prev_tilt_y.lock().unwrap_or_log("wacom_prev_tilt_y"),
-                buttons: *self.prev_buttons.lock().unwrap_or_log("wacom_prev_buttons"),
-                hover_distance: data[9],
-                raw_data: raw,
-                is_connected: true,
-                ..Default::default()
-            })
-        } else if data[1] == 0xC2 {
-            // Tool Report
-            let eraser = (data[3] & 0x80) != 0;
-            Some(TabletData {
-                status: "Tool".to_string(),
-                eraser,
-                raw_data: raw,
-                is_connected: true,
-                ..Default::default()
-            })
-        } else {
-            None
+            _ => None,
         }
     }
 
     pub(crate) fn parse_aux(&self, data: &[u8], raw: String) -> Option<TabletData> {
-        if data.len() < 5 {
-            return None;
+        match data {
+            [_, _, _, _, b4, ..] => Some(TabletData {
+                status: "Aux".to_string(),
+                buttons: *b4,
+                raw_data: raw,
+                is_connected: true,
+                ..Default::default()
+            }),
+            _ => None,
         }
-        let buttons = data[4];
-        Some(TabletData {
-            status: "Aux".to_string(),
-            buttons,
-            raw_data: raw,
-            is_connected: true,
-            ..Default::default()
-        })
     }
 }
 
 impl ReportParser for IntuosV1Parser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
-        if data.is_empty() {
-            return None;
-        }
         let raw = data
             .iter()
             .map(|b| format!("{:02X}", b))
@@ -174,16 +172,16 @@ impl Default for WacomDriverIntuosV1Parser {
 
 impl ReportParser for WacomDriverIntuosV1Parser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
-        if data.len() < 2 {
-            return None;
-        }
-        // WacomDriver usually skips first byte (report ID) then calls base
         let raw = data
             .iter()
             .map(|b| format!("{:02X}", b))
             .collect::<Vec<_>>()
             .join(" ");
-        self.inner.parse_internal(&data[1..], raw)
+
+        match data {
+            [_, rest @ ..] => self.inner.parse_internal(rest, raw),
+            _ => None,
+        }
     }
 }
 

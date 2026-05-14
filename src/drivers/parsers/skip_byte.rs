@@ -10,7 +10,7 @@ impl ReportParser for SkipByteParser {
         }
 
         let fallback = FallbackParser;
-        let mut parsed = fallback.parse(&data[1..]);
+        let mut parsed = data.get(1..).and_then(|sub| fallback.parse(sub));
         if let Some(ref mut p) = parsed {
             // Restore raw data to include the skipped byte
             p.raw_data = data

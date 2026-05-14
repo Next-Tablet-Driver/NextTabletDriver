@@ -3,15 +3,17 @@
 //! This module handles the initialization, startup routines, and background thread
 //! management for the `TabletMapperApp`.
 
+use crossbeam_channel::unbounded;
 use display_info::DisplayInfo;
 use std::sync::Arc;
 use std::time::Instant;
-use crossbeam_channel::unbounded;
 
 use crate::app::autoupdate::UpdateStatus;
-use crate::app::state::{AppTab, ProfileState, TabletMapperApp, ToastLevel, Metrics};
+use crate::app::services::{
+    ConfigService, SharedStateFactory, ThreadSupervisor, TrayService, UpdateService,
+};
+use crate::app::state::{AppTab, Metrics, ProfileState, TabletMapperApp, ToastLevel};
 use crate::settings::load_session_meta;
-use crate::app::services::{ConfigService, UpdateService, TrayService, SharedStateFactory, ThreadSupervisor};
 
 impl TabletMapperApp {
     /// Creates a new instance of the application and initializes all background services.
@@ -30,7 +32,8 @@ impl TabletMapperApp {
         let config_service = ConfigService::load();
         let config = config_service.config;
         let load_corrections = config_service.corrections;
-        let is_first_run = load_corrections.is_empty() && !crate::settings::get_settings_dir().exists();
+        let is_first_run =
+            load_corrections.is_empty() && !crate::settings::get_settings_dir().exists();
 
         // 2. Setup UI Appearance
         crate::ui::theme::apply_theme(&ctx, config.theme);
@@ -55,7 +58,10 @@ impl TabletMapperApp {
         let mut initial_toasts = Vec::new();
         if !load_corrections.is_empty() {
             initial_toasts.push(crate::app::state::Toast {
-                message: format!("Config repaired: {} field(s) reset to defaults", load_corrections.len()),
+                message: format!(
+                    "Config repaired: {} field(s) reset to defaults",
+                    load_corrections.len()
+                ),
                 level: ToastLevel::Warning,
                 created_at: Instant::now(),
             });
@@ -69,7 +75,9 @@ impl TabletMapperApp {
             last_update: Instant::now(),
             last_config_log: Instant::now(),
             profile: ProfileState {
-                name: meta.as_ref().map_or_else(|| "Unsaved Session".to_string(), |m| m.profile_name.clone()),
+                name: meta
+                    .as_ref()
+                    .map_or_else(|| "Unsaved Session".to_string(), |m| m.profile_name.clone()),
                 path: meta.and_then(|m| m.profile_path),
                 last_saved: config,
             },
@@ -111,7 +119,11 @@ impl TabletMapperApp {
                 "../../resources/fonts/Helvetica.ttf"
             ))),
         );
-        fonts.families.entry(eframe::egui::FontFamily::Proportional).or_default().insert(0, "Helvetica".to_owned());
+        fonts
+            .families
+            .entry(eframe::egui::FontFamily::Proportional)
+            .or_default()
+            .insert(0, "Helvetica".to_owned());
         ctx.set_fonts(fonts);
     }
 }

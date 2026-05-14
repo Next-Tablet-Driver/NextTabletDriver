@@ -5,54 +5,64 @@ pub struct ViewSonicParser;
 
 impl ReportParser for ViewSonicParser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
-        if data.len() < 14 {
-            return None;
-        }
-
         let raw = data
             .iter()
             .map(|b| format!("{:02X}", b))
             .collect::<Vec<_>>()
             .join(" ");
 
-        if (data[9] & 0b11) != 0b11 {
-            return None; // Ignored report
+        match data {
+            [
+                _,
+                x_lo,
+                x_hi,
+                _,
+                _,
+                y_lo,
+                y_hi,
+                _,
+                _,
+                b9,
+                p_lo,
+                p_hi,
+                t_x,
+                t_y,
+                ..,
+            ] if (*b9 & 0b11) == 0b11 => {
+                let x = u16::from_le_bytes([*x_lo, *x_hi]);
+                let y = u16::from_le_bytes([*y_lo, *y_hi]);
+
+                let pressure = if (*b9 & 0x04) != 0 {
+                    u16::from_le_bytes([*p_lo, *p_hi])
+                } else {
+                    0
+                };
+
+                let mut buttons: u8 = 0;
+                if (*b9 & 0x08) != 0 {
+                    buttons |= 1 << 0;
+                }
+                if (*b9 & 0x10) != 0 {
+                    buttons |= 1 << 1;
+                }
+
+                let status = if pressure > 0 { "Contact" } else { "Hover" };
+
+                Some(TabletData {
+                    status: status.to_string(),
+                    x,
+                    y,
+                    pressure,
+                    tilt_x: *t_x as i8,
+                    tilt_y: *t_y as i8,
+                    buttons,
+                    raw_data: raw,
+                    is_connected: true,
+                    ..Default::default()
+                })
+            }
+            _ => None,
         }
-
-        let x = u16::from_le_bytes([data[1], data[2]]);
-        let y = u16::from_le_bytes([data[5], data[6]]);
-
-        let pressure = if (data[9] & 0x04) != 0 {
-            u16::from_le_bytes([data[10], data[11]])
-        } else {
-            0
-        };
-
-        let mut buttons: u8 = 0;
-        if (data[9] & 0x08) != 0 {
-            buttons |= 1 << 0;
-        }
-        if (data[9] & 0x10) != 0 {
-            buttons |= 1 << 1;
-        }
-
-        let tilt_x = data[12] as i8;
-        let tilt_y = data[13] as i8;
-
-        let status = if pressure > 0 { "Contact" } else { "Hover" };
-
-        Some(TabletData {
-            status: status.to_string(),
-            x,
-            y,
-            pressure,
-            tilt_x,
-            tilt_y,
-            buttons,
-            raw_data: raw,
-            is_connected: true,
-            ..Default::default()
-        })
     }
 }
 

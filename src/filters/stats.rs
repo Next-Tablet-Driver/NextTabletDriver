@@ -42,7 +42,8 @@ impl SpeedStatsFilter {
         }
 
         if let Some((current_ip, current_port)) = &self.current_config
-            && current_ip == ip && *current_port == port
+            && current_ip == ip
+            && *current_port == port
         {
             return;
         }
@@ -50,7 +51,7 @@ impl SpeedStatsFilter {
         // Configuration changed or server not started
         log::info!(target: "Stats", "Configuring WebSocket stats server on {ip}:{port}");
         self.server = None; // Drop old server (triggering shutdown)
-        
+
         match StatsServer::start(ip.to_string(), port) {
             Ok(server) => {
                 self.server = Some(server);
@@ -123,4 +124,3 @@ impl Filter for SpeedStatsFilter {
         self.last_time = Instant::now();
     }
 }
-

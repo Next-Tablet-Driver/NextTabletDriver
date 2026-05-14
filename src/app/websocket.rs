@@ -60,7 +60,7 @@ pub fn websocket_loop(shared: Arc<SharedState>) {
         }
 
         let frame_start = Instant::now();
-        
+
         let (enabled, port, hz, send_coords, send_pressure, _send_tilt, send_status) = {
             let config = shared.config.read().unwrap_or_log("config");
             let ws = &config.websocket;
@@ -86,18 +86,16 @@ pub fn websocket_loop(shared: Arc<SharedState>) {
             clients.clear();
 
             match TcpListener::bind(format!("127.0.0.1:{}", port)) {
-                Ok(l) => {
-                    match l.set_nonblocking(true) {
-                        Ok(_) => {
-                            listener = Some(l);
-                            current_port = port;
-                        }
-                        Err(e) => {
-                            log::error!(target: "WebSocket", "Failed to set WebSocket listener to non-blocking: {}", e);
-                            listener = None;
-                        }
+                Ok(l) => match l.set_nonblocking(true) {
+                    Ok(_) => {
+                        listener = Some(l);
+                        current_port = port;
                     }
-                }
+                    Err(e) => {
+                        log::error!(target: "WebSocket", "Failed to set WebSocket listener to non-blocking: {}", e);
+                        listener = None;
+                    }
+                },
                 Err(e) => {
                     log::error!(target: "WebSocket", "Failed to bind to port {}: {}", port, e);
                     listener = None;
@@ -112,7 +110,7 @@ pub fn websocket_loop(shared: Arc<SharedState>) {
                         log::warn!(target: "WebSocket", "Max clients reached (10), rejecting {}", addr);
                         continue;
                     }
-                            
+
                     log::info!(target: "WebSocket", "New connection from {}", addr);
                     if stream.set_nonblocking(false).is_ok() {
                         match accept(stream) {
@@ -135,7 +133,11 @@ pub fn websocket_loop(shared: Arc<SharedState>) {
             }
 
             if !clients.is_empty() {
-                let data = shared.tablet_data.read().map(|d| d.clone()).unwrap_or_default();
+                let data = shared
+                    .tablet_data
+                    .read()
+                    .map(|d| d.clone())
+                    .unwrap_or_default();
 
                 let payload = WsPayload {
                     x: if send_coords { Some(data.x) } else { None },
@@ -176,7 +178,7 @@ pub fn websocket_loop(shared: Arc<SharedState>) {
 
         let target_duration = Duration::from_micros(1_000_000 / hz as u64);
         let elapsed = frame_start.elapsed();
-        
+
         if elapsed < target_duration {
             thread::sleep(target_duration - elapsed);
         } else {

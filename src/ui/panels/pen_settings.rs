@@ -49,14 +49,16 @@ pub fn render_pen_settings_panel(
     ui_card(ui, "Button Actions", egui_phosphor::regular::MOUSE, |ui| {
         ui.vertical(|ui| {
             for i in 0..2 {
-                render_binding_row(
-                    ui,
-                    &format!("Pen Button {}", i + 1),
-                    &config.pen_button_bindings[i],
-                    &format!("btn_edit_{i}"),
-                );
-                if i == 0 {
-                    ui.add_space(8.0);
+                if let Some(binding) = config.pen_button_bindings.get(i) {
+                    render_binding_row(
+                        ui,
+                        &format!("Pen Button {}", i + 1),
+                        binding,
+                        &format!("btn_edit_{i}"),
+                    );
+                    if i == 0 {
+                        ui.add_space(8.0);
+                    }
                 }
             }
         });

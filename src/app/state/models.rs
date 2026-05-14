@@ -1,6 +1,6 @@
-use std::time::Instant;
-use std::path::PathBuf;
 use crate::core::config::models::MappingConfig;
+use std::path::PathBuf;
+use std::time::Instant;
 
 /// Represents the currently active tab in the main application window.
 #[derive(PartialEq, Clone, Copy)]

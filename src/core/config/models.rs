@@ -370,7 +370,10 @@ impl MappingConfig {
             self.active_area.rotation += 360.0;
         }
         if (self.active_area.rotation - old_rotation).abs() > f32::EPSILON {
-            corrections.push(format!("active_area.rotation normalized from {} to {}", old_rotation, self.active_area.rotation));
+            corrections.push(format!(
+                "active_area.rotation normalized from {} to {}",
+                old_rotation, self.active_area.rotation
+            ));
         }
 
         // Target Area
@@ -398,8 +401,11 @@ impl MappingConfig {
             self.antichatter.frequency = defaults.antichatter.frequency;
         }
         if self.antichatter.latency < 0.0 || self.antichatter.latency > 1000.0 {
-             corrections.push(format!("antichatter.latency was invalid ({}), reset to {}", self.antichatter.latency, defaults.antichatter.latency));
-             self.antichatter.latency = defaults.antichatter.latency;
+            corrections.push(format!(
+                "antichatter.latency was invalid ({}), reset to {}",
+                self.antichatter.latency, defaults.antichatter.latency
+            ));
+            self.antichatter.latency = defaults.antichatter.latency;
         }
         if self.antichatter.antichatter_strength < 0.0 {
             self.antichatter.antichatter_strength = 0.0;
@@ -407,7 +413,8 @@ impl MappingConfig {
         }
 
         // Relative Config
-        if self.relative_config.x_sensitivity <= 0.0 || self.relative_config.x_sensitivity > 1000.0 {
+        if self.relative_config.x_sensitivity <= 0.0 || self.relative_config.x_sensitivity > 1000.0
+        {
             corrections.push(format!(
                 "relative_config.x_sensitivity was invalid ({}), reset to {}",
                 self.relative_config.x_sensitivity, defaults.relative_config.x_sensitivity
@@ -428,35 +435,56 @@ impl MappingConfig {
             self.relative_config.rotation += 360.0;
         }
         if (self.relative_config.rotation - old_rel_rotation).abs() > f32::EPSILON {
-            corrections.push(format!("relative_config.rotation normalized from {} to {}", old_rel_rotation, self.relative_config.rotation));
+            corrections.push(format!(
+                "relative_config.rotation normalized from {} to {}",
+                old_rel_rotation, self.relative_config.rotation
+            ));
         }
 
         if self.relative_config.reset_time_ms == 0 || self.relative_config.reset_time_ms > 10000 {
-            corrections.push(format!("relative_config.reset_time_ms was invalid ({}), reset to {}", self.relative_config.reset_time_ms, defaults.relative_config.reset_time_ms));
+            corrections.push(format!(
+                "relative_config.reset_time_ms was invalid ({}), reset to {}",
+                self.relative_config.reset_time_ms, defaults.relative_config.reset_time_ms
+            ));
             self.relative_config.reset_time_ms = defaults.relative_config.reset_time_ms;
         }
 
         // Thresholds
-        if self.tip_threshold == 0 || self.tip_threshold > 1024 { 
-            corrections.push(format!("tip_threshold was {}, reset to {}", self.tip_threshold, defaults.tip_threshold));
+        if self.tip_threshold == 0 || self.tip_threshold > 1024 {
+            corrections.push(format!(
+                "tip_threshold was {}, reset to {}",
+                self.tip_threshold, defaults.tip_threshold
+            ));
             self.tip_threshold = defaults.tip_threshold;
         }
         if self.eraser_threshold == 0 || self.eraser_threshold > 1024 {
-            corrections.push(format!("eraser_threshold was {}, reset to {}", self.eraser_threshold, defaults.eraser_threshold));
+            corrections.push(format!(
+                "eraser_threshold was {}, reset to {}",
+                self.eraser_threshold, defaults.eraser_threshold
+            ));
             self.eraser_threshold = defaults.eraser_threshold;
         }
 
         // Network & IO
         if self.websocket.port == 0 {
-            corrections.push(format!("websocket.port was 0, reset to {}", defaults.websocket.port));
+            corrections.push(format!(
+                "websocket.port was 0, reset to {}",
+                defaults.websocket.port
+            ));
             self.websocket.port = defaults.websocket.port;
         }
         if self.websocket.polling_rate_hz == 0 || self.websocket.polling_rate_hz > 1000 {
-            corrections.push(format!("websocket.polling_rate_hz was invalid ({}), reset to {}", self.websocket.polling_rate_hz, defaults.websocket.polling_rate_hz));
+            corrections.push(format!(
+                "websocket.polling_rate_hz was invalid ({}), reset to {}",
+                self.websocket.polling_rate_hz, defaults.websocket.polling_rate_hz
+            ));
             self.websocket.polling_rate_hz = defaults.websocket.polling_rate_hz;
         }
         if self.speed_stats.port == 0 {
-            corrections.push(format!("speed_stats.port was 0, reset to {}", defaults.speed_stats.port));
+            corrections.push(format!(
+                "speed_stats.port was 0, reset to {}",
+                defaults.speed_stats.port
+            ));
             self.speed_stats.port = defaults.speed_stats.port;
         }
 
@@ -501,20 +529,20 @@ mod tests {
     #[test]
     fn test_validate_and_repair() {
         let mut config = MappingConfig::default();
-        
+
         // Test invalid area
         config.active_area.w = -10.0;
         config.active_area.rotation = 450.0;
-        
+
         // Test invalid network
         config.websocket.port = 0;
         config.websocket.polling_rate_hz = 5000;
-        
+
         // Test invalid buttons
         config.pen_button_bindings = vec![];
-        
+
         let corrections = config.validate_and_repair();
-        
+
         assert!(!corrections.is_empty());
         assert!(config.active_area.w > 0.0);
         assert_eq!(config.active_area.rotation, 90.0);
