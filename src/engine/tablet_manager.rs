@@ -114,12 +114,17 @@ pub fn run_manager(
 }
 
 fn init_thread_priority() {
+    // SAFETY: These are standard OS-specific calls to increase thread priority
+    // for low-latency USB polling.
     #[cfg(windows)]
-    unsafe {
+    {
         use windows_sys::Win32::System::Threading::{
             GetCurrentThread, SetThreadPriority, THREAD_PRIORITY_TIME_CRITICAL,
         };
-        if SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_TIME_CRITICAL) == 0 {
+        // SAFETY: Retrieving the handle to the current thread.
+        let thread = unsafe { GetCurrentThread() };
+        // SAFETY: Increasing thread priority to TIME_CRITICAL for low-latency USB polling.
+        if unsafe { SetThreadPriority(thread, THREAD_PRIORITY_TIME_CRITICAL) } == 0 {
             log::warn!(target: "TabletManager", "Failed to set thread priority to TIME_CRITICAL");
         } else {
             log::info!(target: "TabletManager", "Thread priority set to TIME_CRITICAL");

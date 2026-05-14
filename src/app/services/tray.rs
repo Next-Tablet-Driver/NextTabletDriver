@@ -52,8 +52,10 @@ impl TrayService {
                     if matches {
                         log::info!(target: "Tray", "Restoring eframe UI...");
 
+                        // SAFETY: This uses native Windows APIs to find and restore the driver window
+                        // when the tray icon is clicked.
                         #[cfg(windows)]
-                        unsafe {
+                        {
                             #[link(name = "user32")]
                             unsafe extern "system" {
                                 fn FindWindowA(
@@ -64,11 +66,14 @@ impl TrayService {
                                 fn SetForegroundWindow(hWnd: isize) -> i32;
                             }
                             let title = format!("NextTabletDriver v{}\0", crate::VERSION);
-                            let hwnd = FindWindowA(std::ptr::null(), title.as_ptr() as *const _);
+                            // SAFETY: Finding the window by its title.
+                            let hwnd = unsafe { FindWindowA(std::ptr::null(), title.as_ptr() as *const _) };
                             if hwnd != 0 {
                                 log::info!(target: "Tray", "Native window found (HWND: {}), restoring...", hwnd);
-                                ShowWindow(hwnd, 9); // SW_RESTORE
-                                SetForegroundWindow(hwnd);
+                                // SAFETY: Restoring the window to its normal state.
+                                unsafe { ShowWindow(hwnd, 9) }; // SW_RESTORE
+                                // SAFETY: Brining the window to the foreground.
+                                unsafe { SetForegroundWindow(hwnd) };
                             }
                         }
 

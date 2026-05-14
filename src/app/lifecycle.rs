@@ -18,14 +18,20 @@ use crate::settings::load_session_meta;
 impl TabletMapperApp {
     /// Creates a new instance of the application and initializes all background services.
     pub fn new(ctx: eframe::egui::Context) -> Self {
+        // SAFETY: These are standard Windows API calls to set the process priority
+        // and timer resolution for high-performance tablet input.
         #[cfg(windows)]
-        unsafe {
+        {
             use windows_sys::Win32::Media::timeBeginPeriod;
             use windows_sys::Win32::System::Threading::{
                 GetCurrentProcess, HIGH_PRIORITY_CLASS, SetPriorityClass,
             };
-            timeBeginPeriod(1);
-            SetPriorityClass(GetCurrentProcess(), HIGH_PRIORITY_CLASS);
+            // SAFETY: Setting timer resolution to 1ms for low-latency tablet polling.
+            unsafe { timeBeginPeriod(1) };
+            // SAFETY: Retrieving the handle to the current process.
+            let process = unsafe { GetCurrentProcess() };
+            // SAFETY: Increasing process priority to HIGH for stable driver performance.
+            unsafe { SetPriorityClass(process, HIGH_PRIORITY_CLASS) };
         }
 
         // 1. Load Configuration

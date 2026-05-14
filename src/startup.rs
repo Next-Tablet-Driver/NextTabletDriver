@@ -53,6 +53,10 @@ mod platform {
     /// 2. Uses the `WScript.Shell` COM object to create the shortcut.
     /// 3. Executes the script via `wscript.exe`.
     /// 4. Deletes the temporary script file.
+    ///
+    /// # Errors
+    /// Returns an error if the shortcut path cannot be determined, environment variable access fails,
+    /// or if the script execution fails.
     pub fn set_run_at_startup(enabled: bool) -> Result<(), Box<dyn std::error::Error>> {
         let shortcut_path = get_shortcut_path().ok_or("Could not determine startup folder path")?;
 

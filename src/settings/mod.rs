@@ -54,6 +54,10 @@ pub fn get_settings_dir() -> PathBuf {
 ///
 /// Uses a write-to-temp-then-rename strategy to prevent corruption
 /// if the process crashes mid-write.
+///
+/// # Errors
+/// Returns an error string if serialization fails, the temporary file cannot be written,
+/// or the final rename operation fails.
 pub fn save_to_path(path: &Path, config: &MappingConfig) -> Result<(), String> {
     let json = serde_json::to_string_pretty(config).map_err(|e| {
         log::error!(target: "Config", "Failed to serialize config for {path:?}: {e}");
@@ -101,6 +105,9 @@ pub fn sanitize_profile_name(name: &str) -> String {
 }
 
 /// Saves config as a named preset in the application's settings directory.
+///
+/// # Errors
+/// Returns an error if the profile name cannot be sanitized or if `save_to_path` fails.
 pub fn save_settings(name: &str, config: &MappingConfig) -> Result<(), String> {
     let dir = get_settings_dir();
     let sanitized_name = sanitize_profile_name(name);
@@ -121,6 +128,9 @@ pub fn save_settings(name: &str, config: &MappingConfig) -> Result<(), String> {
 /// Persists the current session state to `last_session.json`.
 ///
 /// Called asynchronously from a background saver thread — never from the UI thread.
+///
+/// # Errors
+/// Returns an error if the settings directory cannot be resolved or if `save_to_path` fails.
 pub fn save_last_session(config: &MappingConfig) -> Result<(), String> {
     let path = get_settings_dir().join("last_session.json");
     save_to_path(&path, config)?;
@@ -165,6 +175,9 @@ pub fn load_last_session() -> Option<(MappingConfig, Vec<String>)> {
 /// Loads and validates a config from an arbitrary file path.
 ///
 /// Returns the config and a list of corrections applied during validation.
+///
+/// # Errors
+/// Returns an error if the file cannot be read or if the JSON content is invalid.
 pub fn load_settings_from_file(path: &Path) -> Result<(MappingConfig, Vec<String>), String> {
     let content = fs::read_to_string(path).map_err(|e| {
         log::error!(target: "Config", "Failed to read settings file {path:?}: {e}");

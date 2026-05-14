@@ -11,6 +11,10 @@ fn github_api_url() -> String {
 }
 
 /// Queries the GitHub API to check if a newer version is available.
+///
+/// # Errors
+/// Returns an error if the network request fails, the GitHub API returns a non-200 status,
+/// or the response body cannot be parsed as a valid release JSON.
 pub fn check_for_updates() -> Result<Option<Release>, Box<dyn std::error::Error>> {
     let url = github_api_url();
     let response = ureq::get(&url)

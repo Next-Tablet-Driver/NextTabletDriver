@@ -19,21 +19,22 @@ impl ReportParser for Wacom64bAuxParser {
 
                 // Process chunks of 8 bytes starting from index 2
                 for chunk in rest.chunks_exact(8).take(n) {
-                    if let [id, aux_byte, ..] = chunk && *id == 0x80 {
-                            if (aux_byte & 0x01) != 0 {
-                                buttons |= 1 << 0;
-                            }
-                            if (aux_byte & 0x02) != 0 {
-                                buttons |= 1 << 1;
-                            }
-                            if (aux_byte & 0x04) != 0 {
-                                buttons |= 1 << 2;
-                            }
-                            if (aux_byte & 0x08) != 0 {
-                                buttons |= 1 << 3;
-                            }
+                    if let [id, aux_byte, ..] = chunk
+                        && *id == 0x80
+                    {
+                        if (aux_byte & 0x01) != 0 {
+                            buttons |= 1 << 0;
                         }
-                    
+                        if (aux_byte & 0x02) != 0 {
+                            buttons |= 1 << 1;
+                        }
+                        if (aux_byte & 0x04) != 0 {
+                            buttons |= 1 << 2;
+                        }
+                        if (aux_byte & 0x08) != 0 {
+                            buttons |= 1 << 3;
+                        }
+                    }
                 }
 
                 Some(TabletData {

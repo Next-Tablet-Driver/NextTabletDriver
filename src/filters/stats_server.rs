@@ -13,6 +13,11 @@ pub struct StatsServer {
 }
 
 impl StatsServer {
+    /// Starts the stats server.
+    ///
+    /// # Errors
+    /// Returns an error if the TCP listener fails to bind to the specified address
+    /// or if setting the listener to non-blocking mode fails.
     pub fn start(ip: String, port: u16) -> Result<Self, String> {
         let addr = format!("{ip}:{port}");
         let listener = TcpListener::bind(&addr).map_err(|e| format!("Failed to bind: {e}"))?;

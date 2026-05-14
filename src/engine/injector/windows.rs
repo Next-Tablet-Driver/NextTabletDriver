@@ -19,6 +19,10 @@ impl Default for Injector {
 
 impl Injector {
     /// Instantiates a new Injector using the default OS settings provided by Enigo.
+    ///
+    /// # Panics
+    /// Panics if the Enigo mouse injection backend fails to initialize. This is usually
+    /// due to missing OS permissions or an unsupported display environment.
     #[must_use]
     pub fn new() -> Self {
         let settings = Settings::default();
@@ -54,6 +58,7 @@ impl Injector {
         use windows_sys::Win32::Foundation::POINT;
         #[cfg(windows)]
         use windows_sys::Win32::UI::WindowsAndMessaging::GetCursorPos;
+        // SAFETY: We are calling GetCursorPos with a valid pointer to a POINT struct.
         unsafe {
             let mut current_pos = POINT { x: 0, y: 0 };
             if GetCursorPos(&raw mut current_pos) != 0 {

@@ -7,6 +7,14 @@ use std::io::{Read, Write};
 use std::process::Command;
 
 /// Downloads the specified release installer and launches it.
+///
+/// # Errors
+/// Returns an error if:
+/// - No suitable installer asset or checksum file is found in the release.
+/// - The download request fails or returns a non-200 status.
+/// - File I/O operations (creation, writing, renaming) fail.
+/// - The downloaded file's SHA256 checksum does not match the expected hash.
+/// - The installer process fails to launch.
 pub fn download_and_install(
     release: Release,
     status_sender: crossbeam_channel::Sender<UpdateStatus>,

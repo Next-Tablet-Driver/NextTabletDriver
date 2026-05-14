@@ -27,8 +27,12 @@ impl ReportParser for GeniusParserV1 {
                 };
 
                 let mut buttons: u8 = 0;
-                if (*b5 & 0x08) != 0 { buttons |= 1 << 0; }
-                if (*b5 & 0x10) != 0 { buttons |= 1 << 1; }
+                if (*b5 & 0x08) != 0 {
+                    buttons |= 1 << 0;
+                }
+                if (*b5 & 0x10) != 0 {
+                    buttons |= 1 << 1;
+                }
 
                 let status = if pressure > 0 { "Contact" } else { "Hover" };
 
@@ -49,9 +53,15 @@ impl ReportParser for GeniusParserV1 {
                 let y = u16::from_le_bytes([*y_lo, *y_hi]);
 
                 let mut buttons: u8 = 0;
-                if (*b1 & 0x01) != 0 { buttons |= 1 << 0; }
-                if (*b1 & 0x02) != 0 { buttons |= 1 << 1; }
-                if (*b1 & 0x04) != 0 { buttons |= 1 << 2; }
+                if (*b1 & 0x01) != 0 {
+                    buttons |= 1 << 0;
+                }
+                if (*b1 & 0x02) != 0 {
+                    buttons |= 1 << 1;
+                }
+                if (*b1 & 0x04) != 0 {
+                    buttons |= 1 << 2;
+                }
 
                 Some(TabletData {
                     status: "Mouse".to_string(),
@@ -94,8 +104,12 @@ impl ReportParser for GeniusParserV2 {
                 };
 
                 let mut buttons: u8 = 0;
-                if (*b5 & 0x08) != 0 { buttons |= 1 << 0; }
-                if (*b5 & 0x10) != 0 { buttons |= 1 << 1; }
+                if (*b5 & 0x08) != 0 {
+                    buttons |= 1 << 0;
+                }
+                if (*b5 & 0x10) != 0 {
+                    buttons |= 1 << 1;
+                }
 
                 let status = if pressure > 0 { "Contact" } else { "Hover" };
 
