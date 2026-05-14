@@ -87,10 +87,16 @@ pub fn websocket_loop(shared: Arc<SharedState>) {
 
             match TcpListener::bind(format!("127.0.0.1:{}", port)) {
                 Ok(l) => {
-                    l.set_nonblocking(true)
-                        .expect("Failed to set WebSocket listener to non-blocking");
-                    listener = Some(l);
-                    current_port = port;
+                    match l.set_nonblocking(true) {
+                        Ok(_) => {
+                            listener = Some(l);
+                            current_port = port;
+                        }
+                        Err(e) => {
+                            log::error!(target: "WebSocket", "Failed to set WebSocket listener to non-blocking: {}", e);
+                            listener = None;
+                        }
+                    }
                 }
                 Err(e) => {
                     log::error!(target: "WebSocket", "Failed to bind to port {}: {}", port, e);
@@ -108,20 +114,17 @@ pub fn websocket_loop(shared: Arc<SharedState>) {
                     }
                             
                     log::info!(target: "WebSocket", "New connection from {}", addr);
-                    stream
-                        .set_nonblocking(false)
-                        .expect("Failed to set WebSocket stream to blocking"); // Blocking for WS handshake
-                    match accept(stream) {
-                        Ok(mut websocket) => {
-                            websocket
-                                .get_mut()
-                                .set_nonblocking(true)
-                                .expect("Failed to set WebSocket stream to non-blocking"); // Back to non-blocking for data
-                            clients.insert(next_client_id, websocket);
-                            next_client_id += 1;
-                        }
-                        Err(e) => {
-                            log::warn!(target: "WebSocket", "Error during WebSocket handshake: {}", e);
+                    if stream.set_nonblocking(false).is_ok() {
+                        match accept(stream) {
+                            Ok(mut websocket) => {
+                                if websocket.get_mut().set_nonblocking(true).is_ok() {
+                                    clients.insert(next_client_id, websocket);
+                                    next_client_id += 1;
+                                }
+                            }
+                            Err(e) => {
+                                log::warn!(target: "WebSocket", "Error during WebSocket handshake: {}", e);
+                            }
                         }
                     }
                 }
@@ -132,8 +135,7 @@ pub fn websocket_loop(shared: Arc<SharedState>) {
             }
 
             if !clients.is_empty() {
-                let data: crate::drivers::TabletData =
-                    shared.tablet_data.read().unwrap_or_log("tablet_data").clone();
+                let data = shared.tablet_data.read().map(|d| d.clone()).unwrap_or_default();
 
                 let payload = WsPayload {
                     x: if send_coords { Some(data.x) } else { None },

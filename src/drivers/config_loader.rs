@@ -9,11 +9,13 @@ use std::time::Instant;
 
 pub static TABLET_CONFIGS_DIR: Dir = include_dir!("$CARGO_MANIFEST_DIR/tablets");
 
+type ConfigIndex = HashMap<(u16, u16), Vec<(TabletConfiguration, DigitizerIdentifier)>>;
+
 /// Pre-indexed configuration map: (VendorID, ProductID) -> (Config, DigitizerInfo)
-pub static INDEXED_CONFIGS: std::sync::LazyLock<HashMap<(u16, u16), Vec<(TabletConfiguration, DigitizerIdentifier)>>> =
+pub static INDEXED_CONFIGS: std::sync::LazyLock<ConfigIndex> =
     std::sync::LazyLock::new(load_and_index_configurations);
 
-fn load_and_index_configurations() -> HashMap<(u16, u16), Vec<(TabletConfiguration, DigitizerIdentifier)>> {
+fn load_and_index_configurations() -> ConfigIndex {
     let configs = load_configurations();
     let mut index = HashMap::new();
 

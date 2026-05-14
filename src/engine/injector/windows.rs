@@ -21,9 +21,17 @@ impl Injector {
     /// Instantiates a new Injector using the default OS settings provided by Enigo.
     #[must_use]
     pub fn new() -> Self {
+        let settings = Settings::default();
+        let enigo = Enigo::new(&settings).unwrap_or_else(|e| {
+            log::error!(target: "Injector", "CRITICAL: Failed to initialize Enigo: {e}");
+            #[allow(clippy::panic)]
+            {
+                panic!("Failed to initialize Enigo mouse injection backend: {e}");
+            }
+        });
+
         Self {
-            enigo: Enigo::new(&Settings::default())
-                .expect("Failed to initialize Enigo mouse injection backend"),
+            enigo,
             last_pressure_down: false,
             remainder_x: 0.0,
             remainder_y: 0.0,

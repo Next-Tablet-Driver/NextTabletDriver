@@ -41,10 +41,10 @@ impl SpeedStatsFilter {
             return;
         }
 
-        if let Some((current_ip, current_port)) = &self.current_config {
-            if current_ip == ip && *current_port == port {
-                return;
-            }
+        if let Some((current_ip, current_port)) = &self.current_config
+            && current_ip == ip && *current_port == port
+        {
+            return;
         }
 
         // Configuration changed or server not started

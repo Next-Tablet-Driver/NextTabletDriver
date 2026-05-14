@@ -85,7 +85,9 @@ pub fn init() {
     let logger = GlobalLogger {
         entries: LOG_BUFFER.clone(),
     };
-    log::set_boxed_logger(Box::new(logger))
+    if let Err(e) = log::set_boxed_logger(Box::new(logger))
         .map(|()| log::set_max_level(LevelFilter::Debug))
-        .expect("Failed to initialize logger");
+    {
+        eprintln!("CRITICAL: Failed to initialize logger: {e}");
+    }
 }

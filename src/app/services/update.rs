@@ -6,6 +6,12 @@ pub struct UpdateService {
     pub sender: Sender<UpdateStatus>,
 }
 
+impl Default for UpdateService {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl UpdateService {
     pub fn new() -> Self {
         let (update_sender, update_receiver) = bounded(1);

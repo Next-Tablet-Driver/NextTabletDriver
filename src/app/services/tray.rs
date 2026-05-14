@@ -8,18 +8,27 @@ pub struct TrayService {
 impl TrayService {
     pub fn new(ctx: Context) -> Self {
         let icon_bytes = include_bytes!("../../../resources/icon.png");
-        let image = image::load_from_memory(icon_bytes)
-            .expect("Failed to load icon")
-            .into_rgba8();
-        let (width, height) = image.dimensions();
-        let icon = tray_icon::Icon::from_rgba(image.into_raw(), width, height)
-            .expect("Failed to create tray icon from RGBA data");
-
-        let tray_icon = TrayIconBuilder::new()
-            .with_icon(icon)
-            .with_tooltip("NextTabletDriver")
-            .build()
-            .ok();
+        let tray_icon = match image::load_from_memory(icon_bytes) {
+            Ok(img) => {
+                let image = img.into_rgba8();
+                let (width, height) = image.dimensions();
+                match tray_icon::Icon::from_rgba(image.into_raw(), width, height) {
+                    Ok(icon) => TrayIconBuilder::new()
+                        .with_icon(icon)
+                        .with_tooltip("NextTabletDriver")
+                        .build()
+                        .ok(),
+                    Err(e) => {
+                        log::error!(target: "Tray", "Failed to create tray icon: {}", e);
+                        None
+                    }
+                }
+            }
+            Err(e) => {
+                log::error!(target: "Tray", "Failed to load tray icon image: {}", e);
+                None
+            }
+        };
 
         if tray_icon.is_some() {
             let tray_ctx = ctx.clone();
