@@ -4,7 +4,7 @@
 //! It handles the main application loop, state transitions, tab navigation, and the
 //! integration with auto-updating and WebSocket systems.
 
-pub mod autoupdateold;
+pub mod autoupdate;
 pub mod lifecycle;
 pub mod state;
 pub mod update;

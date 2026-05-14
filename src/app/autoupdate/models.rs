@@ -1,0 +1,78 @@
+use serde::Deserialize;
+use std::path::PathBuf;
+
+/// Represents a GitHub Release object returned from the API.
+#[derive(Deserialize, Clone)]
+pub struct Release {
+    pub tag_name: String,
+    pub body: Option<String>,
+    pub assets: Vec<Asset>,
+}
+
+/// Represents an individual file (asset) attached to a GitHub Release.
+#[derive(Deserialize, Clone)]
+pub struct Asset {
+    pub name: String,
+    pub browser_download_url: String,
+}
+
+/// Represents the current phase/status of the update process.
+/// This enum is passed via channels from the update thread to the main UI thread.
+#[derive(Clone)]
+pub enum UpdateStatus {
+    Idle,
+    Checking,
+    Available(Release),
+    Downloading(f32),
+    ReadyToInstall(PathBuf),
+    Error(String),
+}
+
+impl UpdateStatus {
+    pub fn as_release(&self) -> Option<&Release> {
+        if let Self::Available(release) = self {
+            Some(release)
+        } else {
+            None
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
+pub struct Version {
+    pub major: u32,
+    pub year: u32,
+    pub month: u32,
+    pub day: u32,
+    pub patch: u32,
+}
+
+impl Version {
+    pub fn parse(s: &str) -> Option<Self> {
+        let s = s.trim_start_matches('v');
+        let parts: Vec<&str> = s.split('.').collect();
+        if parts.len() != 4 {
+            return None;
+        }
+
+        let major = parts[0].parse().ok()?;
+        let year = parts[1].parse().ok()?;
+
+        let ddmm = parts[2];
+        if ddmm.len() != 4 {
+            return None;
+        }
+        let day = ddmm[0..2].parse().ok()?;
+        let month = ddmm[2..4].parse().ok()?;
+
+        let patch = parts[3].parse().ok()?;
+
+        Some(Self {
+            major,
+            year,
+            month,
+            day,
+            patch,
+        })
+    }
+}

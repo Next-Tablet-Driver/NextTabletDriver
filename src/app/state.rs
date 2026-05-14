@@ -10,7 +10,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Instant;
 
-use crate::app::autoupdateold::UpdateStatus;
+use crate::app::autoupdate::UpdateStatus;
 use crate::drivers::TabletData;
 use crate::engine::state::{LockRecoveryExt, SharedState};
 use crossbeam_channel::Receiver;
@@ -500,38 +500,38 @@ impl TabletMapperApp {
 
     /// Initiates the download and installation of an available update in a background thread.
     pub fn start_update(&mut self) {
-        if let crate::app::autoupdateold::UpdateStatus::Available(release) = &self.update_status {
+        if let crate::app::autoupdate::UpdateStatus::Available(release) = &self.update_status {
             let release_clone = release.clone();
             let sender = self.update_sender.clone();
             std::thread::spawn(move || {
                 if let Err(e) =
-                    crate::app::autoupdateold::download_and_install(release_clone, sender.clone())
+                    crate::app::autoupdate::download_and_install(release_clone, sender.clone())
                 {
-                    let _ = sender.send(crate::app::autoupdateold::UpdateStatus::Error(e.to_string()));
+                    let _ = sender.send(crate::app::autoupdate::UpdateStatus::Error(e.to_string()));
                 }
             });
-            self.update_status = crate::app::autoupdateold::UpdateStatus::Downloading(0.0);
+            self.update_status = crate::app::autoupdate::UpdateStatus::Downloading(0.0);
         }
     }
 
     /// Dismisses the update notification for the current session.
     pub fn dismiss_update(&mut self) {
-        self.update_status = crate::app::autoupdateold::UpdateStatus::Idle;
+        self.update_status = crate::app::autoupdate::UpdateStatus::Idle;
     }
 
     /// Triggers a manual check for updates from GitHub.
     pub fn check_for_updates(&mut self) {
         let sender = self.update_sender.clone();
-        self.update_status = crate::app::autoupdateold::UpdateStatus::Checking;
-        std::thread::spawn(move || match crate::app::autoupdateold::check_for_updates() {
+        self.update_status = crate::app::autoupdate::UpdateStatus::Checking;
+        std::thread::spawn(move || match crate::app::autoupdate::check_for_updates() {
             Ok(Some(release)) => {
-                let _ = sender.send(crate::app::autoupdateold::UpdateStatus::Available(release));
+                let _ = sender.send(crate::app::autoupdate::UpdateStatus::Available(release));
             }
             Ok(None) => {
-                let _ = sender.send(crate::app::autoupdateold::UpdateStatus::Idle);
+                let _ = sender.send(crate::app::autoupdate::UpdateStatus::Idle);
             }
             Err(e) => {
-                let _ = sender.send(crate::app::autoupdateold::UpdateStatus::Error(e.to_string()));
+                let _ = sender.send(crate::app::autoupdate::UpdateStatus::Error(e.to_string()));
             }
         });
     }
