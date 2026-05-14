@@ -146,22 +146,19 @@ fn on_device_connected(
     pid: u16,
     local_config: &mut MappingConfig,
 ) {
-    {
-        let mut name = shared.tablet_name.write().ignore_poison();
-        *name = driver.get_name().to_string();
-        log::info!(target: "TabletManager", "Tablet metadata populated: {name}");
-    }
-    *shared.tablet_vid.write().ignore_poison() = vid;
-    *shared.tablet_pid.write().ignore_poison() = pid;
+    let size = driver.get_physical_specs();
+    let (mw, mh, _) = driver.get_specs();
 
-    let size = {
-        let mut s = shared.physical_size.write().ignore_poison();
-        *s = driver.get_physical_specs();
-        *s
+    let new_device = crate::engine::state::DeviceState {
+        name: driver.get_name().to_string(),
+        vid,
+        pid,
+        physical_size: size,
+        hardware_size: (mw, mh),
     };
 
-    let (mw, mh, _) = driver.get_specs();
-    *shared.hardware_size.write().ignore_poison() = (mw, mh);
+    *shared.device_state.write().ignore_poison() = new_device.clone();
+    log::info!(target: "TabletManager", "Tablet metadata populated: {}", new_device.name);
 
     let mut is_first = shared.is_first_run.write().ignore_poison();
     if *is_first {
@@ -180,9 +177,7 @@ fn on_device_connected(
 
 fn on_disconnected(shared: &Arc<SharedState>) {
     log::info!(target: "HID", "Device disconnected, resetting shared state");
-    *shared.tablet_name.write().ignore_poison() = "No Tablet Detected".to_string();
-    *shared.tablet_vid.write().ignore_poison() = 0;
-    *shared.tablet_pid.write().ignore_poison() = 0;
+    *shared.device_state.write().ignore_poison() = crate::engine::state::DeviceState::default();
     *shared.tablet_data.write().ignore_poison() = TabletData::default();
 }
 

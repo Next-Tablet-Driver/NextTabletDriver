@@ -41,14 +41,16 @@ impl UiSnapshot {
     pub fn capture(shared: &SharedState) -> Self {
         use std::sync::atomic::Ordering;
 
+        let device = shared.device_state.read().ignore_poison().clone();
+
         Self {
-            tablet_name: shared.tablet_name.read().ignore_poison().clone(),
-            tablet_vid: *shared.tablet_vid.read().ignore_poison(),
-            tablet_pid: *shared.tablet_pid.read().ignore_poison(),
+            tablet_name: device.name,
+            tablet_vid: device.vid,
+            tablet_pid: device.pid,
             tablet_data: shared.tablet_data.read().ignore_poison().clone(),
             config: shared.config.read().ignore_poison().clone(),
-            physical_size: *shared.physical_size.read().ignore_poison(),
-            hardware_size: *shared.hardware_size.read().ignore_poison(),
+            physical_size: device.physical_size,
+            hardware_size: device.hardware_size,
             stats: *shared.stats.read().ignore_poison(),
             packet_count: shared.packet_count.load(Ordering::Relaxed),
             is_first_run: *shared.is_first_run.read().ignore_poison(),

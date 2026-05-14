@@ -90,11 +90,7 @@ impl TabletMapperApp {
             config: RwLock::new(config.clone()),
             config_version: AtomicU32::new(0),
             tablet_data: RwLock::new(TabletData::default()),
-            tablet_name: RwLock::new("No Tablet Detected".to_string()),
-            tablet_vid: RwLock::new(0),
-            tablet_pid: RwLock::new(0),
-            physical_size: RwLock::new((160.0, 100.0)),
-            hardware_size: RwLock::new((32767.0, 32767.0)),
+            device_state: RwLock::new(crate::engine::state::DeviceState::default()),
             is_first_run: RwLock::new(is_first_run),
             packet_count: AtomicU32::new(0),
             stats: RwLock::new(crate::drivers::DriverStats::default())

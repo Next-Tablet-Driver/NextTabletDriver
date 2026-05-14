@@ -25,6 +25,28 @@ impl<T> LockResultExt<T> for LockResult<T> {
     }
 }
 
+/// An atomic snapshot of device properties.
+#[derive(Clone, Debug, PartialEq)]
+pub struct DeviceState {
+    pub name: String,
+    pub vid: u16,
+    pub pid: u16,
+    pub physical_size: (f32, f32),
+    pub hardware_size: (f32, f32),
+}
+
+impl Default for DeviceState {
+    fn default() -> Self {
+        Self {
+            name: "No Tablet Detected".to_string(),
+            vid: 0,
+            pid: 0,
+            physical_size: (160.0, 100.0),
+            hardware_size: (32767.0, 32767.0),
+        }
+    }
+}
+
 impl Default for SharedState {
     fn default() -> Self {
         Self::new()
@@ -38,11 +60,7 @@ impl SharedState {
             config: RwLock::new(MappingConfig::default()),
             config_version: AtomicU32::new(0),
             tablet_data: RwLock::new(TabletData::default()),
-            tablet_name: RwLock::new("No Tablet Detected".to_string()),
-            tablet_vid: RwLock::new(0),
-            tablet_pid: RwLock::new(0),
-            physical_size: RwLock::new((160.0, 100.0)),
-            hardware_size: RwLock::new((32767.0, 32767.0)),
+            device_state: RwLock::new(DeviceState::default()),
             is_first_run: RwLock::new(false),
             packet_count: AtomicU32::new(0),
             stats: RwLock::new(crate::drivers::DriverStats::default()),
@@ -69,16 +87,8 @@ pub struct SharedState {
     pub config_version: AtomicU32,
     /// The most recent normalized packet from the tablet (X, Y, Pressure, Pen Buttons).
     pub tablet_data: RwLock<TabletData>,
-    /// The marketing/USB name of the connected tablet device.
-    pub tablet_name: RwLock<String>,
-    /// USB Vendor ID of the connected device.
-    pub tablet_vid: RwLock<u16>,
-    /// USB Product ID of the connected device.
-    pub tablet_pid: RwLock<u16>,
-    /// The immutable physical dimensions of the active tablet in millimeters (`Width`, `Height`).
-    pub physical_size: RwLock<(f32, f32)>,
-    /// The maximum raw hardware values the tablet can output (`Max_X`, `Max_Y`).
-    pub hardware_size: RwLock<(f32, f32)>,
+    /// Cohesive properties of the active device (name, vid, pid, sizes).
+    pub device_state: RwLock<DeviceState>,
     /// Flag indicating if the user has never launched the application before (triggers welcome modal).
     pub is_first_run: RwLock<bool>,
     /// A rapidly incrementing counter of USB packets received, used by the UI to calculate real-time Hz.
