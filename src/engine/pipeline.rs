@@ -239,7 +239,7 @@ mod tests {
     #[test]
     fn test_pipeline_absolute_normalization() {
         let mut pipeline = Pipeline::new();
-        let mut config = MappingConfig::default_test();
+        let mut config = MappingConfig::default();
         config.active_area.x = 50.0;
         config.active_area.y = 50.0;
         config.active_area.w = 100.0;
@@ -270,7 +270,7 @@ mod tests {
 
     #[test]
     fn test_pipeline_pressure_threshold() {
-        let mut config = MappingConfig::default_test();
+        let mut config = MappingConfig::default();
         config.tip_threshold = 50; // 50%
 
         // max_p = 1000.0, so threshold = 500.0
@@ -280,7 +280,7 @@ mod tests {
 
     #[test]
     fn test_pipeline_disable_pressure() {
-        let mut config = MappingConfig::default_test();
+        let mut config = MappingConfig::default();
         config.disable_pressure = true;
         config.tip_threshold = 50;
 

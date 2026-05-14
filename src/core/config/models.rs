@@ -24,6 +24,14 @@ pub struct ActiveArea {
 }
 
 impl ActiveArea {
+    /// Normalizes rotation to [0, 360).
+    pub fn normalize_rotation(&mut self) {
+        self.rotation %= 360.0;
+        if self.rotation < 0.0 {
+            self.rotation += 360.0;
+        }
+    }
+
     /// Clamps the area dimensions and position to fit within the physical tablet surface.
     pub fn clamp_to_surface(&mut self, phys_w: f32, phys_h: f32) {
         self.w = self.w.clamp(1.0, phys_w);
@@ -31,10 +39,7 @@ impl ActiveArea {
         self.x = self.x.clamp(self.w / 2.0, phys_w - self.w / 2.0);
         self.y = self.y.clamp(self.h / 2.0, phys_h - self.h / 2.0);
 
-        self.rotation %= 360.0;
-        if self.rotation < 0.0 {
-            self.rotation += 360.0;
-        }
+        self.normalize_rotation();
     }
 
     /// Adjusts the width or height to match the target aspect ratio, ensuring it stays within physical limits.
@@ -127,6 +132,16 @@ pub struct RelativeConfig {
     pub rotation: f32,
     /// Time in milliseconds before relative movement resets (prevents drift).
     pub reset_time_ms: u32,
+}
+
+impl RelativeConfig {
+    /// Normalizes rotation to [0, 360).
+    pub fn normalize_rotation(&mut self) {
+        self.rotation %= 360.0;
+        if self.rotation < 0.0 {
+            self.rotation += 360.0;
+        }
+    }
 }
 
 impl Default for RelativeConfig {
@@ -338,12 +353,6 @@ impl Default for MappingConfig {
 }
 
 impl MappingConfig {
-    /// Alias for `Default::default()`, kept for backward compatibility with tests.
-    #[must_use]
-    pub fn default_test() -> Self {
-        Self::default()
-    }
-
     /// Validates deserialized config values and repairs any invalid fields.
     ///
     /// Returns a list of human-readable correction messages. An empty list
@@ -352,6 +361,7 @@ impl MappingConfig {
         let mut corrections = Vec::new();
         let defaults = Self::default();
 
+        // Active Area
         if self.active_area.w <= 0.0 {
             corrections.push(format!(
                 "active_area.w was invalid ({}), reset to {}",
@@ -366,12 +376,8 @@ impl MappingConfig {
             ));
             self.active_area.h = defaults.active_area.h;
         }
-        // Normalize rotation to [0, 360)
         let old_rotation = self.active_area.rotation;
-        self.active_area.rotation %= 360.0;
-        if self.active_area.rotation < 0.0 {
-            self.active_area.rotation += 360.0;
-        }
+        self.active_area.normalize_rotation();
         if (self.active_area.rotation - old_rotation).abs() > f32::EPSILON {
             corrections.push(format!(
                 "active_area.rotation normalized from {} to {}",
@@ -431,19 +437,14 @@ impl MappingConfig {
             ));
             self.relative_config.y_sensitivity = defaults.relative_config.y_sensitivity;
         }
-        // Normalize relative rotation
         let old_rel_rotation = self.relative_config.rotation;
-        self.relative_config.rotation %= 360.0;
-        if self.relative_config.rotation < 0.0 {
-            self.relative_config.rotation += 360.0;
-        }
+        self.relative_config.normalize_rotation();
         if (self.relative_config.rotation - old_rel_rotation).abs() > f32::EPSILON {
             corrections.push(format!(
                 "relative_config.rotation normalized from {} to {}",
                 old_rel_rotation, self.relative_config.rotation
             ));
         }
-
         if self.relative_config.reset_time_ms == 0 || self.relative_config.reset_time_ms > 10000 {
             corrections.push(format!(
                 "relative_config.reset_time_ms was invalid ({}), reset to {}",
@@ -510,7 +511,7 @@ mod tests {
 
     #[test]
     fn test_config_serialization() -> Result<(), Box<dyn std::error::Error>> {
-        let config = MappingConfig::default_test();
+        let config = MappingConfig::default();
         let json = serde_json::to_string(&config)?;
         let deserialized: MappingConfig = serde_json::from_str(&json)?;
         assert_eq!(config, deserialized);
@@ -518,30 +519,60 @@ mod tests {
     }
 
     #[test]
-    fn test_active_area_logic() {
-        let area = ActiveArea {
-            x: 10.0,
-            y: 10.0,
-            w: 20.0,
-            h: 20.0,
-            rotation: 0.0,
+    fn test_normalize_rotation_active_area() {
+        let mut area = ActiveArea::default();
+        area.rotation = 450.0;
+        area.normalize_rotation();
+        assert_eq!(area.rotation, 90.0);
+
+        area.rotation = -90.0;
+        area.normalize_rotation();
+        assert_eq!(area.rotation, 270.0);
+
+        area.rotation = 360.0;
+        area.normalize_rotation();
+        assert_eq!(area.rotation, 0.0);
+    }
+
+    #[test]
+    fn test_normalize_rotation_relative_config() {
+        let mut cfg = RelativeConfig::default();
+        cfg.rotation = -45.0;
+        cfg.normalize_rotation();
+        assert_eq!(cfg.rotation, 315.0);
+    }
+
+    #[test]
+    fn test_clamp_to_surface_calls_normalize() {
+        let mut area = ActiveArea {
+            x: 80.0,
+            y: 50.0,
+            w: 160.0,
+            h: 100.0,
+            rotation: 450.0,
         };
-        assert_eq!(area.w, 20.0);
+        area.clamp_to_surface(160.0, 100.0);
+        assert_eq!(area.rotation, 90.0);
+    }
+
+    #[test]
+    fn test_apply_aspect_ratio() {
+        let mut area = ActiveArea::default();
+        // prefer_width: h should be derived from w
+        area.apply_aspect_ratio(16.0 / 9.0, true, 200.0, 200.0);
+        let expected_h = area.w / (16.0 / 9.0);
+        assert!((area.h - expected_h).abs() < f32::EPSILON);
     }
 
     #[test]
     fn test_validate_and_repair() {
         let mut config = MappingConfig::default();
 
-        // Test invalid area
         config.active_area.w = -10.0;
         config.active_area.rotation = 450.0;
-
-        // Test invalid network
+        config.relative_config.rotation = -90.0;
         config.websocket.port = 0;
         config.websocket.polling_rate_hz = 5000;
-
-        // Test invalid buttons
         config.pen_button_bindings = vec![];
 
         let corrections = config.validate_and_repair();
@@ -549,6 +580,7 @@ mod tests {
         assert!(!corrections.is_empty());
         assert!(config.active_area.w > 0.0);
         assert_eq!(config.active_area.rotation, 90.0);
+        assert_eq!(config.relative_config.rotation, 270.0);
         assert_eq!(config.websocket.port, 8080);
         assert_eq!(config.websocket.polling_rate_hz, 60);
         assert!(!config.pen_button_bindings.is_empty());

@@ -99,7 +99,7 @@ mod tests {
     use crate::core::config::models::MappingConfig;
 
     fn create_test_config(enabled: bool, latency: f32) -> MappingConfig {
-        let mut config = MappingConfig::default_test();
+        let mut config = MappingConfig::default();
         config.antichatter.enabled = enabled;
         config.antichatter.latency = latency;
         config.antichatter.frequency = 1000.0;
