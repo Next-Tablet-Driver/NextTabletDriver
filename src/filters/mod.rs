@@ -7,6 +7,7 @@
 
 pub mod antichatter;
 pub mod stats;
+pub mod stats_server;
 
 use crate::core::config::models::MappingConfig;
 
