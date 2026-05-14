@@ -33,6 +33,19 @@ pub struct Pipeline {
     rel_mm: Option<(f32, f32)>,
     /// The timestamp of the previous packet, used to reset relative tracking after inactivity.
     packet_time: Instant,
+
+    // Pre-calculated coefficients
+    x_multiplier: f32,
+    y_multiplier: f32,
+    tip_threshold_raw: f32,
+
+    // Cached specs to detect changes
+    last_max_w: f32,
+    last_max_h: f32,
+    last_phys_w: f32,
+    last_phys_h: f32,
+    last_max_p: f32,
+    last_threshold: u16,
 }
 
 impl Default for Pipeline {
@@ -48,6 +61,15 @@ impl Pipeline {
             abs_screen: None,
             rel_mm: None,
             packet_time: Instant::now(),
+            x_multiplier: 1.0,
+            y_multiplier: 1.0,
+            tip_threshold_raw: 0.0,
+            last_max_w: 0.0,
+            last_max_h: 0.0,
+            last_phys_w: 0.0,
+            last_phys_h: 0.0,
+            last_max_p: 0.0,
+            last_threshold: 0,
         }
     }
 
@@ -89,8 +111,30 @@ impl Pipeline {
         let (max_w, max_h, max_p) = driver.get_specs();
         let (phys_w, phys_h) = driver.get_physical_specs();
 
-        let x_mm = (f32::from(data.x) / max_w) * phys_w;
-        let y_mm = (f32::from(data.y) / max_h) * phys_h;
+        // Update coefficients if specs changed (e.g. tablet reconnected)
+        if max_w != self.last_max_w
+            || max_h != self.last_max_h
+            || phys_w != self.last_phys_w
+            || phys_h != self.last_phys_h
+        {
+            self.x_multiplier = if max_w > 0.0 { phys_w / max_w } else { 0.0 };
+            self.y_multiplier = if max_h > 0.0 { phys_h / max_h } else { 0.0 };
+
+            self.last_max_w = max_w;
+            self.last_max_h = max_h;
+            self.last_phys_w = phys_w;
+            self.last_phys_h = phys_h;
+        }
+
+        // Update pressure threshold if config or driver specs changed
+        if config.tip_threshold != self.last_threshold || max_p != self.last_max_p {
+            self.tip_threshold_raw = (f32::from(config.tip_threshold) * 0.01) * max_p;
+            self.last_threshold = config.tip_threshold;
+            self.last_max_p = max_p;
+        }
+
+        let x_mm = f32::from(data.x) * self.x_multiplier;
+        let y_mm = f32::from(data.y) * self.y_multiplier;
 
         // Normalize
         let (u, v) = Self::normalize(x_mm, y_mm, config, shared);
@@ -121,7 +165,7 @@ impl Pipeline {
         }
 
         // Pressure & Injection
-        frame.is_down = Self::evaluate_pressure(data.pressure, max_p, config);
+        frame.is_down = self.evaluate_pressure(data.pressure, max_p, config);
         injector.set_left_button(frame.is_down);
     }
 
@@ -201,14 +245,25 @@ impl Pipeline {
         delta
     }
 
-    fn evaluate_pressure(pressure_raw: u16, max_p: f32, config: &MappingConfig) -> bool {
+    pub fn evaluate_pressure(
+        &mut self,
+        pressure_raw: u16,
+        max_p: f32,
+        config: &MappingConfig,
+    ) -> bool {
+        // Update pressure threshold if config or driver specs changed
+        if config.tip_threshold != self.last_threshold || max_p != self.last_max_p {
+            self.tip_threshold_raw = (f32::from(config.tip_threshold) * 0.01) * max_p;
+            self.last_threshold = config.tip_threshold;
+            self.last_max_p = max_p;
+        }
+
         let pressure = if config.disable_pressure {
             max_p as u16
         } else {
             pressure_raw
         };
-        let threshold_raw = (f32::from(config.tip_threshold) / 100.0) * max_p;
-        f32::from(pressure) > threshold_raw
+        f32::from(pressure) > self.tip_threshold_raw
     }
 }
 
@@ -274,21 +329,23 @@ mod tests {
 
     #[test]
     fn test_pipeline_pressure_threshold() {
+        let mut pipeline = Pipeline::new();
         let mut config = MappingConfig::default();
         config.tip_threshold = 50; // 50%
 
         // max_p = 1000.0, so threshold = 500.0
-        assert!(Pipeline::evaluate_pressure(501, 1000.0, &config));
-        assert!(!Pipeline::evaluate_pressure(499, 1000.0, &config));
+        assert!(pipeline.evaluate_pressure(501, 1000.0, &config));
+        assert!(!pipeline.evaluate_pressure(499, 1000.0, &config));
     }
 
     #[test]
     fn test_pipeline_disable_pressure() {
+        let mut pipeline = Pipeline::new();
         let mut config = MappingConfig::default();
         config.disable_pressure = true;
         config.tip_threshold = 50;
 
         // Should always be true (down) regardless of raw pressure
-        assert!(Pipeline::evaluate_pressure(0, 1000.0, &config));
+        assert!(pipeline.evaluate_pressure(0, 1000.0, &config));
     }
 }
