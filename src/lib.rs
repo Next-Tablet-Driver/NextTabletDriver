@@ -47,4 +47,4 @@ pub mod startup;
 pub mod ui;
 
 /// Version.
-pub const VERSION: &str = "1.26.0505.01";
+pub const VERSION: &str = env!("CARGO_PKG_VERSION");
