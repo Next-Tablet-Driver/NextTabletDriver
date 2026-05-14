@@ -1,6 +1,6 @@
 use crate::drivers::TabletData;
 use crate::drivers::parsers::ReportParser;
-use crate::engine::state::LockResultExt;
+use crate::engine::state::{LockRecoveryExt, WriteRecoverExt};
 use std::sync::Mutex;
 
 // Intuos V1
@@ -71,10 +71,10 @@ impl IntuosV1Parser {
                 buttons |= 1 << 1;
             }
 
-            *self.prev_pressure.lock().ignore_poison() = pressure;
-            *self.prev_tilt_x.lock().ignore_poison() = tilt_x;
-            *self.prev_tilt_y.lock().ignore_poison() = tilt_y;
-            *self.prev_buttons.lock().ignore_poison() = buttons;
+            *self.prev_pressure.lock().unwrap_or_reset("wacom_prev_pressure") = pressure;
+            *self.prev_tilt_x.lock().unwrap_or_reset("wacom_prev_tilt_x") = tilt_x;
+            *self.prev_tilt_y.lock().unwrap_or_reset("wacom_prev_tilt_y") = tilt_y;
+            *self.prev_buttons.lock().unwrap_or_reset("wacom_prev_buttons") = buttons;
 
             let status = if pressure > 0 { "Contact" } else { "Hover" };
             let hover_distance = data[9];
@@ -101,10 +101,10 @@ impl IntuosV1Parser {
                 status: "Rotation".to_string(),
                 x,
                 y,
-                pressure: *self.prev_pressure.lock().ignore_poison(),
-                tilt_x: *self.prev_tilt_x.lock().ignore_poison(),
-                tilt_y: *self.prev_tilt_y.lock().ignore_poison(),
-                buttons: *self.prev_buttons.lock().ignore_poison(),
+                pressure: *self.prev_pressure.lock().unwrap_or_log("wacom_prev_pressure"),
+                tilt_x: *self.prev_tilt_x.lock().unwrap_or_log("wacom_prev_tilt_x"),
+                tilt_y: *self.prev_tilt_y.lock().unwrap_or_log("wacom_prev_tilt_y"),
+                buttons: *self.prev_buttons.lock().unwrap_or_log("wacom_prev_buttons"),
                 hover_distance: data[9],
                 raw_data: raw,
                 is_connected: true,

@@ -22,7 +22,7 @@ use crate::core::config::models::MappingConfig;
 use crate::drivers::{TabletData, detect_tablet};
 use crate::engine::injector::Injector;
 use crate::engine::pipeline::Pipeline;
-use crate::engine::state::{LockResultExt, SharedState};
+use crate::engine::state::{LockRecoveryExt, SharedState, WriteRecoverExt};
 use crate::filters::FilterPipeline;
 use crossbeam_channel::Sender;
 use eframe::egui;
@@ -56,7 +56,7 @@ pub fn run_manager(
 
         init_thread_priority();
 
-        let mut local_config = shared.config.read().ignore_poison().clone();
+        let mut local_config = shared.config.read().unwrap_or_log("config").clone();
         let mut filters = init_filter_pipeline(&shared, &local_config);
 
         loop {
@@ -157,12 +157,12 @@ fn on_device_connected(
         hardware_size: (mw, mh),
     };
 
-    *shared.device_state.write().ignore_poison() = new_device.clone();
+    *shared.device_state.write().unwrap_or_reset("device_state") = new_device.clone();
     log::info!(target: "TabletManager", "Tablet metadata populated: {}", new_device.name);
 
-    let mut is_first = shared.is_first_run.write().ignore_poison();
+    let mut is_first = shared.is_first_run.write().unwrap_or_reset("is_first_run");
     if *is_first {
-        let mut config = shared.config.write().ignore_poison();
+        let mut config = shared.config.write().unwrap_or_log("config");
         config.active_area.w = size.0;
         config.active_area.h = size.1;
         config.active_area.x = size.0 / 2.0;
@@ -177,8 +177,8 @@ fn on_device_connected(
 
 fn on_disconnected(shared: &Arc<SharedState>) {
     log::info!(target: "HID", "Device disconnected, resetting shared state");
-    *shared.device_state.write().ignore_poison() = crate::engine::state::DeviceState::default();
-    *shared.tablet_data.write().ignore_poison() = TabletData::default();
+    *shared.device_state.write().unwrap_or_reset("device_state") = crate::engine::state::DeviceState::default();
+    *shared.tablet_data.write().unwrap_or_reset("tablet_data") = TabletData::default();
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -316,7 +316,7 @@ fn maybe_reload_config(
 
     let cv = shared.config_version.load(Ordering::Relaxed);
     if cv != *local_config_version {
-        *local_config = shared.config.read().ignore_poison().clone();
+        *local_config = shared.config.read().unwrap_or_log("config").clone();
         *local_config_version = cv;
         filters.update_config(local_config);
         log::info!(target: "Config", "Configuration reloaded to version {cv}");

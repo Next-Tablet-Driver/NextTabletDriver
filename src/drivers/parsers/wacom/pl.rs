@@ -1,6 +1,6 @@
 use crate::drivers::TabletData;
 use crate::drivers::parsers::ReportParser;
-use crate::engine::state::LockResultExt;
+use crate::engine::state::{LockRecoveryExt, WriteRecoverExt};
 use std::sync::Mutex;
 
 pub struct PLParser {
@@ -36,17 +36,17 @@ impl ReportParser for PLParser {
             .join(" ");
 
         if (data[1] & 0x40) == 0 {
-            *self.last_report_out_of_range.lock().ignore_poison() = true;
+            *self.last_report_out_of_range.lock().unwrap_or_reset("wacom_pl_out_of_range") = true;
             return None; // OutOfRangeReport logic doesn't carry in TabletData struct, mapping to Option::None
         }
 
-        let mut out_of_range_guard = self.last_report_out_of_range.lock().ignore_poison();
+        let mut out_of_range_guard = self.last_report_out_of_range.lock().unwrap_or_reset("wacom_pl_out_of_range");
         if *out_of_range_guard {
-            *self.initial_eraser.lock().ignore_poison() = (data[4] & 0x20) != 0;
+            *self.initial_eraser.lock().unwrap_or_reset("wacom_pl_eraser") = (data[4] & 0x20) != 0;
             *out_of_range_guard = false;
         }
 
-        let is_initial_eraser = *self.initial_eraser.lock().ignore_poison();
+        let is_initial_eraser = *self.initial_eraser.lock().unwrap_or_log("wacom_pl_eraser");
 
         let x_part1 = ((data[1] & 0x03) as u32) << 14;
         let x_part2 = (data[2] as u32) << 7;

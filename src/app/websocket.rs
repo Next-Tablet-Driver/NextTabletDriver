@@ -14,7 +14,7 @@ use serde::Serialize;
 use tungstenite::protocol::WebSocket;
 use tungstenite::{Message, accept};
 
-use crate::engine::state::{LockResultExt, SharedState};
+use crate::engine::state::{LockRecoveryExt, SharedState};
 
 /// The JSON payload broadcasted to all connected WebSocket clients.
 ///
@@ -56,7 +56,7 @@ pub fn websocket_loop(shared: Arc<SharedState>) {
         let frame_start = Instant::now();
         
         let (enabled, port, hz, send_coords, send_pressure, _send_tilt, send_status) = {
-            let config = shared.config.read().ignore_poison();
+            let config = shared.config.read().unwrap_or_log("config");
             let ws = &config.websocket;
             (
                 ws.enabled,
@@ -127,7 +127,7 @@ pub fn websocket_loop(shared: Arc<SharedState>) {
 
             if !clients.is_empty() {
                 let data: crate::drivers::TabletData =
-                    shared.tablet_data.read().ignore_poison().clone();
+                    shared.tablet_data.read().unwrap_or_log("tablet_data").clone();
 
                 let payload = WsPayload {
                     x: if send_coords { Some(data.x) } else { None },

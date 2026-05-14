@@ -5,7 +5,7 @@
 //! every frame to process events, update state, and render the user interface.
 
 use crate::app::state::{AppTab, TabletMapperApp, ToastLevel, UiSnapshot};
-use crate::engine::state::LockResultExt;
+use crate::engine::state::{LockRecoveryExt, WriteRecoverExt};
 use crate::ui::panels::console::render_console_panel;
 
 use crate::ui::panels::filters::render_filters_panel;
@@ -74,7 +74,7 @@ impl TabletMapperApp {
                     .update_latency(receive_time.elapsed().as_secs_f32() * 1000.0);
             }
 
-            let mut shared_data = self.shared.tablet_data.write().ignore_poison();
+            let mut shared_data = self.shared.tablet_data.write().unwrap_or_reset("tablet_data");
             *shared_data = data;
 
             let needs_live_update = self.show_debugger
@@ -360,7 +360,7 @@ impl TabletMapperApp {
                 crate::ui::theme::apply_theme(ctx, config.theme);
             }
             {
-                let mut shared_config = self.shared.config.write().ignore_poison();
+                let mut shared_config = self.shared.config.write().unwrap_or_log("config");
                 *shared_config = config.clone();
                 self.shared.config_version.fetch_add(1, Ordering::SeqCst);
             }

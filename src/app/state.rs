@@ -12,7 +12,7 @@ use std::time::Instant;
 
 use crate::app::autoupdate::UpdateStatus;
 use crate::drivers::TabletData;
-use crate::engine::state::{LockResultExt, SharedState};
+use crate::engine::state::{LockRecoveryExt, SharedState};
 use crossbeam_channel::Receiver;
 
 /// An immutable, lock-free snapshot of the application state for a single UI frame.
@@ -41,19 +41,19 @@ impl UiSnapshot {
     pub fn capture(shared: &SharedState) -> Self {
         use std::sync::atomic::Ordering;
 
-        let device = shared.device_state.read().ignore_poison().clone();
+        let device = shared.device_state.read().unwrap_or_log("device_state").clone();
 
         Self {
             tablet_name: device.name,
             tablet_vid: device.vid,
             tablet_pid: device.pid,
-            tablet_data: shared.tablet_data.read().ignore_poison().clone(),
-            config: shared.config.read().ignore_poison().clone(),
+            tablet_data: shared.tablet_data.read().unwrap_or_log("tablet_data").clone(),
+            config: shared.config.read().unwrap_or_log("config").clone(),
             physical_size: device.physical_size,
             hardware_size: device.hardware_size,
-            stats: *shared.stats.read().ignore_poison(),
+            stats: *shared.stats.read().unwrap_or_log("stats"),
             packet_count: shared.packet_count.load(Ordering::Relaxed),
-            is_first_run: *shared.is_first_run.read().ignore_poison(),
+            is_first_run: *shared.is_first_run.read().unwrap_or_log("is_first_run"),
         }
     }
 }
@@ -374,7 +374,7 @@ impl TabletMapperApp {
     /// Resets the current configuration to defaults while preserving system settings.
     pub fn reset_to_default(&mut self) {
         {
-            let mut shared_config = self.shared.config.write().ignore_poison();
+            let mut shared_config = self.shared.config.write().unwrap_or_log("config");
             let theme = shared_config.theme;
             let run_at_startup = shared_config.run_at_startup;
 
@@ -433,8 +433,7 @@ impl TabletMapperApp {
     /// Filters the global log buffer based on current UI settings and search query.
     /// Returns (total_count, filtered_logs, full_log_text).
     pub fn get_filtered_logs(&mut self) -> (usize, &[crate::logger::LogEntry], &str) {
-        use crate::engine::state::LockResultExt;
-        let logs = crate::logger::LOG_BUFFER.read().ignore_poison();
+        let logs = crate::logger::LOG_BUFFER.read().unwrap_or_log("logs");
         
         let current_filters = (
             self.console_show_info,
@@ -540,7 +539,7 @@ impl TabletMapperApp {
     /// Atomically updates the shared config and bumps the version counter.
     fn apply_config(&self, cfg: MappingConfig) { 
         {
-            let mut shared_config = self.shared.config.write().ignore_poison();
+            let mut shared_config = self.shared.config.write().unwrap_or_log("config");
             *shared_config = cfg.clone();
             self.shared
                 .config_version

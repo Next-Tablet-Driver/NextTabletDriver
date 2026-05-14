@@ -8,18 +8,58 @@ use crate::drivers::TabletData;
 use std::sync::atomic::AtomicU32;
 use std::sync::{LockResult, RwLock};
 
-/// Extension trait to handle poisoned locks gracefully.
-pub trait LockResultExt<T> {
-    fn ignore_poison(self) -> T;
+/// Extension trait for safe lock recovery.
+pub trait LockRecoveryExt<T> {
+    /// Extracts the guard but logs heavily that the state might be corrupted.
+    /// Used for critical state where a reset would be destructive.
+    fn unwrap_or_log(self, lock_name: &str) -> T;
 }
 
-impl<T> LockResultExt<T> for LockResult<T> {
-    fn ignore_poison(self) -> T {
+impl<T> LockRecoveryExt<T> for LockResult<T> {
+    fn unwrap_or_log(self, lock_name: &str) -> T {
         match self {
             Ok(guard) => guard,
             Err(poisoned) => {
-                log::error!(target: "State", "Lock poisoned! Another thread panicked while holding this lock. Recovering guard...");
+                log::error!(target: "State", "CRITICAL: Lock '{}' poisoned! Using potentially corrupted guard.", lock_name);
                 poisoned.into_inner()
+            }
+        }
+    }
+}
+
+/// Extension trait for self-healing transient write locks.
+pub trait WriteRecoverExt {
+    type Guard;
+    /// Extracts the guard and explicitly overwrites the corrupted data with `Default::default()`.
+    /// Used for transient state like tablet coordinates, stats, or device metadata.
+    fn unwrap_or_reset(self, lock_name: &str) -> Self::Guard;
+}
+
+impl<'a, T: Default> WriteRecoverExt for LockResult<std::sync::RwLockWriteGuard<'a, T>> {
+    type Guard = std::sync::RwLockWriteGuard<'a, T>;
+    fn unwrap_or_reset(self, lock_name: &str) -> Self::Guard {
+        match self {
+            Ok(guard) => guard,
+            Err(poisoned) => {
+                log::warn!(target: "State", "Write lock '{}' poisoned! Repairing by resetting to default state.", lock_name);
+                let mut guard = poisoned.into_inner();
+                *guard = T::default();
+                guard
+            }
+        }
+    }
+}
+
+impl<'a, T: Default> WriteRecoverExt for LockResult<std::sync::MutexGuard<'a, T>> {
+    type Guard = std::sync::MutexGuard<'a, T>;
+    fn unwrap_or_reset(self, lock_name: &str) -> Self::Guard {
+        match self {
+            Ok(guard) => guard,
+            Err(poisoned) => {
+                log::warn!(target: "State", "Mutex '{}' poisoned! Repairing by resetting to default state.", lock_name);
+                let mut guard = poisoned.into_inner();
+                *guard = T::default();
+                guard
             }
         }
     }
