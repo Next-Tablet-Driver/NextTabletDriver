@@ -18,7 +18,8 @@ pub struct DevocubAntichatter {
 }
 
 impl DevocubAntichatter {
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self {
             history: VecDeque::new(),
             last_x: 0.0,

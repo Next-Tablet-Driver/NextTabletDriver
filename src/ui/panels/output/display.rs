@@ -118,16 +118,16 @@ pub fn render_display_section(
                     opacity_factor: 1.0,
                 });
 
-                let ratio = if config.target_area.h != 0.0 {
-                    config.target_area.w / config.target_area.h
-                } else {
+                let ratio = if config.target_area.h == 0.0 {
                     0.0
+                } else {
+                    config.target_area.w / config.target_area.h
                 };
                 ui.painter().text(
                     t_rect.center() + egui::vec2(0.0, 12.0),
                     egui::Align2::CENTER_CENTER,
-                    format!("{:.4}", ratio).replace(".", ","),
-                    font_id.clone(),
+                    format!("{ratio:.4}").replace('.', ","),
+                    font_id,
                     color,
                 );
 

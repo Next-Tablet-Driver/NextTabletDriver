@@ -38,7 +38,7 @@ impl Log for GlobalLogger {
                     "App", "UI", "HID", "TabletManager", "Pipeline", "Config",
                     "Startup", "Update", "Stats", "Tray", "Timer", "WebSocket",
                     "Telemetry", "Driver", "Detect",
-            ].iter().any(|&t| target == t || target.starts_with(&format!("{}::", t)))
+            ].iter().any(|&t| target == t || target.starts_with(&format!("{t}::")))
             || target.starts_with("NextTabletDriver");
 
             if !is_allowed {
@@ -57,20 +57,7 @@ impl Log for GlobalLogger {
                     "[{}] {} [{}] {}",
                     entry.time, entry.level, entry.group, entry.message
                 );
-                println!("{}", log_line);
-
-                // TODO: Optimize file rotation frequency.
-                // Calling `metadata()` on every log entry is expensive under high throughput (HID events).
-                // 1. Use a static AtomicUsize counter.
-                // 2. Only check file size/rotate every 100 or 500 logs using `fetch_add` and modulo.
-                // 3. This reduces syscall overhead while keeping the log file size capped.
-                // 
-                // if let Ok(path) = std::path::Path::new("debug.log").metadata() {
-                //     // 10 MB (10 * 1024 * 1024 Bytes)
-                //     if path.len() > 10_485_760 {
-                //         let _ = std::fs::rename("debug.log", "debug.log.old");
-                //     }
-                // }
+                println!("{log_line}");
 
                 if let Ok(mut file) = std::fs::OpenOptions::new()
                     .create(true)
@@ -78,7 +65,7 @@ impl Log for GlobalLogger {
                     .open("debug.log")
                 {
                     use std::io::Write;
-                    let _ = writeln!(file, "{}", log_line);
+                    let _ = writeln!(file, "{log_line}");
                 }
             }
 

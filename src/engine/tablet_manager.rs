@@ -61,7 +61,7 @@ pub fn run_manager(
 
         loop {
             if let Some((device, driver, vid, pid)) = detect_tablet(&hid_api) {
-                log::info!(target: "HID", "Device connected: {:04x}:{:04x}", vid, pid);
+                log::info!(target: "HID", "Device connected: {vid:04x}:{pid:04x}");
                 on_device_connected(&shared, driver.as_ref(), vid, pid, &mut local_config);
                 let mut local_config_version = shared.config_version.load(Ordering::Relaxed);
 
@@ -101,7 +101,7 @@ pub fn run_manager(
     });
 
     if let Err(err) = result {
-        log::error!(target: "TabletManager", "THREAD CRASHED: {:?}", err);
+        log::error!(target: "TabletManager", "THREAD CRASHED: {err:?}");
     }
 }
 
@@ -149,7 +149,7 @@ fn on_device_connected(
     {
         let mut name = shared.tablet_name.write().ignore_poison();
         *name = driver.get_name().to_string();
-        log::info!(target: "TabletManager", "Tablet metadata populated: {}", *name);
+        log::info!(target: "TabletManager", "Tablet metadata populated: {name}");
     }
     *shared.tablet_vid.write().ignore_poison() = vid;
     *shared.tablet_pid.write().ignore_poison() = pid;
@@ -171,7 +171,9 @@ fn on_device_connected(
         config.active_area.x = size.0 / 2.0;
         config.active_area.y = size.1 / 2.0;
         *is_first = false;
+        drop(is_first);
         *local_config = config.clone();
+        drop(config);
         shared.config_version.fetch_add(1, Ordering::SeqCst);
     }
 }
@@ -227,7 +229,7 @@ fn run_polling_loop(
                         &mut last_config_check,
                     );
                 })) {
-                    log::error!(target: "TabletManager", "Packet processing panicked: {:?}", e);
+                    log::error!(target: "TabletManager", "Packet processing panicked: {e:?}");
                 }
             }
             Ok(_) => {
@@ -286,7 +288,7 @@ fn process_packet(
             && let Ok(mut stats) = shared.stats.write()
         {
             *last_stats_update = now;
-            stats.total_packets = shared.packet_count.load(Ordering::Relaxed) as u64;
+            stats.total_packets = u64::from(shared.packet_count.load(Ordering::Relaxed));
 
             let hr_ms = read_duration.as_secs_f32() * 1000.0;
             stats.hid_read_ms = hr_ms;
@@ -322,6 +324,6 @@ fn maybe_reload_config(
         *local_config = shared.config.read().ignore_poison().clone();
         *local_config_version = cv;
         filters.update_config(local_config);
-        log::info!(target: "Config", "Configuration reloaded to version {}", cv);
+        log::info!(target: "Config", "Configuration reloaded to version {cv}");
     }
 }

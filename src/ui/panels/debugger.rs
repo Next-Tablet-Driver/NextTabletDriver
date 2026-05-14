@@ -27,8 +27,8 @@ pub fn render_debugger_panel(snapshot: &UiSnapshot, displayed_hz: f32, ui: &mut 
     );
 
     if is_detected && tablet_data.is_connected {
-        let x_pct = tablet_data.x as f32 / max_x;
-        let y_pct = tablet_data.y as f32 / max_y;
+        let x_pct = f32::from(tablet_data.x) / max_x;
+        let y_pct = f32::from(tablet_data.y) / max_y;
 
         let dot_pos = egui::pos2(
             rect.left() + x_pct * rect.width(),
@@ -48,10 +48,10 @@ pub fn render_debugger_panel(snapshot: &UiSnapshot, displayed_hz: f32, ui: &mut 
                 .circle_filled(dot_pos, 3.0, ui.visuals().weak_text_color());
         }
     } else {
-        let status_text = if !is_detected {
-            "NO USB DEVICE DETECTED"
-        } else {
+        let status_text = if is_detected {
             "PEN OUT OF RANGE"
+        } else {
+            "NO USB DEVICE DETECTED"
         };
 
         ui.painter().text(
@@ -101,7 +101,7 @@ pub fn render_debugger_panel(snapshot: &UiSnapshot, displayed_hz: f32, ui: &mut 
             status_card(
                 ui,
                 "REPORT RATE",
-                &format!("{:.0} Hz", displayed_hz),
+                &format!("{displayed_hz:.0} Hz"),
                 if ui.visuals().dark_mode {
                     egui::Color32::GOLD
                 } else {
@@ -122,7 +122,7 @@ pub fn render_debugger_panel(snapshot: &UiSnapshot, displayed_hz: f32, ui: &mut 
             ui.add_space(10.0);
             let b1 = (tablet_data.buttons & 0x01) != 0;
             let b2 = (tablet_data.buttons & 0x02) != 0;
-            let btn_str = format!("B1: {} | B2: {}", b1, b2);
+            let btn_str = format!("B1: {b1} | B2: {b2}");
             status_card(
                 ui,
                 "BUTTONS",
@@ -165,7 +165,7 @@ pub fn render_debugger_panel(snapshot: &UiSnapshot, displayed_hz: f32, ui: &mut 
                     if i > 0 {
                         let _ = write!(&mut binary_string, " ");
                     }
-                    let _ = write!(&mut binary_string, "{:08b}", byte);
+                    let _ = write!(&mut binary_string, "{byte:08b}");
                 }
             }
 

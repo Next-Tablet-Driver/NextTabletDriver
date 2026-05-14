@@ -366,7 +366,7 @@ pub fn ui_card<R>(
             ui.vertical(|ui| {
                 ui.horizontal(|ui| {
                     ui.label(
-                        egui::RichText::new(format!("{} {}", icon, title))
+                        egui::RichText::new(format!("{icon} {title}"))
                             .size(14.0)
                             .strong(),
                     );

@@ -97,7 +97,7 @@ pub fn render_tablet_section(ui: &mut egui::Ui, config: &mut MappingConfig, snap
                 let text = format!("{:.2}", config.active_area.h)
                     .trim_end_matches('0')
                     .trim_end_matches('.')
-                    .replace(".", ",")
+                    .replace('.', ",")
                     + "mm";
                 f.layout_no_wrap(text, font_id.clone(), color)
             });
@@ -115,15 +115,16 @@ pub fn render_tablet_section(ui: &mut egui::Ui, config: &mut MappingConfig, snap
                 opacity_factor: 1.0,
             });
 
-            let ratio = if config.active_area.h != 0.0 {
-                config.active_area.w / config.active_area.h
-            } else {
+            let ratio = if config.active_area.h == 0.0 {
                 0.0
+            } else {
+                config.active_area.w / config.active_area.h
             };
+
             ui.painter().text(
                 egui::pos2(geo.aa_center_x, geo.aa_center_y + 12.0),
                 egui::Align2::CENTER_CENTER,
-                format!("{:.4}", ratio).replace(".", ","),
+                format!("{ratio:.4}").replace('.', ","),
                 font_id.clone(),
                 color,
             );
@@ -135,13 +136,13 @@ pub fn render_tablet_section(ui: &mut egui::Ui, config: &mut MappingConfig, snap
             let text_w = format!("{:.2}", config.active_area.w)
                 .trim_end_matches('0')
                 .trim_end_matches('.')
-                .replace(".", ",")
+                .replace('.', ",")
                 + "mm";
             ui.painter().text(
                 top_mid + egui::vec2(5.0 * rot_rad.sin(), 5.0 * rot_rad.cos()),
                 egui::Align2::CENTER_TOP,
                 text_w,
-                font_id.clone(),
+                font_id,
                 color,
             );
 
@@ -149,8 +150,8 @@ pub fn render_tablet_section(ui: &mut egui::Ui, config: &mut MappingConfig, snap
 
             if tablet_data.is_connected {
                 let (max_w, max_h) = snapshot.hardware_size;
-                let cx = geo.offset_x + (tablet_data.x as f32 / max_w) * phys_w * geo.scale;
-                let cy = geo.offset_y + (tablet_data.y as f32 / max_h) * phys_h * geo.scale;
+                let cx = geo.offset_x + (f32::from(tablet_data.x) / max_w) * phys_w * geo.scale;
+                let cy = geo.offset_y + (f32::from(tablet_data.y) / max_h) * phys_h * geo.scale;
                 if full_rect.contains(egui::pos2(cx, cy)) {
                     let cursor_color = if ui.visuals().dark_mode {
                         egui::Color32::WHITE

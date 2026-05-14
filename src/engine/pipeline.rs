@@ -42,6 +42,7 @@ impl Default for Pipeline {
 }
 
 impl Pipeline {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             last_abs_screen: None,
@@ -53,7 +54,7 @@ impl Pipeline {
     /// Resets the internal tracking for relative mode.
     /// This prevents massive cursor jumps when the pen is lifted and placed back
     /// down on a different part of the tablet.
-    pub fn reset_relative(&mut self) {
+    pub const fn reset_relative(&mut self) {
         self.last_abs_screen = None;
         self.last_rel_mm = None;
     }
@@ -84,8 +85,8 @@ impl Pipeline {
         let (max_w, max_h, max_p) = driver.get_specs();
         let (phys_w, phys_h) = driver.get_physical_specs();
 
-        let x_mm = (data.x as f32 / max_w) * phys_w;
-        let y_mm = (data.y as f32 / max_h) * phys_h;
+        let x_mm = (f32::from(data.x) / f32::from(max_w)) * phys_w;
+        let y_mm = (f32::from(data.y) / f32::from(max_h)) * phys_h;
 
         // Normalize
         let (u, v) = self.normalize(x_mm, y_mm, config, shared);
@@ -175,16 +176,14 @@ impl Pipeline {
     fn project_relative(&mut self, x_mm: f32, y_mm: f32, config: &MappingConfig) -> (f32, f32) {
         let now = Instant::now();
         if now.duration_since(self.last_packet_time)
-            > Duration::from_millis(config.relative_config.reset_time_ms as u64)
+            > Duration::from_millis(u64::from(config.relative_config.reset_time_ms))
         {
             self.reset_relative();
         }
         self.last_packet_time = now;
 
-        let mut delta = (0.0, 0.0);
-
-        if let Some((lx, ly)) = self.last_rel_mm {
-            delta = crate::core::math::transform::apply_relative_delta(
+        let delta = if let Some((lx, ly)) = self.last_rel_mm {
+            crate::core::math::transform::apply_relative_delta(
                 x_mm,
                 y_mm,
                 lx,
@@ -192,8 +191,10 @@ impl Pipeline {
                 config.relative_config.rotation,
                 config.relative_config.x_sensitivity,
                 config.relative_config.y_sensitivity,
-            );
-        }
+            )
+        } else {
+            (0.0, 0.0)
+        };
 
         self.last_rel_mm = Some((x_mm, y_mm));
         delta
@@ -205,8 +206,8 @@ impl Pipeline {
         } else {
             pressure_raw
         };
-        let threshold_raw = (config.tip_threshold as f32 / 100.0) * max_p;
-        pressure as f32 > threshold_raw
+        let threshold_raw = (f32::from(config.tip_threshold) / 100.0) * max_p;
+        f32::from(pressure) > threshold_raw
     }
 }
 

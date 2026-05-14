@@ -536,7 +536,7 @@ impl TabletMapperApp {
     }
 
     /// Atomically updates the shared config and bumps the version counter.
-    fn apply_config(&mut self, cfg: MappingConfig) {
+    fn apply_config(&self, cfg: MappingConfig) { 
         {
             let mut shared_config = self.shared.config.write().ignore_poison();
             *shared_config = cfg.clone();

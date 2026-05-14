@@ -8,7 +8,7 @@
 //! - **Windows**: Uses `enigo` + `windows-sys` for mouse simulation via `SendInput`.
 //! - **Linux**: Creates a virtual tablet device via `/dev/uinput` (kernel module)
 //!   using the `evdev` crate. This approach is universally compatible with
-//!   X11, Wayland, and XWayland — the kernel sees it as real hardware.
+//!   X11, Wayland, and `XWayland` — the kernel sees it as real hardware.
 
 // Windows
 #[cfg(windows)]
@@ -34,6 +34,7 @@ mod platform {
 
     impl Injector {
         /// Instantiates a new Injector using the default OS settings provided by Enigo.
+        #[must_use]
         pub fn new() -> Self {
             Self {
                 enigo: Enigo::new(&Settings::default())
@@ -62,7 +63,7 @@ mod platform {
             use windows_sys::Win32::UI::WindowsAndMessaging::GetCursorPos;
             unsafe {
                 let mut current_pos = POINT { x: 0, y: 0 };
-                if GetCursorPos(&mut current_pos) != 0 {
+                if GetCursorPos(&raw mut current_pos) != 0 {
                     let target_px = target_x.round() as i32;
                     let target_py = target_y.round() as i32;
 

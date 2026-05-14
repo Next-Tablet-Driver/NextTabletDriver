@@ -22,7 +22,7 @@ pub fn render_footer(
             ui.horizontal(|ui| {
                 let mut current_mode = config.mode;
                 egui::ComboBox::from_id_salt("mode_combo")
-                    .selected_text(format!("{:?} Mode", current_mode))
+                    .selected_text(format!("{current_mode:?} Mode"))
                     .show_ui(ui, |ui| {
                         ui.selectable_value(
                             &mut current_mode,

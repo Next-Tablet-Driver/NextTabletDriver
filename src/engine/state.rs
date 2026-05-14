@@ -32,6 +32,7 @@ impl Default for SharedState {
 }
 
 impl SharedState {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             config: RwLock::new(MappingConfig::default()),
@@ -49,6 +50,7 @@ impl SharedState {
         }
     }
 
+    #[must_use]
     pub fn test_default() -> Self {
         Self::new()
     }
@@ -73,9 +75,9 @@ pub struct SharedState {
     pub tablet_vid: RwLock<u16>,
     /// USB Product ID of the connected device.
     pub tablet_pid: RwLock<u16>,
-    /// The immutable physical dimensions of the active tablet in millimeters (Width, Height).
+    /// The immutable physical dimensions of the active tablet in millimeters (`Width`, `Height`).
     pub physical_size: RwLock<(f32, f32)>,
-    /// The maximum raw hardware values the tablet can output (Max_X, Max_Y).
+    /// The maximum raw hardware values the tablet can output (`Max_X`, `Max_Y`).
     pub hardware_size: RwLock<(f32, f32)>,
     /// Flag indicating if the user has never launched the application before (triggers welcome modal).
     pub is_first_run: RwLock<bool>,

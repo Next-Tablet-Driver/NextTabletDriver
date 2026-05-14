@@ -29,22 +29,25 @@ pub fn save_session_meta(meta: &SessionMeta) {
 }
 
 /// Loads the active profile metadata from `session_meta.json`.
+#[must_use]
 pub fn load_session_meta() -> Option<SessionMeta> {
     let path = get_settings_dir().join("session_meta.json");
     let content = fs::read_to_string(&path).ok()?;
     serde_json::from_str(&content).ok()
 }
 
+#[must_use]
 pub fn get_settings_dir() -> PathBuf {
-    if let Some(proj_dirs) = ProjectDirs::from("com", "NextTabletDriver", "NextTabletReader") {
-        let config_dir = proj_dirs.config_dir().join("Settings");
-        if !config_dir.exists() {
-            let _ = fs::create_dir_all(&config_dir);
-        }
-        config_dir
-    } else {
-        PathBuf::from("Settings")
-    }
+    ProjectDirs::from("com", "NextTabletDriver", "NextTabletReader").map_or_else(
+        || PathBuf::from("Settings"),
+        |proj_dirs| {
+            let config_dir = proj_dirs.config_dir().join("Settings");
+            if !config_dir.exists() {
+                let _ = fs::create_dir_all(&config_dir);
+            }
+            config_dir
+        },
+    )
 }
 
 /// Atomically writes a `MappingConfig` to an arbitrary path on disk.
@@ -53,18 +56,18 @@ pub fn get_settings_dir() -> PathBuf {
 /// if the process crashes mid-write.
 pub fn save_to_path(path: &Path, config: &MappingConfig) -> Result<(), String> {
     let json = serde_json::to_string_pretty(config).map_err(|e| {
-        log::error!(target: "Config", "Failed to serialize config for {:?}: {}", path, e);
+        log::error!(target: "Config", "Failed to serialize config for {path:?}: {e}");
         e.to_string()
     })?;
 
     let tmp_path = path.with_extension("json.tmp");
     fs::write(&tmp_path, &json).map_err(|e| {
-        log::error!(target: "Config", "Failed to write temp file {:?}: {}", tmp_path, e);
+        log::error!(target: "Config", "Failed to write temp file {tmp_path:?}: {e}");
         e.to_string()
     })?;
 
     fs::rename(&tmp_path, path).map_err(|e| {
-        log::error!(target: "Config", "Failed to rename {:?} -> {:?}: {}", tmp_path, path, e);
+        log::error!(target: "Config", "Failed to rename {tmp_path:?} -> {path:?}: {e}");
         // Clean up the orphaned temp file on rename failure
         let _ = fs::remove_file(&tmp_path);
         e.to_string()
@@ -79,15 +82,18 @@ pub fn save_to_path(path: &Path, config: &MappingConfig) -> Result<(), String> {
 /// for that separately.
 pub fn save_settings(name: &str, config: &MappingConfig) -> Result<(), String> {
     let dir = get_settings_dir();
-    let filename = if name.ends_with(".json") {
+    let filename = if std::path::Path::new(name)
+        .extension()
+        .is_some_and(|ext| ext.eq_ignore_ascii_case("json"))
+    {
         name.to_string()
     } else {
-        format!("{}.json", name)
+        format!("{name}.json")
     };
     let path = dir.join(filename);
 
     save_to_path(&path, config)?;
-    log::info!(target: "Config", "Saved preset '{}' to {:?}", name, path);
+    log::info!(target: "Config", "Saved preset '{name}' to {path:?}");
     Ok(())
 }
 
@@ -105,10 +111,11 @@ pub fn save_last_session(config: &MappingConfig) -> Result<(), String> {
 ///
 /// Returns `None` if no session file exists. Returns `Some((config, corrections))`
 /// where `corrections` is a list of fields that were repaired (empty if all valid).
+#[must_use]
 pub fn load_last_session() -> Option<(MappingConfig, Vec<String>)> {
     let path = get_settings_dir().join("last_session.json");
     if !path.exists() {
-        log::debug!(target: "Config", "No last session file found at {:?}", path);
+        log::debug!(target: "Config", "No last session file found at {path:?}");
         return None;
     }
 
@@ -119,16 +126,16 @@ pub fn load_last_session() -> Option<(MappingConfig, Vec<String>)> {
                 if !corrections.is_empty() {
                     log::warn!(target: "Config", "Last session config had {} field(s) repaired", corrections.len());
                 }
-                log::info!(target: "Config", "Loaded last session from {:?}", path);
+                log::info!(target: "Config", "Loaded last session from {path:?}");
                 Some((config, corrections))
             }
             Err(e) => {
-                log::error!(target: "Config", "Failed to parse last session JSON: {}", e);
+                log::error!(target: "Config", "Failed to parse last session JSON: {e}");
                 None
             }
         },
         Err(e) => {
-            log::error!(target: "Config", "Failed to read last session file: {}", e);
+            log::error!(target: "Config", "Failed to read last session file: {e}");
             None
         }
     }
@@ -139,26 +146,27 @@ pub fn load_last_session() -> Option<(MappingConfig, Vec<String>)> {
 /// Returns the config and a list of corrections applied during validation.
 pub fn load_settings_from_file(path: &Path) -> Result<(MappingConfig, Vec<String>), String> {
     let content = fs::read_to_string(path).map_err(|e| {
-        log::error!(target: "Config", "Failed to read settings file {:?}: {}", path, e);
+        log::error!(target: "Config", "Failed to read settings file {path:?}: {e}");
         e.to_string()
     })?;
     let mut config: MappingConfig = serde_json::from_str(&content).map_err(|e| {
-        log::error!(target: "Config", "Failed to parse settings JSON from {:?}: {}", path, e);
+        log::error!(target: "Config", "Failed to parse settings JSON from {path:?}: {e}");
         e.to_string()
     })?;
 
     let corrections = config.validate_and_repair();
     if !corrections.is_empty() {
-        log::warn!(target: "Config", "Config from {:?} had {} field(s) repaired", path, corrections.len());
+        log::warn!(target: "Config", "Config from {path:?} had {} field(s) repaired", corrections.len());
     }
 
-    log::info!(target: "Config", "Loaded settings from {:?}", path);
+    log::info!(target: "Config", "Loaded settings from {path:?}");
     Ok((config, corrections))
 }
 
 /// Lists all saved profile files in the settings directory.
 ///
 /// Returns `(display_name, absolute_path)` pairs, excluding `last_session.json`.
+#[must_use]
 pub fn list_profiles() -> Vec<(String, PathBuf)> {
     let dir = get_settings_dir();
     let mut profiles = Vec::new();
@@ -166,7 +174,7 @@ pub fn list_profiles() -> Vec<(String, PathBuf)> {
     let entries = match fs::read_dir(&dir) {
         Ok(entries) => entries,
         Err(e) => {
-            log::error!(target: "Config", "Failed to list profiles in {:?}: {}", dir, e);
+            log::error!(target: "Config", "Failed to list profiles in {dir:?}: {e}");
             return profiles;
         }
     };

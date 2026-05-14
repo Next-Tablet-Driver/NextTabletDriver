@@ -95,15 +95,16 @@ impl DriverStats {
     }
 
     /// Resets the accumulated distance.
-    pub fn reset_distance(&mut self) {
+    pub const fn reset_distance(&mut self) {
         self.total_distance_mm = 0.0;
     }
 
     /// Formats the total distance into a human-readable string and unit.
+    #[must_use]
     pub fn format_distance(&self) -> (String, &'static str) {
         let dist = self.total_distance_mm;
         if dist < 1000.0 {
-            (format!("{:.1}", dist), "mm")
+            (format!("{dist:.1}"), "mm")
         } else if dist < 1000000.0 {
             (format!("{:.3}", dist / 1000.0), "m")
         } else {
@@ -210,7 +211,7 @@ fn load_embedded_recursive(
                                     }
                                 }
                                 Err(e) => {
-                                    log::error!(target: "Driver", "Failed to parse embedded config {:?}: {}", file.path(), e);
+                                    log::error!(target: "Driver", "Failed to parse embedded config {:?}: {e}", file.path());
                                 }
                             }
                         }
@@ -244,11 +245,11 @@ fn load_from_disk_recursive(
                             }
                         }
                         Err(e) => {
-                            log::error!(target: "Driver", "Failed to parse disk config {:?}: {}", p, e);
+                            log::error!(target: "Driver", "Failed to parse disk config {p:?}: {e}");
                         }
                     },
                     Err(e) => {
-                        log::error!(target: "Driver", "Failed to read disk config {:?}: {}", p, e);
+                        log::error!(target: "Driver", "Failed to read disk config {p:?}: {e}");
                     }
                 }
             }
@@ -256,6 +257,7 @@ fn load_from_disk_recursive(
     }
 }
 
+#[must_use]
 pub fn detect_tablet(api: &HidApi) -> Option<(HidDevice, Box<dyn NextTabletDriver>, u16, u16)> {
     let global_start = Instant::now();
     let enum_start = Instant::now();
@@ -263,7 +265,7 @@ pub fn detect_tablet(api: &HidApi) -> Option<(HidDevice, Box<dyn NextTabletDrive
     let enum_duration = enum_start.elapsed();
 
     if enum_duration > Duration::from_millis(500) {
-        log::warn!(target: "Detect", "HID Enumeration SLOW: {:.2?}", enum_duration);
+        log::warn!(target: "Detect", "HID Enumeration SLOW: {enum_duration:.2?}");
     }
 
     log::debug!(
@@ -308,15 +310,15 @@ pub fn detect_tablet(api: &HidApi) -> Option<(HidDevice, Box<dyn NextTabletDrive
                                 for report_str in reports {
                                     match general_purpose::STANDARD.decode(report_str) {
                                         Ok(data) => {
-                                            log::trace!(target: "Detect", "Sending Feature Report: {:02x?}", data);
+                                            log::trace!(target: "Detect", "Sending Feature Report: {data:02x?}");
                                             if let Err(e) = device.send_feature_report(&data) {
-                                                log::error!(target: "Detect", "{} | Init Error (Feature Report): {}", config.name, e);
+                                                log::error!(target: "Detect", "{} | Init Error (Feature Report): {e}", config.name);
                                                 init_success = false;
                                                 break;
                                             }
                                         }
                                         Err(e) => {
-                                            log::error!(target: "Detect", "{} | Base64 Decode Error (Feature): {}", config.name, e);
+                                            log::error!(target: "Detect", "{} | Base64 Decode Error (Feature): {e}", config.name);
                                             init_success = false;
                                             break;
                                         }
@@ -329,15 +331,15 @@ pub fn detect_tablet(api: &HidApi) -> Option<(HidDevice, Box<dyn NextTabletDrive
                                 for report_str in reports {
                                     match general_purpose::STANDARD.decode(report_str) {
                                         Ok(data) => {
-                                            log::trace!(target: "Detect", "Sending Output Report: {:02x?}", data);
+                                            log::trace!(target: "Detect", "Sending Output Report: {data:02x?}");
                                             if let Err(e) = device.write(&data) {
-                                                log::error!(target: "Detect", "{} | Init Error (Output Report): {}", config.name, e);
+                                                log::error!(target: "Detect", "{} | Init Error (Output Report): {e}", config.name);
                                                 init_success = false;
                                                 break;
                                             }
                                         }
                                         Err(e) => {
-                                            log::error!(target: "Detect", "{} | Base64 Decode Error (Output): {}", config.name, e);
+                                            log::error!(target: "Detect", "{} | Base64 Decode Error (Output): {e}", config.name);
                                             init_success = false;
                                             break;
                                         }
@@ -380,7 +382,7 @@ pub fn detect_tablet(api: &HidApi) -> Option<(HidDevice, Box<dyn NextTabletDrive
                             ));
                         }
                         Err(e) => {
-                            log::debug!(target: "Detect", "Could not open {} interface {}: {}", config.name, interface, e);
+                            log::debug!(target: "Detect", "Could not open {} interface {}: {e}", config.name, interface);
                         }
                     }
                 }

@@ -53,7 +53,7 @@ pub fn render_pen_settings_panel(
                     ui,
                     &format!("Pen Button {}", i + 1),
                     &config.pen_button_bindings[i],
-                    &format!("btn_edit_{}", i),
+                    &format!("btn_edit_{i}"),
                 );
                 if i == 0 {
                     ui.add_space(8.0);

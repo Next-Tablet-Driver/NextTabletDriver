@@ -39,7 +39,7 @@ mod platform {
     /// Returns the full path where the application shortcut should be located.
     fn get_shortcut_path() -> Option<PathBuf> {
         get_startup_folder().map(|mut p| {
-            p.push(format!("{}.lnk", APP_NAME));
+            p.push(format!("{APP_NAME}.lnk"));
             p
         })
     }
@@ -49,7 +49,7 @@ mod platform {
     /// # Technical Details
     /// Windows `.lnk` files are a proprietary binary format. To avoid complex binary encoding,
     /// this function:
-    /// 1. Generates a temporary **VBScript** file.
+    /// 1. Generates a temporary **`VBScript`** file.
     /// 2. Uses the `WScript.Shell` COM object to create the shortcut.
     /// 3. Executes the script via `wscript.exe`.
     /// 4. Deletes the temporary script file.
@@ -68,14 +68,14 @@ mod platform {
             oLink.TargetPath = "{}"
             oLink.WorkingDirectory = "{}"
             oLink.Save"#,
-                shortcut_path_str.replace("\\", "\\\\"),
-                exe_path_str.replace("\\", "\\\\"),
+                shortcut_path_str.replace('\\', "\\\\"),
+                exe_path_str.replace('\\', "\\\\"),
                 exe_path
                     .parent()
                     .unwrap_or(&exe_path)
                     .to_str()
                     .unwrap_or("")
-                    .replace("\\", "\\\\")
+                    .replace('\\', "\\\\")
             );
 
             let temp_vbs = env::temp_dir().join("create_shortcut.vbs");
@@ -89,17 +89,18 @@ mod platform {
                 return Err("Failed to create startup shortcut".into());
             }
 
-            log::info!(target: "Startup", "Created startup shortcut: {:?}", shortcut_path);
+            log::info!(target: "Startup", "Created startup shortcut: {shortcut_path:?}");
         } else if shortcut_path.exists() {
             fs::remove_file(&shortcut_path)?;
-            log::info!(target: "Startup", "Removed startup shortcut: {:?}", shortcut_path);
+            log::info!(target: "Startup", "Removed startup shortcut: {shortcut_path:?}");
         }
         Ok(())
     }
 
     /// Checks if the application is currently configured to run at startup.
+    #[must_use]
     pub fn is_run_at_startup_registered() -> bool {
-        get_shortcut_path().map(|p| p.exists()).unwrap_or(false)
+        get_shortcut_path().is_some_and(|p| p.exists())
     }
 }
 

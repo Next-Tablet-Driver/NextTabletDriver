@@ -43,17 +43,17 @@ impl SpeedStatsFilter {
         }
 
         // Restart or Start server
-        log::info!(target: "Stats", "Starting WebSocket Stats server on {}:{}", ip, port);
+        log::info!(target: "Stats", "Starting WebSocket stats server on {ip}:{port}");
         let (tx, rx) = unbounded::<(f32, f32)>();
         self.tx = Some(tx);
         self.current_config = Some((ip.to_string(), port));
 
-        let addr = format!("{}:{}", ip, port);
+        let addr = format!("{ip}:{port}");
         thread::spawn(move || {
             let listener = match TcpListener::bind(&addr) {
                 Ok(l) => l,
                 Err(e) => {
-                    log::error!(target: "Stats", "Failed to bind WebSocket stats server: {}", e);
+                    log::error!(target: "Stats", "Failed to bind WebSocket stats server: {e}");
                     return;
                 }
             };
@@ -92,11 +92,11 @@ impl SpeedStatsFilter {
                             log::debug!(target: "Stats", "New WebSocket client connected");
                         }
                         Err(e) => {
-                            log::error!(target: "Stats", "WebSocket accept error: {}", e);
+                            log::error!(target: "Stats", "WebSocket accept error: {e}");
                         }
                     },
                     Err(e) => {
-                        log::error!(target: "Stats", "TCP accept error: {}", e);
+                        log::error!(target: "Stats", "TCP accept error: {e}");
                     }
                 }
             }

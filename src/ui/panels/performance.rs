@@ -100,10 +100,10 @@ pub fn render_performance_panel(
 
                 ui.label("UI Sync:");
                 ui.label(
-                    egui::RichText::new(format!("{:.3}ms", ui_latency)).color(egui::Color32::GOLD),
+                    egui::RichText::new(format!("{ui_latency:.3}ms")).color(egui::Color32::GOLD),
                 );
                 ui.label(
-                    egui::RichText::new(format!("{:.3}ms", avg_ui_latency))
+                    egui::RichText::new(format!("{avg_ui_latency:.3}ms"))
                         .color(egui::Color32::GOLD)
                         .weak(),
                 );
