@@ -11,7 +11,7 @@ use std::sync::atomic::AtomicU32;
 use std::thread;
 use std::time::Instant;
 
-use crate::app::autoupdate::{self, UpdateStatus};
+use crate::app::autoupdateold::{self, UpdateStatus};
 use crate::app::state::{AppTab, ProfileState, TabletMapperApp, ToastLevel};
 use crate::core::config::models::MappingConfig;
 use crate::drivers::TabletData;
@@ -114,7 +114,7 @@ impl TabletMapperApp {
         let (update_sender, update_receiver) = crossbeam_channel::bounded(1);
         let sender = update_sender.clone();
         log::info!(target: "App", "Spawning Auto-Updater thread");
-        thread::spawn(move || match autoupdate::check_for_updates() {
+        thread::spawn(move || match autoupdateold::check_for_updates() {
             Ok(Some(release)) => {
                 let _ = sender.send(UpdateStatus::Available(release));
             }

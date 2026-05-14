@@ -88,7 +88,7 @@ impl TabletMapperApp {
 
         // Check for updates
         if let Ok(status) = self.update_receiver.try_recv() {
-            if let crate::app::autoupdate::UpdateStatus::Available(release) = &status {
+            if let crate::app::autoupdateold::UpdateStatus::Available(release) = &status {
                 log::info!(target: "Update", "Update available: {}", release.tag_name);
             }
             self.update_status = status;

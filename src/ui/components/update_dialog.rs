@@ -2,7 +2,7 @@ use crate::app::state::TabletMapperApp;
 use eframe::egui;
 
 pub fn render_update_dialog(app: &mut TabletMapperApp, ctx: &egui::Context) {
-    if let crate::app::autoupdate::UpdateStatus::Available(release) = &app.update_status {
+    if let crate::app::autoupdateold::UpdateStatus::Available(release) = &app.update_status {
         let screen_rect = ctx.content_rect();
         egui::Area::new(egui::Id::new("update_overlay"))
             .interactable(true)
