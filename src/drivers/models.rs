@@ -63,7 +63,7 @@ impl DriverStats {
     }
 
     /// Resets only the latency-related statistics.
-    pub fn reset_latency(&mut self) {
+    pub const fn reset_latency(&mut self) {
         self.min_hid_read_ms = f32::MAX;
         self.max_hid_read_ms = 0.0;
         self.avg_hid_read_ms = 0.0;

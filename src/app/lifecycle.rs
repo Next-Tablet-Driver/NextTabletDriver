@@ -55,7 +55,7 @@ impl TabletMapperApp {
         let tray_service = TrayService::new(ctx.clone());
 
         // 5. Spawn Background Threads via Supervisor
-        ThreadSupervisor::spawn_engine(Arc::clone(&shared), ctx.clone(), tablet_sender);
+        ThreadSupervisor::spawn_engine(Arc::clone(&shared), ctx, tablet_sender);
         ThreadSupervisor::spawn_websocket(Arc::clone(&shared));
         ThreadSupervisor::spawn_saver(save_receiver);
         update_service.start_check();

@@ -114,7 +114,7 @@ impl TabletMapperApp {
         }
 
         for (i, toast) in self.toasts.iter().enumerate() {
-            let offset_y = i as f32 * 50.0 + 10.0;
+            let offset_y = (i as f32).mul_add(50.0, 10.0);
             let id = egui::Id::new("toast").with(i);
 
             let (bg_color, text_color) = match toast.level {

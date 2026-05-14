@@ -85,7 +85,7 @@ impl Filter for SpeedStatsFilter {
         {
             let dx = curr_x_mm - last_x_mm;
             let dy = curr_y_mm - last_y_mm;
-            let distance_mm = (dx * dx + dy * dy).sqrt();
+            let distance_mm = dx.hypot(dy);
 
             let mut speed = distance_mm / dt; // mm/s
 
@@ -96,12 +96,11 @@ impl Filter for SpeedStatsFilter {
                 SpeedUnit::MilesPerHour => (speed / 1000.0) * 2.23694,
             };
 
-            let mut current_total_dist = 0.0;
-            if let Ok(mut stats) = self.shared.stats.write() {
+            let current_total_dist = self.shared.stats.write().map_or(0.0, |mut stats| {
                 stats.handspeed = speed;
                 stats.total_distance_mm += distance_mm;
-                current_total_dist = stats.total_distance_mm;
-            }
+                stats.total_distance_mm
+            });
 
             if let Some(server) = &self.server {
                 server.send_stats(speed, current_total_dist);

@@ -7,7 +7,7 @@ pub struct CintiqV1Parser {
 }
 
 impl CintiqV1Parser {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             inner_v1: IntuosV1Parser::new(),
         }

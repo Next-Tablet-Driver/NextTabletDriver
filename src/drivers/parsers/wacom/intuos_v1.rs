@@ -13,7 +13,7 @@ pub struct IntuosV1Parser {
 }
 
 impl IntuosV1Parser {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             prev_pressure: Mutex::new(0),
             prev_tilt_x: Mutex::new(0),
@@ -157,7 +157,7 @@ pub struct WacomDriverIntuosV1Parser {
 }
 
 impl WacomDriverIntuosV1Parser {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             inner: IntuosV1Parser::new(),
         }

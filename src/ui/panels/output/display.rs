@@ -39,8 +39,8 @@ pub fn render_display_section(
                 for d in app.displays.iter() {
                     let s_rect = egui::Rect::from_min_size(
                         egui::pos2(
-                            offset_x + (d.x as f32 - min_x) * scale,
-                            offset_y + (d.y as f32 - min_y) * scale,
+                            (d.x as f32 - min_x).mul_add(scale, offset_x),
+                            (d.y as f32 - min_y).mul_add(scale, offset_y),
                         ),
                         egui::vec2(d.width as f32 * scale, d.height as f32 * scale),
                     );
@@ -62,8 +62,8 @@ pub fn render_display_section(
 
                 let t_rect = egui::Rect::from_min_size(
                     egui::pos2(
-                        offset_x + (config.target_area.x - min_x) * scale,
-                        offset_y + (config.target_area.y - min_y) * scale,
+                        (config.target_area.x - min_x).mul_add(scale, offset_x),
+                        (config.target_area.y - min_y).mul_add(scale, offset_y),
                     ),
                     egui::vec2(config.target_area.w * scale, config.target_area.h * scale),
                 );

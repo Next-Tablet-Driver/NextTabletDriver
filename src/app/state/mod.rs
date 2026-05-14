@@ -188,6 +188,7 @@ impl TabletMapperApp {
             self.shared
                 .config_version
                 .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            drop(shared_config);
         }
         self.push_toast(
             "Settings reset to default (Unsaved)".to_string(),
@@ -278,6 +279,7 @@ impl TabletMapperApp {
             .collect::<Vec<_>>()
             .join("\n");
         self.console_cache_log_count = logs.len();
+        drop(logs);
         self.console_cache_search = self.console_search.clone();
         self.console_cache_filters = current_filters;
         self.console_cache_filtered = filtered;
@@ -331,6 +333,7 @@ impl TabletMapperApp {
             self.shared
                 .config_version
                 .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            drop(shared_config);
         }
         let _ = self.save_sender.try_send(cfg);
     }

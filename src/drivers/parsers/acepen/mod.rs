@@ -7,7 +7,7 @@ pub struct AcepenParser {
 }
 
 impl AcepenParser {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             aux_state: AtomicU8::new(0),
         }

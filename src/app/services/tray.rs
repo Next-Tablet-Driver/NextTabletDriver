@@ -31,7 +31,7 @@ impl TrayService {
         };
 
         if tray_icon.is_some() {
-            let tray_ctx = ctx.clone();
+            let tray_ctx = ctx;
             std::thread::spawn(move || {
                 let receiver = TrayIconEvent::receiver();
                 log::info!(target: "Tray", "System Tray listener background thread started");

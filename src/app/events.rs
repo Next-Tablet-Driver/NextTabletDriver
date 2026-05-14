@@ -28,12 +28,14 @@ impl TabletMapperApp {
                     .update_latency(receive_time.elapsed().as_secs_f32() * 1000.0);
             }
 
-            let mut shared_data = self
-                .shared
-                .tablet_data
-                .write()
-                .unwrap_or_reset("tablet_data");
-            *shared_data = data;
+            {
+                let mut shared_data = self
+                    .shared
+                    .tablet_data
+                    .write()
+                    .unwrap_or_reset("tablet_data");
+                *shared_data = data;
+            }
 
             let needs_live_update =
                 self.show_debugger || self.show_latency_stats || self.active_tab == AppTab::Console;

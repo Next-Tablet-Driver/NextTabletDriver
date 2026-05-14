@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use std::time::Instant;
 
 /// Represents the currently active tab in the main application window.
-#[derive(PartialEq, Clone, Copy)]
+#[derive(PartialEq, Eq, Clone, Copy)]
 pub enum AppTab {
     Output,
     Filters,
@@ -45,7 +45,7 @@ impl ProfileState {
 }
 
 /// Severity level for UI toast notifications.
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum ToastLevel {
     Info,
     Warning,
@@ -103,7 +103,7 @@ impl Metrics {
         self.avg_ui_latency_ms += (latency - self.avg_ui_latency_ms) * 0.1;
     }
 
-    pub fn reset_ui_latency(&mut self) {
+    pub const fn reset_ui_latency(&mut self) {
         self.min_ui_latency_ms = f32::MAX;
         self.max_ui_latency_ms = 0.0;
         self.avg_ui_latency_ms = 0.0;

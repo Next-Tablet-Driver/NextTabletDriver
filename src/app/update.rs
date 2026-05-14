@@ -46,7 +46,7 @@ impl eframe::App for TabletMapperApp {
 
 impl TabletMapperApp {
     fn sync_config(
-        &mut self,
+        &self,
         ctx: &egui::Context,
         config: crate::core::config::models::MappingConfig,
         initial: crate::core::config::models::MappingConfig,
@@ -65,6 +65,7 @@ impl TabletMapperApp {
                 let mut shared_config = self.shared.config.write().unwrap_or_log("config");
                 *shared_config = config.clone();
                 self.shared.config_version.fetch_add(1, Ordering::SeqCst);
+                drop(shared_config);
             }
             let _ = self.save_sender.try_send(config);
         }

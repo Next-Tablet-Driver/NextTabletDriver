@@ -9,7 +9,7 @@ pub struct IntuosProParser {
 }
 
 impl IntuosProParser {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             inner_v1: IntuosV1Parser::new(),
         }
@@ -61,7 +61,7 @@ pub struct WacomDriverIntuosProParser {
 }
 
 impl WacomDriverIntuosProParser {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             inner: IntuosProParser::new(),
         }

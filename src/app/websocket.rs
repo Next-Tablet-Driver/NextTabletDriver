@@ -64,7 +64,7 @@ pub fn websocket_loop(shared: Arc<SharedState>) {
         let (enabled, port, hz, send_coords, send_pressure, _send_tilt, send_status) = {
             let config = shared.config.read().unwrap_or_log("config");
             let ws = &config.websocket;
-            (
+            let res = (
                 ws.enabled,
                 ws.port,
                 ws.polling_rate_hz.max(1),
@@ -72,7 +72,9 @@ pub fn websocket_loop(shared: Arc<SharedState>) {
                 ws.send_pressure,
                 ws.send_tilt,
                 ws.send_status,
-            )
+            );
+            drop(config);
+            res
         };
 
         if !enabled {

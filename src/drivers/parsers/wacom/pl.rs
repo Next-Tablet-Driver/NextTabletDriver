@@ -9,7 +9,7 @@ pub struct PLParser {
 }
 
 impl PLParser {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             initial_eraser: Mutex::new(false),
             last_report_out_of_range: Mutex::new(true),
@@ -51,6 +51,7 @@ impl ReportParser for PLParser {
                         .lock()
                         .unwrap_or_reset("wacom_pl_eraser") = (*b4 & 0x20) != 0;
                     *out_of_range_guard = false;
+                    drop(out_of_range_guard);
                 }
 
                 let is_initial_eraser =

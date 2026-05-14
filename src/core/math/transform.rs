@@ -43,8 +43,8 @@ pub fn rotate_point(
     let cx = x - center_x;
     let cy = y - center_y;
 
-    let rx = cx * cos - cy * sin + center_x;
-    let ry = cx * sin + cy * cos + center_y;
+    let rx = cx.mul_add(cos, -(cy * sin)) + center_x;
+    let ry = cx.mul_add(sin, cy * cos) + center_y;
 
     (rx, ry)
 }
@@ -154,8 +154,8 @@ pub fn apply_relative_delta(
     if rotation != 0.0 {
         let rad = rotation.to_radians();
         let (sin, cos) = rad.sin_cos();
-        let rx = dx_mm * cos - dy_mm * sin;
-        let ry = dx_mm * sin + dy_mm * cos;
+        let rx = dx_mm.mul_add(cos, -(dy_mm * sin));
+        let ry = dx_mm.mul_add(sin, dy_mm * cos);
         dx_mm = rx;
         dy_mm = ry;
     }

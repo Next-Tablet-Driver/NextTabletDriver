@@ -6,7 +6,7 @@ use crate::drivers::parsers::ReportParser;
 pub struct IntuosV3Parser;
 
 impl IntuosV3Parser {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self
     }
 }
@@ -213,7 +213,7 @@ pub struct WacomDriverIntuosV3Parser {
 }
 
 impl WacomDriverIntuosV3Parser {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             inner: IntuosV3Parser::new(),
         }

@@ -102,8 +102,8 @@ pub fn render_tablet_section(ui: &mut egui::Ui, config: &mut MappingConfig, snap
                 ui.painter().add(egui::epaint::TextShape {
                     pos: left_mid
                         + egui::vec2(
-                            5.0 * rot_rad.cos() - 2.0 * rot_rad.sin(),
-                            5.0 * rot_rad.sin() + 2.0 * rot_rad.cos(),
+                            5.0f32.mul_add(rot_rad.cos(), -(2.0 * rot_rad.sin())),
+                            5.0f32.mul_add(rot_rad.sin(), 2.0 * rot_rad.cos()),
                         ),
                     galley,
                     underline: egui::Stroke::NONE,
@@ -146,8 +146,8 @@ pub fn render_tablet_section(ui: &mut egui::Ui, config: &mut MappingConfig, snap
 
             if tablet_data.is_connected {
                 let (max_w, max_h) = snapshot.hardware_size;
-                let cx = geo.offset_x + (f32::from(tablet_data.x) / max_w) * phys_w * geo.scale;
-                let cy = geo.offset_y + (f32::from(tablet_data.y) / max_h) * phys_h * geo.scale;
+                let cx = ((f32::from(tablet_data.x) / max_w) * phys_w).mul_add(geo.scale, geo.offset_x);
+                let cy = ((f32::from(tablet_data.y) / max_h) * phys_h).mul_add(geo.scale, geo.offset_y);
                 if full_rect.contains(egui::pos2(cx, cy)) {
                     let cursor_color = if ui.visuals().dark_mode {
                         egui::Color32::WHITE

@@ -93,7 +93,7 @@ impl Default for TargetArea {
 }
 
 /// Determines how pen movement translates to cursor movement.
-#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize, Default)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum DriverMode {
     /// Maps specific points on the tablet to specific points on the screen.
     /// Primarily used for drawing and osu!.
@@ -104,7 +104,7 @@ pub enum DriverMode {
 }
 
 /// User preference for application theme.
-#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize, Default)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum ThemePreference {
     #[default]
     System,
@@ -140,13 +140,13 @@ impl Default for RelativeConfig {
     }
 }
 
-fn default_threshold() -> u16 {
+const fn default_threshold() -> u16 {
     10
 }
-fn default_false() -> bool {
+const fn default_false() -> bool {
     false
 }
-fn default_true() -> bool {
+const fn default_true() -> bool {
     true
 }
 fn default_tip_binding() -> String {
@@ -158,15 +158,15 @@ fn default_eraser_binding() -> String {
 fn default_button_bindings() -> Vec<String> {
     vec!["None".to_string(), "None".to_string()]
 }
-fn default_ws_port() -> u16 {
+const fn default_ws_port() -> u16 {
     8080
 }
-fn default_ws_hz() -> u32 {
+const fn default_ws_hz() -> u32 {
     60
 }
 
 /// Configuration for the embedded WebSocket server.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WebSocketConfig {
     #[serde(default = "default_false")]
     pub enabled: bool,
@@ -235,7 +235,7 @@ impl Default for AntichatterConfig {
 }
 
 /// Units used for reporting pen speed telemetry.
-#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize, Default)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum SpeedUnit {
     #[default]
     MillimetersPerSecond,
@@ -245,7 +245,7 @@ pub enum SpeedUnit {
 }
 
 /// Configuration for the Speed Statistics UDP telemetry sender.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SpeedStatsConfig {
     pub enabled: bool,
     pub ip: String,
@@ -490,7 +490,7 @@ impl MappingConfig {
 
         // Buttons
         if self.pen_button_bindings.is_empty() {
-            self.pen_button_bindings = defaults.pen_button_bindings.clone();
+            self.pen_button_bindings = defaults.pen_button_bindings;
             corrections.push("pen_button_bindings was empty, reset to defaults".to_string());
         } else if self.pen_button_bindings.len() > 32 {
             self.pen_button_bindings.truncate(32);

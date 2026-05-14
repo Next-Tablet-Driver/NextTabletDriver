@@ -29,7 +29,7 @@ pub enum UpdateStatus {
 }
 
 impl UpdateStatus {
-    pub fn as_release(&self) -> Option<&Release> {
+    pub const fn as_release(&self) -> Option<&Release> {
         if let Self::Available(release) = self {
             Some(release)
         } else {

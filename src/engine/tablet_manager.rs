@@ -339,7 +339,9 @@ fn maybe_reload_config(
 
     let cv = shared.config_version.load(Ordering::Relaxed);
     if cv != *local_config_version {
-        *local_config = shared.config.read().unwrap_or_log("config").clone();
+        let config = shared.config.read().unwrap_or_log("config");
+        *local_config = config.clone();
+        drop(config);
         *local_config_version = cv;
         filters.update_config(local_config);
         log::info!(target: "Config", "Configuration reloaded to version {cv}");

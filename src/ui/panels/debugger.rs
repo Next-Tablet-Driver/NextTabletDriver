@@ -31,8 +31,8 @@ pub fn render_debugger_panel(snapshot: &UiSnapshot, displayed_hz: f32, ui: &mut 
         let y_pct = f32::from(tablet_data.y) / max_y;
 
         let dot_pos = egui::pos2(
-            rect.left() + x_pct * rect.width(),
-            rect.top() + y_pct * rect.height(),
+            x_pct.mul_add(rect.width(), rect.left()),
+            y_pct.mul_add(rect.height(), rect.top()),
         );
 
         if tablet_data.status == "Contact" || tablet_data.pressure > 0 {
