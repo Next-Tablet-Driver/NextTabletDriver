@@ -1,14 +1,33 @@
-use crate::drivers::config::TabletConfiguration;
+use crate::drivers::config::{
+    DigitizerIdentifier, TabletConfiguration,
+};
 use include_dir::{include_dir, Dir, DirEntry};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::Path;
 use std::time::Instant;
 
 pub static TABLET_CONFIGS_DIR: Dir = include_dir!("$CARGO_MANIFEST_DIR/tablets");
 
-pub static LOADED_CONFIGS: std::sync::LazyLock<Vec<TabletConfiguration>> =
-    std::sync::LazyLock::new(load_configurations);
+/// Pre-indexed configuration map: (VendorID, ProductID) -> (Config, DigitizerInfo)
+pub static INDEXED_CONFIGS: std::sync::LazyLock<HashMap<(u16, u16), Vec<(TabletConfiguration, DigitizerIdentifier)>>> =
+    std::sync::LazyLock::new(load_and_index_configurations);
+
+fn load_and_index_configurations() -> HashMap<(u16, u16), Vec<(TabletConfiguration, DigitizerIdentifier)>> {
+    let configs = load_configurations();
+    let mut index = HashMap::new();
+
+    for config in configs {
+        for digitizer in &config.digitizer_identifiers {
+            index.entry((digitizer.vendor_id, digitizer.product_id))
+                .or_insert_with(Vec::new)
+                .push((config.clone(), digitizer.clone()));
+        }
+    }
+
+    log::info!(target: "Driver", "Indexed {} configurations across {} unique VID:PID pairs", index.values().flatten().count(), index.len());
+    index
+}
 
 pub fn load_configurations() -> Vec<TabletConfiguration> {
     let global_start = Instant::now();
