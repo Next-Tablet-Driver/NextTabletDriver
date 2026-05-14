@@ -9,5 +9,6 @@ pub mod update;
 pub mod websocket;
 pub mod events;
 pub mod layout;
+pub mod services;
 
 pub use state::{AppTab, TabletMapperApp};
