@@ -1,6 +1,6 @@
-//! # NextTabletDriver (NextTD) Core Library
+//! # `NextTabletDriver` (`NextTD`) Core Library
 //!
-//! NextTabletDriver is a high-performance, cross-platform tablet driver designed for
+//! `NextTabletDriver` is a high-performance, cross-platform tablet driver designed for
 //! drawing and rhythm games (like osu!). It focuses on low latency, modularity,
 //! and broad hardware compatibility.
 //!
@@ -17,11 +17,11 @@
 //! 4.  **Coordinate Transformation** ([`core::math`]): Maps physical tablet coordinates
 //!     into normalized space, then projects them onto the target screen pixels.
 //! 5.  **Event Injection** ([`engine::injector`]): Injects the final coordinates and
-//!     button states into the operating system (uinput on Linux, SendInput on Windows).
+//!     button states into the operating system (uinput on Linux, `SendInput` on Windows).
 //!
 //! ## Threading Model
 //!
-//! NextTabletDriver uses a multi-threaded architecture to ensure UI responsiveness:
+//! `NextTabletDriver` uses a multi-threaded architecture to ensure UI responsiveness:
 //! *   **Input Engine Thread**: Handles HID polling and the entire processing pipeline.
 //! *   **GUI Thread**: Runs the `egui` interface for configuration and monitoring.
 //! *   **WebSocket Thread**: Provides real-time data to external integrations.

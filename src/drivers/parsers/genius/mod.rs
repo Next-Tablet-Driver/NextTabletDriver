@@ -11,7 +11,7 @@ impl ReportParser for GeniusParserV1 {
 
         let raw = data
             .iter()
-            .map(|b| format!("{:02X}", b))
+            .map(|b| format!("{b:02X}"))
             .collect::<Vec<_>>()
             .join(" ");
 
@@ -88,7 +88,7 @@ impl ReportParser for GeniusParserV2 {
 
         let raw = data
             .iter()
-            .map(|b| format!("{:02X}", b))
+            .map(|b| format!("{b:02X}"))
             .collect::<Vec<_>>()
             .join(" ");
 

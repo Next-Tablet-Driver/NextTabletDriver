@@ -38,7 +38,7 @@ pub fn download_and_install(
     let hash_str = resp.into_string()?;
     let expected_hash = hash_str.split_whitespace().next().unwrap_or("").to_string();
 
-    log::info!(target: "Update::Download", "Downloading update from {}", download_url);
+    log::info!(target: "Update::Download", "Downloading update from {download_url}");
 
     let response = ureq::get(download_url)
         .set("User-Agent", "NextTabletDriver-AutoUpdate")
@@ -86,14 +86,13 @@ pub fn download_and_install(
     if actual.to_lowercase() != expected_hash.to_lowercase() {
         let _ = fs::remove_file(&temp_path);
         return Err(format!(
-            "Checksum mismatch! Expected: {}, Actual: {}",
-            expected_hash, actual
+            "Checksum mismatch! Expected: {expected_hash}, Actual: {actual}"
         )
         .into());
     }
     log::info!(target: "Update::Verify", "SHA256 integrity verified successfully.");
 
-    log::info!(target: "Update::Download", "Download complete, saved to {:?}", temp_path);
+    log::info!(target: "Update::Download", "Download complete, saved to {temp_path:?}");
 
     // Make the file executable on Linux
     #[cfg(target_os = "linux")]
@@ -112,7 +111,7 @@ pub fn download_and_install(
         }
         Err(e) => {
             let _ = fs::remove_file(&temp_path);
-            log::error!(target: "Update::Process", "Failed to launch installer: {}", e);
+            log::error!(target: "Update::Process", "Failed to launch installer: {e}");
             Err(e.into())
         }
     }

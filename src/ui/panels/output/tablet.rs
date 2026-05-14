@@ -90,7 +90,7 @@ pub fn render_tablet_section(ui: &mut egui::Ui, config: &mut MappingConfig, snap
 
             let rot_rad = config.active_area.rotation.to_radians();
             if let [p0, p1, _, p3, ..] = points.as_slice() {
-                let left_mid = egui::pos2((p0.x + p3.x) / 2.0, (p0.y + p3.y) / 2.0);
+                let left_mid = egui::pos2(f32::midpoint(p0.x, p3.x), f32::midpoint(p0.y, p3.y));
                 let galley = ui.fonts_mut(|f| {
                     let text = format!("{:.2}", config.active_area.h)
                         .trim_end_matches('0')
@@ -127,7 +127,7 @@ pub fn render_tablet_section(ui: &mut egui::Ui, config: &mut MappingConfig, snap
                     color,
                 );
 
-                let top_mid = egui::pos2((p0.x + p1.x) / 2.0, (p0.y + p1.y) / 2.0);
+                let top_mid = egui::pos2(f32::midpoint(p0.x, p1.x), f32::midpoint(p0.y, p1.y));
                 let text_w = format!("{:.2}", config.active_area.w)
                     .trim_end_matches('0')
                     .trim_end_matches('.')
@@ -146,8 +146,10 @@ pub fn render_tablet_section(ui: &mut egui::Ui, config: &mut MappingConfig, snap
 
             if tablet_data.is_connected {
                 let (max_w, max_h) = snapshot.hardware_size;
-                let cx = ((f32::from(tablet_data.x) / max_w) * phys_w).mul_add(geo.scale, geo.offset_x);
-                let cy = ((f32::from(tablet_data.y) / max_h) * phys_h).mul_add(geo.scale, geo.offset_y);
+                let cx =
+                    ((f32::from(tablet_data.x) / max_w) * phys_w).mul_add(geo.scale, geo.offset_x);
+                let cy =
+                    ((f32::from(tablet_data.y) / max_h) * phys_h).mul_add(geo.scale, geo.offset_y);
                 if full_rect.contains(egui::pos2(cx, cy)) {
                     let cursor_color = if ui.visuals().dark_mode {
                         egui::Color32::WHITE

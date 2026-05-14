@@ -18,7 +18,7 @@ const APP_NAME: &str = "NextTabletDriver";
 // Windows Implementation .lnk shortcut in Startup folder
 #[cfg(windows)]
 mod platform {
-    use super::*;
+    use super::{PathBuf, UserDirs, APP_NAME, env, fs};
     use std::process::Command;
 
     /// Returns the Windows Startup folder path for the current user.

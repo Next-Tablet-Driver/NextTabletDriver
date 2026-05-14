@@ -9,7 +9,7 @@ pub static TABLET_CONFIGS_DIR: Dir = include_dir!("$CARGO_MANIFEST_DIR/tablets")
 
 type ConfigIndex = HashMap<(u16, u16), Vec<(TabletConfiguration, DigitizerIdentifier)>>;
 
-/// Pre-indexed configuration map: (VendorID, ProductID) -> (Config, DigitizerInfo)
+/// Pre-indexed configuration map: (`VendorID`, `ProductID`) -> (Config, `DigitizerInfo`)
 pub static INDEXED_CONFIGS: std::sync::LazyLock<ConfigIndex> =
     std::sync::LazyLock::new(load_and_index_configurations);
 
@@ -30,6 +30,7 @@ fn load_and_index_configurations() -> ConfigIndex {
     index
 }
 
+#[must_use] 
 pub fn load_configurations() -> Vec<TabletConfiguration> {
     let global_start = Instant::now();
     let mut configs = Vec::new();
@@ -87,12 +88,12 @@ fn load_embedded_recursive(
                                     }
                                 }
                                 Err(e) => {
-                                    log::error!(target: "Driver", "Failed to parse embedded config {:?}: {e}", file.path());
+                                    log::error!(target: "Driver", "Failed to parse embedded config {}: {e}", file.path().display());
                                 }
                             }
                         }
                         None => {
-                            log::warn!(target: "Driver", "Embedded config file {:?} is not valid UTF-8", file.path());
+                            log::warn!(target: "Driver", "Embedded config file {} is not valid UTF-8", file.path().display());
                         }
                     }
                 }

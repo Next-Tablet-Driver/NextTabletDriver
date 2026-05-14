@@ -8,7 +8,7 @@ impl ReportParser for FallbackParser {
         let raw = data
             .iter()
             .take(10)
-            .map(|b| format!("{:02X}", b))
+            .map(|b| format!("{b:02X}"))
             .collect::<Vec<_>>()
             .join(" ");
 

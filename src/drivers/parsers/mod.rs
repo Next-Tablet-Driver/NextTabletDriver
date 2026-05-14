@@ -22,6 +22,7 @@ pub trait ReportParser: Send + Sync {
     fn parse(&self, data: &[u8]) -> Option<TabletData>;
 }
 
+#[must_use] 
 pub fn create_parser(parser_name: &str) -> Box<dyn ReportParser> {
     match parser_name {
         name if name.contains("Acepen") => Box::new(acepen::AcepenParser::new()),

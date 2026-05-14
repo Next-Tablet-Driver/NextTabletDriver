@@ -6,6 +6,7 @@ use crate::drivers::parsers::ReportParser;
 pub struct IntuosV2Parser;
 
 impl IntuosV2Parser {
+    #[must_use] 
     pub const fn new() -> Self {
         Self
     }
@@ -40,9 +41,9 @@ impl IntuosV2Parser {
                 h_dist,
                 ..,
             ] => {
-                let x = (*x_lo as u32) | ((*x_hi as u32) << 16);
-                let y = (*y_lo as u32) | ((*y_hi as u32) << 16);
-                let pressure = (*p_lo as u16) | ((*p_hi as u16) << 8);
+                let x = u32::from(*x_lo) | (u32::from(*x_hi) << 16);
+                let y = u32::from(*y_lo) | (u32::from(*y_hi) << 16);
+                let pressure = u16::from(*p_lo) | (u16::from(*p_hi) << 8);
 
                 let mut buttons: u8 = 0;
                 if (*b1 & 0x02) != 0 {
@@ -86,9 +87,9 @@ impl IntuosV2Parser {
                 t_y,
                 ..,
             ] => {
-                let x = (*x_lo as u32) | ((*x_hi as u32) << 16);
-                let y = (*y_lo as u32) | ((*y_hi as u32) << 16);
-                let pressure = (*p_lo as u16) | ((*p_hi as u16) << 8);
+                let x = u32::from(*x_lo) | (u32::from(*x_hi) << 16);
+                let y = u32::from(*y_lo) | (u32::from(*y_hi) << 16);
+                let pressure = u16::from(*p_lo) | (u16::from(*p_hi) << 8);
 
                 let mut buttons: u8 = 0;
                 if (*b1 & 0x02) != 0 {
@@ -138,7 +139,7 @@ impl ReportParser for IntuosV2Parser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
         let raw = data
             .iter()
-            .map(|b| format!("{:02X}", b))
+            .map(|b| format!("{b:02X}"))
             .collect::<Vec<_>>()
             .join(" ");
         self.parse_internal(data, raw)
@@ -150,6 +151,7 @@ pub struct WacomDriverIntuosV2Parser {
 }
 
 impl WacomDriverIntuosV2Parser {
+    #[must_use] 
     pub const fn new() -> Self {
         Self {
             inner: IntuosV2Parser::new(),
@@ -167,7 +169,7 @@ impl ReportParser for WacomDriverIntuosV2Parser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
         let raw = data
             .iter()
-            .map(|b| format!("{:02X}", b))
+            .map(|b| format!("{b:02X}"))
             .collect::<Vec<_>>()
             .join(" ");
 

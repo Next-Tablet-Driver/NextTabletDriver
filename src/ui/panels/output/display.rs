@@ -36,7 +36,7 @@ pub fn render_display_section(
                 let offset_x = rect.center().x - (desk_w * scale) / 2.0;
                 let offset_y = rect.center().y - (desk_h * scale) / 2.0;
 
-                for d in app.displays.iter() {
+                for d in &app.displays {
                     let s_rect = egui::Rect::from_min_size(
                         egui::pos2(
                             (d.x as f32 - min_x).mul_add(scale, offset_x),

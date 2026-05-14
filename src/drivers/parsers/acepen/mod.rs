@@ -7,6 +7,7 @@ pub struct AcepenParser {
 }
 
 impl AcepenParser {
+    #[must_use] 
     pub const fn new() -> Self {
         Self {
             aux_state: AtomicU8::new(0),
@@ -24,7 +25,7 @@ impl ReportParser for AcepenParser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
         let raw = data
             .iter()
-            .map(|b| format!("{:02X}", b))
+            .map(|b| format!("{b:02X}"))
             .collect::<Vec<_>>()
             .join(" ");
 

@@ -13,6 +13,7 @@ pub struct IntuosV1Parser {
 }
 
 impl IntuosV1Parser {
+    #[must_use] 
     pub const fn new() -> Self {
         Self {
             prev_pressure: Mutex::new(0),
@@ -32,7 +33,7 @@ impl Default for IntuosV1Parser {
 impl IntuosV1Parser {
     pub(crate) fn parse_internal(&self, data: &[u8], raw: String) -> Option<TabletData> {
         match data {
-            [0x02, ..] | [0x10, ..] => self.parse_tool(data, raw),
+            [0x02 | 0x10, ..] => self.parse_tool(data, raw),
             [0x03, ..] => self.parse_aux(data, raw),
             _ => None,
         }
@@ -47,14 +48,14 @@ impl IntuosV1Parser {
                 let is_tablet = (*b1 & 0x20) != 0;
 
                 if is_tablet {
-                    let x = (((*b2 as u16) << 8) | (*b3 as u16)) << 1 | (((*b9 >> 1) & 1) as u16);
-                    let y = (((*b4 as u16) << 8) | (*b5 as u16)) << 1 | ((*b9 & 1) as u16);
+                    let x = ((u16::from(*b2) << 8) | u16::from(*b3)) << 1 | u16::from((*b9 >> 1) & 1);
+                    let y = ((u16::from(*b4) << 8) | u16::from(*b5)) << 1 | u16::from(*b9 & 1);
 
-                    let tilt_x = ((((*b7 << 1) & 0x7E) | (*b8 >> 7)) as i16 - 64) as i8;
-                    let tilt_y = ((*b8 & 0x7F) as i16 - 64) as i8;
+                    let tilt_x = (i16::from(((*b7 << 1) & 0x7E) | (*b8 >> 7)) - 64) as i8;
+                    let tilt_y = (i16::from(*b8 & 0x7F) - 64) as i8;
 
                     let pressure =
-                        ((*b6 as u16) << 3) | (((*b7 & 0xC0) >> 5) as u16) | ((*b1 & 1) as u16);
+                        (u16::from(*b6) << 3) | u16::from((*b7 & 0xC0) >> 5) | u16::from(*b1 & 1);
 
                     let mut buttons: u8 = 0;
                     if (*b1 & 0x02) != 0 {
@@ -91,8 +92,8 @@ impl IntuosV1Parser {
                         ..Default::default()
                     })
                 } else if is_rotation {
-                    let x = (((*b2 as u16) << 8) | (*b3 as u16)) << 1 | (((*b9 >> 1) & 1) as u16);
-                    let y = (((*b4 as u16) << 8) | (*b5 as u16)) << 1 | ((*b9 & 1) as u16);
+                    let x = ((u16::from(*b2) << 8) | u16::from(*b3)) << 1 | u16::from((*b9 >> 1) & 1);
+                    let y = ((u16::from(*b4) << 8) | u16::from(*b5)) << 1 | u16::from(*b9 & 1);
 
                     Some(TabletData {
                         status: "Rotation".to_string(),
@@ -145,7 +146,7 @@ impl ReportParser for IntuosV1Parser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
         let raw = data
             .iter()
-            .map(|b| format!("{:02X}", b))
+            .map(|b| format!("{b:02X}"))
             .collect::<Vec<_>>()
             .join(" ");
         self.parse_internal(data, raw)
@@ -157,6 +158,7 @@ pub struct WacomDriverIntuosV1Parser {
 }
 
 impl WacomDriverIntuosV1Parser {
+    #[must_use] 
     pub const fn new() -> Self {
         Self {
             inner: IntuosV1Parser::new(),
@@ -174,7 +176,7 @@ impl ReportParser for WacomDriverIntuosV1Parser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
         let raw = data
             .iter()
-            .map(|b| format!("{:02X}", b))
+            .map(|b| format!("{b:02X}"))
             .collect::<Vec<_>>()
             .join(" ");
 

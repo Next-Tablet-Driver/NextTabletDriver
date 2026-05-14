@@ -54,7 +54,7 @@ impl TabletMapperApp {
         if config != initial {
             let is_interacting = ctx.input(|i| i.pointer.any_down());
             if !is_interacting
-                && self.metrics.last_hz_update.elapsed() > Duration::from_millis(1000)
+                && self.metrics.last_hz_update.elapsed() > Duration::from_secs(1)
             {
                 log::info!(target: "Config", "Configuration changed via UI");
             }

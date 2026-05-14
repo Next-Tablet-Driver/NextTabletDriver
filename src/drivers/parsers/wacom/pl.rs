@@ -9,6 +9,7 @@ pub struct PLParser {
 }
 
 impl PLParser {
+    #[must_use] 
     pub const fn new() -> Self {
         Self {
             initial_eraser: Mutex::new(false),
@@ -27,7 +28,7 @@ impl ReportParser for PLParser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
         let raw = data
             .iter()
-            .map(|b| format!("{:02X}", b))
+            .map(|b| format!("{b:02X}"))
             .collect::<Vec<_>>()
             .join(" ");
 
@@ -57,12 +58,12 @@ impl ReportParser for PLParser {
                 let is_initial_eraser =
                     *self.initial_eraser.lock().unwrap_or_log("wacom_pl_eraser");
 
-                let x = ((*b1 & 0x03) as u32) << 14 | (*b2 as u32) << 7 | (*b3 as u32);
-                let y = ((*b4 & 0x03) as u32) << 14 | (*b5 as u32) << 7 | (*b6 as u32);
+                let x = u32::from(*b1 & 0x03) << 14 | u32::from(*b2) << 7 | u32::from(*b3);
+                let y = u32::from(*b4 & 0x03) << 14 | u32::from(*b5) << 7 | u32::from(*b6);
 
-                let pressure = ((*b7 ^ 0x40) as u32) << 2
-                    | ((*b4 & 0x40) as u32) >> 5
-                    | ((*b4 & 0x04) as u32) >> 2;
+                let pressure = u32::from(*b7 ^ 0x40) << 2
+                    | u32::from(*b4 & 0x40) >> 5
+                    | u32::from(*b4 & 0x04) >> 2;
 
                 let mut buttons: u8 = 0;
                 if (*b4 & 0x10) != 0 {

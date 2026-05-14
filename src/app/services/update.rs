@@ -13,6 +13,7 @@ impl Default for UpdateService {
 }
 
 impl UpdateService {
+    #[must_use] 
     pub fn new() -> Self {
         let (update_sender, update_receiver) = bounded(1);
         Self {
@@ -30,7 +31,7 @@ impl UpdateService {
             }
             Ok(None) => {}
             Err(e) => {
-                log::error!(target: "Update", "Failed to check for updates: {}", e);
+                log::error!(target: "Update", "Failed to check for updates: {e}");
             }
         });
     }

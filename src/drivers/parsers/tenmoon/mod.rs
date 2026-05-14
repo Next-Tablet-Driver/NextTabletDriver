@@ -7,7 +7,7 @@ impl ReportParser for TenMoonParser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
         let raw = data
             .iter()
-            .map(|b| format!("{:02X}", b))
+            .map(|b| format!("{b:02X}"))
             .collect::<Vec<_>>()
             .join(" ");
 
@@ -50,11 +50,11 @@ impl ReportParser for TenMoonParser {
             }
             [_, b1, b2, b3, b4, b5, b6, _, _, b9, ..] => {
                 // Tablet Report
-                let x = ((*b1 as u16) << 8) | (*b2 as u16);
-                let y = ((*b3 as u16) << 8) | (*b4 as u16);
+                let x = (u16::from(*b1) << 8) | u16::from(*b2);
+                let y = (u16::from(*b3) << 8) | u16::from(*b4);
 
                 let btn_pressed = (*b9 & 6) != 0;
-                let pre_pressure = ((*b5 as u16) << 8) | (*b6 as u16);
+                let pre_pressure = (u16::from(*b5) << 8) | u16::from(*b6);
                 let pressure_offset = if btn_pressed { 50 } else { 0 };
 
                 let pressure = if pre_pressure >= pressure_offset {

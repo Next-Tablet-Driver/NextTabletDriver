@@ -8,6 +8,7 @@ use std::sync::atomic::AtomicU32;
 pub struct SharedStateFactory;
 
 impl SharedStateFactory {
+    #[must_use] 
     pub fn create(config: MappingConfig, is_first_run: bool) -> Arc<SharedState> {
         Arc::new(SharedState {
             config: RwLock::new(config),

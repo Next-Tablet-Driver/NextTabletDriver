@@ -17,6 +17,7 @@ use crate::settings::load_session_meta;
 
 impl TabletMapperApp {
     /// Creates a new instance of the application and initializes all background services.
+    #[must_use] 
     pub fn new(ctx: eframe::egui::Context) -> Self {
         // SAFETY: These are standard Windows API calls to set the process priority
         // and timer resolution for high-performance tablet input.

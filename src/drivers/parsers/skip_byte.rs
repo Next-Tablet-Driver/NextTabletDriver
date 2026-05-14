@@ -15,7 +15,7 @@ impl ReportParser for SkipByteParser {
             // Restore raw data to include the skipped byte
             p.raw_data = data
                 .iter()
-                .map(|b| format!("{:02X}", b))
+                .map(|b| format!("{b:02X}"))
                 .collect::<Vec<_>>()
                 .join(" ");
         }

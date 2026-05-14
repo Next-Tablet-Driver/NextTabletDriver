@@ -34,7 +34,7 @@ impl ThreadSupervisor {
                     latest = newer;
                 }
                 if let Err(e) = crate::settings::save_last_session(&latest) {
-                    log::error!(target: "Config", "Background saver failed: {}", e);
+                    log::error!(target: "Config", "Background saver failed: {e}");
                 }
             }
         });

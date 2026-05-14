@@ -28,9 +28,9 @@ fn parse_veikk_tablet(data: &[u8], raw: String, has_tilt: bool) -> Option<Tablet
             p_high,
             rest @ ..,
         ] => {
-            let x = (*x_lo as u32) | ((*x_mid as u32) << 8) | ((*x_hi as u32) << 16);
-            let y = (*y_lo as u32) | ((*y_mid as u32) << 8) | ((*y_hi as u32) << 16);
-            let pressure = (*p_lo as u16) | ((*p_high as u16) << 8);
+            let x = u32::from(*x_lo) | (u32::from(*x_mid) << 8) | (u32::from(*x_hi) << 16);
+            let y = u32::from(*y_lo) | (u32::from(*y_mid) << 8) | (u32::from(*y_hi) << 16);
+            let pressure = u16::from(*p_lo) | (u16::from(*p_high) << 8);
             let buttons = (*b2 >> 1) & 0x03;
 
             let (tilt_x, tilt_y) = if has_tilt {
@@ -72,7 +72,7 @@ impl ReportParser for VeikkParser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
         let raw = data
             .iter()
-            .map(|b| format!("{:02X}", b))
+            .map(|b| format!("{b:02X}"))
             .collect::<Vec<_>>()
             .join(" ");
 
@@ -91,7 +91,7 @@ impl ReportParser for VeikkV1Parser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
         let raw = data
             .iter()
-            .map(|b| format!("{:02X}", b))
+            .map(|b| format!("{b:02X}"))
             .collect::<Vec<_>>()
             .join(" ");
 
@@ -110,7 +110,7 @@ impl ReportParser for VeikkA15Parser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
         let raw = data
             .iter()
-            .map(|b| format!("{:02X}", b))
+            .map(|b| format!("{b:02X}"))
             .collect::<Vec<_>>()
             .join(" ");
 
@@ -129,7 +129,7 @@ impl ReportParser for VeikkTiltParser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
         let raw = data
             .iter()
-            .map(|b| format!("{:02X}", b))
+            .map(|b| format!("{b:02X}"))
             .collect::<Vec<_>>()
             .join(" ");
 

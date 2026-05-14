@@ -31,10 +31,10 @@ fn parse_gen2(data: &[u8], raw: String) -> Option<TabletData> {
             p_ext,
             ..,
         ] => {
-            let x = (*x_lo as u32) | ((*x_ext as u32) << 16);
-            let y = (*y_lo as u32) | ((*y_ext as u32) << 16);
+            let x = u32::from(*x_lo) | (u32::from(*x_ext) << 16);
+            let y = u32::from(*y_lo) | (u32::from(*y_ext) << 16);
             let pressure =
-                (u16::from_le_bytes([*p_lo, *p_hi]) & 0xBFFF) | (((*p_ext & 0x01) as u16) << 13);
+                (u16::from_le_bytes([*p_lo, *p_hi]) & 0xBFFF) | (u16::from(*p_ext & 0x01) << 13);
 
             let mut buttons: u8 = 0;
             if (*b1 & 0x02) != 0 {
@@ -117,7 +117,7 @@ impl ReportParser for XpPenGen2Parser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
         let raw = data
             .iter()
-            .map(|b| format!("{:02X}", b))
+            .map(|b| format!("{b:02X}"))
             .collect::<Vec<_>>()
             .join(" ");
 
@@ -135,7 +135,7 @@ impl ReportParser for XpPenDeco03Parser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
         let raw = data
             .iter()
-            .map(|b| format!("{:02X}", b))
+            .map(|b| format!("{b:02X}"))
             .collect::<Vec<_>>()
             .join(" ");
 
@@ -153,7 +153,7 @@ impl ReportParser for XpPenOffsetPressureParser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
         let raw = data
             .iter()
-            .map(|b| format!("{:02X}", b))
+            .map(|b| format!("{b:02X}"))
             .collect::<Vec<_>>()
             .join(" ");
 
@@ -171,7 +171,7 @@ impl ReportParser for XpPenOffsetAuxParser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
         let raw = data
             .iter()
-            .map(|b| format!("{:02X}", b))
+            .map(|b| format!("{b:02X}"))
             .collect::<Vec<_>>()
             .join(" ");
 
@@ -188,7 +188,7 @@ impl ReportParser for XpPenParser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
         let raw = data
             .iter()
-            .map(|b| format!("{:02X}", b))
+            .map(|b| format!("{b:02X}"))
             .collect::<Vec<_>>()
             .join(" ");
 

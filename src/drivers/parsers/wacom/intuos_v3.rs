@@ -6,6 +6,7 @@ use crate::drivers::parsers::ReportParser;
 pub struct IntuosV3Parser;
 
 impl IntuosV3Parser {
+    #[must_use] 
     pub const fn new() -> Self {
         Self
     }
@@ -51,12 +52,12 @@ impl IntuosV3Parser {
                 let pressure = u16::from_le_bytes([*p_lo, *p_hi]);
 
                 let tilt_x = if (*t_x & 0x80) != 0 {
-                    (*t_x as i16 - 0xFF) as i8
+                    (i16::from(*t_x) - 0xFF) as i8
                 } else {
                     *t_x as i8
                 };
                 let tilt_y = if (*t_y & 0x80) != 0 {
-                    (*t_y as i16 - 0xFF) as i8
+                    (i16::from(*t_y) - 0xFF) as i8
                 } else {
                     *t_y as i8
                 };
@@ -116,8 +117,8 @@ impl IntuosV3Parser {
                 h_dist,
                 ..,
             ] => {
-                let x = (u16::from_le_bytes([*x_lo, *x_hi]) as u32) | ((*x_ext as u32) << 16);
-                let y = (u16::from_le_bytes([*y_lo, *y_hi]) as u32) | ((*y_ext as u32) << 16);
+                let x = u32::from(u16::from_le_bytes([*x_lo, *x_hi])) | (u32::from(*x_ext) << 16);
+                let y = u32::from(u16::from_le_bytes([*y_lo, *y_hi])) | (u32::from(*y_ext) << 16);
                 let pressure = u16::from_le_bytes([*p_lo, *p_hi]);
                 let tilt_x = (i16::from_le_bytes([*t_x_lo, *t_x_hi])) as i8;
                 let tilt_y = (i16::from_le_bytes([*t_y_lo, *t_y_hi])) as i8;
@@ -201,7 +202,7 @@ impl ReportParser for IntuosV3Parser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
         let raw = data
             .iter()
-            .map(|b| format!("{:02X}", b))
+            .map(|b| format!("{b:02X}"))
             .collect::<Vec<_>>()
             .join(" ");
         self.parse_internal(data, raw)
@@ -213,6 +214,7 @@ pub struct WacomDriverIntuosV3Parser {
 }
 
 impl WacomDriverIntuosV3Parser {
+    #[must_use] 
     pub const fn new() -> Self {
         Self {
             inner: IntuosV3Parser::new(),
@@ -230,7 +232,7 @@ impl ReportParser for WacomDriverIntuosV3Parser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
         let raw = data
             .iter()
-            .map(|b| format!("{:02X}", b))
+            .map(|b| format!("{b:02X}"))
             .collect::<Vec<_>>()
             .join(" ");
 

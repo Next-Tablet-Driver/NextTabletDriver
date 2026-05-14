@@ -163,7 +163,11 @@ pub fn render_performance_panel(
             col1.group(|ui| {
                 ui.label(egui::RichText::new("Hardware Info").strong());
                 ui.add_space(5.0);
-                ui.label(format!("Resolution: {} x {}", max_w as u32, max_h as u32));
+                ui.label(format!(
+                    "Resolution: {} x {}",
+                    (max_w.max(0.0)) as u32,
+                    (max_h.max(0.0)) as u32
+                ));
                 ui.label(format!("Current Pen Status: {}", tablet_data.status));
                 ui.label(format!(
                     "Connected: {}",

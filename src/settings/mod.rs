@@ -81,6 +81,7 @@ pub fn save_to_path(path: &Path, config: &MappingConfig) -> Result<(), String> {
 }
 
 /// Sanitizes a string for use as a filename, removing path separators and reserved characters.
+#[must_use] 
 pub fn sanitize_profile_name(name: &str) -> String {
     let mut sanitized: String = name
         .chars()
@@ -121,7 +122,7 @@ pub fn save_settings(name: &str, config: &MappingConfig) -> Result<(), String> {
     let path = dir.join(&filename);
 
     save_to_path(&path, config)?;
-    log::info!(target: "Config", "Saved preset '{}' (sanitized: '{}') to {:?}", name, sanitized_name, path);
+    log::info!(target: "Config", "Saved preset '{name}' (sanitized: '{sanitized_name}') to {path:?}");
     Ok(())
 }
 

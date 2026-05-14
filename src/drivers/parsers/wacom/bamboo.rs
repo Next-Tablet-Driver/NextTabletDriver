@@ -12,6 +12,7 @@ pub struct BambooTabletReport {
 }
 
 impl BambooTabletReport {
+    #[must_use] 
     pub fn new(report: &[u8]) -> Option<Self> {
         match report {
             [_, b1, x_lo, x_hi, y_lo, y_hi, p_lo, p_hi_aux, ..] => {
@@ -19,7 +20,7 @@ impl BambooTabletReport {
                 let y = u16::from_le_bytes([*y_lo, *y_hi]);
 
                 let pressure = if (*b1 & 0x01) != 0 {
-                    (*p_lo as u16) | (((*p_hi_aux & 0x03) as u16) << 8)
+                    u16::from(*p_lo) | (u16::from(*p_hi_aux & 0x03) << 8)
                 } else {
                     0
                 };
@@ -50,7 +51,7 @@ impl ReportParser for BambooParser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
         let raw = data
             .iter()
-            .map(|b| format!("{:02X}", b))
+            .map(|b| format!("{b:02X}"))
             .collect::<Vec<_>>()
             .join(" ");
 

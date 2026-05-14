@@ -337,6 +337,7 @@ impl Default for MappingConfig {
 
 impl MappingConfig {
     /// Alias for `Default::default()`, kept for backward compatibility with tests.
+    #[must_use] 
     pub fn default_test() -> Self {
         Self::default()
     }
@@ -377,7 +378,7 @@ impl MappingConfig {
         }
 
         // Target Area
-        if self.target_area.w <= 0.0 || self.target_area.w > 100000.0 {
+        if self.target_area.w <= 0.0 || self.target_area.w > 100_000.0 {
             corrections.push(format!(
                 "target_area.w was invalid ({}), reset to {}",
                 self.target_area.w, defaults.target_area.w

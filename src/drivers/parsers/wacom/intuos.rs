@@ -12,6 +12,7 @@ pub struct IntuosTabletReport {
 }
 
 impl IntuosTabletReport {
+    #[must_use] 
     pub fn new(report: &[u8]) -> Option<Self> {
         match report {
             [_, b1, x_lo, x_hi, y_lo, y_hi, p_lo, p_hi, h_dist, ..] => Some(Self {
@@ -34,7 +35,7 @@ impl ReportParser for IntuosParser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
         let raw = data
             .iter()
-            .map(|b| format!("{:02X}", b))
+            .map(|b| format!("{b:02X}"))
             .collect::<Vec<_>>()
             .join(" ");
 

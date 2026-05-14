@@ -7,7 +7,7 @@ impl ReportParser for GraphireParser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
         let raw = data
             .iter()
-            .map(|b| format!("{:02X}", b))
+            .map(|b| format!("{b:02X}"))
             .collect::<Vec<_>>()
             .join(" ");
 
@@ -15,7 +15,7 @@ impl ReportParser for GraphireParser {
             [0x02, b1, x_lo, x_hi, y_lo, y_hi, p_lo, p_hi_aux, ..] => {
                 let x = u16::from_le_bytes([*x_lo, *x_hi]);
                 let y = u16::from_le_bytes([*y_lo, *y_hi]);
-                let pressure_val = (*p_lo as u16) | (((*p_hi_aux & 0x03) as u16) << 8);
+                let pressure_val = u16::from(*p_lo) | (u16::from(*p_hi_aux & 0x03) << 8);
 
                 let pos_available = (*b1 & 0x80) != 0
                     || *x_lo != 0

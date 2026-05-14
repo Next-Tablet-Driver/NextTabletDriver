@@ -20,7 +20,7 @@ impl<T> LockRecoveryExt<T> for LockResult<T> {
         match self {
             Ok(guard) => guard,
             Err(poisoned) => {
-                log::error!(target: "State", "CRITICAL: Lock '{}' poisoned! Using potentially corrupted guard.", lock_name);
+                log::error!(target: "State", "CRITICAL: Lock '{lock_name}' poisoned! Using potentially corrupted guard.");
                 poisoned.into_inner()
             }
         }
@@ -41,7 +41,7 @@ impl<'a, T: Default> WriteRecoverExt for LockResult<std::sync::RwLockWriteGuard<
         match self {
             Ok(guard) => guard,
             Err(poisoned) => {
-                log::warn!(target: "State", "Write lock '{}' poisoned! Repairing by resetting to default state.", lock_name);
+                log::warn!(target: "State", "Write lock '{lock_name}' poisoned! Repairing by resetting to default state.");
                 let mut guard = poisoned.into_inner();
                 *guard = T::default();
                 guard
@@ -56,7 +56,7 @@ impl<'a, T: Default> WriteRecoverExt for LockResult<std::sync::MutexGuard<'a, T>
         match self {
             Ok(guard) => guard,
             Err(poisoned) => {
-                log::warn!(target: "State", "Mutex '{}' poisoned! Repairing by resetting to default state.", lock_name);
+                log::warn!(target: "State", "Mutex '{lock_name}' poisoned! Repairing by resetting to default state.");
                 let mut guard = poisoned.into_inner();
                 *guard = T::default();
                 guard

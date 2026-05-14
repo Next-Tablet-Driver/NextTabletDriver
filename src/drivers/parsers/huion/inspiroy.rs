@@ -8,7 +8,7 @@ impl ReportParser for InspiroyParser {
         let raw = data
             .iter()
             .take(14)
-            .map(|b| format!("{:02X}", b))
+            .map(|b| format!("{b:02X}"))
             .collect::<Vec<_>>()
             .join(" ");
 
@@ -54,9 +54,9 @@ impl ReportParser for InspiroyParser {
                     _ => (0, 0, 0, 0),
                 };
 
-                let x = (*x_low as u32) | ((*x_high as u32) << 8) | ((b8 & 1) as u32) << 16;
-                let y = (*y_low as u32) | ((*y_high as u32) << 8) | ((b9 & 1) as u32) << 16;
-                let pressure = (*p_low as u16) | ((*p_high as u16) << 8);
+                let x = u32::from(*x_low) | (u32::from(*x_high) << 8) | u32::from(b8 & 1) << 16;
+                let y = u32::from(*y_low) | (u32::from(*y_high) << 8) | u32::from(b9 & 1) << 16;
+                let pressure = u16::from(*p_low) | (u16::from(*p_high) << 8);
 
                 let tilt_x = (tx as i8).wrapping_mul(-1);
                 let tilt_y = (ty as i8).wrapping_mul(-1);

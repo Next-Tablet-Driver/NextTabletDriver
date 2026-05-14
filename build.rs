@@ -12,7 +12,7 @@
 ///
 /// # Metadata Embedded
 /// * **Icon**: Located at `resources/icon.ico`.
-/// * **Product Name**: NextTabletDriver.
+/// * **Product Name**: `NextTabletDriver`.
 /// * **Company**: iSweat.
 ///
 /// # Technical Note
@@ -34,8 +34,7 @@ fn main() {
     // Compiles the resource. Fails if the Windows SDK tools are missing.
     if let Err(e) = res.compile() {
         eprintln!(
-            "Erreur lors de la compilation des ressources Windows : {}",
-            e
+            "Erreur lors de la compilation des ressources Windows : {e}"
         );
         std::process::exit(1);
     }

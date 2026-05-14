@@ -235,6 +235,7 @@ impl TabletMapperApp {
         }
     }
 
+    #[must_use] 
     pub fn calculate_display_bounds(&self) -> (f32, f32, f32, f32) {
         let (mut min_x, mut min_y, mut max_x, mut max_y) = (0.0, 0.0, 1920.0, 1080.0);
         if !self.displays.is_empty() {

@@ -9,6 +9,7 @@ pub struct IntuosProParser {
 }
 
 impl IntuosProParser {
+    #[must_use] 
     pub const fn new() -> Self {
         Self {
             inner_v1: IntuosV1Parser::new(),
@@ -25,7 +26,7 @@ impl Default for IntuosProParser {
 impl IntuosProParser {
     fn parse_internal(&self, data: &[u8], raw: String) -> Option<TabletData> {
         match data {
-            [0x02, ..] | [0x10, ..] => self.inner_v1.parse_internal(data, raw),
+            [0x02 | 0x10, ..] => self.inner_v1.parse_internal(data, raw),
             [0x03, ..] => self.parse_aux(data, raw),
             _ => None,
         }
@@ -49,7 +50,7 @@ impl ReportParser for IntuosProParser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
         let raw = data
             .iter()
-            .map(|b| format!("{:02X}", b))
+            .map(|b| format!("{b:02X}"))
             .collect::<Vec<_>>()
             .join(" ");
         self.parse_internal(data, raw)
@@ -61,6 +62,7 @@ pub struct WacomDriverIntuosProParser {
 }
 
 impl WacomDriverIntuosProParser {
+    #[must_use] 
     pub const fn new() -> Self {
         Self {
             inner: IntuosProParser::new(),
@@ -78,7 +80,7 @@ impl ReportParser for WacomDriverIntuosProParser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
         let raw = data
             .iter()
-            .map(|b| format!("{:02X}", b))
+            .map(|b| format!("{b:02X}"))
             .collect::<Vec<_>>()
             .join(" ");
 

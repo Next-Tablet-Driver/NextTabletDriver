@@ -1,5 +1,6 @@
 use crate::drivers::TabletData;
 
+#[must_use] 
 pub fn parse(data: &[u8]) -> Option<TabletData> {
     match data {
         [
@@ -13,9 +14,9 @@ pub fn parse(data: &[u8]) -> Option<TabletData> {
             p_high,
             rest @ ..,
         ] => {
-            let x = ((*x_high as u16) << 8) | (*x_low as u16);
-            let y = ((*y_high as u16) << 8) | (*y_low as u16);
-            let pressure = ((*p_high as u16) << 8) | (*p_low as u16);
+            let x = (u16::from(*x_high) << 8) | u16::from(*x_low);
+            let y = (u16::from(*y_high) << 8) | u16::from(*y_low);
+            let pressure = (u16::from(*p_high) << 8) | u16::from(*p_low);
 
             let (tilt_x, tilt_y) = match rest {
                 [tx, ty, ..] => (*tx as i8, *ty as i8),
@@ -29,7 +30,7 @@ pub fn parse(data: &[u8]) -> Option<TabletData> {
             let raw = data
                 .iter()
                 .take(14)
-                .map(|b| format!("{:02X}", b))
+                .map(|b| format!("{b:02X}"))
                 .collect::<Vec<_>>()
                 .join(" ");
 

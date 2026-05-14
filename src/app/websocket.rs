@@ -84,22 +84,22 @@ pub fn websocket_loop(shared: Arc<SharedState>) {
                 listener = None;
             }
         } else if listener.is_none() || current_port != port {
-            log::info!(target: "WebSocket", "Starting WebSocket Server on 127.0.0.1:{}", port);
+            log::info!(target: "WebSocket", "Starting WebSocket Server on 127.0.0.1:{port}");
             clients.clear();
 
-            match TcpListener::bind(format!("127.0.0.1:{}", port)) {
+            match TcpListener::bind(format!("127.0.0.1:{port}")) {
                 Ok(l) => match l.set_nonblocking(true) {
-                    Ok(_) => {
+                    Ok(()) => {
                         listener = Some(l);
                         current_port = port;
                     }
                     Err(e) => {
-                        log::error!(target: "WebSocket", "Failed to set WebSocket listener to non-blocking: {}", e);
+                        log::error!(target: "WebSocket", "Failed to set WebSocket listener to non-blocking: {e}");
                         listener = None;
                     }
                 },
                 Err(e) => {
-                    log::error!(target: "WebSocket", "Failed to bind to port {}: {}", port, e);
+                    log::error!(target: "WebSocket", "Failed to bind to port {port}: {e}");
                     listener = None;
                 }
             }
@@ -109,11 +109,11 @@ pub fn websocket_loop(shared: Arc<SharedState>) {
             match l.accept() {
                 Ok((stream, addr)) => {
                     if clients.len() >= 10 {
-                        log::warn!(target: "WebSocket", "Max clients reached (10), rejecting {}", addr);
+                        log::warn!(target: "WebSocket", "Max clients reached (10), rejecting {addr}");
                         continue;
                     }
 
-                    log::info!(target: "WebSocket", "New connection from {}", addr);
+                    log::info!(target: "WebSocket", "New connection from {addr}");
                     if stream.set_nonblocking(false).is_ok() {
                         match accept(stream) {
                             Ok(mut websocket) => {
@@ -123,14 +123,14 @@ pub fn websocket_loop(shared: Arc<SharedState>) {
                                 }
                             }
                             Err(e) => {
-                                log::warn!(target: "WebSocket", "Error during WebSocket handshake: {}", e);
+                                log::warn!(target: "WebSocket", "Error during WebSocket handshake: {e}");
                             }
                         }
                     }
                 }
                 Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {}
                 Err(e) => {
-                    log::error!(target: "WebSocket", "Listener error: {}", e);
+                    log::error!(target: "WebSocket", "Listener error: {e}");
                 }
             }
 
@@ -164,7 +164,7 @@ pub fn websocket_loop(shared: Arc<SharedState>) {
                 if let Ok(json) = serde_json::to_string(&payload) {
                     let mut dead_clients = vec![];
 
-                    for (id, client) in clients.iter_mut() {
+                    for (id, client) in &mut clients {
                         if client.send(Message::Text(json.clone().into())).is_err() {
                             dead_clients.push(*id);
                         }
@@ -178,13 +178,13 @@ pub fn websocket_loop(shared: Arc<SharedState>) {
             }
         }
 
-        let target_duration = Duration::from_micros(1_000_000 / hz as u64);
+        let target_duration = Duration::from_micros(1_000_000 / u64::from(hz));
         let elapsed = frame_start.elapsed();
 
         if elapsed < target_duration {
-            thread::sleep(target_duration - elapsed);
+            thread::sleep(target_duration.checked_sub(elapsed).unwrap());
         } else {
-            log::trace!(target: "WebSocket", "Broadcast too slow, frame took {:?}", elapsed);
+            log::trace!(target: "WebSocket", "Broadcast too slow, frame took {elapsed:?}");
         }
     }
 }

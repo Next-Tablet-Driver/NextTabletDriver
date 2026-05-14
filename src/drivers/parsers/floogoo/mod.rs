@@ -7,7 +7,7 @@ impl ReportParser for FlooGooParser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
         let raw = data
             .iter()
-            .map(|b| format!("{:02X}", b))
+            .map(|b| format!("{b:02X}"))
             .collect::<Vec<_>>()
             .join(" ");
 
@@ -33,8 +33,8 @@ impl ReportParser for FlooGooParser {
 
                 let raw_tilt_x = i16::from_le_bytes([*tx_lo, *tx_hi]);
                 let raw_tilt_y = i16::from_le_bytes([*ty_lo, *ty_hi]);
-                let tilt_x = (raw_tilt_x as f32 * 0.01).round() as i8;
-                let tilt_y = (raw_tilt_y as f32 * 0.01).round() as i8;
+                let tilt_x = (f32::from(raw_tilt_x) * 0.01).round() as i8;
+                let tilt_y = (f32::from(raw_tilt_y) * 0.01).round() as i8;
 
                 let mut buttons: u8 = 0;
                 if (*b1 & 0x02) != 0 {

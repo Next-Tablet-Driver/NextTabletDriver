@@ -5,8 +5,7 @@ const REPO: &str = "NextTabletDriver";
 
 fn github_api_url() -> String {
     format!(
-        "https://api.github.com/repos/{}/{}/releases/latest",
-        OWNER, REPO
+        "https://api.github.com/repos/{OWNER}/{REPO}/releases/latest"
     )
 }
 
@@ -37,18 +36,14 @@ pub fn check_for_updates() -> Result<Option<Release>, Box<dyn std::error::Error>
         (Some(remote), Some(local)) if remote > local => {
             log::info!(
                 target: "Update::Check",
-                "New version available: {} (local version: {})",
-                remote_version_str,
-                local_version_str
+                "New version available: {remote_version_str} (local version: {local_version_str})"
             );
             Ok(Some(release))
         }
         _ => {
             log::info!(
                 target: "Update::Check",
-                "No new updates found or version format mismatch. (Remote: {}, Local: {})",
-                remote_version_str,
-                local_version_str
+                "No new updates found or version format mismatch. (Remote: {remote_version_str}, Local: {local_version_str})"
             );
             Ok(None)
         }

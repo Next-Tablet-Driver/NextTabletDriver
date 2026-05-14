@@ -1,7 +1,7 @@
 //! # Tablet Configuration Serialization
 //!
 //! This module defines the Serde structures used to parse the standard `.json`
-//! configuration files (compatible with OpenTabletDriver format). These files contain
+//! configuration files (compatible with `OpenTabletDriver` format). These files contain
 //! the physical specifications, USB identifiers, and initialization sequences for
 //! hundreds of known tablet models.
 
@@ -66,7 +66,7 @@ pub struct DigitizerIdentifier {
     /// Expected byte length of incoming HID packets.
     pub input_report_length: Option<usize>,
     pub output_report_length: Option<usize>,
-    /// The fully qualified C# class name from OpenTabletDriver format mapping to our Rust parsers.
+    /// The fully qualified C# class name from `OpenTabletDriver` format mapping to our Rust parsers.
     pub report_parser: String,
     /// Base64 encoded byte array(s) to send via `Device::write` to wake up the tablet.
     pub output_init_report: Option<Vec<String>>,

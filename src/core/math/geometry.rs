@@ -24,6 +24,7 @@ impl ActiveAreaGeometry {
     /// * `target_w`, `target_h` - The target screen resolution (for osu! playfield).
     /// * `show_osu_playfield` - Whether to calculate the osu! playfield points.
     #[allow(clippy::too_many_arguments)]
+    #[must_use] 
     pub fn calculate(
         phys_w: f32,
         phys_h: f32,

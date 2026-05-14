@@ -9,6 +9,7 @@ pub struct Intuos4Parser {
 }
 
 impl Intuos4Parser {
+    #[must_use] 
     pub const fn new() -> Self {
         Self {
             inner_v1: IntuosV1Parser::new(),
@@ -25,8 +26,8 @@ impl Default for Intuos4Parser {
 impl Intuos4Parser {
     fn parse_internal(&self, data: &[u8], raw: String) -> Option<TabletData> {
         match data {
-            [0x02, 0xEC, ..] | [0x02, 0xAC, ..] => self.parse_mouse(data, raw),
-            [0x02, ..] | [0x10, ..] => self.inner_v1.parse_internal(data, raw),
+            [0x02, 0xEC | 0xAC, ..] => self.parse_mouse(data, raw),
+            [0x02 | 0x10, ..] => self.inner_v1.parse_internal(data, raw),
             [0x0C, ..] => self.parse_aux(data, raw),
             _ => None,
         }
@@ -35,8 +36,8 @@ impl Intuos4Parser {
     fn parse_mouse(&self, data: &[u8], raw: String) -> Option<TabletData> {
         match data {
             [_, _, b2, b3, b4, b5, b6, _, _, b9, ..] => {
-                let x = (((*b2 as u16) << 8) | (*b3 as u16)) << 1 | (((*b9 >> 1) & 1) as u16);
-                let y = (((*b4 as u16) << 8) | (*b5 as u16)) << 1 | ((*b9 & 1) as u16);
+                let x = ((u16::from(*b2) << 8) | u16::from(*b3)) << 1 | u16::from((*b9 >> 1) & 1);
+                let y = ((u16::from(*b4) << 8) | u16::from(*b5)) << 1 | u16::from(*b9 & 1);
                 let mut buttons: u8 = 0;
                 if (*b6 & 0x01) != 0 {
                     buttons |= 1 << 0;
@@ -86,7 +87,7 @@ impl ReportParser for Intuos4Parser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
         let raw = data
             .iter()
-            .map(|b| format!("{:02X}", b))
+            .map(|b| format!("{b:02X}"))
             .collect::<Vec<_>>()
             .join(" ");
         self.parse_internal(data, raw)
@@ -98,6 +99,7 @@ pub struct WacomDriverIntuos4Parser {
 }
 
 impl WacomDriverIntuos4Parser {
+    #[must_use] 
     pub const fn new() -> Self {
         Self {
             inner: Intuos4Parser::new(),
@@ -115,7 +117,7 @@ impl ReportParser for WacomDriverIntuos4Parser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
         let raw = data
             .iter()
-            .map(|b| format!("{:02X}", b))
+            .map(|b| format!("{b:02X}"))
             .collect::<Vec<_>>()
             .join(" ");
 

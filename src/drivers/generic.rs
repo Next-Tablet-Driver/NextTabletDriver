@@ -22,12 +22,12 @@ pub struct GenericNextTabletDriver {
 }
 
 impl GenericNextTabletDriver {
+    #[must_use] 
     pub fn new(config: TabletConfiguration, vid: u16, pid: u16) -> Self {
         let parser_name = config
             .digitizer_identifiers
             .first()
-            .map(|d| d.report_parser.as_str())
-            .unwrap_or("");
+            .map_or("", |d| d.report_parser.as_str());
 
         let parser = create_parser(parser_name);
 
@@ -49,7 +49,7 @@ impl NextTabletDriver for GenericNextTabletDriver {
         (
             self.config.specifications.digitizer.max_x,
             self.config.specifications.digitizer.max_y,
-            self.config.specifications.pen.max_pressure as f32,
+            f32::from(self.config.specifications.pen.max_pressure),
         )
     }
 

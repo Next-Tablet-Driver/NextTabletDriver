@@ -67,7 +67,9 @@ impl TrayService {
                             }
                             let title = format!("NextTabletDriver v{}\0", crate::VERSION);
                             // SAFETY: Finding the window by its title.
-                            let hwnd = unsafe { FindWindowA(std::ptr::null(), title.as_ptr() as *const _) };
+                            let hwnd = unsafe {
+                                FindWindowA(std::ptr::null(), title.as_ptr() as *const _)
+                            };
                             if hwnd != 0 {
                                 log::info!(target: "Tray", "Native window found (HWND: {}), restoring...", hwnd);
                                 // SAFETY: Restoring the window to its normal state.

@@ -117,7 +117,7 @@ impl TabletMapperApp {
                 );
             }
             Err(e) => {
-                self.push_toast(format!("Failed to load profile: {}", e), ToastLevel::Error);
+                self.push_toast(format!("Failed to load profile: {e}"), ToastLevel::Error);
             }
         }
     }
@@ -142,7 +142,7 @@ impl TabletMapperApp {
                     self.push_toast("Settings saved".to_string(), ToastLevel::Info);
                 }
                 Err(e) => {
-                    self.push_toast(format!("Failed to save: {}", e), ToastLevel::Error);
+                    self.push_toast(format!("Failed to save: {e}"), ToastLevel::Error);
                 }
             }
         } else {
@@ -171,7 +171,7 @@ impl TabletMapperApp {
                     self.push_toast("Settings saved".to_string(), ToastLevel::Info);
                 }
                 Err(e) => {
-                    self.push_toast(format!("Failed to save: {}", e), ToastLevel::Error);
+                    self.push_toast(format!("Failed to save: {e}"), ToastLevel::Error);
                 }
             }
         }
@@ -204,7 +204,7 @@ impl TabletMapperApp {
         {
             match crate::settings::save_to_path(&path, config) {
                 Ok(()) => self.push_toast("Settings exported".to_string(), ToastLevel::Info),
-                Err(e) => self.push_toast(format!("Export failed: {}", e), ToastLevel::Error),
+                Err(e) => self.push_toast(format!("Export failed: {e}"), ToastLevel::Error),
             }
         }
     }
@@ -227,7 +227,7 @@ impl TabletMapperApp {
                         );
                     }
                 }
-                Err(e) => self.push_toast(format!("Import failed: {}", e), ToastLevel::Error),
+                Err(e) => self.push_toast(format!("Import failed: {e}"), ToastLevel::Error),
             }
         }
     }
