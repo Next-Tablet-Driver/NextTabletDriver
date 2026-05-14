@@ -15,7 +15,15 @@ pub struct Transformer {
 }
 
 impl Transformer {
-    pub fn execute(&mut self, x: u16, y: u16, max_w: f32, max_h: f32, phys_w: f32, phys_h: f32) -> (f32, f32) {
+    pub fn execute(
+        &mut self,
+        x: u16,
+        y: u16,
+        max_w: f32,
+        max_h: f32,
+        phys_w: f32,
+        phys_h: f32,
+    ) -> (f32, f32) {
         if max_w != self.last_max_w
             || max_h != self.last_max_h
             || phys_w != self.last_phys_w
@@ -30,6 +38,9 @@ impl Transformer {
             self.last_phys_h = phys_h;
         }
 
-        (f32::from(x) * self.x_multiplier, f32::from(y) * self.y_multiplier)
+        (
+            f32::from(x) * self.x_multiplier,
+            f32::from(y) * self.y_multiplier,
+        )
     }
 }

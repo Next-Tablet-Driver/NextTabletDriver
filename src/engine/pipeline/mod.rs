@@ -84,7 +84,9 @@ impl Pipeline {
         let (phys_w, phys_h) = driver.get_physical_specs();
 
         // Stage 1: Transformation (Raw -> MM)
-        let (x_mm, y_mm) = self.transformer.execute(data.x, data.y, max_w, max_h, phys_w, phys_h);
+        let (x_mm, y_mm) = self
+            .transformer
+            .execute(data.x, data.y, max_w, max_h, phys_w, phys_h);
 
         // Stage 2: Normalization (MM -> UV)
         let (u, v) = self.normalizer.execute(x_mm, y_mm, config, shared);
