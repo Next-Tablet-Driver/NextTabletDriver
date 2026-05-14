@@ -76,24 +76,42 @@ pub fn save_to_path(path: &Path, config: &MappingConfig) -> Result<(), String> {
     Ok(())
 }
 
+/// Sanitizes a string for use as a filename, removing path separators and reserved characters.
+pub fn sanitize_profile_name(name: &str) -> String {
+    let mut sanitized: String = name
+        .chars()
+        .filter(|&c| {
+            // Filter out characters that are invalid in Windows filenames and path separators
+            !matches!(c, '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|')
+        })
+        .collect();
+
+    // Prevent directory traversal sequences and hidden files
+    sanitized = sanitized.replace("..", "").trim_start_matches('.').to_string();
+
+    // Fallback if the name becomes empty after sanitization
+    if sanitized.is_empty() {
+        "unnamed_profile".to_string()
+    } else {
+        sanitized
+    }
+}
+
 /// Saves config as a named preset in the application's settings directory.
-///
-/// This does **not** update `last_session.json` — the caller is responsible
-/// for that separately.
 pub fn save_settings(name: &str, config: &MappingConfig) -> Result<(), String> {
     let dir = get_settings_dir();
-    let filename = if std::path::Path::new(name)
-        .extension()
-        .is_some_and(|ext| ext.eq_ignore_ascii_case("json"))
-    {
-        name.to_string()
+    let sanitized_name = sanitize_profile_name(name);
+    
+    let filename = if sanitized_name.to_lowercase().ends_with(".json") {
+        sanitized_name.clone()
     } else {
-        format!("{name}.json")
+        format!("{sanitized_name}.json")
     };
-    let path = dir.join(filename);
+    
+    let path = dir.join(&filename);
 
     save_to_path(&path, config)?;
-    log::info!(target: "Config", "Saved preset '{name}' to {path:?}");
+    log::info!(target: "Config", "Saved preset '{}' (sanitized: '{}') to {:?}", name, sanitized_name, path);
     Ok(())
 }
 
