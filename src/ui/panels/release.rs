@@ -258,7 +258,7 @@ fn render_category(
             .inner_margin(egui::Margin::symmetric(6, 2))
             .show(ui, |ui| {
                 ui.label(
-                    egui::RichText::new(format!("{} {}", icon, label))
+                    egui::RichText::new(format!("{icon} {label}"))
                         .color(color)
                         .size(10.0)
                         .strong(),

@@ -1,7 +1,7 @@
 //! # Visual Theme and Custom Widgets
 //!
 //! This module configures the egui global styling to create a clean, modern
-//! Light theme that visually aligns with the aesthetics of OpenTabletDriver (OTD).
+//! Light theme that visually aligns with the aesthetics of `OpenTabletDriver` (OTD).
 //! It also provides reusable helper functions for consistent layout paradigms
 //! (like section headers and standardized input boxes) across panels.
 
@@ -18,10 +18,10 @@ pub fn apply_theme(ctx: &egui::Context, theme: ThemePreference) {
         ThemePreference::System => ctx.set_visuals(egui::Visuals::default()),
         ThemePreference::CatppuccinLatte => catppuccin_egui::set_theme(ctx, catppuccin_egui::LATTE),
         ThemePreference::CatppuccinFrappe => {
-            catppuccin_egui::set_theme(ctx, catppuccin_egui::FRAPPE)
+            catppuccin_egui::set_theme(ctx, catppuccin_egui::FRAPPE);
         }
         ThemePreference::CatppuccinMacchiato => {
-            catppuccin_egui::set_theme(ctx, catppuccin_egui::MACCHIATO)
+            catppuccin_egui::set_theme(ctx, catppuccin_egui::MACCHIATO);
         }
         ThemePreference::CatppuccinMocha => catppuccin_egui::set_theme(ctx, catppuccin_egui::MOCHA),
     }
@@ -75,6 +75,7 @@ pub fn apply_theme(ctx: &egui::Context, theme: ThemePreference) {
 }
 
 /// Returns a color for panel backgrounds that adapts to dark/light mode.
+#[must_use]
 pub fn panel_bg(visuals: &egui::Visuals) -> egui::Color32 {
     if visuals.window_fill == egui::Visuals::dark().window_fill {
         egui::Color32::from_gray(45)
@@ -86,6 +87,7 @@ pub fn panel_bg(visuals: &egui::Visuals) -> egui::Color32 {
 }
 
 /// Returns a color for panel borders that adapts to dark/light mode.
+#[must_use]
 pub fn panel_border(visuals: &egui::Visuals) -> egui::Color32 {
     if visuals.window_fill == egui::Visuals::dark().window_fill {
         egui::Color32::from_gray(60)
@@ -97,11 +99,13 @@ pub fn panel_border(visuals: &egui::Visuals) -> egui::Color32 {
 }
 
 /// Returns a subtle text color for labels.
+#[must_use]
 pub fn label_color(visuals: &egui::Visuals) -> egui::Color32 {
     visuals.text_color().gamma_multiply(0.7)
 }
 
 /// Returns the accent background color (blue area) that adapts to theme.
+#[must_use]
 pub fn accent_bg(visuals: &egui::Visuals) -> egui::Color32 {
     if visuals.dark_mode {
         egui::Color32::from_rgba_unmultiplied(60, 120, 180, 255) // Darker blue
@@ -167,7 +171,7 @@ pub fn ui_labeled_box<R>(
     .inner
 }
 
-/// Renders a styled container holding a label and an `f32` DragValue input with an optional range.
+/// Renders a styled container holding a label and an `f32` `DragValue` input with an optional range.
 pub fn ui_input_box_range(
     ui: &mut egui::Ui,
     label: &str,
@@ -192,10 +196,10 @@ pub fn ui_input_box_range(
                 .max_decimals(2)
                 .range(range)
                 .custom_formatter(|val, _| {
-                    format!("{:.2}", val)
+                    format!("{val:.2}")
                         .trim_end_matches('0')
                         .trim_end_matches('.')
-                        .replace(".", ",")
+                        .replace('.', ",")
                 }),
         );
         if response.hovered() {
@@ -208,7 +212,7 @@ pub fn ui_input_box(ui: &mut egui::Ui, label: &str, value: &mut f32, unit: &str)
     ui_input_box_range(ui, label, value, unit, f32::MIN..=f32::MAX);
 }
 
-/// Renders a styled container holding a label and a `u32` DragValue input with an optional range.
+/// Renders a styled container holding a label and a `u32` `DragValue` input with an optional range.
 pub fn ui_input_box_u32_range(
     ui: &mut egui::Ui,
     label: &str,
@@ -238,7 +242,7 @@ pub fn ui_input_box_u32(ui: &mut egui::Ui, label: &str, value: &mut u32, unit: &
     ui_input_box_u32_range(ui, label, value, unit, 0..=u32::MAX);
 }
 
-/// Renders a styled container holding a label and a `u16` DragValue input with an optional range.
+/// Renders a styled container holding a label and a `u16` `DragValue` input with an optional range.
 pub fn ui_input_box_u16_range(
     ui: &mut egui::Ui,
     label: &str,
@@ -325,10 +329,10 @@ pub fn ui_setting_row(ui: &mut egui::Ui, label: &str, value: &mut f32, unit: &st
                                 .speed(0.1)
                                 .max_decimals(2)
                                 .custom_formatter(|val, _| {
-                                    format!("{:.2}", val)
+                                    format!("{val:.2}")
                                         .trim_end_matches('0')
                                         .trim_end_matches('.')
-                                        .replace(".", ",")
+                                        .replace('.', ",")
                                 })
                                 .clamp_existing_to_range(false),
                         );

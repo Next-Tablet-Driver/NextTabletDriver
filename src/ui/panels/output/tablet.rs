@@ -215,7 +215,7 @@ pub fn render_tablet_section(ui: &mut egui::Ui, config: &mut MappingConfig, snap
 }
 
 fn handle_tablet_drag(
-    ui: &mut egui::Ui,
+    ui: &egui::Ui,
     response: &egui::Response,
     points: &[egui::Pos2],
     scale: f32,

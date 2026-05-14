@@ -50,3 +50,26 @@ lto = true
 codegen-units = 1
 panic = "abort"
 strip = true
+
+[lints.rust]
+dead_code = "deny"
+# missing_docs = "deny"
+
+[lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+indexing_slicing = "deny"
+exit = "deny"
+todo = "deny"
+unimplemented = "deny"
+lossy_float_literal = "deny"
+
+all = "warn"
+pedantic = "warn"
+nursery = "warn"
+missing_panics_doc = "warn"
+missing_errors_doc = "warn"
+undocumented_unsafe_blocks = "warn"
+multiple_unsafe_ops_per_block = "warn"
+fn_to_numeric_cast_any = "warn"

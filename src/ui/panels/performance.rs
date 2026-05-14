@@ -118,7 +118,7 @@ pub fn render_performance_panel(
                     ))
                     .weak(),
                 );
-                ui.label(egui::RichText::new(format!("{:.3}ms", max_ui_latency)).weak());
+                ui.label(egui::RichText::new(format!("{max_ui_latency:.3}ms")).weak());
                 ui.end_row();
 
                 ui.separator();
@@ -131,7 +131,7 @@ pub fn render_performance_panel(
                 let total_current = stats.hid_read_ms + stats.parser_ms + ui_latency;
                 ui.label(egui::RichText::new("Total Software Lag:").strong());
                 ui.label(
-                    egui::RichText::new(format!("{:.3}ms", total_current))
+                    egui::RichText::new(format!("{total_current:.3}ms"))
                         .strong()
                         .color(egui::Color32::WHITE),
                 );
@@ -149,11 +149,11 @@ pub fn render_performance_panel(
             ui.label(egui::RichText::new("Packet Flow").strong());
             ui.add_space(5.0);
             ui.label(format!("Total Count: {}", stats.total_packets));
-            ui.label(format!("Polling Rate: {:.1} Hz", displayed_hz));
+            ui.label(format!("Polling Rate: {displayed_hz:.1} Hz"));
 
             if displayed_hz > 1.0 {
                 let interval = 1000.0 / displayed_hz;
-                ui.label(format!("Avg Interval: {:.2} ms", interval));
+                ui.label(format!("Avg Interval: {interval:.2} ms"));
             } else {
                 ui.label("Avg Interval: Static / Idle");
             }

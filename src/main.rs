@@ -5,22 +5,6 @@
 //! configures the window properties, and launches the `eframe` (egui) graphical interface.
 
 #![windows_subsystem = "windows"]
-#![deny(clippy::unwrap_used)]
-#![deny(clippy::expect_used)]
-#![deny(clippy::panic)]
-#![deny(clippy::indexing_slicing)]
-#![deny(clippy::exit)]
-#![deny(clippy::todo)]
-#![deny(clippy::unimplemented)]
-#![deny(clippy::lossy_float_literal)]
-#![deny(dead_code)]
-#![deny(missing_docs)]
-#![warn(clippy::all, clippy::pedantic, clippy::nursery)]
-#![warn(clippy::missing_panics_doc)]
-#![warn(clippy::missing_errors_doc)]
-#![warn(clippy::undocumented_unsafe_blocks)]
-#![warn(clippy::multiple_unsafe_ops_per_block)]
-#![warn(clippy::fn_to_numeric_cast_any)]
 
 use eframe::egui;
 use next_tablet_driver::app::TabletMapperApp;
