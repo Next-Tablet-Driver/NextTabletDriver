@@ -85,8 +85,8 @@ impl Pipeline {
         let (max_w, max_h, max_p) = driver.get_specs();
         let (phys_w, phys_h) = driver.get_physical_specs();
 
-        let x_mm = (f32::from(data.x) / f32::from(max_w)) * phys_w;
-        let y_mm = (f32::from(data.y) / f32::from(max_h)) * phys_h;
+        let x_mm = (f32::from(data.x) / max_w) * phys_w;
+        let y_mm = (f32::from(data.y) / max_h) * phys_h;
 
         // Normalize
         let (u, v) = self.normalize(x_mm, y_mm, config, shared);

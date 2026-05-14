@@ -19,7 +19,7 @@ pub fn download_and_install(
         .assets
         .iter()
         .find(|a| a.name == format!("{}.sha256", asset.name))
-        .ok_or_else(|| "Security Error: No .sha256 checksum file found for this asset. Installation aborted.")?;
+        .ok_or("Security Error: No .sha256 checksum file found for this asset. Installation aborted.")?;
 
     log::info!(target: "Update::Download", "Found checksum asset: {}", checksum_asset.name);
     let resp = ureq::get(&checksum_asset.browser_download_url)
