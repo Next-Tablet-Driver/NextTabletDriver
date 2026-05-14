@@ -569,8 +569,13 @@ mod tests {
         let mut config = MappingConfig::default();
 
         config.active_area.w = -10.0;
+        config.active_area.h = 0.0;
         config.active_area.rotation = 450.0;
+        config.target_area.w = -5.0;
         config.relative_config.rotation = -90.0;
+        config.relative_config.reset_time_ms = 20000;
+        config.tip_threshold = 0;
+        config.eraser_threshold = 2000;
         config.websocket.port = 0;
         config.websocket.polling_rate_hz = 5000;
         config.pen_button_bindings = vec![];
@@ -579,8 +584,13 @@ mod tests {
 
         assert!(!corrections.is_empty());
         assert!(config.active_area.w > 0.0);
+        assert!(config.active_area.h > 0.0);
         assert_eq!(config.active_area.rotation, 90.0);
+        assert!(config.target_area.w > 0.0);
         assert_eq!(config.relative_config.rotation, 270.0);
+        assert!(config.relative_config.reset_time_ms <= 10000);
+        assert!(config.tip_threshold > 0);
+        assert!(config.eraser_threshold <= 1024);
         assert_eq!(config.websocket.port, 8080);
         assert_eq!(config.websocket.polling_rate_hz, 60);
         assert!(!config.pen_button_bindings.is_empty());

@@ -123,3 +123,53 @@ impl Filter for SpeedStatsFilter {
         self.last_time = Instant::now();
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::core::config::models::MappingConfig;
+    use crate::engine::state::SharedState;
+    use std::sync::Arc;
+    use std::time::Duration;
+
+    #[test]
+    fn test_speed_calculation() {
+        let shared = Arc::new(SharedState::test_default());
+        let mut filter = SpeedStatsFilter::new(shared.clone());
+        let mut config = MappingConfig::default();
+        config.active_area.w = 100.0;
+        config.active_area.h = 100.0;
+        config.speed_stats.unit = SpeedUnit::MillimetersPerSecond;
+
+        // First point
+        filter.process(0.0, 0.0, &config);
+
+        // Move 10mm in 0.1s => 100mm/s
+        filter.last_time = Instant::now() - Duration::from_millis(100);
+        filter.process(0.1, 0.0, &config);
+
+        let speed = shared.stats.read().unwrap().handspeed;
+        // Allow some float tolerance
+        assert!((speed - 100.0).abs() < 1.0);
+    }
+
+    #[test]
+    fn test_speed_unit_conversion() {
+        let shared = Arc::new(SharedState::test_default());
+        let mut filter = SpeedStatsFilter::new(shared.clone());
+        let mut config = MappingConfig::default();
+        config.active_area.w = 1000.0;
+        config.active_area.h = 1000.0;
+        config.speed_stats.unit = SpeedUnit::MetersPerSecond;
+
+        // First point
+        filter.process(0.0, 0.0, &config);
+
+        // Move 1000mm (1m) in 1s => 1m/s
+        filter.last_time = Instant::now() - Duration::from_secs(1);
+        filter.process(1.0, 0.0, &config);
+
+        let speed = shared.stats.read().unwrap().handspeed;
+        assert!((speed - 1.0).abs() < 0.1);
+    }
+}
