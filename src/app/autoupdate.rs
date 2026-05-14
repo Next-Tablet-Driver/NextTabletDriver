@@ -162,22 +162,20 @@ pub fn download_and_install(
     let asset = find_platform_asset(&release)?;
     let download_url = &asset.browser_download_url;
 
-    // Optional: Look for a .sha256 file in release assets
+    // Mandatory: Look for a .sha256 file in release assets
     let checksum_asset = release
         .assets
         .iter()
-        .find(|a| a.name == format!("{}.sha256", asset.name));
-    let expected_hash = if let Some(checksum_asset) = checksum_asset {
-        log::info!(target: "Update::Download", "Found checksum asset: {}", checksum_asset.name);
-        let resp = ureq::get(&checksum_asset.browser_download_url)
-            .set("User-Agent", "NextTabletDriver-AutoUpdate")
-            .call()?;
-        let hash_str = resp.into_string()?;
-        // Take the first word (the hash)
-        Some(hash_str.split_whitespace().next().unwrap_or("").to_string())
-    } else {
-        None
-    };
+        .find(|a| a.name == format!("{}.sha256", asset.name))
+        .ok_or_else(|| "Security Error: No .sha256 checksum file found for this asset. Installation aborted.")?;
+
+    log::info!(target: "Update::Download", "Found checksum asset: {}", checksum_asset.name);
+    let resp = ureq::get(&checksum_asset.browser_download_url)
+        .set("User-Agent", "NextTabletDriver-AutoUpdate")
+        .call()?;
+    let hash_str = resp.into_string()?;
+    // Take the first word (the hash)
+    let expected_hash = hash_str.split_whitespace().next().unwrap_or("").to_string();
 
     log::info!(target: "Update::Download", "Downloading update from {}", download_url);
 
@@ -220,19 +218,17 @@ pub fn download_and_install(
         }
     }
 
-    // Verify SHA256 if available
-    if let Some(expected) = expected_hash {
-        let actual = hex::encode(hasher.finalize());
-        if actual.to_lowercase() != expected.to_lowercase() {
-            let _ = fs::remove_file(&temp_path);
-            return Err(format!(
-                "Checksum mismatch! Expected: {}, Actual: {}",
-                expected, actual
-            )
-            .into());
-        }
-        log::info!(target: "Update::Verify", "SHA256 integrity verified successfully.");
+    // Verify SHA256 mandatory
+    let actual = hex::encode(hasher.finalize());
+    if actual.to_lowercase() != expected_hash.to_lowercase() {
+        let _ = fs::remove_file(&temp_path);
+        return Err(format!(
+            "Checksum mismatch! Expected: {}, Actual: {}",
+            expected_hash, actual
+        )
+        .into());
     }
+    log::info!(target: "Update::Verify", "SHA256 integrity verified successfully.");
 
     log::info!(target: "Update::Download", "Download complete, saved to {:?}", temp_path);
 
@@ -266,8 +262,7 @@ fn find_platform_asset(release: &Release) -> Result<&Asset, Box<dyn std::error::
             .assets
             .iter()
             .find(|a| a.name.ends_with(".exe"))
-            .or_else(|| release.assets.first())
-            .ok_or_else(|| "No suitable installer asset found in release".into())
+            .ok_or_else(|| "No suitable installer (.exe) asset found in release".into())
     }
 
     #[cfg(target_os = "linux")]
@@ -277,15 +272,11 @@ fn find_platform_asset(release: &Release) -> Result<&Asset, Box<dyn std::error::
             .iter()
             .find(|a| a.name.ends_with(".AppImage"))
             .or_else(|| release.assets.iter().find(|a| a.name.ends_with(".tar.gz")))
-            .or_else(|| release.assets.first())
             .ok_or_else(|| "No suitable Linux asset found in release".into())
     }
 
     #[cfg(not(any(windows, target_os = "linux")))]
     {
-        release
-            .assets
-            .first()
-            .ok_or_else(|| "No assets found in release".into())
+        Err("Unsupported platform for auto-update".into())
     }
 }
