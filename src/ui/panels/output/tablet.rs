@@ -181,23 +181,27 @@ pub fn render_tablet_section(ui: &mut egui::Ui, config: &mut MappingConfig, snap
 
                     ui_input_box(ui, "Width", &mut w, "mm");
                     if (w - config.active_area.w).abs() > f32::EPSILON {
-                        config.active_area.w = w;
-                        if config.lock_aspect_ratio {
-                            let ratio = config.target_area.w / config.target_area.h;
+                        if config.lock_aspect_ratio && config.active_area.h > 0.0 {
+                            let ratio = config.active_area.w / config.active_area.h;
+                            config.active_area.w = w;
                             config
                                 .active_area
                                 .apply_aspect_ratio(ratio, true, phys_w, phys_h);
+                        } else {
+                            config.active_area.w = w;
                         }
                     }
 
                     ui_input_box(ui, "Height", &mut h, "mm");
                     if (h - config.active_area.h).abs() > f32::EPSILON {
-                        config.active_area.h = h;
-                        if config.lock_aspect_ratio {
-                            let ratio = config.target_area.w / config.target_area.h;
+                        if config.lock_aspect_ratio && config.active_area.h > 0.0 {
+                            let ratio = config.active_area.w / config.active_area.h;
+                            config.active_area.h = h;
                             config
                                 .active_area
                                 .apply_aspect_ratio(ratio, false, phys_w, phys_h);
+                        } else {
+                            config.active_area.h = h;
                         }
                     }
 
