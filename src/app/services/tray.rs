@@ -1,5 +1,12 @@
 use eframe::egui::Context;
+use tray_icon::menu::{Menu, MenuItem};
 use tray_icon::{MouseButton, TrayIcon, TrayIconBuilder, TrayIconEvent};
+
+// System tray service
+// - Minimal platform-specific code (Windows restore)
+// - Decoupled icon loading
+// - Clean event matching helper
+// - Detached listener thread that processes tray & menu events
 
 pub struct TrayService {
     pub tray_icon: Option<TrayIcon>,
@@ -8,17 +15,52 @@ pub struct TrayService {
 impl TrayService {
     #[must_use]
     pub fn new(ctx: Context) -> Self {
+        let tray_icon = Self::load_icon().and_then(|icon| {
+            // Build a simple context menu with a "Quit" item.
+            let menu = {
+                let menu = Menu::new();
+                let quit_item = MenuItem::with_id("quit", "Quit", true, None);
+                if let Err(e) = menu.append(&quit_item) {
+                    log::error!(target: "Tray", "Failed to append menu item: {e:?}");
+                }
+                menu
+            };
+
+            TrayIconBuilder::new()
+                .with_icon(icon)
+                .with_tooltip("NextTabletDriver")
+                // show menu only on right click, left click will be used to restore the window
+                .with_menu(Box::new(menu))
+                .with_menu_on_left_click(false)
+                .with_menu_on_right_click(true)
+                .build()
+                .map_err(|e| {
+                    log::error!(target: "Tray", "Failed to build tray icon: {e:?}");
+                    e
+                })
+                .ok()
+        });
+
+        if tray_icon.is_some() {
+            // Spawn a detached background thread to listen for tray/menu events.
+            // This mirrors the original behaviour where the tray listener lives for the
+            // application's lifetime. If you prefer graceful shutdown, consider
+            // keeping the JoinHandle and joining on application exit.
+            let ctx_clone = ctx.clone();
+            std::thread::spawn(move || Self::tray_event_loop(ctx_clone));
+        }
+
+        Self { tray_icon }
+    }
+
+    fn load_icon() -> Option<tray_icon::Icon> {
         let icon_bytes = include_bytes!("../../../resources/icon.png");
-        let tray_icon = match image::load_from_memory(icon_bytes) {
+        match image::load_from_memory(icon_bytes) {
             Ok(img) => {
                 let image = img.into_rgba8();
                 let (width, height) = image.dimensions();
                 match tray_icon::Icon::from_rgba(image.into_raw(), width, height) {
-                    Ok(icon) => TrayIconBuilder::new()
-                        .with_icon(icon)
-                        .with_tooltip("NextTabletDriver")
-                        .build()
-                        .ok(),
+                    Ok(icon) => Some(icon),
                     Err(e) => {
                         log::error!(target: "Tray", "Failed to create tray icon: {e}");
                         None
@@ -29,65 +71,80 @@ impl TrayService {
                 log::error!(target: "Tray", "Failed to load tray icon image: {e}");
                 None
             }
-        };
+        }
+    }
 
-        if tray_icon.is_some() {
-            let tray_ctx = ctx;
-            std::thread::spawn(move || {
-                let receiver = TrayIconEvent::receiver();
-                log::info!(target: "Tray", "System Tray listener background thread started");
-                while let Ok(event) = receiver.recv() {
-                    log::info!(target: "Tray", "Received Tray Event: {event:?}");
+    const fn is_restore_event(event: &TrayIconEvent) -> bool {
+        // React on left button release (Up) or on double click. This avoids
+        // acting on the initial button-down event which may happen before
+        // the system performs other actions.
+        matches!(
+            event,
+            TrayIconEvent::Click {
+                button: MouseButton::Left,
+                button_state: tray_icon::MouseButtonState::Up,
+                ..
+            } | TrayIconEvent::DoubleClick {
+                button: MouseButton::Left,
+                ..
+            }
+        )
+    }
 
-                    let matches = matches!(
-                        event,
-                        TrayIconEvent::Click {
-                            button: MouseButton::Left,
-                            ..
-                        } | TrayIconEvent::DoubleClick {
-                            button: MouseButton::Left,
-                            ..
-                        }
-                    );
+    fn tray_event_loop(ctx: Context) {
+        // Receivers for tray and menu events
+        let tray_receiver = TrayIconEvent::receiver().clone();
+        let menu_receiver = tray_icon::menu::MenuEvent::receiver().clone();
 
-                    if matches {
-                        log::info!(target: "Tray", "Restoring eframe UI...");
+        log::info!(target: "Tray", "System Tray listener background thread started");
 
-                        // SAFETY: This uses native Windows APIs to find and restore the driver window
-                        // when the tray icon is clicked.
-                        #[cfg(windows)]
-                        {
-                            #[link(name = "user32")]
-                            unsafe extern "system" {
-                                fn FindWindowA(
-                                    lpClassName: *const std::ffi::c_char,
-                                    lpWindowName: *const std::ffi::c_char,
-                                ) -> isize;
-                                fn ShowWindow(hWnd: isize, nCmdShow: i32) -> i32;
-                                fn SetForegroundWindow(hWnd: isize) -> i32;
+        loop {
+            crossbeam_channel::select! {
+                recv(tray_receiver) -> res => match res {
+                    Ok(event) => {
+                        log::info!(target: "Tray", "Received Tray Event: {event:?}");
+
+                        if Self::is_restore_event(&event) {
+                            log::info!(target: "Tray", "Restoring eframe UI...");
+
+                            // On Windows, try to restore the native window and bring it to foreground.
+                            #[cfg(windows)]
+                            {
+                                use windows_sys::Win32::UI::WindowsAndMessaging::{FindWindowA, ShowWindow, SetForegroundWindow};
+                                if let Ok(title_c) = std::ffi::CString::new(format!("NextTabletDriver v{}", crate::VERSION)) {
+                                    let hwnd = unsafe { FindWindowA(std::ptr::null(), title_c.as_ptr().cast()) };
+                                    if hwnd != std::ptr::null_mut() {
+                                        // SW_RESTORE = 9
+                                        unsafe { ShowWindow(hwnd, 9) };
+                                        unsafe { SetForegroundWindow(hwnd) };
+                                    }
+                                }
                             }
-                            let title = format!("NextTabletDriver v{}\0", crate::VERSION);
-                            // SAFETY: Finding the window by its title.
-                            let hwnd =
-                                unsafe { FindWindowA(std::ptr::null(), title.as_ptr().cast()) };
-                            if hwnd != 0 {
-                                log::info!(target: "Tray", "Native window found (HWND: {hwnd}), restoring...");
-                                // SAFETY: Restoring the window to its normal state.
-                                unsafe { ShowWindow(hwnd, 9) }; // SW_RESTORE
-                                // SAFETY: Brining the window to the foreground.
-                                unsafe { SetForegroundWindow(hwnd) };
-                            }
-                        }
 
-                        tray_ctx.send_viewport_cmd(eframe::egui::ViewportCommand::Minimized(false));
-                        tray_ctx.send_viewport_cmd(eframe::egui::ViewportCommand::Visible(true));
-                        tray_ctx.send_viewport_cmd(eframe::egui::ViewportCommand::Focus);
-                        tray_ctx.request_repaint();
+                            // Send eframe viewport commands to restore and focus the window.
+                            ctx.send_viewport_cmd(eframe::egui::ViewportCommand::Minimized(false));
+                            ctx.send_viewport_cmd(eframe::egui::ViewportCommand::Visible(true));
+                            ctx.send_viewport_cmd(eframe::egui::ViewportCommand::Focus);
+                            ctx.request_repaint();
+                        }
                     }
+                    Err(_) => break,
+                },
+                recv(menu_receiver) -> res => match res {
+                    Ok(menu_event) => {
+                        log::info!(target: "Tray", "Menu event: {menu_event:?}");
+                        if menu_event.id() == "quit" {
+                            log::info!(target: "Tray", "Quit requested from tray menu");
+                            // Terminate immediately from background thread. Replace with
+                            // a channel to UI thread for graceful shutdown if needed.
+                            std::process::exit(0);
+                        }
+                    }
+                    Err(_) => break,
                 }
-            });
+            }
         }
 
-        Self { tray_icon }
+        log::info!(target: "Tray", "System Tray listener background thread exiting");
     }
 }

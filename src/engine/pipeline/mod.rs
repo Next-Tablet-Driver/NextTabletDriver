@@ -41,7 +41,7 @@ impl Pipeline {
     pub fn new() -> Self {
         Self {
             transformer: Transformer::default(),
-            normalizer: Normalizer::default(),
+            normalizer: Normalizer,
             projector: Projector::default(),
             tip_threshold_raw: 0.0,
             last_max_p: 0.0,

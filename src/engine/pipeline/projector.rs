@@ -29,7 +29,7 @@ impl Default for Projector {
 }
 
 impl Projector {
-    pub fn reset(&mut self) {
+    pub const fn reset(&mut self) {
         self.abs_screen = None;
         self.rel_mm = None;
     }
