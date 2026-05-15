@@ -80,3 +80,61 @@ impl Projector {
         delta
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::core::config::models::MappingConfig;
+    use crate::engine::state::SharedState;
+    use std::sync::Arc;
+    use std::time::{Duration, Instant};
+
+    #[test]
+    fn test_project_absolute_center() {
+        let mut p = Projector::default();
+        let cfg = MappingConfig::default();
+        let shared = Arc::new(SharedState::new());
+
+        let (sx, sy) = p.project_absolute(0.5, 0.5, &cfg, &shared);
+        assert!((sx - (cfg.target_area.w * 0.5)).abs() < 1e-6);
+        assert!((sy - (cfg.target_area.h * 0.5)).abs() < 1e-6);
+        assert_eq!(p.abs_screen, Some((sx, sy)));
+    }
+
+    #[test]
+    fn test_project_relative_basic_and_rotation() {
+        let mut p = Projector::default();
+        let mut cfg = MappingConfig::default();
+        cfg.relative_config.x_sensitivity = 2.0;
+        cfg.relative_config.y_sensitivity = 3.0;
+        cfg.relative_config.rotation = 0.0;
+
+        // First report: no previous position -> zero delta
+        let d1 = p.project_relative(10.0, 5.0, &cfg);
+        assert_eq!(d1, (0.0, 0.0));
+
+        // Second report: delta should be (2mm * 2, 3mm * 3)
+        let d2 = p.project_relative(12.0, 8.0, &cfg);
+        assert!((d2.0 - 4.0).abs() < 1e-6);
+        assert!((d2.1 - 9.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_project_relative_resets_after_inactivity() {
+        let mut p = Projector::default();
+        let mut cfg = MappingConfig::default();
+        cfg.relative_config.reset_time_ms = 1; // very small
+
+        // Prime the previous position
+        let _ = p.project_relative(0.0, 0.0, &cfg);
+        // Simulate inactivity by setting packet_time far in the past
+        p.packet_time = Instant::now() - Duration::from_millis(10);
+        p.rel_mm = Some((1.0, 1.0));
+
+        // Now project_relative should detect the timeout and reset to None -> produce zero delta
+        let delta = p.project_relative(2.0, 2.0, &cfg);
+        assert_eq!(delta, (0.0, 0.0));
+        // rel_mm should have been updated to the new coords
+        assert_eq!(p.rel_mm, Some((2.0, 2.0)));
+    }
+}

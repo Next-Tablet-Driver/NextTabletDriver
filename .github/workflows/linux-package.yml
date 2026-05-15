@@ -1,59 +1,29 @@
-name: Release Build
+name: Linux Release Package
 
 on:
     push:
-        tags:
-            - "v*"
-
-permissions:
-    contents: write
+        branches: [main, master, dev]
+    workflow_dispatch: {}
 
 jobs:
-    build-windows:
-        name: Build Windows EXE
-        runs-on: windows-latest
-
-        steps:
-            - name: Checkout
-              uses: actions/checkout@v4
-
-            - name: Install Rust toolchain
-              uses: dtolnay/rust-toolchain@stable
-              with:
-                  toolchain: 1.95.0
-
-            - name: Rust cache
-              uses: swatinem/rust-cache@v2
-
-            - name: Build Rust Project (release)
-              run: cargo build --release
-
-            - name: Compile Inno Setup
-              run: |
-                  & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer.iss
-
-            - name: Calculate Checksum
-              shell: pwsh
-              run: |
-                  $file = "user_mode_dist/Next_Tablet_Driver_Setup_x64.exe"
-                  $hash = (Get-FileHash -Path $file -Algorithm SHA256).Hash.ToLower()
-                  "$hash  Next_Tablet_Driver_Setup_x64.exe" | Out-File -Encoding utf8 "$file.sha256"
-
-            - name: Upload Windows artifacts
-              uses: actions/upload-artifact@v4
-              with:
-                  name: windows-release
-                  path: |
-                      user_mode_dist/Next_Tablet_Driver_Setup_x64.exe
-                      user_mode_dist/Next_Tablet_Driver_Setup_x64.exe.sha256
-
-    build-linux:
-        name: Build Linux AppImage and .deb
+    build-package:
+        name: Build Linux Release
         runs-on: ubuntu-latest
 
         steps:
             - name: Checkout
               uses: actions/checkout@v4
+
+            - name: Cache cargo
+              uses: actions/cache@v4
+              with:
+                  path: |
+                      ~/.cargo/registry
+                      ~/.cargo/git
+                      target
+                  key: linux-cargo-${{ hashFiles('**/Cargo.lock') }}
+                  restore-keys: |
+                      linux-cargo-
 
             - name: Setup Rust toolchain
               uses: dtolnay/rust-toolchain@stable
@@ -65,28 +35,92 @@ jobs:
               run: |
                   rustup component add rustfmt clippy || true
 
-            - name: Install dependencies
+            - name: Install build dependencies
               run: |
                   sudo apt-get update
-                  sudo apt-get install -y pkg-config libudev-dev patchelf libfuse2 wget unzip dpkg-dev build-essential \
+                  sudo apt-get install -y pkg-config libudev-dev musl-tools build-essential \
                     libgtk-3-dev libglib2.0-dev libgdk-pixbuf2.0-dev libpango1.0-dev libcairo2-dev libatk1.0-dev \
                     libx11-dev libxrandr-dev libxfixes-dev libxrender-dev libx11-xcb-dev libxkbcommon-dev \
-                    libgl1-mesa-dev libegl1-mesa-dev libgles2-mesa-dev
+                    libgl1-mesa-dev libegl1-mesa-dev libgles2-mesa-dev libfuse2
 
             - name: Build release (glibc)
               run: cargo build --workspace --release --all-features
 
-            - name: Prepare AppDir
+            - name: Run tests (native)
+              run: cargo test --workspace --all-features --verbose
+
+            - name: Create package tarball
+              run: |
+                  mkdir -p artifacts
+                  BIN=target/release/next_tablet_driver
+                  if [ -f "$BIN" ]; then
+                    cp "$BIN" artifacts/
+                    chmod +x artifacts/next_tablet_driver
+                  else
+                    echo "Binary not found: $BIN" && exit 1
+                  fi
+                  if [ -d "resources" ]; then
+                    cp -r resources artifacts/resources || true
+                  fi
+                  tar -czf next_tablet_driver-linux-${{ github.sha }}.tar.gz -C artifacts .
+
+            - name: Upload artifact
+              uses: actions/upload-artifact@v4
+              with:
+                  name: next_tablet_driver-linux-${{ github.sha }}
+                  path: next_tablet_driver-linux-${{ github.sha }}.tar.gz
+
+    appimage-deb:
+        name: Package AppImage and .deb
+        needs: build-package
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Download build artifact
+              uses: actions/download-artifact@v4
+              with:
+                  name: next_tablet_driver-linux-${{ github.sha }}
+                  path: ./downloaded_artifact
+
+            - name: Prepare AppDir and copy files
               run: |
                   mkdir -p AppDir/usr/bin
                   mkdir -p AppDir/usr/share/applications
                   mkdir -p AppDir/usr/share/icons/hicolor/256x256/apps
-                  cp target/release/next_tablet_driver AppDir/usr/bin/next_tablet_driver
-                  chmod +x AppDir/usr/bin/next_tablet_driver
-                  if [ -f resources/icon.png ]; then
-                    cp resources/icon.png AppDir/usr/share/icons/hicolor/256x256/apps/next_tablet_driver.png
+                  mkdir -p pkg_workdir
+                  if [ -f downloaded_artifact/next_tablet_driver-linux-${{ github.sha }}.tar.gz ]; then
+                    tar -xzf downloaded_artifact/next_tablet_driver-linux-${{ github.sha }}.tar.gz -C ./pkg_workdir || true
                   fi
+                  if [ -f pkg_workdir/next_tablet_driver ]; then
+                    cp pkg_workdir/next_tablet_driver AppDir/usr/bin/next_tablet_driver
+                  elif [ -f target/release/next_tablet_driver ]; then
+                    cp target/release/next_tablet_driver AppDir/usr/bin/next_tablet_driver
+                  elif [ -f downloaded_artifact/next_tablet_driver ]; then
+                    cp downloaded_artifact/next_tablet_driver AppDir/usr/bin/next_tablet_driver
+                  else
+                    echo "Binary not found, aborting" && exit 1
+                  fi
+                  chmod +x AppDir/usr/bin/next_tablet_driver
+
+                  # Copy icon if present
+                  if [ -f pkg_workdir/resources/icon.png ]; then
+                    cp pkg_workdir/resources/icon.png AppDir/usr/share/icons/hicolor/256x256/apps/next_tablet_driver.png
+                  elif [ -f resources/icon.png ]; then
+                    cp resources/icon.png AppDir/usr/share/icons/hicolor/256x256/apps/next_tablet_driver.png
+                  else
+                    echo "Warning: icon not found; AppImage may not include an icon"
+                  fi
+
+                  # Create desktop file
                   printf '%s\n' '[Desktop Entry]' 'Name=NextTabletDriver' 'Exec=next_tablet_driver' 'Icon=next_tablet_driver' 'Type=Application' 'Categories=Utility;Graphics;' > AppDir/usr/share/applications/next_tablet_driver.desktop
+
+            - name: Install runtime dependencies for linuxdeploy
+              run: |
+                  sudo apt-get update
+                  sudo apt-get install -y patchelf libfuse2 wget unzip
 
             - name: Download linuxdeploy and plugin
               run: |
@@ -97,23 +131,13 @@ jobs:
             - name: Create AppImage
               env:
                   APPIMAGE_EXTRACT_AND_RUN: "1"
-                  # Embed update information pointing to GitHub Releases (zsync transport)
-                  LDAI_UPDATE_INFORMATION: "gh-releases-zsync|${{ github.repository_owner }}|${{ github.event.repository.name }}|latest|next_tablet_driver-*x86_64.AppImage.zsync"
-                  # Force output filename to include tag/version
-                  LDAI_OUTPUT: "next_tablet_driver-${{ github.ref_name }}-x86_64.AppImage"
-                  LDAI_VERSION: "${{ github.ref_name }}"
               run: |
                   ./linuxdeploy-x86_64.AppImage --appdir AppDir -d AppDir/usr/share/applications/next_tablet_driver.desktop -i AppDir/usr/share/icons/hicolor/256x256/apps/next_tablet_driver.png --output appimage || true
+                  # Find the generated AppImage
+                  ls -la
                   APPIMAGE=$(ls -1 *.AppImage 2>/dev/null | head -n 1 || true)
                   if [ -z "$APPIMAGE" ]; then
                     echo "AppImage creation failed or no AppImage generated" && exit 1
-                  fi
-                  # The plugin should also generate a .zsync file when LDAI_UPDATE_INFORMATION is set
-                  ZSYNC=$(ls -1 *.zsync 2>/dev/null | head -n 1 || true)
-                  if [ -n "$ZSYNC" ]; then
-                    echo "Created zsync: $ZSYNC"
-                  else
-                    echo "Warning: zsync not generated"
                   fi
                   echo "Created AppImage: $APPIMAGE"
 
@@ -143,17 +167,22 @@ jobs:
 
                   dpkg-deb --build deb_pkg next_tablet_driver_${VERSION}_amd64.deb
 
-            - name: Upload Linux artifacts
+            - name: Upload AppImage artifact
               uses: actions/upload-artifact@v4
               with:
-                  name: linux-release
+                  name: next_tablet_driver-linux-appimage-${{ github.sha }}
                   path: |
                       *.AppImage
-                      *.zsync
+
+            - name: Upload .deb artifact
+              uses: actions/upload-artifact@v4
+              with:
+                  name: next_tablet_driver-linux-deb-${{ github.sha }}
+                  path: |
                       next_tablet_driver_*.deb
 
-    build-musl:
-        name: Build MUSL (best-effort)
+    musl-build:
+        name: Best-effort MUSL static build (optional)
         runs-on: ubuntu-latest
 
         steps:
@@ -183,70 +212,19 @@ jobs:
                   set -x
                   cargo build --target x86_64-unknown-linux-musl --release --workspace --all-features || true
 
-            - id: package
-              name: Package MUSL binary (or placeholder)
+            - name: Package MUSL binary if present
               run: |
                   BIN=target/x86_64-unknown-linux-musl/release/next_tablet_driver
-                  mkdir -p musl_upload
                   if [ -f "$BIN" ]; then
-                    cp "$BIN" musl_upload/next_tablet_driver
-                    chmod +x musl_upload/next_tablet_driver
-                    tar -czf musl_upload/next_tablet_driver-linux-musl-${{ github.ref_name }}.tar.gz -C musl_upload next_tablet_driver
-                    echo "created=true" >> $GITHUB_OUTPUT
+                    mkdir -p musl_artifacts
+                    cp "$BIN" musl_artifacts/next_tablet_driver
+                    chmod +x musl_artifacts/next_tablet_driver
+                    tar -czf next_tablet_driver-linux-musl-${{ github.sha }}.tar.gz -C musl_artifacts .
                   else
-                    echo "MUSL build not available" > musl_upload/musl_not_built.txt
-                    echo "created=false" >> $GITHUB_OUTPUT
+                    echo "MUSL build not available; skipping artifact upload"
                   fi
-
-            - name: Upload MUSL artifact
+            - name: Upload MUSL artifact (if created)
               uses: actions/upload-artifact@v4
               with:
-                  name: musl-release
-                  path: musl_upload/*
-
-    publish-release:
-        name: Publish Release
-        needs: [build-windows, build-linux, build-musl]
-        runs-on: ubuntu-latest
-
-        steps:
-            - name: Checkout
-              uses: actions/checkout@v4
-
-            - name: Download Windows artifacts
-              uses: actions/download-artifact@v4
-              with:
-                  name: windows-release
-                  path: downloaded_artifacts/windows
-
-            - name: Download Linux artifacts
-              uses: actions/download-artifact@v4
-              with:
-                  name: linux-release
-                  path: downloaded_artifacts/linux
-
-            - name: Download MUSL artifacts (if any)
-              uses: actions/download-artifact@v4
-              with:
-                  name: musl-release
-                  path: downloaded_artifacts/musl
-              if: always()
-
-            - name: Collect artifacts list
-              id: collect
-              run: |
-                  # Exclude placeholder marker files (e.g., musl_not_built.txt)
-                  find downloaded_artifacts -type f ! -name 'musl_not_built.txt' > files.txt
-                  echo "files<<EOF" >> $GITHUB_OUTPUT
-                  cat files.txt >> $GITHUB_OUTPUT
-                  echo "EOF" >> $GITHUB_OUTPUT
-
-            - name: Create GitHub Release with artifacts
-              uses: softprops/action-gh-release@v2
-              with:
-                  tag_name: ${{ github.ref_name }}
-                  name: Release ${{ github.ref_name }}
-                  generate_release_notes: true
-                  files: ${{ steps.collect.outputs.files }}
-              env:
-                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  name: next_tablet_driver-linux-musl-${{ github.sha }}
+                  path: next_tablet_driver-linux-musl-${{ github.sha }}.tar.gz

@@ -47,3 +47,58 @@ impl Transformer {
         )
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_transformer_basic_conversion() {
+        let mut t = Transformer::default();
+
+        // Simple conversion where multipliers are computed from specs
+        let (x_mm, y_mm) = t.execute(100, 200, 1000.0, 2000.0, 100.0, 200.0);
+
+        let expected_x = 100.0_f32 * (100.0 / 1000.0);
+        let expected_y = 200.0_f32 * (200.0 / 2000.0);
+
+        assert!((x_mm - expected_x).abs() < 1e-6);
+        assert!((y_mm - expected_y).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_transformer_handles_zero_dimensions() {
+        let mut t = Transformer::default();
+
+        // If max width is zero, x multiplier should become 0 and produce 0 coordinates
+        let (x_mm, y_mm) = t.execute(50, 75, 0.0, 1000.0, 100.0, 200.0);
+        assert_eq!(x_mm, 0.0);
+        // y dimension is still valid
+        assert!((y_mm - (75.0_f32 * (200.0 / 1000.0))).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_transformer_small_changes_do_not_recompute() {
+        let mut t = Transformer::default();
+
+        // First compute baseline multipliers
+        let baseline = t.execute(10, 20, 1000.0, 1000.0, 100.0, 100.0);
+
+        // Values that differ by less than EPS should not trigger recompute
+        let a = t.execute(
+            10,
+            20,
+            1000.0 + 1e-7,
+            1000.0 + 1e-7,
+            100.0 + 1e-7,
+            100.0 + 1e-7,
+        );
+        let b = t.execute(10, 20, 1000.0, 1000.0, 100.0, 100.0);
+
+        assert!((a.0 - b.0).abs() < 1e-6);
+        assert!((a.1 - b.1).abs() < 1e-6);
+        // baseline should be close to both
+        assert!((baseline.0 - a.0).abs() < 1e-3);
+        assert!((baseline.1 - a.1).abs() < 1e-3);
+    }
+}

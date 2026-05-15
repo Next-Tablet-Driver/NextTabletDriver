@@ -148,3 +148,64 @@ pub struct SharedState {
     /// Flag indicating that the application is shutting down and threads should terminate.
     pub shutdown_requested: std::sync::atomic::AtomicBool,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::{Arc, Mutex, RwLock};
+    use std::thread;
+
+    #[test]
+    fn mutex_unwrap_or_reset_on_poisoned_lock() {
+        let m = Arc::new(Mutex::new(String::from("dirty")));
+        let m2 = Arc::clone(&m);
+        let handle = thread::spawn(move || {
+            let _guard = m2.lock().unwrap();
+            // Panic while holding the lock to poison it
+            panic!("poison mutex");
+        });
+        let _ = handle.join(); // ignore the panic from the spawned thread
+
+        let lock_result = m.lock();
+        // This should recover by resetting the inner value to Default
+        let guard = lock_result.unwrap_or_reset("test_mutex");
+        assert_eq!(*guard, String::default());
+
+        // Ensure the underlying data is actually reset
+        drop(guard);
+        // The lock remains poisoned in the OS-level primitive; use unwrap_or_log to access the inner value.
+        let inner = m.lock().unwrap_or_log("test_mutex_check");
+        assert_eq!(*inner, String::default());
+    }
+
+    #[test]
+    fn rwlock_write_unwrap_or_reset_on_poison() {
+        let r = Arc::new(RwLock::new(vec![1, 2, 3]));
+        let r2 = Arc::clone(&r);
+        let handle = thread::spawn(move || {
+            let _g = r2.write().unwrap();
+            panic!("poison rwlock");
+        });
+        let _ = handle.join();
+
+        let res = r.write();
+        let guard = res.unwrap_or_reset("test_rwlock");
+        assert!(guard.is_empty());
+    }
+
+    #[test]
+    fn mutex_unwrap_or_log_on_poison() {
+        let m = Arc::new(Mutex::new(42u32));
+        let m2 = Arc::clone(&m);
+        let handle = thread::spawn(move || {
+            let _g = m2.lock().unwrap();
+            panic!("poison");
+        });
+        let _ = handle.join();
+
+        let res = m.lock();
+        let guard = res.unwrap_or_log("test_mutex_log");
+        // The value should still be accessible (we didn't modify it before panic)
+        assert_eq!(*guard, 42u32);
+    }
+}
