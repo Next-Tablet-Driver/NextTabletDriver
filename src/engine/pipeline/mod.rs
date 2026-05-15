@@ -50,7 +50,7 @@ impl Pipeline {
     }
 
     /// Resets the internal tracking for relative mode.
-    pub fn reset_relative(&mut self) {
+    pub const fn reset_relative(&mut self) {
         self.projector.reset();
     }
 
@@ -126,7 +126,8 @@ impl Pipeline {
         config: &MappingConfig,
     ) -> bool {
         // Update pressure threshold if config or driver specs changed
-        if config.tip_threshold != self.last_threshold || max_p != self.last_max_p {
+        const EPS: f32 = 1e-6;
+        if config.tip_threshold != self.last_threshold || (max_p - self.last_max_p).abs() > EPS {
             self.tip_threshold_raw = (f32::from(config.tip_threshold) * 0.01) * max_p;
             self.last_threshold = config.tip_threshold;
             self.last_max_p = max_p;

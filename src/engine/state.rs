@@ -65,16 +65,11 @@ impl<'a, T: Default> WriteRecoverExt for LockResult<std::sync::MutexGuard<'a, T>
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub enum EngineStatus {
+    #[default]
     Running,
     Failed(String),
-}
-
-impl Default for EngineStatus {
-    fn default() -> Self {
-        Self::Running
-    }
 }
 
 /// An atomic snapshot of device properties.

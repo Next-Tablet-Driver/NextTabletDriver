@@ -53,7 +53,7 @@ impl TabletMapperApp {
         let (tablet_sender, tablet_receiver) = unbounded();
         let update_service = UpdateService::new();
         let (save_sender, save_receiver) = crossbeam_channel::bounded(1);
-        let tray_service = TrayService::new(ctx.clone());
+        let tray_service = TrayService::new(&ctx);
 
         // 5. Spawn Background Threads via Supervisor
         ThreadSupervisor::spawn_engine(Arc::clone(&shared), ctx, tablet_sender);

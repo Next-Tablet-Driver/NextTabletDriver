@@ -24,18 +24,21 @@ impl Transformer {
         phys_w: f32,
         phys_h: f32,
     ) -> (f32, f32) {
-        if max_w != self.last_max_w
-            || max_h != self.last_max_h
-            || phys_w != self.last_phys_w
-            || phys_h != self.last_phys_h
         {
-            self.x_multiplier = if max_w > 0.0 { phys_w / max_w } else { 0.0 };
-            self.y_multiplier = if max_h > 0.0 { phys_h / max_h } else { 0.0 };
+            const EPS: f32 = 1e-6;
+            if (max_w - self.last_max_w).abs() > EPS
+                || (max_h - self.last_max_h).abs() > EPS
+                || (phys_w - self.last_phys_w).abs() > EPS
+                || (phys_h - self.last_phys_h).abs() > EPS
+            {
+                self.x_multiplier = if max_w > 0.0 { phys_w / max_w } else { 0.0 };
+                self.y_multiplier = if max_h > 0.0 { phys_h / max_h } else { 0.0 };
 
-            self.last_max_w = max_w;
-            self.last_max_h = max_h;
-            self.last_phys_w = phys_w;
-            self.last_phys_h = phys_h;
+                self.last_max_w = max_w;
+                self.last_max_h = max_h;
+                self.last_phys_w = phys_w;
+                self.last_phys_h = phys_h;
+            }
         }
 
         (

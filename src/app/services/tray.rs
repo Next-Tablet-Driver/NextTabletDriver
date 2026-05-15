@@ -14,7 +14,7 @@ pub struct TrayService {
 
 impl TrayService {
     #[must_use]
-    pub fn new(ctx: Context) -> Self {
+    pub fn new(ctx: &Context) -> Self {
         let tray_icon = Self::load_icon().and_then(|icon| {
             // Build a simple context menu with a "Quit" item.
             let menu = {
@@ -47,7 +47,7 @@ impl TrayService {
             // application's lifetime. If you prefer graceful shutdown, consider
             // keeping the JoinHandle and joining on application exit.
             let ctx_clone = ctx.clone();
-            std::thread::spawn(move || Self::tray_event_loop(ctx_clone));
+            std::thread::spawn(move || Self::tray_event_loop(&ctx_clone));
         }
 
         Self { tray_icon }
@@ -91,7 +91,7 @@ impl TrayService {
         )
     }
 
-    fn tray_event_loop(ctx: Context) {
+    fn tray_event_loop(ctx: &Context) {
         // Receivers for tray and menu events
         let tray_receiver = TrayIconEvent::receiver().clone();
         let menu_receiver = tray_icon::menu::MenuEvent::receiver().clone();
@@ -112,10 +112,14 @@ impl TrayService {
                             {
                                 use windows_sys::Win32::UI::WindowsAndMessaging::{FindWindowA, ShowWindow, SetForegroundWindow};
                                 if let Ok(title_c) = std::ffi::CString::new(format!("NextTabletDriver v{}", crate::VERSION)) {
+                                    // SAFETY: `title_c` is a valid null-terminated C string (created via `CString::new`).
+                                    // Passing a null class name and a valid window name pointer to `FindWindowA` is safe.
                                     let hwnd = unsafe { FindWindowA(std::ptr::null(), title_c.as_ptr().cast()) };
-                                    if hwnd != std::ptr::null_mut() {
+                                    if !hwnd.is_null() {
                                         // SW_RESTORE = 9
+                                        // SAFETY: `hwnd` was checked for non-null above, so it is assumed to be a valid window handle.
                                         unsafe { ShowWindow(hwnd, 9) };
+                                        // SAFETY: `hwnd` was checked for non-null above, so it is assumed to be a valid window handle.
                                         unsafe { SetForegroundWindow(hwnd) };
                                     }
                                 }
