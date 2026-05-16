@@ -1,20 +1,15 @@
 use crate::core::config::models::MappingConfig;
 use crate::engine::state::SharedState;
 use crossbeam_channel::{Receiver, Sender};
-use eframe::egui::Context;
 use std::sync::Arc;
 
 pub struct ThreadSupervisor;
 
 impl ThreadSupervisor {
-    pub fn spawn_engine(
-        shared: Arc<SharedState>,
-        ctx: Context,
-        sender: Sender<crate::drivers::TabletData>,
-    ) {
+    pub fn spawn_engine(shared: Arc<SharedState>, sender: Sender<crate::drivers::TabletData>) {
         log::info!(target: "App", "Spawning Input Engine thread");
         std::thread::spawn(move || {
-            crate::engine::tablet_manager::run_manager(shared, ctx, sender);
+            crate::engine::tablet_manager::run_manager(&shared, &sender);
         });
     }
 

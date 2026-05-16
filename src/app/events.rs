@@ -1,6 +1,7 @@
 use crate::app::state::{AppTab, TabletMapperApp, UiSnapshot};
 use crate::engine::state::WriteRecoverExt;
 use eframe::egui;
+use std::sync::atomic::Ordering;
 use std::time::Duration;
 
 impl TabletMapperApp {
@@ -73,8 +74,9 @@ impl TabletMapperApp {
         if config.system_tray_on_minimize {
             let is_minimized = ctx.input(|i| i.viewport().minimized).unwrap_or(false);
             if is_minimized && !self.was_minimized {
-                log::info!(target: "Tray", "Window minimized, hiding to system tray...");
-                ctx.send_viewport_cmd(egui::ViewportCommand::Visible(false));
+                log::info!(target: "Tray", "Window minimized, closing eframe to sit in system tray...");
+                ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+                self.shared.is_visible.store(false, Ordering::Release);
             }
             self.was_minimized = is_minimized;
         }

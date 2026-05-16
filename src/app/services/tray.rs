@@ -1,5 +1,7 @@
-use eframe::egui::Context;
-use tray_icon::menu::{Menu, MenuItem};
+use crate::engine::state::SharedState;
+use std::sync::Arc;
+use std::sync::atomic::Ordering;
+use tray_icon::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tray_icon::{MouseButton, TrayIcon, TrayIconBuilder, TrayIconEvent};
 
 // System tray service
@@ -14,43 +16,10 @@ pub struct TrayService {
 
 impl TrayService {
     #[must_use]
-    pub fn new(ctx: &Context) -> Self {
-        let tray_icon = Self::load_icon().and_then(|icon| {
-            // Build a simple context menu with a "Quit" item.
-            let menu = {
-                let menu = Menu::new();
-                let quit_item = MenuItem::with_id("quit", "Quit", true, None);
-                if let Err(e) = menu.append(&quit_item) {
-                    log::error!(target: "Tray", "Failed to append menu item: {e:?}");
-                }
-                menu
-            };
-
-            TrayIconBuilder::new()
-                .with_icon(icon)
-                .with_tooltip("NextTabletDriver")
-                // show menu only on right click, left click will be used to restore the window
-                .with_menu(Box::new(menu))
-                .with_menu_on_left_click(false)
-                .with_menu_on_right_click(true)
-                .build()
-                .map_err(|e| {
-                    log::error!(target: "Tray", "Failed to build tray icon: {e:?}");
-                    e
-                })
-                .ok()
-        });
-
-        if tray_icon.is_some() {
-            // Spawn a detached background thread to listen for tray/menu events.
-            // This mirrors the original behaviour where the tray listener lives for the
-            // application's lifetime. If you prefer graceful shutdown, consider
-            // keeping the JoinHandle and joining on application exit.
-            let ctx_clone = ctx.clone();
-            std::thread::spawn(move || Self::tray_event_loop(&ctx_clone));
-        }
-
-        Self { tray_icon }
+    pub fn new(shared: &Arc<SharedState>) -> Self {
+        let shared_clone = Arc::clone(shared);
+        std::thread::spawn(move || Self::tray_event_loop(&shared_clone));
+        Self { tray_icon: None }
     }
 
     fn load_icon() -> Option<tray_icon::Icon> {
@@ -91,60 +60,160 @@ impl TrayService {
         )
     }
 
-    fn tray_event_loop(ctx: &Context) {
+    fn tray_event_loop(shared: &SharedState) {
+        let status_item = MenuItem::with_id("status", "Disconnected", false, None);
+        let reload_item = MenuItem::with_id("reload", "Restart Driver", true, None);
+        let quit_item = MenuItem::with_id("quit", "Exit", true, None);
+
+        // Create the TrayIcon ON THIS THREAD so it owns the hidden message HWND
+        let _tray_icon = Self::load_icon().and_then(|icon| {
+            let menu = {
+                let menu = Menu::new();
+                if let Err(e) = menu.append(&status_item) {
+                    log::error!(target: "Tray", "Failed to append status item: {e:?}");
+                }
+                if let Err(e) = menu.append(&PredefinedMenuItem::separator()) {
+                    log::error!(target: "Tray", "Failed to append separator: {e:?}");
+                }
+                if let Err(e) = menu.append(&reload_item) {
+                    log::error!(target: "Tray", "Failed to append reload item: {e:?}");
+                }
+                if let Err(e) = menu.append(&quit_item) {
+                    log::error!(target: "Tray", "Failed to append quit item: {e:?}");
+                }
+                menu
+            };
+
+            TrayIconBuilder::new()
+                .with_icon(icon)
+                .with_tooltip("NextTabletDriver")
+                .with_menu(Box::new(menu))
+                .with_menu_on_left_click(false)
+                .with_menu_on_right_click(true)
+                .build()
+                .map_err(|e| {
+                    log::error!(target: "Tray", "Failed to build tray icon: {e:?}");
+                    e
+                })
+                .ok()
+        });
+
         // Receivers for tray and menu events
         let tray_receiver = TrayIconEvent::receiver().clone();
         let menu_receiver = tray_icon::menu::MenuEvent::receiver().clone();
 
         log::info!(target: "Tray", "System Tray listener background thread started");
 
-        loop {
-            crossbeam_channel::select! {
-                recv(tray_receiver) -> res => match res {
-                    Ok(event) => {
-                        log::info!(target: "Tray", "Received Tray Event: {event:?}");
+        #[cfg(windows)]
+        {
+            use crate::engine::state::LockRecoveryExt;
+            use windows_sys::Win32::UI::WindowsAndMessaging::{
+                DispatchMessageW, GetMessageW, MSG, TranslateMessage,
+            };
+            // SAFETY: MSG struct can be zeroed safely
+            let mut msg: MSG = unsafe { std::mem::zeroed() };
+            let mut last_device_name = String::new();
 
-                        if Self::is_restore_event(&event) {
-                            log::info!(target: "Tray", "Restoring eframe UI...");
+            // SAFETY: GetMessageW blocks efficiently until a message arrives. `msg` is valid and initialized.
+            while unsafe { GetMessageW(&raw mut msg, std::ptr::null_mut(), 0, 0) } > 0 {
+                // SAFETY: msg was properly populated by GetMessageW.
+                unsafe { TranslateMessage(&raw const msg) };
+                // SAFETY: msg was properly populated by GetMessageW.
+                unsafe { DispatchMessageW(&raw const msg) };
 
-                            // On Windows, try to restore the native window and bring it to foreground.
-                            #[cfg(windows)]
-                            {
-                                use windows_sys::Win32::UI::WindowsAndMessaging::{FindWindowA, ShowWindow, SetForegroundWindow};
-                                if let Ok(title_c) = std::ffi::CString::new(format!("NextTabletDriver v{}", crate::VERSION)) {
-                                    // SAFETY: `title_c` is a valid null-terminated C string (created via `CString::new`).
-                                    // Passing a null class name and a valid window name pointer to `FindWindowA` is safe.
-                                    let hwnd = unsafe { FindWindowA(std::ptr::null(), title_c.as_ptr().cast()) };
-                                    if !hwnd.is_null() {
-                                        // SW_RESTORE = 9
-                                        // SAFETY: `hwnd` was checked for non-null above, so it is assumed to be a valid window handle.
-                                        unsafe { ShowWindow(hwnd, 9) };
-                                        // SAFETY: `hwnd` was checked for non-null above, so it is assumed to be a valid window handle.
-                                        unsafe { SetForegroundWindow(hwnd) };
-                                    }
-                                }
-                            }
+                // Update status text when user interacts with tray
+                let device = shared.device_state.read().unwrap_or_log("device_state");
+                let current_name = device.name.clone();
+                drop(device);
 
-                            // Send eframe viewport commands to restore and focus the window.
-                            ctx.send_viewport_cmd(eframe::egui::ViewportCommand::Minimized(false));
-                            ctx.send_viewport_cmd(eframe::egui::ViewportCommand::Visible(true));
-                            ctx.send_viewport_cmd(eframe::egui::ViewportCommand::Focus);
-                            ctx.request_repaint();
-                        }
+                if current_name != last_device_name {
+                    if current_name.is_empty() {
+                        status_item.set_text("Disconnected");
+                    } else {
+                        status_item.set_text(&current_name);
                     }
-                    Err(_) => break,
-                },
-                recv(menu_receiver) -> res => match res {
-                    Ok(menu_event) => {
-                        log::info!(target: "Tray", "Menu event: {menu_event:?}");
-                        if menu_event.id() == "quit" {
+                    last_device_name = current_name;
+                }
+
+                // After dispatching, check if tray_icon generated any events
+                while let Ok(event) = tray_receiver.try_recv() {
+                    if Self::is_restore_event(&event) {
+                        log::info!(target: "Tray", "Received Tray Event: {event:?}");
+                        log::info!(target: "Tray", "Restoring UI from tray...");
+                        shared.is_visible.store(true, Ordering::Release);
+                    } else {
+                        log::trace!(target: "Tray", "Tray Event: {event:?}");
+                    }
+                }
+
+                while let Ok(menu_event) = menu_receiver.try_recv() {
+                    log::info!(target: "Tray", "Menu event: {menu_event:?}");
+                    match menu_event.id().0.as_str() {
+                        "quit" => {
                             log::info!(target: "Tray", "Quit requested from tray menu");
-                            // Terminate immediately from background thread. Replace with
-                            // a channel to UI thread for graceful shutdown if needed.
                             std::process::exit(0);
                         }
+                        "reload" => {
+                            log::info!(target: "Tray", "Engine reload requested from tray menu");
+                            shared.reload_requested.store(true, Ordering::Release);
+                        }
+                        _ => {}
                     }
-                    Err(_) => break,
+                }
+            }
+        }
+
+        #[cfg(not(windows))]
+        {
+            use crate::engine::state::LockRecoveryExt;
+            let mut last_device_name = String::new();
+            // On other OS, fallback to blocking crossbeam select with timeout to allow polling status
+            loop {
+                // Update status text
+                let device = shared.device_state.read().unwrap_or_log("device_state");
+                let current_name = device.name.clone();
+                drop(device);
+
+                if current_name != last_device_name {
+                    if current_name.is_empty() {
+                        status_item.set_text("Disconnected");
+                    } else {
+                        status_item.set_text(&current_name);
+                    }
+                    last_device_name = current_name;
+                }
+
+                crossbeam_channel::select! {
+                    recv(tray_receiver) -> res => match res {
+                        Ok(event) => {
+                            if Self::is_restore_event(&event) {
+                                log::info!(target: "Tray", "Received Tray Event: {event:?}");
+                                log::info!(target: "Tray", "Restoring UI from tray...");
+                                shared.is_visible.store(true, Ordering::Release);
+                            } else {
+                                log::trace!(target: "Tray", "Tray Event: {event:?}");
+                            }
+                        }
+                        Err(_) => break,
+                    },
+                    recv(menu_receiver) -> res => match res {
+                        Ok(menu_event) => {
+                            log::info!(target: "Tray", "Menu event: {menu_event:?}");
+                            match menu_event.id().0.as_str() {
+                                "quit" => {
+                                    log::info!(target: "Tray", "Quit requested from tray menu");
+                                    std::process::exit(0);
+                                }
+                                "reload" => {
+                                    log::info!(target: "Tray", "Engine reload requested from tray menu");
+                                    shared.reload_requested.store(true, Ordering::Release);
+                                }
+                                _ => {}
+                            }
+                        }
+                        Err(_) => break,
+                    },
+                    default(std::time::Duration::from_millis(500)) => {}
                 }
             }
         }

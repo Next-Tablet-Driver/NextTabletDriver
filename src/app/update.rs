@@ -13,10 +13,30 @@ impl eframe::App for TabletMapperApp {
     /// The main application loop called by egui.
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         // 0. Handle graceful shutdown signal
-        if ctx.input(|i| i.viewport().close_requested()) && !self.force_close {
+        if ctx.input(|i| i.viewport().close_requested())
+            && !self.force_close
+            && self.shared.is_visible.load(Ordering::Acquire)
+        {
             log::info!(target: "App", "Shutdown requested via window close");
             self.shared.shutdown_requested.store(true, Ordering::SeqCst);
         }
+
+        if !self.shared.is_visible.load(Ordering::Acquire) {
+            // Drain the tablet channel to prevent unbounded memory growth.
+            // The engine thread already avoids sending when invisible (see
+            // `tablet_manager.rs`), but we drain defensively in case of a
+            // race during the visibility transition.
+            while self.tablet_receiver.try_recv().is_ok() {}
+
+            // Drain update channel so we don't miss update notifications
+            if let Ok(status) = self.update_receiver.try_recv() {
+                self.update_status = status;
+            }
+
+            return;
+        }
+
+        // ── Normal Rendering Path ─────────────────────────────────────────
 
         // 1. Capture snapshot for the entire frame
         let snapshot = UiSnapshot::capture(&self.shared);

@@ -65,8 +65,7 @@ pub struct TabletMapperApp {
     pub console_cache_filtered: Vec<crate::logger::LogEntry>,
     pub console_cache_full_text: String,
 
-    // System Tray
-    pub tray_icon: Option<tray_icon::TrayIcon>,
+    // System Tray is managed by main.rs
 
     // Close Confirmation
     pub show_close_confirm: bool,

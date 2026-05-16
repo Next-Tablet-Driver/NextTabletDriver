@@ -5,7 +5,7 @@
 
 use crate::core::config::models::MappingConfig;
 use crate::drivers::TabletData;
-use std::sync::atomic::AtomicU32;
+use std::sync::atomic::{AtomicBool, AtomicU32};
 use std::sync::{LockResult, RwLock};
 
 /// Extension trait for safe lock recovery.
@@ -112,7 +112,9 @@ impl SharedState {
             packet_count: AtomicU32::new(0),
             stats: RwLock::new(crate::drivers::DriverStats::default()),
             engine_status: RwLock::new(EngineStatus::default()),
-            shutdown_requested: std::sync::atomic::AtomicBool::new(false),
+            shutdown_requested: AtomicBool::new(false),
+            is_visible: AtomicBool::new(true),
+            reload_requested: AtomicBool::new(false),
         }
     }
 
@@ -146,7 +148,13 @@ pub struct SharedState {
     /// Status of the background polling engine (e.g. HID API initialization failure).
     pub engine_status: RwLock<EngineStatus>,
     /// Flag indicating that the application is shutting down and threads should terminate.
-    pub shutdown_requested: std::sync::atomic::AtomicBool,
+    pub shutdown_requested: AtomicBool,
+    /// Flag indicating whether the GUI window is currently visible.
+    /// When `false` (minimized to tray), background threads skip UI-only
+    /// work (channel sends, snapshot captures) to minimize idle CPU usage.
+    pub is_visible: AtomicBool,
+    /// Flag indicating that the user requested a full HID engine reload from the tray menu.
+    pub reload_requested: AtomicBool,
 }
 
 #[cfg(test)]

@@ -3,22 +3,29 @@
 //! This module handles the initialization, startup routines, and background thread
 //! management for the `TabletMapperApp`.
 
-use crossbeam_channel::unbounded;
 use display_info::DisplayInfo;
 use std::sync::Arc;
 use std::time::Instant;
 
 use crate::app::autoupdate::UpdateStatus;
-use crate::app::services::{
-    ConfigService, SharedStateFactory, ThreadSupervisor, TrayService, UpdateService,
-};
 use crate::app::state::{AppTab, Metrics, ProfileState, TabletMapperApp, ToastLevel};
+use crate::engine::state::SharedState;
 use crate::settings::load_session_meta;
 
 impl TabletMapperApp {
-    /// Creates a new instance of the application and initializes all background services.
+    /// Creates a new instance of the application with pre-initialized shared state and channels.
     #[must_use]
-    pub fn new(ctx: eframe::egui::Context) -> Self {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        ctx: &eframe::egui::Context,
+        shared: Arc<SharedState>,
+        config: crate::core::config::models::MappingConfig,
+        load_corrections: &[String],
+        tablet_receiver: crossbeam_channel::Receiver<crate::drivers::TabletData>,
+        update_receiver: crossbeam_channel::Receiver<UpdateStatus>,
+        update_sender: crossbeam_channel::Sender<UpdateStatus>,
+        save_sender: crossbeam_channel::Sender<crate::core::config::models::MappingConfig>,
+    ) -> Self {
         // SAFETY: These are standard Windows API calls to set the process priority
         // and timer resolution for high-performance tablet input.
         #[cfg(windows)]
@@ -35,33 +42,11 @@ impl TabletMapperApp {
             unsafe { SetPriorityClass(process, HIGH_PRIORITY_CLASS) };
         }
 
-        // 1. Load Configuration
-        let config_service = ConfigService::load();
-        let config = config_service.config;
-        let load_corrections = config_service.corrections;
-        let is_first_run =
-            load_corrections.is_empty() && !crate::settings::get_settings_dir().exists();
+        // 1. Setup UI Appearance
+        crate::ui::theme::apply_theme(ctx, config.theme);
+        Self::setup_fonts(ctx);
 
-        // 2. Setup UI Appearance
-        crate::ui::theme::apply_theme(&ctx, config.theme);
-        Self::setup_fonts(&ctx);
-
-        // 3. Initialize Shared State
-        let shared = SharedStateFactory::create(config.clone(), is_first_run);
-
-        // 4. Initialize Services and Channels
-        let (tablet_sender, tablet_receiver) = unbounded();
-        let update_service = UpdateService::new();
-        let (save_sender, save_receiver) = crossbeam_channel::bounded(1);
-        let tray_service = TrayService::new(&ctx);
-
-        // 5. Spawn Background Threads via Supervisor
-        ThreadSupervisor::spawn_engine(Arc::clone(&shared), ctx, tablet_sender);
-        ThreadSupervisor::spawn_websocket(Arc::clone(&shared));
-        ThreadSupervisor::spawn_saver(save_receiver);
-        update_service.start_check();
-
-        // 6. Build initial state
+        // 2. Build initial state
         let mut initial_toasts = Vec::new();
         if !load_corrections.is_empty() {
             initial_toasts.push(crate::app::state::Toast {
@@ -90,8 +75,8 @@ impl TabletMapperApp {
             },
             active_tab: AppTab::Output,
             tablet_receiver,
-            update_receiver: update_service.receiver,
-            update_sender: update_service.sender,
+            update_receiver,
+            update_sender,
             update_status: UpdateStatus::Idle,
             save_sender,
             toasts: initial_toasts,
@@ -111,7 +96,6 @@ impl TabletMapperApp {
             console_cache_filters: (true, true, true, true),
             console_cache_filtered: Vec::new(),
             console_cache_full_text: String::new(),
-            tray_icon: tray_service.tray_icon,
             show_close_confirm: false,
             force_close: false,
         }
