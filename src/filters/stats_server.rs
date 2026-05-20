@@ -6,6 +6,8 @@ use std::sync::{Arc, Mutex};
 use std::thread::{self, JoinHandle};
 use tungstenite::{Message, WebSocket, accept};
 
+/// An embedded WebSocket server that broadcasts pen statistics (such as hand speed
+/// and cumulative distance traveled) to connected clients in real-time.
 pub struct StatsServer {
     shutdown_flag: Arc<AtomicBool>,
     sender: Sender<(f32, f32)>,
@@ -89,6 +91,7 @@ impl StatsServer {
         })
     }
 
+    /// Signals the broadcast and acceptor threads to terminate and blocks until they join.
     pub fn stop(&mut self) {
         self.shutdown_flag.store(true, Ordering::SeqCst);
         if let Some(handle) = self.thread_handle.take() {
@@ -96,6 +99,7 @@ impl StatsServer {
         }
     }
 
+    /// Queues a new stats packet `(handspeed_mm_s, total_distance_mm)` to be broadcasted to all active clients.
     pub fn send_stats(&self, speed: f32, total_dist: f32) {
         let _ = self.sender.try_send((speed, total_dist));
     }

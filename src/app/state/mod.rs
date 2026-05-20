@@ -18,65 +18,85 @@ use crate::engine::state::{LockRecoveryExt, SharedState};
 /// The core application state structure used by the `eframe` (egui) integration.
 #[allow(clippy::struct_excessive_bools)]
 pub struct TabletMapperApp {
-    // Shared State
+    /// Reference-counted handle to the thread-safe engine/driver state.
     pub shared: Arc<SharedState>,
 
-    // UI Local State
+    /// List of detected physical monitors/displays on the host system.
     pub displays: Vec<DisplayInfo>,
+    /// Instant of the last update/repaint cycle.
     pub last_update: Instant,
+    /// Instant when the active configuration was last logged.
     pub last_config_log: Instant,
+    /// Tracks profile state identity (name, filepath, and saved/unsaved status).
     pub profile: ProfileState,
+    /// The currently selected app tab/view in the UI panel.
     pub active_tab: AppTab,
 
-    // Event Receivers
+    /// Channel receiver for tablet input packets streamed from the driver thread.
     pub tablet_receiver: Receiver<TabletData>,
+    /// Channel receiver for software auto-update statuses.
     pub update_receiver: Receiver<UpdateStatus>,
+    /// Channel sender for publishing auto-update status events.
     pub update_sender: crossbeam_channel::Sender<UpdateStatus>,
+    /// Current cached auto-update status.
     pub update_status: UpdateStatus,
 
-    // Background Saver
+    /// Channel sender to trigger asynchronous config writes to the settings file.
     pub save_sender: crossbeam_channel::Sender<MappingConfig>,
 
-    // Toast Notifications
+    /// Queue of active toast notifications rendered in the overlay.
     pub toasts: Vec<Toast>,
 
-    // Filters UI State
+    /// Display name of the filter currently selected in the Filters tab.
     pub selected_filter: String,
 
-    // Debugger & Performance UI State
+    /// Toggle to render the floating developer debug details panel.
     pub show_debugger: bool,
+    /// Toggle to display real-time latency statistics.
     pub show_latency_stats: bool,
+    /// Real-time frame paint speed and packet latency diagnostics.
     pub metrics: Metrics,
 
+    /// Remembers if the window was minimized in the last update frame.
     pub was_minimized: bool,
 
-    // Console State
+    /// Sub-string filter for searching the console logs.
     pub console_search: String,
+    /// Show INFO level logs in the console panel.
     pub console_show_info: bool,
+    /// Show WARN level logs in the console panel.
     pub console_show_warn: bool,
+    /// Show ERROR level logs in the console panel.
     pub console_show_error: bool,
+    /// Show DEBUG level logs in the console panel.
     pub console_show_debug: bool,
+    /// Automatically scroll to the bottom when a new log arrives.
     pub console_autoscroll: bool,
 
-    // Console Cache
     /// Monotonically increasing sequence number used to track if new logs have been received
     /// and if the console cache needs to be re-filtered and regenerated.
     pub console_cache_log_sequence: u64,
+    /// The search term used to generate the current console cache.
     pub console_cache_search: String,
+    /// The filter switches used to generate the current console cache: `(info, warn, error, debug)`.
     pub console_cache_filters: (bool, bool, bool, bool),
+    /// List of pre-filtered log entries currently loaded in the console UI.
     pub console_cache_filtered: Vec<crate::logger::LogEntry>,
+    /// Flattened textual string of all matching logs, optimized for clipboard copy.
     pub console_cache_full_text: String,
 
-    // System Tray is managed by main.rs
-
-    // Close Confirmation
+    /// Toggle to render the close confirmation dialog modal.
     pub show_close_confirm: bool,
+    /// If true, bypasses close confirmation dialog and exits immediately.
     pub force_close: bool,
 }
 
 const MAX_TOASTS: usize = 3;
 
 impl TabletMapperApp {
+    /// Pushes a new toast notification message into the display queue.
+    ///
+    /// Deduplicates duplicate messages and respects `MAX_TOASTS`.
     pub fn push_toast(&mut self, message: String, level: ToastLevel) {
         if self.toasts.iter().any(|t| t.message == message) {
             return;
@@ -91,6 +111,10 @@ impl TabletMapperApp {
         });
     }
 
+    /// Loads a profile configuration from the specified JSON file path.
+    ///
+    /// Automatically repairs invalid parameters, updates active session metadata,
+    /// and posts corresponding toast notifications indicating success/failure.
     pub fn load_profile_at_path(&mut self, path: &Path) {
         match crate::settings::load_settings_from_file(path) {
             Ok((cfg, corrections)) => {
@@ -124,6 +148,7 @@ impl TabletMapperApp {
         }
     }
 
+    /// Triggers an OS native file picker modal to select and load a profile JSON file.
     pub fn load_settings(&mut self) {
         if let Some(path) = rfd::FileDialog::new()
             .set_directory(crate::settings::get_settings_dir())
@@ -134,6 +159,7 @@ impl TabletMapperApp {
         }
     }
 
+    /// Saves the current configuration to the active profile file path.
     pub fn save_settings(&mut self, config: &MappingConfig) {
         let config = config.clone();
         if let Some(ref path) = self.profile.path {

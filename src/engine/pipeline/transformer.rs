@@ -15,6 +15,21 @@ pub struct Transformer {
 }
 
 impl Transformer {
+    /// Converts raw hardware coordinates `(x, y)` to physical dimensions in millimeters.
+    ///
+    /// The multipliers are automatically recomputed if the hardware resolution (`max_w`/`max_h`)
+    /// or physical area specs (`phys_w`/`phys_h`) change by more than a tiny epsilon.
+    ///
+    /// # Arguments
+    /// * `x` - Raw tablet X coordinate.
+    /// * `y` - Raw tablet Y coordinate.
+    /// * `max_w` - Maximum hardware X limit.
+    /// * `max_h` - Maximum hardware Y limit.
+    /// * `phys_w` - Physical width of the tablet active surface (mm).
+    /// * `phys_h` - Physical height of the tablet active surface (mm).
+    ///
+    /// # Returns
+    /// A tuple `(x_mm, y_mm)` representing coordinates in millimeters.
     pub fn execute(
         &mut self,
         x: u16,

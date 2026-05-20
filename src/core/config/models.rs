@@ -184,18 +184,25 @@ const fn default_ws_hz() -> u32 {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[allow(clippy::struct_excessive_bools)]
 pub struct WebSocketConfig {
+    /// Whether the WebSocket server is enabled.
     #[serde(default = "default_false")]
     pub enabled: bool,
+    /// The TCP port to bind the WebSocket server to.
     #[serde(default = "default_ws_port")]
     pub port: u16,
+    /// The rate (in Hz) at which coordinate/status packets are sent to clients.
     #[serde(default = "default_ws_hz")]
     pub polling_rate_hz: u32,
+    /// Whether to transmit x and y coordinates to clients.
     #[serde(default = "default_true")]
     pub send_coordinates: bool,
+    /// Whether to transmit pen pressure values to clients.
     #[serde(default = "default_true")]
     pub send_pressure: bool,
+    /// Whether to transmit tilt information to clients.
     #[serde(default = "default_true")]
     pub send_tilt: bool,
+    /// Whether to transmit general status information (e.g. connections, proximity).
     #[serde(default = "default_true")]
     pub send_status: bool,
 }
@@ -217,17 +224,29 @@ impl Default for WebSocketConfig {
 /// Configuration for the Devocub Antichatter implementation.
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub struct AntichatterConfig {
+    /// Whether the antichatter filter is enabled.
     pub enabled: bool,
+    /// The latency buffer (in milliseconds) used for smoothing.
     pub latency: f32,
+    /// The primary strength parameter of the Devocub antichatter algorithm.
     pub antichatter_strength: f32,
+    /// Multiplier scaling the strength of the antichatter filter.
     pub antichatter_multiplier: f32,
+    /// Horizontal offset parameter for the antichatter boundary.
     pub antichatter_offset_x: f32,
+    /// Vertical offset parameter for the antichatter boundary.
     pub antichatter_offset_y: f32,
+    /// Whether cursor prediction/extrapolation is enabled.
     pub prediction_enabled: bool,
+    /// Strength of the cursor prediction algorithm.
     pub prediction_strength: f32,
+    /// Sharpness parameter of the prediction curve.
     pub prediction_sharpness: f32,
+    /// Horizontal offset for the prediction model.
     pub prediction_offset_x: f32,
+    /// Vertical offset for the prediction model.
     pub prediction_offset_y: f32,
+    /// Expected input frequency (in Hz) of the tablet packets.
     pub frequency: f32,
 }
 
@@ -253,19 +272,27 @@ impl Default for AntichatterConfig {
 /// Units used for reporting pen speed telemetry.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum SpeedUnit {
+    /// Millimeters per second.
     #[default]
     MillimetersPerSecond,
+    /// Meters per second.
     MetersPerSecond,
+    /// Kilometers per hour.
     KilometersPerHour,
+    /// Miles per hour.
     MilesPerHour,
 }
 
 /// Configuration for the Speed Statistics UDP telemetry sender.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SpeedStatsConfig {
+    /// Whether the speed telemetry sender is enabled.
     pub enabled: bool,
+    /// The destination IP address for the UDP statistics.
     pub ip: String,
+    /// The destination UDP port for the telemetry packets.
     pub port: u16,
+    /// The unit of measurement to format and send speed statistics.
     pub unit: SpeedUnit,
 }
 
@@ -288,40 +315,59 @@ impl Default for SpeedStatsConfig {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[allow(clippy::struct_excessive_bools)]
 pub struct MappingConfig {
+    /// The active tracking mode (Absolute or Relative).
     #[serde(default)]
     pub mode: DriverMode,
+    /// The physical area on the tablet surface mapped to input.
     pub active_area: ActiveArea,
+    /// The screen coordinates area that receives the mapped inputs.
     pub target_area: TargetArea,
+    /// Custom settings for relative driver mode (sensitivity, rotation, reset time).
     #[serde(default)]
     pub relative_config: RelativeConfig,
+    /// Antichatter filter settings for smoothing coordinates.
     #[serde(default)]
     pub antichatter: AntichatterConfig,
+    /// Configuration for speed telemetry.
     #[serde(default)]
     pub speed_stats: SpeedStatsConfig,
+    /// Pressure threshold above which the pen tip is considered active.
     #[serde(default = "default_threshold")]
     pub tip_threshold: u16,
+    /// Pressure threshold above which the pen eraser is considered active.
     #[serde(default = "default_threshold")]
     pub eraser_threshold: u16,
+    /// Whether to ignore all pen pressure data.
     #[serde(default = "default_false")]
     pub disable_pressure: bool,
+    /// Whether to ignore all pen tilt data.
     #[serde(default = "default_false")]
     pub disable_tilt: bool,
+    /// Binding string definition triggered when the pen tip contacts the tablet.
     #[serde(default = "default_tip_binding")]
     pub tip_binding: String,
+    /// Binding string definition triggered when the pen eraser is used.
     #[serde(default = "default_eraser_binding")]
     pub eraser_binding: String,
+    /// Dynamic binding definitions mapping pen buttons to key/mouse events.
     #[serde(default = "default_button_bindings")]
     pub pen_button_bindings: Vec<String>,
+    /// Whether the application starts automatically when the system boots.
     #[serde(default = "default_false")]
     pub run_at_startup: bool,
+    /// Whether minimizing the application window hides it to the system tray.
     #[serde(default = "default_false")]
     pub system_tray_on_minimize: bool,
+    /// WebSocket server broadcast configuration.
     #[serde(default)]
     pub websocket: WebSocketConfig,
+    /// Active theme color scheme (Light, Dark, Catppuccin variants, System).
     #[serde(default)]
     pub theme: ThemePreference,
+    /// Lock aspect ratio of the active area to match the target area screen aspect ratio.
     #[serde(default)]
     pub lock_aspect_ratio: bool,
+    /// Whether to display a visual guide of the osu! playfield within the active area grid.
     #[serde(default)]
     pub show_osu_playfield: bool,
 }

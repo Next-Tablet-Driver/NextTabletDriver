@@ -29,11 +29,24 @@ impl Default for Projector {
 }
 
 impl Projector {
+    /// Resets all accumulated tracking states for screen and physical coordinates.
+    ///
+    /// Typically called when the pen leaves tablet proximity or connection is lost.
     pub const fn reset(&mut self) {
         self.abs_screen = None;
         self.rel_mm = None;
     }
 
+    /// Maps normalized UV coordinates `(u, v)` to absolute virtual screen coordinates (in pixels).
+    ///
+    /// # Arguments
+    /// * `u` - Normalized X coordinate in `[0.0, 1.0]`.
+    /// * `v` - Normalized Y coordinate in `[0.0, 1.0]`.
+    /// * `config` - The current global configuration containing target screen area dimensions.
+    /// * `_shared` - A reference to the thread-safe shared application state.
+    ///
+    /// # Returns
+    /// A tuple `(screen_x, screen_y)` representing the absolute target pixel position.
     pub fn project_absolute(
         &mut self,
         u: f32,
@@ -53,6 +66,18 @@ impl Projector {
         (sx, sy)
     }
 
+    /// Calculates relative cursor movement deltas based on physical coordinate offsets.
+    ///
+    /// Automatically resets the tracking origin if the time delta between the previous
+    /// packet and the current packet exceeds `reset_time_ms`.
+    ///
+    /// # Arguments
+    /// * `x_mm` - The current physical X coordinate (mm).
+    /// * `y_mm` - The current physical Y coordinate (mm).
+    /// * `config` - The current global configuration containing relative movement limits and sensitivities.
+    ///
+    /// # Returns
+    /// A tuple `(delta_x, delta_y)` representing the relative movement offset.
     pub fn project_relative(&mut self, x_mm: f32, y_mm: f32, config: &MappingConfig) -> (f32, f32) {
         let now = Instant::now();
         if now.duration_since(self.packet_time)

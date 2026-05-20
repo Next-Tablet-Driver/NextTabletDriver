@@ -12,6 +12,17 @@ use std::sync::Arc;
 pub struct Normalizer;
 
 impl Normalizer {
+    /// Converts physical coordinates `(x_mm, y_mm)` to normalized UV coordinates `[0.0, 1.0]`
+    /// relative to the configured active area offsets, rotation, and dimensions.
+    ///
+    /// # Arguments
+    /// * `x_mm` - Physical X coordinate in millimeters.
+    /// * `y_mm` - Physical Y coordinate in millimeters.
+    /// * `config` - The current global application configuration defining the active area.
+    /// * `_shared` - A reference to the thread-safe shared application state.
+    ///
+    /// # Returns
+    /// A tuple `(u, v)` representing normalized UV coordinates.
     #[allow(clippy::unused_self)]
     pub fn execute(
         &self,
