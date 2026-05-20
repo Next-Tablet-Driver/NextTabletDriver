@@ -91,7 +91,7 @@ impl TabletMapperApp {
             console_show_error: true,
             console_show_debug: true,
             console_autoscroll: true,
-            console_cache_log_count: 0,
+            console_cache_log_sequence: 0,
             console_cache_search: String::new(),
             console_cache_filters: (true, true, true, true),
             console_cache_filtered: Vec::new(),

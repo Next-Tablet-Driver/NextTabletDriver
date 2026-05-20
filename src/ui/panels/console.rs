@@ -191,6 +191,7 @@ pub fn render_console_panel(app: &mut TabletMapperApp, ui: &mut egui::Ui) {
             && let Ok(mut entries) = crate::logger::LOG_BUFFER.write()
         {
             entries.clear();
+            crate::logger::LOG_SEQUENCE.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
         }
 
         if ui

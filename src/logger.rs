@@ -22,6 +22,8 @@ pub const MAX_LOGS: usize = 1000;
 pub static LOG_BUFFER: LazyLock<Arc<RwLock<VecDeque<LogEntry>>>> =
     LazyLock::new(|| Arc::new(RwLock::new(VecDeque::with_capacity(MAX_LOGS))));
 
+pub static LOG_SEQUENCE: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
 impl Log for GlobalLogger {
     fn enabled(&self, _metadata: &Metadata) -> bool {
         true
@@ -111,6 +113,7 @@ pub fn init() -> Result<(), String> {
                         entries.pop_front();
                     }
                     entries.push_back(entry);
+                    LOG_SEQUENCE.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
                 }
             }
         });

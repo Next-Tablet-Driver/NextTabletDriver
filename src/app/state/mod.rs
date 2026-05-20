@@ -59,7 +59,7 @@ pub struct TabletMapperApp {
     pub console_autoscroll: bool,
 
     // Console Cache
-    pub console_cache_log_count: usize,
+    pub console_cache_log_sequence: u64,
     pub console_cache_search: String,
     pub console_cache_filters: (bool, bool, bool, bool),
     pub console_cache_filtered: Vec<crate::logger::LogEntry>,
@@ -240,12 +240,14 @@ impl TabletMapperApp {
             self.console_show_error,
             self.console_show_debug,
         );
-        if self.console_cache_log_count == logs.len()
+        let current_sequence =
+            crate::logger::LOG_SEQUENCE.load(std::sync::atomic::Ordering::Acquire);
+        if self.console_cache_log_sequence == current_sequence
             && self.console_cache_search == self.console_search
             && self.console_cache_filters == current_filters
         {
             return (
-                self.console_cache_log_count,
+                logs.len(),
                 &self.console_cache_filtered,
                 &self.console_cache_full_text,
             );
@@ -278,14 +280,15 @@ impl TabletMapperApp {
             .map(|l| format!("[{}] {} [{}] {}", l.time, l.level, l.group, l.message))
             .collect::<Vec<_>>()
             .join("\n");
-        self.console_cache_log_count = logs.len();
+        self.console_cache_log_sequence = current_sequence;
+        let total_count = logs.len();
         drop(logs);
         self.console_cache_search = self.console_search.clone();
         self.console_cache_filters = current_filters;
         self.console_cache_filtered = filtered;
         self.console_cache_full_text = full_text;
         (
-            self.console_cache_log_count,
+            total_count,
             &self.console_cache_filtered,
             &self.console_cache_full_text,
         )
