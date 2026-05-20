@@ -158,15 +158,23 @@ pub fn render_console_panel(app: &mut TabletMapperApp, ui: &mut egui::Ui) {
                                     });
 
                                     row.col(|ui| {
-                                        let label = ui.label(
-                                            egui::RichText::new(&log.message)
-                                                .monospace()
-                                                .size(13.0)
-                                                .color(ui.visuals().text_color()),
-                                        );
-                                        if log.message.len() > 50 {
-                                            label.on_hover_text(&log.message);
-                                        }
+                                        // Wraps the log message in an invisible horizontal ScrollArea to allow
+                                        // users to scroll very long messages using Shift+ScrollWheel while keeping
+                                        // the preceding columns locked and visible.
+                                        egui::ScrollArea::horizontal()
+                                            .id_salt(index)
+                                            .scroll_bar_visibility(egui::scroll_area::ScrollBarVisibility::AlwaysHidden)
+                                            .show(ui, |ui| {
+                                                let label = ui.label(
+                                                    egui::RichText::new(&log.message)
+                                                        .monospace()
+                                                        .size(13.0)
+                                                        .color(ui.visuals().text_color()),
+                                                );
+                                                if log.message.len() > 50 {
+                                                    label.on_hover_text(&log.message);
+                                                }
+                                            });
                                     });
                                 }
                             });

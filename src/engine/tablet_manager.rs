@@ -169,6 +169,8 @@ fn init_thread_priority() {
         }
     }
     #[cfg(target_os = "linux")]
+    // SAFETY: calling `libc::nice` is safe to change the current thread priority.
+    // The return value of -1 is checked to gracefully handle permission failures.
     unsafe {
         if libc::nice(-11) == -1 {
             log::info!(target: "TabletManager", "Running at normal priority (CAP_SYS_NICE not available)");

@@ -151,6 +151,8 @@ fn main() -> eframe::Result {
                 use std::os::unix::io::AsRawFd;
 
                 let fd = f.as_raw_fd();
+                // SAFETY: `fd` is a valid file descriptor obtained from the open file `f`.
+                // The lock is non-blocking (LOCK_NB) and exclusive (LOCK_EX).
                 let ret = unsafe { libc::flock(fd, libc::LOCK_EX | libc::LOCK_NB) };
                 if ret != 0 {
                     log::error!(target: "Startup", "Another instance of NextTabletDriver is already running (PID locked).");

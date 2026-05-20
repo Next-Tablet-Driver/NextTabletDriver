@@ -59,6 +59,8 @@ pub struct TabletMapperApp {
     pub console_autoscroll: bool,
 
     // Console Cache
+    /// Monotonically increasing sequence number used to track if new logs have been received
+    /// and if the console cache needs to be re-filtered and regenerated.
     pub console_cache_log_sequence: u64,
     pub console_cache_search: String,
     pub console_cache_filters: (bool, bool, bool, bool),
