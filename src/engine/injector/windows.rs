@@ -42,6 +42,8 @@ impl Injector {
         }
     }
 
+    pub fn set_proximity(&mut self, _in_proximity: bool) {}
+
     /// Injects an absolute cursor position on the screen.
     /// Used by `Absolute` driver mode.
     ///
@@ -53,7 +55,18 @@ impl Injector {
     /// * `target_x` - Target X coordinate in OS pixels.
     /// * `target_y` - Target Y coordinate in OS pixels.
     /// * `_u` / `_v` - Normalized UV coordinates (unused on Windows).
-    pub fn move_absolute(&mut self, target_x: f32, target_y: f32, _u: f32, _v: f32) {
+    /// * `_pressure` - Pressure (unused on Windows).
+    /// * `_tilt_x` / `_tilt_y` - Tilt (unused on Windows).
+    pub fn move_absolute(
+        &mut self,
+        target_x: f32,
+        target_y: f32,
+        _u: f32,
+        _v: f32,
+        _pressure: i32,
+        _tilt_x: i32,
+        _tilt_y: i32,
+    ) {
         #[cfg(windows)]
         use windows_sys::Win32::Foundation::POINT;
         #[cfg(windows)]

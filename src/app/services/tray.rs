@@ -61,6 +61,14 @@ impl TrayService {
     }
 
     fn tray_event_loop(shared: &SharedState) {
+        #[cfg(target_os = "linux")]
+        {
+            if let Err(e) = gtk::init() {
+                log::error!(target: "Tray", "Failed to initialize GTK: {e:?}");
+                return;
+            }
+        }
+
         let status_item = MenuItem::with_id("status", "Disconnected", false, None);
         let reload_item = MenuItem::with_id("reload", "Restart Driver", true, None);
         let quit_item = MenuItem::with_id("quit", "Exit", true, None);
@@ -167,7 +175,6 @@ impl TrayService {
         {
             use crate::engine::state::LockRecoveryExt;
             let mut last_device_name = String::new();
-            // On other OS, fallback to blocking crossbeam select with timeout to allow polling status
             loop {
                 // Update status text
                 let device = shared.device_state.read().unwrap_or_log("device_state");
@@ -183,8 +190,16 @@ impl TrayService {
                     last_device_name = current_name;
                 }
 
-                crossbeam_channel::select! {
-                    recv(tray_receiver) -> res => match res {
+                #[cfg(target_os = "linux")]
+                {
+                    while gtk::events_pending() {
+                        gtk::main_iteration();
+                    }
+                }
+
+                let mut disconnected = false;
+                loop {
+                    match tray_receiver.try_recv() {
                         Ok(event) => {
                             if Self::is_restore_event(&event) {
                                 log::info!(target: "Tray", "Received Tray Event: {event:?}");
@@ -194,9 +209,16 @@ impl TrayService {
                                 log::trace!(target: "Tray", "Tray Event: {event:?}");
                             }
                         }
-                        Err(_) => break,
-                    },
-                    recv(menu_receiver) -> res => match res {
+                        Err(crossbeam_channel::TryRecvError::Empty) => break,
+                        Err(crossbeam_channel::TryRecvError::Disconnected) => {
+                            disconnected = true;
+                            break;
+                        }
+                    }
+                }
+
+                loop {
+                    match menu_receiver.try_recv() {
                         Ok(menu_event) => {
                             log::info!(target: "Tray", "Menu event: {menu_event:?}");
                             match menu_event.id().0.as_str() {
@@ -211,10 +233,19 @@ impl TrayService {
                                 _ => {}
                             }
                         }
-                        Err(_) => break,
-                    },
-                    default(std::time::Duration::from_millis(500)) => {}
+                        Err(crossbeam_channel::TryRecvError::Empty) => break,
+                        Err(crossbeam_channel::TryRecvError::Disconnected) => {
+                            disconnected = true;
+                            break;
+                        }
+                    }
                 }
+
+                if disconnected {
+                    break;
+                }
+
+                std::thread::sleep(std::time::Duration::from_millis(20));
             }
         }
 

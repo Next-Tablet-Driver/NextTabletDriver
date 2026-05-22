@@ -66,6 +66,7 @@ impl Pipeline {
     ) {
         if !data.is_connected {
             injector.set_left_button(false);
+            injector.set_proximity(false);
             filters.reset();
             return;
         }
@@ -77,6 +78,7 @@ impl Pipeline {
                 | crate::drivers::TabletStatus::Hover
                 | crate::drivers::TabletStatus::Active
         ) {
+            injector.set_proximity(false);
             return;
         }
 
@@ -106,7 +108,23 @@ impl Pipeline {
                 let (sx, sy) = self.projector.project_absolute(u, v, config, shared);
                 frame.screen_x = sx;
                 frame.screen_y = sy;
-                injector.move_absolute(sx, sy, u, v);
+
+                let pressure_ratio = if max_p > 0.0 {
+                    f32::from(data.pressure) / max_p
+                } else {
+                    0.0
+                };
+                let abs_p = (pressure_ratio.clamp(0.0, 1.0) * 8191.0) as i32;
+
+                injector.move_absolute(
+                    sx,
+                    sy,
+                    u,
+                    v,
+                    abs_p,
+                    i32::from(data.tilt_x),
+                    i32::from(data.tilt_y),
+                );
             }
             DriverMode::Relative => {
                 let (dx, dy) = self.projector.project_relative(x_mm, y_mm, config);

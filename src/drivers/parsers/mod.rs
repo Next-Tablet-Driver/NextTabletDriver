@@ -125,6 +125,15 @@ pub fn create_parser(parser_name: &str) -> Box<dyn ReportParser> {
         name if name.contains("Gaomon") || name.contains("Tablet") => {
             Box::new(fallback::FallbackParser)
         }
-        _ => Box::new(fallback::FallbackParser),
+        _ => {
+            if !parser_name.is_empty() {
+                log::warn!(
+                    target: "Driver",
+                    "Unknown report parser '{}' specified in configuration. Falling back to FallbackParser.",
+                    parser_name
+                );
+            }
+            Box::new(fallback::FallbackParser)
+        }
     }
 }

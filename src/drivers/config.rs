@@ -72,11 +72,14 @@ pub struct DigitizerIdentifier {
     pub output_init_report: Option<Vec<String>>,
     /// Base64 encoded byte array(s) to send via `Device::send_feature_report` to put the tablet in Absolute/Pro mode.
     pub feature_init_report: Option<Vec<String>>,
+    pub attributes: Option<Attributes>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct Attributes {
     pub libinputoverride: Option<String>,
+    #[serde(rename = "Interface")]
+    pub interface: Option<serde_json::Value>,
 }
 
 #[cfg(test)]

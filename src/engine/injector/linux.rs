@@ -24,6 +24,9 @@ pub struct Injector {
     /// Tracks the previous state of the primary pen button (tip).
     last_pressure_down: bool,
 
+    /// Tracks the previous proximity state of the stylus (in range).
+    last_proximity: Option<bool>,
+
     /// Sub-pixel remainder accumulators for relative mode
     remainder_x: f32,
     remainder_y: f32,
@@ -32,6 +35,31 @@ pub struct Injector {
 impl Default for Injector {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+fn create_uinput_device_builder() -> evdev::uinput::VirtualDeviceBuilder<'static> {
+    match VirtualDevice::builder() {
+        Ok(builder) => builder,
+        Err(e) => {
+            log::error!(
+                target: "Injector",
+                "CRITICAL ERROR: Failed to open /dev/uinput: {}.\n\
+                This typically means the uinput kernel module is not loaded or you don't have permission to write to '/dev/uinput'.\n\
+                \n\
+                TO RESOLVE THIS (Linux):\n\
+                1. Make sure the 'uinput' kernel module is loaded:\n\
+                   sudo modprobe uinput\n\
+                2. Configure udev rules to allow non-root users write access to uinput:\n\
+                   echo 'KERNEL==\"uinput\", GROUP=\"input\", MODE=\"0660\", OPTIONS+=\"static_node=uinput\"' | sudo tee /etc/udev/rules.d/99-uinput.rules\n\
+                3. Add your user to the 'input' group:\n\
+                   sudo usermod -aG input $USER\n\
+                4. Log out and log back in, or run:\n\
+                   sudo udevadm control --reload-rules && sudo udevadm trigger --sysname-match=uinput\n",
+                e
+            );
+            panic!("Failed to open /dev/uinput: {e}. Please configure uinput udev rules as printed above.");
+        }
     }
 }
 
@@ -54,8 +82,7 @@ impl Injector {
         tablet_keys.insert(KeyCode::BTN_STYLUS);
         tablet_keys.insert(KeyCode::BTN_STYLUS2);
 
-        let virtual_tablet = VirtualDevice::builder()
-            .expect("Failed to open /dev/uinput is the uinput module loaded?")
+        let virtual_tablet = create_uinput_device_builder()
             .name("NextTabletDriver Virtual Pen")
             .input_id(InputId::new(BusType::BUS_USB, 0x0001, 0x0001, 1))
             .with_absolute_axis(&UinputAbsSetup::new(
@@ -99,8 +126,7 @@ impl Injector {
         rel_axes.insert(RelativeAxisCode::REL_X);
         rel_axes.insert(RelativeAxisCode::REL_Y);
 
-        let virtual_mouse = VirtualDevice::builder()
-            .expect("Failed to open /dev/uinput for virtual mouse")
+        let virtual_mouse = create_uinput_device_builder()
             .name("NextTabletDriver Virtual Mouse")
             .input_id(InputId::new(BusType::BUS_USB, 0x0001, 0x0002, 1))
             .with_relative_axes(&rel_axes)
@@ -116,9 +142,28 @@ impl Injector {
             virtual_tablet,
             virtual_mouse,
             last_pressure_down: false,
+            last_proximity: None,
             remainder_x: 0.0,
             remainder_y: 0.0,
         }
+    }
+
+    pub fn set_proximity(&mut self, in_proximity: bool) {
+        if Some(in_proximity) == self.last_proximity {
+            return;
+        }
+
+        let value = if in_proximity { 1 } else { 0 };
+        let events = [
+            InputEvent::new(evdev::EventType::KEY.0, KeyCode::BTN_TOOL_PEN.0, value),
+            InputEvent::new(evdev::EventType::SYNCHRONIZATION.0, 0, 0),
+        ];
+
+        if let Err(e) = self.virtual_tablet.emit(&events) {
+            log::error!(target: "Injector", "Failed to emit proximity event: {}", e);
+        }
+
+        self.last_proximity = Some(in_proximity);
     }
 
     /// Injects an absolute pen position on the screen.
@@ -131,9 +176,25 @@ impl Injector {
     /// # Arguments
     /// * `_target_x` / `_target_y` - Screen pixel coordinates (unused on Linux).
     /// * `u` / `v` - Normalized UV coordinates in [0.0, 1.0] from the pipeline.
-    pub fn move_absolute(&mut self, _target_x: f32, _target_y: f32, u: f32, v: f32) {
+    /// * `pressure` - Normalized pressure.
+    /// * `tilt_x` / `tilt_y` - Absolute tilt values.
+    pub fn move_absolute(
+        &mut self,
+        _target_x: f32,
+        _target_y: f32,
+        u: f32,
+        v: f32,
+        pressure: i32,
+        tilt_x: i32,
+        tilt_y: i32,
+    ) {
+        self.set_proximity(true);
+
         let abs_x = (u.clamp(0.0, 1.0) * ABS_MAX as f32) as i32;
         let abs_y = (v.clamp(0.0, 1.0) * ABS_MAX as f32) as i32;
+        let pressure = pressure.clamp(0, PRESSURE_MAX);
+        let tilt_x = tilt_x.clamp(-127, 127);
+        let tilt_y = tilt_y.clamp(-127, 127);
 
         let events = [
             InputEvent::new(
@@ -145,6 +206,21 @@ impl Injector {
                 evdev::EventType::ABSOLUTE.0,
                 AbsoluteAxisCode::ABS_Y.0,
                 abs_y,
+            ),
+            InputEvent::new(
+                evdev::EventType::ABSOLUTE.0,
+                AbsoluteAxisCode::ABS_PRESSURE.0,
+                pressure,
+            ),
+            InputEvent::new(
+                evdev::EventType::ABSOLUTE.0,
+                AbsoluteAxisCode::ABS_TILT_X.0,
+                tilt_x,
+            ),
+            InputEvent::new(
+                evdev::EventType::ABSOLUTE.0,
+                AbsoluteAxisCode::ABS_TILT_Y.0,
+                tilt_y,
             ),
             // SYN_REPORT to flush the event packet
             InputEvent::new(evdev::EventType::SYNCHRONIZATION.0, 0, 0),
