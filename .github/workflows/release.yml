@@ -110,7 +110,7 @@ jobs:
                   LDAI_VERSION: "${{ github.event.inputs.ref_name || github.ref_name }}"
               run: |
                   ./linuxdeploy-x86_64.AppImage --appdir AppDir -d AppDir/usr/share/applications/next_tablet_driver.desktop -i AppDir/usr/share/icons/hicolor/256x256/apps/next_tablet_driver.png --output appimage || true
-                  APPIMAGE=$(ls -1 *.AppImage 2>/dev/null | head -n 1 || true)
+                  APPIMAGE=$(ls -1 *.AppImage 2>/dev/null | grep -v linuxdeploy | head -n 1 || true)
                   if [ -z "$APPIMAGE" ]; then
                     echo "AppImage creation failed or no AppImage generated" && exit 1
                   fi
@@ -126,7 +126,7 @@ jobs:
             - name: Create .deb package (wraps AppImage)
               run: |
                   set -e
-                  APPIMAGE=$(ls -1 *.AppImage | head -n 1)
+                  APPIMAGE=$(ls -1 *.AppImage | grep -v linuxdeploy | head -n 1)
                   if [ -z "$APPIMAGE" ]; then
                     echo "AppImage not found, cannot build deb" && exit 1
                   fi
@@ -140,7 +140,7 @@ jobs:
                   printf '%s\n' '#!/bin/sh' 'exec /opt/next_tablet_driver/next_tablet_driver.AppImage "$@"' > deb_pkg/usr/bin/next_tablet_driver
                   chmod +x deb_pkg/usr/bin/next_tablet_driver
 
-                  VERSION=$(sed -n 's/^version *= *"\(.*\)"/\1/p' Cargo.toml | head -n1)
+                  VERSION=$(sed -n 's/^version *= *"\(.*\)"/\1/p' Cargo.toml | head -n1 | tr -d '\r')
                   if [ -z "$VERSION" ]; then
                     VERSION=${GITHUB_SHA}
                   fi
