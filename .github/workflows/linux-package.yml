@@ -41,7 +41,7 @@ jobs:
                   sudo apt-get install -y pkg-config libudev-dev musl-tools build-essential \
                     libgtk-3-dev libglib2.0-dev libgdk-pixbuf2.0-dev libpango1.0-dev libcairo2-dev libatk1.0-dev \
                     libx11-dev libxrandr-dev libxfixes-dev libxrender-dev libx11-xcb-dev libxkbcommon-dev \
-                    libgl1-mesa-dev libegl1-mesa-dev libgles2-mesa-dev libfuse2
+                    libgl1-mesa-dev libegl1-mesa-dev libgles2-mesa-dev libfuse2 libxdo-dev
 
             - name: Build release (glibc)
               run: cargo build --workspace --release --all-features
