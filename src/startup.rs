@@ -111,15 +111,13 @@ mod platform {
 // Linux Implementation .desktop file in ~/.config/autostart/
 #[cfg(target_os = "linux")]
 mod platform {
-    use super::*;
+    use super::{env, UserDirs, PathBuf, APP_NAME, fs};
 
     /// Returns the path to the autostart directory: `~/.config/autostart/`.
     fn get_autostart_dir() -> std::path::PathBuf {
         let config_dir = env::var("XDG_CONFIG_HOME").map_or_else(
             |_| {
-                UserDirs::new()
-                    .map(|dirs| dirs.home_dir().join(".config"))
-                    .unwrap_or_else(|| PathBuf::from(".config"))
+                UserDirs::new().map_or_else(|| PathBuf::from(".config"), |dirs| dirs.home_dir().join(".config"))
             },
             PathBuf::from,
         );
@@ -136,6 +134,9 @@ mod platform {
     /// Enables or disables the application's automatic launch at session startup.
     ///
     /// Creates or removes a `.desktop` file following the XDG Autostart specification.
+    /// # Errors
+    /// Returns an error if the autostart directory cannot be determined, the executable
+    /// path is invalid, or if file system operations fail.
     pub fn set_run_at_startup(enabled: bool) -> Result<(), Box<dyn std::error::Error>> {
         let desktop_path = get_desktop_path();
 
@@ -160,15 +161,16 @@ mod platform {
             );
 
             fs::write(&desktop_path, desktop_content)?;
-            log::info!(target: "Startup", "Created autostart entry: {desktop_path:?}");
+            log::info!(target: "Startup", "Created autostart entry: {}", desktop_path.display());
         } else if desktop_path.exists() {
             fs::remove_file(&desktop_path)?;
-            log::info!(target: "Startup", "Removed autostart entry: {desktop_path:?}");
+            log::info!(target: "Startup", "Removed autostart entry: {}", desktop_path.display());
         }
         Ok(())
     }
 
     /// Checks if the application is currently configured to run at startup.
+    #[must_use]
     pub fn is_run_at_startup_registered() -> bool {
         get_desktop_path().exists()
     }

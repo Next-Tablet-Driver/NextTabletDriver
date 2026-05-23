@@ -156,7 +156,7 @@ impl Injector {
             return;
         }
 
-        let value = if in_proximity { 1 } else { 0 };
+        let value = i32::from(in_proximity);
         let events = [
             InputEvent::new(evdev::EventType::KEY.0, KeyCode::BTN_TOOL_PEN.0, value),
             InputEvent::new(evdev::EventType::SYNCHRONIZATION.0, 0, 0),
@@ -181,6 +181,7 @@ impl Injector {
     /// * `u` / `v` - Normalized UV coordinates in [0.0, 1.0] from the pipeline.
     /// * `pressure` - Normalized pressure.
     /// * `tilt_x` / `tilt_y` - Absolute tilt values.
+    #[allow(clippy::too_many_arguments)]
     pub fn move_absolute(
         &mut self,
         _target_x: f32,
@@ -269,7 +270,7 @@ impl Injector {
             return;
         }
 
-        let value = if is_down { 1 } else { 0 };
+        let value = i32::from(is_down);
 
         let events = [
             InputEvent::new(evdev::EventType::KEY.0, KeyCode::BTN_TOUCH.0, value),
