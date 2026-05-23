@@ -18,7 +18,8 @@ pub struct DevocubAntichatter {
 }
 
 impl DevocubAntichatter {
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self {
             history: VecDeque::new(),
             last_x: 0.0,
@@ -70,8 +71,10 @@ impl Filter for DevocubAntichatter {
         let mut out_y = avg_y * conf.antichatter_multiplier + conf.antichatter_offset_y / 100.0;
 
         // 4. Prediction (Simplified)
-        if conf.prediction_enabled && self.history.len() >= 2 {
-            let (px, py) = self.history[self.history.len() - 2];
+        if conf.prediction_enabled
+            && self.history.len() >= 2
+            && let Some(&(px, py)) = self.history.iter().rev().nth(1)
+        {
             let vx = x - px;
             let vy = y - py;
 
@@ -91,12 +94,18 @@ impl Filter for DevocubAntichatter {
 }
 
 #[cfg(test)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::float_cmp
+)]
 mod tests {
     use super::*;
     use crate::core::config::models::MappingConfig;
 
     fn create_test_config(enabled: bool, latency: f32) -> MappingConfig {
-        let mut config = MappingConfig::default_test();
+        let mut config = MappingConfig::default();
         config.antichatter.enabled = enabled;
         config.antichatter.latency = latency;
         config.antichatter.frequency = 1000.0;
@@ -113,8 +122,8 @@ mod tests {
         let config = create_test_config(false, 10.0);
 
         let (x, y) = filter.process(0.5, 0.5, &config);
-        assert_eq!(x, 0.5);
-        assert_eq!(y, 0.5);
+        assert!((x - 0.5).abs() < f32::EPSILON);
+        assert!((y - 0.5).abs() < f32::EPSILON);
     }
 
     #[test]
@@ -127,7 +136,7 @@ mod tests {
         let (x, y) = filter.process(1.0, 1.0, &config);
 
         // Average of (0,0) and (1,1) should be (0.5, 0.5)
-        assert_eq!(x, 0.5);
-        assert_eq!(y, 0.5);
+        assert!((x - 0.5).abs() < f32::EPSILON);
+        assert!((y - 0.5).abs() < f32::EPSILON);
     }
 }

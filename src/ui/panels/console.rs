@@ -2,6 +2,33 @@ use crate::app::state::TabletMapperApp;
 use eframe::egui;
 
 pub fn render_console_panel(app: &mut TabletMapperApp, ui: &mut egui::Ui) {
+    fn level_button(ui: &mut egui::Ui, selected: &mut bool, label: &str, color: egui::Color32) {
+        let stroke_color = if *selected {
+            color.gamma_multiply(0.8)
+        } else {
+            egui::Color32::from_white_alpha(20)
+        };
+        let fill_color = if *selected {
+            color.gamma_multiply(0.15)
+        } else {
+            egui::Color32::TRANSPARENT
+        };
+        let text_color = if *selected {
+            color
+        } else {
+            ui.visuals().text_color().gamma_multiply(0.4)
+        };
+
+        let button = egui::Button::new(egui::RichText::new(label).color(text_color).strong())
+            .fill(fill_color)
+            .stroke(egui::Stroke::new(1.0, stroke_color))
+            .corner_radius(4.0);
+
+        if ui.add(button).clicked() {
+            *selected = !*selected;
+        }
+    }
+
     ui.add_space(5.0);
 
     ui.horizontal(|ui| {
@@ -18,33 +45,6 @@ pub fn render_console_panel(app: &mut TabletMapperApp, ui: &mut egui::Ui) {
         ui.add_space(10.0);
         ui.separator();
         ui.add_space(10.0);
-
-        fn level_button(ui: &mut egui::Ui, selected: &mut bool, label: &str, color: egui::Color32) {
-            let stroke_color = if *selected {
-                color.gamma_multiply(0.8)
-            } else {
-                egui::Color32::from_white_alpha(20)
-            };
-            let fill_color = if *selected {
-                color.gamma_multiply(0.15)
-            } else {
-                egui::Color32::TRANSPARENT
-            };
-            let text_color = if *selected {
-                color
-            } else {
-                ui.visuals().text_color().gamma_multiply(0.4)
-            };
-
-            let button = egui::Button::new(egui::RichText::new(label).color(text_color).strong())
-                .fill(fill_color)
-                .stroke(egui::Stroke::new(1.0, stroke_color))
-                .corner_radius(4.0);
-
-            if ui.add(button).clicked() {
-                *selected = !*selected;
-            }
-        }
 
         level_button(
             ui,
@@ -117,48 +117,66 @@ pub fn render_console_panel(app: &mut TabletMapperApp, ui: &mut egui::Ui) {
                         })
                         .body(|body| {
                             body.rows(24.0, filtered_logs.len(), |mut row| {
-                                let log = &filtered_logs[row.index()];
+                                let index = row.index();
+                                if let Some(log) = filtered_logs.get(index) {
+                                    row.col(|ui| {
+                                        ui.label(
+                                            egui::RichText::new(&log.time).monospace().size(13.0),
+                                        );
+                                    });
 
-                                row.col(|ui| {
-                                    ui.label(egui::RichText::new(&log.time).monospace().size(13.0));
-                                });
+                                    row.col(|ui| {
+                                        let (color, text) = match log.level.as_str() {
+                                            "Error" => {
+                                                (egui::Color32::from_rgb(243, 139, 168), "ERROR")
+                                            }
+                                            "Warn" => {
+                                                (egui::Color32::from_rgb(249, 226, 175), "WARN")
+                                            }
+                                            "Info" => {
+                                                (egui::Color32::from_rgb(137, 180, 250), "INFO")
+                                            }
+                                            "Debug" => {
+                                                (egui::Color32::from_rgb(166, 172, 205), "DEBUG")
+                                            }
+                                            _ => (ui.visuals().text_color(), log.level.as_str()),
+                                        };
+                                        ui.label(
+                                            egui::RichText::new(text)
+                                                .color(color)
+                                                .strong()
+                                                .size(12.0),
+                                        );
+                                    });
 
-                                row.col(|ui| {
-                                    let (color, text) = match log.level.as_str() {
-                                        "Error" => {
-                                            (egui::Color32::from_rgb(243, 139, 168), "ERROR")
-                                        }
-                                        "Warn" => (egui::Color32::from_rgb(249, 226, 175), "WARN"),
-                                        "Info" => (egui::Color32::from_rgb(137, 180, 250), "INFO"),
-                                        "Debug" => {
-                                            (egui::Color32::from_rgb(166, 172, 205), "DEBUG")
-                                        }
-                                        _ => (ui.visuals().text_color(), log.level.as_str()),
-                                    };
-                                    ui.label(
-                                        egui::RichText::new(text).color(color).strong().size(12.0),
-                                    );
-                                });
+                                    row.col(|ui| {
+                                        ui.label(
+                                            egui::RichText::new(&log.group)
+                                                .color(ui.visuals().strong_text_color())
+                                                .size(13.0),
+                                        );
+                                    });
 
-                                row.col(|ui| {
-                                    ui.label(
-                                        egui::RichText::new(&log.group)
-                                            .color(ui.visuals().strong_text_color())
-                                            .size(13.0),
-                                    );
-                                });
-
-                                row.col(|ui| {
-                                    let label = ui.label(
-                                        egui::RichText::new(&log.message)
-                                            .monospace()
-                                            .size(13.0)
-                                            .color(ui.visuals().text_color()),
-                                    );
-                                    if log.message.len() > 50 {
-                                        label.on_hover_text(&log.message);
-                                    }
-                                });
+                                    row.col(|ui| {
+                                        // Wraps the log message in an invisible horizontal ScrollArea to allow
+                                        // users to scroll very long messages using Shift+ScrollWheel while keeping
+                                        // the preceding columns locked and visible.
+                                        egui::ScrollArea::horizontal()
+                                            .id_salt(index)
+                                            .scroll_bar_visibility(egui::scroll_area::ScrollBarVisibility::AlwaysHidden)
+                                            .show(ui, |ui| {
+                                                let label = ui.label(
+                                                    egui::RichText::new(&log.message)
+                                                        .monospace()
+                                                        .size(13.0)
+                                                        .color(ui.visuals().text_color()),
+                                                );
+                                                if log.message.len() > 50 {
+                                                    label.on_hover_text(&log.message);
+                                                }
+                                            });
+                                    });
+                                }
                             });
                         });
                 });
@@ -181,6 +199,7 @@ pub fn render_console_panel(app: &mut TabletMapperApp, ui: &mut egui::Ui) {
             && let Ok(mut entries) = crate::logger::LOG_BUFFER.write()
         {
             entries.clear();
+            crate::logger::LOG_SEQUENCE.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
         }
 
         if ui
@@ -192,7 +211,7 @@ pub fn render_console_panel(app: &mut TabletMapperApp, ui: &mut egui::Ui) {
         {
             ui.output_mut(|o| {
                 o.commands
-                    .push(egui::OutputCommand::CopyText(full_log_text))
+                    .push(egui::OutputCommand::CopyText(full_log_text.to_string()));
             });
         }
 

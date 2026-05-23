@@ -18,7 +18,7 @@ const APP_NAME: &str = "NextTabletDriver";
 // Windows Implementation .lnk shortcut in Startup folder
 #[cfg(windows)]
 mod platform {
-    use super::*;
+    use super::{APP_NAME, PathBuf, UserDirs, env, fs};
     use std::process::Command;
 
     /// Returns the Windows Startup folder path for the current user.
@@ -39,7 +39,7 @@ mod platform {
     /// Returns the full path where the application shortcut should be located.
     fn get_shortcut_path() -> Option<PathBuf> {
         get_startup_folder().map(|mut p| {
-            p.push(format!("{}.lnk", APP_NAME));
+            p.push(format!("{APP_NAME}.lnk"));
             p
         })
     }
@@ -49,10 +49,14 @@ mod platform {
     /// # Technical Details
     /// Windows `.lnk` files are a proprietary binary format. To avoid complex binary encoding,
     /// this function:
-    /// 1. Generates a temporary **VBScript** file.
+    /// 1. Generates a temporary **`VBScript`** file.
     /// 2. Uses the `WScript.Shell` COM object to create the shortcut.
     /// 3. Executes the script via `wscript.exe`.
     /// 4. Deletes the temporary script file.
+    ///
+    /// # Errors
+    /// Returns an error if the shortcut path cannot be determined, environment variable access fails,
+    /// or if the script execution fails.
     pub fn set_run_at_startup(enabled: bool) -> Result<(), Box<dyn std::error::Error>> {
         let shortcut_path = get_shortcut_path().ok_or("Could not determine startup folder path")?;
 
@@ -68,14 +72,14 @@ mod platform {
             oLink.TargetPath = "{}"
             oLink.WorkingDirectory = "{}"
             oLink.Save"#,
-                shortcut_path_str.replace("\\", "\\\\"),
-                exe_path_str.replace("\\", "\\\\"),
+                shortcut_path_str.replace('\\', "\\\\"),
+                exe_path_str.replace('\\', "\\\\"),
                 exe_path
                     .parent()
                     .unwrap_or(&exe_path)
                     .to_str()
                     .unwrap_or("")
-                    .replace("\\", "\\\\")
+                    .replace('\\', "\\\\")
             );
 
             let temp_vbs = env::temp_dir().join("create_shortcut.vbs");
@@ -89,51 +93,55 @@ mod platform {
                 return Err("Failed to create startup shortcut".into());
             }
 
-            log::info!(target: "Startup", "Created startup shortcut: {:?}", shortcut_path);
+            log::info!(target: "Startup", "Created startup shortcut: {}", shortcut_path.display());
         } else if shortcut_path.exists() {
             fs::remove_file(&shortcut_path)?;
-            log::info!(target: "Startup", "Removed startup shortcut: {:?}", shortcut_path);
+            log::info!(target: "Startup", "Removed startup shortcut: {}", shortcut_path.display());
         }
         Ok(())
     }
 
     /// Checks if the application is currently configured to run at startup.
+    #[must_use]
     pub fn is_run_at_startup_registered() -> bool {
-        get_shortcut_path().map(|p| p.exists()).unwrap_or(false)
+        get_shortcut_path().is_some_and(|p| p.exists())
     }
 }
 
 // Linux Implementation .desktop file in ~/.config/autostart/
 #[cfg(target_os = "linux")]
 mod platform {
-    use super::*;
+    use super::{APP_NAME, PathBuf, UserDirs, env, fs};
 
     /// Returns the path to the autostart directory: `~/.config/autostart/`.
-    fn get_autostart_dir() -> Option<PathBuf> {
-        let config_dir = std::env::var("XDG_CONFIG_HOME")
-            .map(PathBuf::from)
-            .unwrap_or_else(|_| {
-                UserDirs::new()
-                    .map(|dirs| dirs.home_dir().join(".config"))
-                    .unwrap_or_else(|| PathBuf::from(".config"))
-            });
-        Some(config_dir.join("autostart"))
+    fn get_autostart_dir() -> std::path::PathBuf {
+        let config_dir = env::var("XDG_CONFIG_HOME").map_or_else(
+            |_| {
+                UserDirs::new().map_or_else(
+                    || PathBuf::from(".config"),
+                    |dirs| dirs.home_dir().join(".config"),
+                )
+            },
+            PathBuf::from,
+        );
+        config_dir.join("autostart")
     }
 
     /// Returns the full path to the `.desktop` autostart entry.
-    fn get_desktop_path() -> Option<PathBuf> {
-        get_autostart_dir().map(|mut p| {
-            p.push(format!("{}.desktop", APP_NAME));
-            p
-        })
+    fn get_desktop_path() -> PathBuf {
+        let mut p = get_autostart_dir();
+        p.push(format!("{APP_NAME}.desktop"));
+        p
     }
 
     /// Enables or disables the application's automatic launch at session startup.
     ///
     /// Creates or removes a `.desktop` file following the XDG Autostart specification.
+    /// # Errors
+    /// Returns an error if the autostart directory cannot be determined, the executable
+    /// path is invalid, or if file system operations fail.
     pub fn set_run_at_startup(enabled: bool) -> Result<(), Box<dyn std::error::Error>> {
-        let desktop_path =
-            get_desktop_path().ok_or("Could not determine autostart directory path")?;
+        let desktop_path = get_desktop_path();
 
         if enabled {
             if let Some(parent) = desktop_path.parent() {
@@ -146,27 +154,27 @@ mod platform {
             let desktop_content = format!(
                 "[Desktop Entry]\n\
                  Type=Application\n\
-                 Name={}\n\
+                 Name={APP_NAME}\n\
                  Comment=Tablet Driver for Osu! and Drawing\n\
-                 Exec={}\n\
+                 Exec={exe_path_str}\n\
                  Terminal=false\n\
                  X-GNOME-Autostart-enabled=true\n\
-                 StartupNotify=false\n",
-                APP_NAME, exe_path_str
+                 StartupNotify=false\n"
             );
 
             fs::write(&desktop_path, desktop_content)?;
-            log::info!(target: "Startup", "Created autostart entry: {:?}", desktop_path);
+            log::info!(target: "Startup", "Created autostart entry: {}", desktop_path.display());
         } else if desktop_path.exists() {
             fs::remove_file(&desktop_path)?;
-            log::info!(target: "Startup", "Removed autostart entry: {:?}", desktop_path);
+            log::info!(target: "Startup", "Removed autostart entry: {}", desktop_path.display());
         }
         Ok(())
     }
 
     /// Checks if the application is currently configured to run at startup.
+    #[must_use]
     pub fn is_run_at_startup_registered() -> bool {
-        get_desktop_path().map(|p| p.exists()).unwrap_or(false)
+        get_desktop_path().exists()
     }
 }
 

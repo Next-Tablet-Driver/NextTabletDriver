@@ -22,6 +22,7 @@ pub trait ReportParser: Send + Sync {
     fn parse(&self, data: &[u8]) -> Option<TabletData>;
 }
 
+#[must_use]
 pub fn create_parser(parser_name: &str) -> Box<dyn ReportParser> {
     match parser_name {
         name if name.contains("Acepen") => Box::new(acepen::AcepenParser::new()),
@@ -124,6 +125,14 @@ pub fn create_parser(parser_name: &str) -> Box<dyn ReportParser> {
         name if name.contains("Gaomon") || name.contains("Tablet") => {
             Box::new(fallback::FallbackParser)
         }
-        _ => Box::new(fallback::FallbackParser),
+        _ => {
+            if !parser_name.is_empty() {
+                log::warn!(
+                    target: "Driver",
+                    "Unknown report parser '{parser_name}' specified in configuration. Falling back to FallbackParser."
+                );
+            }
+            Box::new(fallback::FallbackParser)
+        }
     }
 }

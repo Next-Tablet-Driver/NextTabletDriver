@@ -26,6 +26,7 @@
 /// assert!((x - 0.0).abs() < 1e-6);
 /// assert!((y - 0.5).abs() < 1e-6);
 /// ```
+#[must_use]
 pub fn rotate_point(
     x: f32,
     y: f32,
@@ -43,8 +44,8 @@ pub fn rotate_point(
     let cx = x - center_x;
     let cy = y - center_y;
 
-    let rx = cx * cos - cy * sin + center_x;
-    let ry = cx * sin + cy * cos + center_y;
+    let rx = cx.mul_add(cos, -(cy * sin)) + center_x;
+    let ry = cx.mul_add(sin, cy * cos) + center_y;
 
     (rx, ry)
 }
@@ -70,6 +71,7 @@ pub fn rotate_point(
 /// assert_eq!(u, 0.5);
 /// assert_eq!(v, 0.5);
 /// ```
+#[must_use]
 pub fn physical_to_normalized(
     x_mm: f32,
     y_mm: f32,
@@ -111,6 +113,7 @@ pub fn physical_to_normalized(
 /// assert_eq!(x, 960.0);
 /// assert_eq!(y, 540.0);
 /// ```
+#[must_use]
 pub fn normalized_to_screen(
     u: f32,
     v: f32,
@@ -138,6 +141,7 @@ pub fn normalized_to_screen(
 /// * `last_x_mm`, `last_y_mm` - Previous physical location of the pen.
 /// * `rotation` - Movement vector rotation in degrees.
 /// * `sens_x`, `sens_y` - Sensitivity multipliers (Pixels per Millimeter).
+#[must_use]
 pub fn apply_relative_delta(
     x_mm: f32,
     y_mm: f32,
@@ -154,8 +158,8 @@ pub fn apply_relative_delta(
     if rotation != 0.0 {
         let rad = rotation.to_radians();
         let (sin, cos) = rad.sin_cos();
-        let rx = dx_mm * cos - dy_mm * sin;
-        let ry = dx_mm * sin + dy_mm * cos;
+        let rx = dx_mm.mul_add(cos, -(dy_mm * sin));
+        let ry = dx_mm.mul_add(sin, dy_mm * cos);
         dx_mm = rx;
         dy_mm = ry;
     }
@@ -168,6 +172,12 @@ pub fn apply_relative_delta(
 }
 
 #[cfg(test)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::float_cmp
+)]
 mod tests {
     use super::*;
 

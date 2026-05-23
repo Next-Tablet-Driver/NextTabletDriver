@@ -9,76 +9,69 @@ impl ReportParser for GeniusParserV1 {
             return None;
         }
 
-        let raw = data
-            .iter()
-            .map(|b| format!("{:02X}", b))
-            .collect::<Vec<_>>()
-            .join(" ");
-
-        match data[0] {
-            0x10 => {
+        match data {
+            [0x10, b1, b2, b3, b4, b5, b6, b7, ..] => {
                 // Tablet Report
-                if data.len() < 8 {
-                    return None;
-                }
-                let x = u16::from_le_bytes([data[1], data[2]]);
-                let y = u16::from_le_bytes([data[3], data[4]]);
-                let pressure = if (data[5] & 0x04) != 0 {
-                    u16::from_le_bytes([data[6], data[7]])
+                let x = u16::from_le_bytes([*b1, *b2]);
+                let y = u16::from_le_bytes([*b3, *b4]);
+                let pressure = if (*b5 & 0x04) != 0 {
+                    u16::from_le_bytes([*b6, *b7])
                 } else {
                     0
                 };
 
                 let mut buttons: u8 = 0;
-                if (data[5] & 0x08) != 0 {
+                if (*b5 & 0x08) != 0 {
                     buttons |= 1 << 0;
                 }
-                if (data[5] & 0x10) != 0 {
+                if (*b5 & 0x10) != 0 {
                     buttons |= 1 << 1;
                 }
 
-                let status = if pressure > 0 { "Contact" } else { "Hover" };
+                let status = if pressure > 0 {
+                    crate::drivers::TabletStatus::Contact
+                } else {
+                    crate::drivers::TabletStatus::Hover
+                };
 
-                Some(TabletData {
-                    status: status.to_string(),
+                let mut tablet_data = TabletData {
+                    status,
                     x,
                     y,
                     pressure,
                     buttons,
-                    raw_data: raw,
                     is_connected: true,
                     ..Default::default()
-                })
+                };
+                tablet_data.set_raw(data);
+                Some(tablet_data)
             }
-            0x11 => {
+            [0x11, b1, _, x_lo, x_hi, y_lo, y_hi, ..] => {
                 // Mouse Report
-                if data.len() < 7 {
-                    return None;
-                }
-                let x = u16::from_le_bytes([data[2], data[3]]);
-                let y = u16::from_le_bytes([data[4], data[5]]);
+                let x = u16::from_le_bytes([*x_lo, *x_hi]);
+                let y = u16::from_le_bytes([*y_lo, *y_hi]);
 
                 let mut buttons: u8 = 0;
-                if (data[1] & 0x01) != 0 {
+                if (*b1 & 0x01) != 0 {
                     buttons |= 1 << 0;
                 }
-                if (data[1] & 0x02) != 0 {
+                if (*b1 & 0x02) != 0 {
                     buttons |= 1 << 1;
                 }
-                if (data[1] & 0x04) != 0 {
+                if (*b1 & 0x04) != 0 {
                     buttons |= 1 << 2;
                 }
 
-                // data[6] is Y scroll
-                Some(TabletData {
-                    status: "Mouse".to_string(),
+                let mut tablet_data = TabletData {
+                    status: crate::drivers::TabletStatus::Mouse,
                     x,
                     y,
                     buttons,
-                    raw_data: raw,
                     is_connected: true,
                     ..Default::default()
-                })
+                };
+                tablet_data.set_raw(data);
+                Some(tablet_data)
             }
             _ => None,
         }
@@ -93,69 +86,62 @@ impl ReportParser for GeniusParserV2 {
             return None;
         }
 
-        let raw = data
-            .iter()
-            .map(|b| format!("{:02X}", b))
-            .collect::<Vec<_>>()
-            .join(" ");
-
-        match data[0] {
-            0x02 => {
+        match data {
+            [0x02, b1, b2, b3, b4, b5, b6, b7, ..] => {
                 // Tablet Report
-                if data.len() < 8 {
-                    return None;
-                }
-                let x = u16::from_le_bytes([data[1], data[2]]);
-                let y = u16::from_le_bytes([data[3], data[4]]);
-                let pressure = if (data[5] & 0x04) != 0 {
-                    u16::from_le_bytes([data[6], data[7]])
+                let x = u16::from_le_bytes([*b1, *b2]);
+                let y = u16::from_le_bytes([*b3, *b4]);
+                let pressure = if (*b5 & 0x04) != 0 {
+                    u16::from_le_bytes([*b6, *b7])
                 } else {
                     0
                 };
 
                 let mut buttons: u8 = 0;
-                if (data[5] & 0x08) != 0 {
+                if (*b5 & 0x08) != 0 {
                     buttons |= 1 << 0;
                 }
-                if (data[5] & 0x10) != 0 {
+                if (*b5 & 0x10) != 0 {
                     buttons |= 1 << 1;
                 }
 
-                let status = if pressure > 0 { "Contact" } else { "Hover" };
+                let status = if pressure > 0 {
+                    crate::drivers::TabletStatus::Contact
+                } else {
+                    crate::drivers::TabletStatus::Hover
+                };
 
-                Some(TabletData {
-                    status: status.to_string(),
+                let mut tablet_data = TabletData {
+                    status,
                     x,
                     y,
                     pressure,
                     buttons,
-                    raw_data: raw,
                     is_connected: true,
                     ..Default::default()
-                })
+                };
+                tablet_data.set_raw(data);
+                Some(tablet_data)
             }
-            0x05 => {
+            [0x05, _, _, aux_byte, ..] => {
                 // Aux Report
-                if data.len() < 4 {
-                    return None;
-                }
-                let aux_byte = data[3];
                 let mut buttons: u8 = 0;
 
-                if aux_byte > 0 {
-                    let active_index = (aux_byte - 1) / 2;
+                if *aux_byte > 0 {
+                    let active_index = (*aux_byte - 1) / 2;
                     if active_index < 8 {
                         buttons |= 1 << active_index;
                     }
                 }
 
-                Some(TabletData {
-                    status: "Aux".to_string(),
+                let mut tablet_data = TabletData {
+                    status: crate::drivers::TabletStatus::Aux,
                     buttons,
-                    raw_data: raw,
                     is_connected: true,
                     ..Default::default()
-                })
+                };
+                tablet_data.set_raw(data);
+                Some(tablet_data)
             }
             _ => None,
         }
@@ -163,6 +149,12 @@ impl ReportParser for GeniusParserV2 {
 }
 
 #[cfg(test)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::float_cmp
+)]
 mod tests {
     use super::*;
 
@@ -175,7 +167,7 @@ mod tests {
         let report = parser
             .parse(&data)
             .ok_or("Genius V1 parser failed to parse tablet packet")?;
-        assert_eq!(report.status, "Contact");
+        assert_eq!(report.status, crate::drivers::TabletStatus::Contact);
         assert_eq!(report.x, 258);
         assert_eq!(report.y, 772);
         assert_eq!(report.pressure, 1);
@@ -190,7 +182,7 @@ mod tests {
         let report = parser
             .parse(&data)
             .ok_or("Genius V2 parser failed to parse tablet packet")?;
-        assert_eq!(report.status, "Contact");
+        assert_eq!(report.status, crate::drivers::TabletStatus::Contact);
         assert_eq!(report.x, 258);
         Ok(())
     }

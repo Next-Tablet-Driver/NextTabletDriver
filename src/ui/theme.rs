@@ -1,7 +1,7 @@
 //! # Visual Theme and Custom Widgets
 //!
 //! This module configures the egui global styling to create a clean, modern
-//! Light theme that visually aligns with the aesthetics of OpenTabletDriver (OTD).
+//! Light theme that visually aligns with the aesthetics of `OpenTabletDriver` (OTD).
 //! It also provides reusable helper functions for consistent layout paradigms
 //! (like section headers and standardized input boxes) across panels.
 
@@ -18,10 +18,10 @@ pub fn apply_theme(ctx: &egui::Context, theme: ThemePreference) {
         ThemePreference::System => ctx.set_visuals(egui::Visuals::default()),
         ThemePreference::CatppuccinLatte => catppuccin_egui::set_theme(ctx, catppuccin_egui::LATTE),
         ThemePreference::CatppuccinFrappe => {
-            catppuccin_egui::set_theme(ctx, catppuccin_egui::FRAPPE)
+            catppuccin_egui::set_theme(ctx, catppuccin_egui::FRAPPE);
         }
         ThemePreference::CatppuccinMacchiato => {
-            catppuccin_egui::set_theme(ctx, catppuccin_egui::MACCHIATO)
+            catppuccin_egui::set_theme(ctx, catppuccin_egui::MACCHIATO);
         }
         ThemePreference::CatppuccinMocha => catppuccin_egui::set_theme(ctx, catppuccin_egui::MOCHA),
     }
@@ -75,6 +75,7 @@ pub fn apply_theme(ctx: &egui::Context, theme: ThemePreference) {
 }
 
 /// Returns a color for panel backgrounds that adapts to dark/light mode.
+#[must_use]
 pub fn panel_bg(visuals: &egui::Visuals) -> egui::Color32 {
     if visuals.window_fill == egui::Visuals::dark().window_fill {
         egui::Color32::from_gray(45)
@@ -86,6 +87,7 @@ pub fn panel_bg(visuals: &egui::Visuals) -> egui::Color32 {
 }
 
 /// Returns a color for panel borders that adapts to dark/light mode.
+#[must_use]
 pub fn panel_border(visuals: &egui::Visuals) -> egui::Color32 {
     if visuals.window_fill == egui::Visuals::dark().window_fill {
         egui::Color32::from_gray(60)
@@ -97,11 +99,13 @@ pub fn panel_border(visuals: &egui::Visuals) -> egui::Color32 {
 }
 
 /// Returns a subtle text color for labels.
+#[must_use]
 pub fn label_color(visuals: &egui::Visuals) -> egui::Color32 {
     visuals.text_color().gamma_multiply(0.7)
 }
 
 /// Returns the accent background color (blue area) that adapts to theme.
+#[must_use]
 pub fn accent_bg(visuals: &egui::Visuals) -> egui::Color32 {
     if visuals.dark_mode {
         egui::Color32::from_rgba_unmultiplied(60, 120, 180, 255) // Darker blue
@@ -111,6 +115,10 @@ pub fn accent_bg(visuals: &egui::Visuals) -> egui::Color32 {
 }
 
 /// Renders a standardized section header with a title and a horizontal separator line.
+///
+/// # Arguments
+/// * `ui` - The egui user interface builder context.
+/// * `title` - The header text to display.
 pub fn ui_section_header(ui: &mut egui::Ui, title: &str) {
     let text_color = ui.visuals().strong_text_color();
     ui.horizontal(|ui| {
@@ -120,7 +128,15 @@ pub fn ui_section_header(ui: &mut egui::Ui, title: &str) {
     ui.add(egui::Separator::default().spacing(4.0).grow(2.0));
 }
 
-/// Core helper for creating a styled container with a label and a right-aligned widget.
+/// Core helper for creating a styled, labeled card/box container grouping.
+///
+/// Returns the value produced by the contents closure.
+///
+/// # Arguments
+/// * `ui` - The egui user interface builder context.
+/// * `label` - A string slice containing the label text.
+/// * `width` - The width of the container box in pixels.
+/// * `add_contents` - A closure that defines the contents inside the box.
 pub fn ui_labeled_box<R>(
     ui: &mut egui::Ui,
     label: &str,
@@ -167,7 +183,14 @@ pub fn ui_labeled_box<R>(
     .inner
 }
 
-/// Renders a styled container holding a label and an `f32` DragValue input with an optional range.
+/// Renders a styled container holding a label and an `f32` `DragValue` input with an inclusive range.
+///
+/// # Arguments
+/// * `ui` - The egui user interface builder context.
+/// * `label` - The description label of the value.
+/// * `value` - A mutable reference to the `f32` value to edit.
+/// * `unit` - A suffix indicating the unit of measurement (e.g., "mm", "px").
+/// * `range` - The inclusive range of valid values.
 pub fn ui_input_box_range(
     ui: &mut egui::Ui,
     label: &str,
@@ -192,10 +215,10 @@ pub fn ui_input_box_range(
                 .max_decimals(2)
                 .range(range)
                 .custom_formatter(|val, _| {
-                    format!("{:.2}", val)
+                    format!("{val:.2}")
                         .trim_end_matches('0')
                         .trim_end_matches('.')
-                        .replace(".", ",")
+                        .replace('.', ",")
                 }),
         );
         if response.hovered() {
@@ -204,11 +227,25 @@ pub fn ui_input_box_range(
     });
 }
 
+/// Renders a styled container holding a label and an unbounded `f32` `DragValue` input.
+///
+/// # Arguments
+/// * `ui` - The egui user interface builder context.
+/// * `label` - The description label of the value.
+/// * `value` - A mutable reference to the `f32` value to edit.
+/// * `unit` - A suffix indicating the unit of measurement.
 pub fn ui_input_box(ui: &mut egui::Ui, label: &str, value: &mut f32, unit: &str) {
     ui_input_box_range(ui, label, value, unit, f32::MIN..=f32::MAX);
 }
 
-/// Renders a styled container holding a label and a `u32` DragValue input with an optional range.
+/// Renders a styled container holding a label and a `u32` `DragValue` input with an inclusive range.
+///
+/// # Arguments
+/// * `ui` - The egui user interface builder context.
+/// * `label` - The description label of the value.
+/// * `value` - A mutable reference to the `u32` value to edit.
+/// * `unit` - A suffix indicating the unit of measurement.
+/// * `range` - The inclusive range of valid values.
 pub fn ui_input_box_u32_range(
     ui: &mut egui::Ui,
     label: &str,
@@ -234,11 +271,25 @@ pub fn ui_input_box_u32_range(
     });
 }
 
+/// Renders a styled container holding a label and a `u32` `DragValue` input.
+///
+/// # Arguments
+/// * `ui` - The egui user interface builder context.
+/// * `label` - The description label of the value.
+/// * `value` - A mutable reference to the `u32` value to edit.
+/// * `unit` - A suffix indicating the unit of measurement.
 pub fn ui_input_box_u32(ui: &mut egui::Ui, label: &str, value: &mut u32, unit: &str) {
     ui_input_box_u32_range(ui, label, value, unit, 0..=u32::MAX);
 }
 
-/// Renders a styled container holding a label and a `u16` DragValue input with an optional range.
+/// Renders a styled container holding a label and a `u16` `DragValue` input with an inclusive range.
+///
+/// # Arguments
+/// * `ui` - The egui user interface builder context.
+/// * `label` - The description label of the value.
+/// * `value` - A mutable reference to the `u16` value to edit.
+/// * `unit` - A suffix indicating the unit of measurement.
+/// * `range` - The inclusive range of valid values.
 pub fn ui_input_box_u16_range(
     ui: &mut egui::Ui,
     label: &str,
@@ -264,7 +315,13 @@ pub fn ui_input_box_u16_range(
     });
 }
 
-/// Renders a styled container holding a label and a string input.
+/// Renders a styled container holding a label and a single-line string input.
+///
+/// # Arguments
+/// * `ui` - The egui user interface builder context.
+/// * `label` - The description label of the value.
+/// * `value` - A mutable reference to the string to edit.
+/// * `width` - The total width of the input container.
 pub fn ui_input_box_string(ui: &mut egui::Ui, label: &str, value: &mut String, width: f32) {
     ui_labeled_box(ui, label, width, |ui| {
         ui.add(
@@ -276,14 +333,27 @@ pub fn ui_input_box_string(ui: &mut egui::Ui, label: &str, value: &mut String, w
     });
 }
 
+/// Renders a styled container holding a label and a `u16` `DragValue` input.
+///
+/// # Arguments
+/// * `ui` - The egui user interface builder context.
+/// * `label` - The description label of the value.
+/// * `value` - A mutable reference to the `u16` value to edit.
+/// * `unit` - A suffix indicating the unit of measurement.
 pub fn ui_input_box_u16(ui: &mut egui::Ui, label: &str, value: &mut u16, unit: &str) {
     ui_input_box_u16_range(ui, label, value, unit, 0..=u16::MAX);
 }
 
-/// Renders a wide, right-aligned setting row typically used in the Filters tab.
+/// Renders a wide, right-aligned setting row with a label and a drag input.
 ///
 /// Features a left-aligned label and a right-aligned input box to keep long parameter
-/// lists visually neat.
+/// lists visually neat. Typically used in the Filters tab.
+///
+/// # Arguments
+/// * `ui` - The egui user interface builder context.
+/// * `label` - The description label of the setting.
+/// * `value` - A mutable reference to the `f32` value to edit.
+/// * `unit` - A suffix indicating the unit of measurement.
 pub fn ui_setting_row(ui: &mut egui::Ui, label: &str, value: &mut f32, unit: &str) {
     let visuals = ui.visuals();
     let bg_fill = panel_bg(visuals);
@@ -325,10 +395,10 @@ pub fn ui_setting_row(ui: &mut egui::Ui, label: &str, value: &mut f32, unit: &st
                                 .speed(0.1)
                                 .max_decimals(2)
                                 .custom_formatter(|val, _| {
-                                    format!("{:.2}", val)
+                                    format!("{val:.2}")
                                         .trim_end_matches('0')
                                         .trim_end_matches('.')
-                                        .replace(".", ",")
+                                        .replace('.', ",")
                                 })
                                 .clamp_existing_to_range(false),
                         );
@@ -341,7 +411,13 @@ pub fn ui_setting_row(ui: &mut egui::Ui, label: &str, value: &mut f32, unit: &st
     });
 }
 
-/// Renders a standard modern card for grouping settings.
+/// Renders a standard modern card with a title and icon for grouping multiple settings.
+///
+/// # Arguments
+/// * `ui` - The egui user interface builder context.
+/// * `title` - The title text of the card.
+/// * `icon` - An icon character or string prefix.
+/// * `add_contents` - A closure defining the contents to be rendered inside the card.
 pub fn ui_card<R>(
     ui: &mut egui::Ui,
     title: &str,
@@ -362,7 +438,7 @@ pub fn ui_card<R>(
             ui.vertical(|ui| {
                 ui.horizontal(|ui| {
                     ui.label(
-                        egui::RichText::new(format!("{} {}", icon, title))
+                        egui::RichText::new(format!("{icon} {title}"))
                             .size(14.0)
                             .strong(),
                     );

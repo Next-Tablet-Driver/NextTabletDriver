@@ -5,58 +5,73 @@ pub struct ViewSonicParser;
 
 impl ReportParser for ViewSonicParser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
-        if data.len() < 14 {
-            return None;
+        match data {
+            [
+                _,
+                x_lo,
+                x_hi,
+                _,
+                _,
+                y_lo,
+                y_hi,
+                _,
+                _,
+                b9,
+                p_lo,
+                p_hi,
+                t_x,
+                t_y,
+                ..,
+            ] if (*b9 & 0b11) == 0b11 => {
+                let x = u16::from_le_bytes([*x_lo, *x_hi]);
+                let y = u16::from_le_bytes([*y_lo, *y_hi]);
+
+                let pressure = if (*b9 & 0x04) != 0 {
+                    u16::from_le_bytes([*p_lo, *p_hi])
+                } else {
+                    0
+                };
+
+                let mut buttons: u8 = 0;
+                if (*b9 & 0x08) != 0 {
+                    buttons |= 1 << 0;
+                }
+                if (*b9 & 0x10) != 0 {
+                    buttons |= 1 << 1;
+                }
+
+                let status = if pressure > 0 {
+                    crate::drivers::TabletStatus::Contact
+                } else {
+                    crate::drivers::TabletStatus::Hover
+                };
+
+                let mut tablet_data = TabletData {
+                    status,
+                    x,
+                    y,
+                    pressure,
+                    tilt_x: t_x.cast_signed(),
+                    tilt_y: t_y.cast_signed(),
+                    buttons,
+                    is_connected: true,
+                    ..Default::default()
+                };
+                tablet_data.set_raw(data);
+                Some(tablet_data)
+            }
+            _ => None,
         }
-
-        let raw = data
-            .iter()
-            .map(|b| format!("{:02X}", b))
-            .collect::<Vec<_>>()
-            .join(" ");
-
-        if (data[9] & 0b11) != 0b11 {
-            return None; // Ignored report
-        }
-
-        let x = u16::from_le_bytes([data[1], data[2]]);
-        let y = u16::from_le_bytes([data[5], data[6]]);
-
-        let pressure = if (data[9] & 0x04) != 0 {
-            u16::from_le_bytes([data[10], data[11]])
-        } else {
-            0
-        };
-
-        let mut buttons: u8 = 0;
-        if (data[9] & 0x08) != 0 {
-            buttons |= 1 << 0;
-        }
-        if (data[9] & 0x10) != 0 {
-            buttons |= 1 << 1;
-        }
-
-        let tilt_x = data[12] as i8;
-        let tilt_y = data[13] as i8;
-
-        let status = if pressure > 0 { "Contact" } else { "Hover" };
-
-        Some(TabletData {
-            status: status.to_string(),
-            x,
-            y,
-            pressure,
-            tilt_x,
-            tilt_y,
-            buttons,
-            raw_data: raw,
-            is_connected: true,
-            ..Default::default()
-        })
     }
 }
 
 #[cfg(test)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::float_cmp
+)]
 mod tests {
     use super::*;
 
@@ -69,7 +84,7 @@ mod tests {
         let report = parser
             .parse(&data)
             .ok_or("ViewSonic parser failed to parse tablet packet")?;
-        assert_eq!(report.status, "Contact");
+        assert_eq!(report.status, crate::drivers::TabletStatus::Contact);
         assert_eq!(report.x, 258);
         assert_eq!(report.pressure, 1);
         assert_eq!(report.buttons, 3);

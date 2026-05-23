@@ -56,7 +56,7 @@ pub fn render_update_dialog(app: &mut TabletMapperApp, ctx: &egui::Context) {
                                 );
                                 ui.add_space(5.0);
                                 ui.label(
-                                    egui::RichText::new(format!("Version {}", version))
+                                    egui::RichText::new(format!("Version {version}"))
                                         .size(14.0)
                                         .color(egui::Color32::from_gray(180)),
                                 );

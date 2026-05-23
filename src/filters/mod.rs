@@ -7,6 +7,7 @@
 
 pub mod antichatter;
 pub mod stats;
+pub mod stats_server;
 
 use crate::core::config::models::MappingConfig;
 
@@ -39,6 +40,7 @@ pub struct FilterPipeline {
 }
 
 impl FilterPipeline {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             filters: Vec::new(),

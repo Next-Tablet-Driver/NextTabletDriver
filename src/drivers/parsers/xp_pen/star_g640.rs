@@ -9,47 +9,40 @@ impl ReportParser for XpPenStarG640Parser {
             return None;
         }
 
-        // XP-Pen usually uses this format for G-series / Gen2
-        let x = ((data[3] as u16) << 8) | (data[2] as u16);
-        let y = ((data[5] as u16) << 8) | (data[4] as u16);
-        let pressure = ((data[7] as u16) << 8) | (data[6] as u16);
+        // Use pattern matching to safely extract the fixed-size fields
+        let (x, y, pressure, buttons, eraser) = match data {
+            [_, b1, x_low, x_high, y_low, y_high, p_low, p_high, ..] => {
+                let x = (u16::from(*x_high) << 8) | u16::from(*x_low);
+                let y = (u16::from(*y_high) << 8) | u16::from(*y_low);
+                let p = (u16::from(*p_high) << 8) | u16::from(*p_low);
+                let buttons = (*b1 >> 1) & 0x03;
+                let eraser = (*b1 & 0x08) != 0;
+                (x, y, p, buttons, eraser)
+            }
+            _ => return None,
+        };
 
-        // Tilt (X at 8, Y at 9)
-        let tilt_x = data.get(8).copied().unwrap_or(0) as i8;
-        let tilt_y = data.get(9).copied().unwrap_or(0) as i8;
+        // Tilt (X at 8, Y at 9) - optional/dynamic
+        let tilt_x = data.get(8).copied().unwrap_or(0).cast_signed();
+        let tilt_y = data.get(9).copied().unwrap_or(0).cast_signed();
 
-        // Buttons & Eraser (Byte 1)
-        // Bit 1 = Button 0
-        // Bit 2 = Button 1
-        // Bit 3 = Eraser
-        let buttons = (data[1] >> 1) & 0x03; // Correctly masks bits 1 and 2
-        let eraser = (data[1] & 0x08) != 0;
-
-        // Raw hex string for debugging
-        let raw = data
-            .iter()
-            .take(14)
-            .map(|b| format!("{:02X}", b))
-            .collect::<Vec<_>>()
-            .join(" ");
-
-        let status = match data[1] {
-            0xA0 => "Hover",
-            0xA1 => "Contact",
-            0xC0 | 0x00 => "Out of Range",
-            _ => {
-                if (data[1] & 0x80) != 0 {
-                    "Out of Range"
+        let status = match data.get(1) {
+            Some(0xA0) => crate::drivers::TabletStatus::Hover,
+            Some(0xA1) => crate::drivers::TabletStatus::Contact,
+            Some(0xC0 | 0x00) => crate::drivers::TabletStatus::OutOfRange,
+            Some(b1) => {
+                if (b1 & 0x80) != 0 {
+                    crate::drivers::TabletStatus::OutOfRange
                 } else {
-                    "Active"
+                    crate::drivers::TabletStatus::Active
                 }
             }
-        }
-        .to_string();
+            None => crate::drivers::TabletStatus::Disconnected,
+        };
 
-        let is_connected = status != "Out of Range";
+        let is_connected = status != crate::drivers::TabletStatus::OutOfRange;
 
-        Some(TabletData {
+        let mut tablet_data = TabletData {
             status,
             x,
             y,
@@ -59,9 +52,11 @@ impl ReportParser for XpPenStarG640Parser {
             buttons,
             eraser,
             hover_distance: 0, // Not provided in this report
-            raw_data: raw,
             is_connected,
             ..Default::default()
-        })
+        };
+        tablet_data.set_raw(data);
+
+        Some(tablet_data)
     }
 }

@@ -12,7 +12,7 @@ pub fn render_performance_panel(
     max_ui_latency: f32,
     avg_ui_latency: f32,
     ui: &mut egui::Ui,
-    shared: Arc<SharedState>,
+    shared: &Arc<SharedState>,
 ) -> bool {
     let tablet_data = &snapshot.tablet_data;
     let stats = &snapshot.stats;
@@ -63,7 +63,7 @@ pub fn render_performance_panel(
                 ui.label(
                     egui::RichText::new(format!(
                         "{:.3}ms",
-                        if stats.min_hid_read_ms == f32::MAX {
+                        if (stats.min_hid_read_ms - f32::MAX).abs() < f32::EPSILON {
                             0.0
                         } else {
                             stats.min_hid_read_ms
@@ -87,7 +87,7 @@ pub fn render_performance_panel(
                 ui.label(
                     egui::RichText::new(format!(
                         "{:.3}ms",
-                        if stats.min_parser_ms == f32::MAX {
+                        if (stats.min_parser_ms - f32::MAX).abs() < f32::EPSILON {
                             0.0
                         } else {
                             stats.min_parser_ms
@@ -100,17 +100,17 @@ pub fn render_performance_panel(
 
                 ui.label("UI Sync:");
                 ui.label(
-                    egui::RichText::new(format!("{:.3}ms", ui_latency)).color(egui::Color32::GOLD),
+                    egui::RichText::new(format!("{ui_latency:.3}ms")).color(egui::Color32::GOLD),
                 );
                 ui.label(
-                    egui::RichText::new(format!("{:.3}ms", avg_ui_latency))
+                    egui::RichText::new(format!("{avg_ui_latency:.3}ms"))
                         .color(egui::Color32::GOLD)
                         .weak(),
                 );
                 ui.label(
                     egui::RichText::new(format!(
                         "{:.3}ms",
-                        if min_ui_latency == f32::MAX {
+                        if (min_ui_latency - f32::MAX).abs() < f32::EPSILON {
                             0.0
                         } else {
                             min_ui_latency
@@ -118,7 +118,7 @@ pub fn render_performance_panel(
                     ))
                     .weak(),
                 );
-                ui.label(egui::RichText::new(format!("{:.3}ms", max_ui_latency)).weak());
+                ui.label(egui::RichText::new(format!("{max_ui_latency:.3}ms")).weak());
                 ui.end_row();
 
                 ui.separator();
@@ -131,7 +131,7 @@ pub fn render_performance_panel(
                 let total_current = stats.hid_read_ms + stats.parser_ms + ui_latency;
                 ui.label(egui::RichText::new("Total Software Lag:").strong());
                 ui.label(
-                    egui::RichText::new(format!("{:.3}ms", total_current))
+                    egui::RichText::new(format!("{total_current:.3}ms"))
                         .strong()
                         .color(egui::Color32::WHITE),
                 );
@@ -145,34 +145,43 @@ pub fn render_performance_panel(
     ui.add_space(20.0);
 
     ui.columns(2, |cols| {
-        cols[0].group(|ui| {
-            ui.label(egui::RichText::new("Packet Flow").strong());
-            ui.add_space(5.0);
-            ui.label(format!("Total Count: {}", stats.total_packets));
-            ui.label(format!("Polling Rate: {:.1} Hz", displayed_hz));
+        if let [col0, col1, ..] = cols {
+            col0.group(|ui| {
+                ui.label(egui::RichText::new("Packet Flow").strong());
+                ui.add_space(5.0);
+                ui.label(format!("Total Count: {}", stats.total_packets));
+                ui.label(format!("Polling Rate: {displayed_hz:.1} Hz"));
 
-            if displayed_hz > 1.0 {
-                let interval = 1000.0 / displayed_hz;
-                ui.label(format!("Avg Interval: {:.2} ms", interval));
-            } else {
-                ui.label("Avg Interval: Static / Idle");
-            }
-        });
-
-        cols[1].group(|ui| {
-            ui.label(egui::RichText::new("Hardware Info").strong());
-            ui.add_space(5.0);
-            ui.label(format!("Resolution: {} x {}", max_w as u32, max_h as u32));
-            ui.label(format!("Current Pen Status: {}", tablet_data.status));
-            ui.label(format!(
-                "Connected: {}",
-                if tablet_data.is_connected {
-                    "Yes"
+                if displayed_hz > 1.0 {
+                    let interval = 1000.0 / displayed_hz;
+                    ui.label(format!("Avg Interval: {interval:.2} ms"));
                 } else {
-                    "No"
+                    ui.label("Avg Interval: Static / Idle");
                 }
-            ));
-        });
+            });
+
+            col1.group(|ui| {
+                ui.label(egui::RichText::new("Hardware Info").strong());
+                ui.add_space(5.0);
+                ui.label(format!(
+                    "Resolution: {} x {}",
+                    (max_w.max(0.0)) as u32,
+                    (max_h.max(0.0)) as u32
+                ));
+                ui.label(format!(
+                    "Current Pen Status: {}",
+                    tablet_data.status.as_str()
+                ));
+                ui.label(format!(
+                    "Connected: {}",
+                    if tablet_data.is_connected {
+                        "Yes"
+                    } else {
+                        "No"
+                    }
+                ));
+            });
+        }
     });
 
     ui.add_space(20.0);
@@ -209,7 +218,7 @@ pub fn render_performance_panel(
                 ui.add_space(10.0);
                 ui.label(egui::RichText::new("RAW BYTES").weak().size(9.0));
                 ui.label(
-                    egui::RichText::new(&tablet_data.raw_data)
+                    egui::RichText::new(tablet_data.raw_hex())
                         .code()
                         .size(11.0)
                         .color(egui::Color32::LIGHT_GRAY),

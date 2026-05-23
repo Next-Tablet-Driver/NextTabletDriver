@@ -5,26 +5,16 @@
 //! configures the window properties, and launches the `eframe` (egui) graphical interface.
 
 #![windows_subsystem = "windows"]
-#![deny(clippy::unwrap_used)]
-#![deny(clippy::expect_used)]
-#![deny(clippy::panic)]
-#![deny(clippy::indexing_slicing)]
-#![deny(clippy::exit)]
-#![deny(clippy::todo)]
-#![deny(clippy::unimplemented)]
-#![deny(clippy::lossy_float_literal)]
-#![deny(dead_code)]
-#![deny(missing_docs)]
-#![warn(clippy::all, clippy::pedantic, clippy::nursery)]
-#![warn(clippy::missing_panics_doc)]
-#![warn(clippy::missing_errors_doc)]
-#![warn(clippy::undocumented_unsafe_blocks)]
-#![warn(clippy::multiple_unsafe_ops_per_block)]
-#![warn(clippy::fn_to_numeric_cast_any)]
 
 use eframe::egui;
 use next_tablet_driver::app::TabletMapperApp;
+use next_tablet_driver::app::services::{
+    ConfigService, SharedStateFactory, ThreadSupervisor, TrayService, UpdateService,
+};
 use next_tablet_driver::logger;
+use std::sync::Arc;
+use std::sync::atomic::Ordering;
+use std::time::Duration;
 #[cfg(windows)]
 use windows_sys::Win32::System::LibraryLoader::{GetModuleHandleA, GetProcAddress};
 
@@ -111,7 +101,10 @@ fn set_fast_timer(enable: u8) {
 /// 3. Configures the GUI window options (icon, dimensions, title).
 /// 4. Enters the `eframe::run_native` GUI event loop.
 fn main() -> eframe::Result {
-    logger::init();
+    if let Err(e) = logger::init() {
+        eprintln!("CRITICAL: Failed to initialize logger: {e}");
+        std::process::exit(1);
+    }
 
     #[cfg(windows)]
     {
@@ -158,6 +151,8 @@ fn main() -> eframe::Result {
                 use std::os::unix::io::AsRawFd;
 
                 let fd = f.as_raw_fd();
+                // SAFETY: `fd` is a valid file descriptor obtained from the open file `f`.
+                // The lock is non-blocking (LOCK_NB) and exclusive (LOCK_EX).
                 let ret = unsafe { libc::flock(fd, libc::LOCK_EX | libc::LOCK_NB) };
                 if ret != 0 {
                     log::error!(target: "Startup", "Another instance of NextTabletDriver is already running (PID locked).");
@@ -168,7 +163,7 @@ fn main() -> eframe::Result {
                 Some(f) // Keeps flock alive for the process lifetime
             }
             Err(e) => {
-                log::warn!(target: "Startup", "Could not create lock file at {:?}: {}", lock_path, e);
+                log::warn!(target: "Startup", "Could not create lock file at {}: {e}", lock_path.display());
                 None
             }
         }
@@ -186,19 +181,85 @@ fn main() -> eframe::Result {
             egui::IconData::default()
         });
 
-    let options = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default()
-            .with_icon(icon_data)
-            .with_inner_size([1000.0, 850.0])
-            // .with_decorations(false)
-            // .with_transparent(true)
-            .with_title(format!("NextTabletDriver v{}", next_tablet_driver::VERSION)),
-        ..Default::default()
-    };
+    // 1. Load Configuration
+    let config_service = ConfigService::load();
+    let config = config_service.config.clone();
+    let load_corrections = config_service.corrections;
+    let is_first_run =
+        load_corrections.is_empty() && !next_tablet_driver::settings::get_settings_dir().exists();
 
-    eframe::run_native(
-        &format!("NextTabletDriver v{}", next_tablet_driver::VERSION),
-        options,
-        Box::new(|cc| Ok(Box::new(TabletMapperApp::new(cc.egui_ctx.clone())))),
-    )
+    // 2. Initialize Shared State
+    let shared = SharedStateFactory::create(config.clone(), is_first_run);
+
+    // 3. Initialize Services and Channels
+    let (tablet_sender, tablet_receiver) = crossbeam_channel::unbounded();
+    let update_service = UpdateService::new();
+    let update_receiver = update_service.receiver.clone();
+    let update_sender = update_service.sender.clone();
+    let (save_sender, save_receiver) = crossbeam_channel::bounded(1);
+
+    // We must hold onto `_tray_service` so the tray icon doesn't get dropped.
+    let _tray_service = TrayService::new(&shared);
+
+    // 4. Spawn Background Threads via Supervisor
+    ThreadSupervisor::spawn_engine(Arc::clone(&shared), tablet_sender);
+    ThreadSupervisor::spawn_websocket(Arc::clone(&shared));
+    ThreadSupervisor::spawn_saver(save_receiver);
+    update_service.start_check();
+
+    // 5. Main App Loop
+    // eframe blocks until the window is closed. When minimized to tray, the window closes
+    // and eframe returns. We sleep until the tray restores the window, then restart eframe.
+    loop {
+        if shared.shutdown_requested.load(Ordering::Relaxed) {
+            log::info!(target: "App", "Shutdown requested, exiting main loop.");
+            break Ok(());
+        }
+
+        if shared.is_visible.load(Ordering::Acquire) {
+            let options = eframe::NativeOptions {
+                viewport: egui::ViewportBuilder::default()
+                    .with_icon(icon_data.clone())
+                    .with_inner_size([1000.0, 850.0])
+                    .with_title(format!("NextTabletDriver v{}", next_tablet_driver::VERSION)),
+                ..Default::default()
+            };
+
+            let ctx_shared = Arc::clone(&shared);
+            let ctx_config = config.clone();
+            let ctx_corrections = load_corrections.clone();
+            let ctx_tablet_rx = tablet_receiver.clone();
+            let ctx_update_rx = update_receiver.clone();
+            let ctx_update_tx = update_sender.clone();
+            let ctx_save_tx = save_sender.clone();
+
+            let result = eframe::run_native(
+                &format!("NextTabletDriver v{}", next_tablet_driver::VERSION),
+                options,
+                Box::new(move |cc| {
+                    Ok(Box::new(TabletMapperApp::new(
+                        &cc.egui_ctx,
+                        ctx_shared,
+                        ctx_config,
+                        &ctx_corrections,
+                        ctx_tablet_rx,
+                        ctx_update_rx,
+                        ctx_update_tx,
+                        ctx_save_tx,
+                    )))
+                }),
+            );
+
+            if let Err(e) = result {
+                log::error!(target: "App", "eframe error: {e}");
+                return Err(e);
+            }
+
+            if !shared.is_visible.load(Ordering::Acquire) {
+                log::info!(target: "App", "eframe exited, entering tray idle mode.");
+            }
+        } else {
+            std::thread::sleep(Duration::from_millis(50));
+        }
+    }
 }

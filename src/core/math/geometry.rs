@@ -24,6 +24,7 @@ impl ActiveAreaGeometry {
     /// * `target_w`, `target_h` - The target screen resolution (for osu! playfield).
     /// * `show_osu_playfield` - Whether to calculate the osu! playfield points.
     #[allow(clippy::too_many_arguments)]
+    #[must_use]
     pub fn calculate(
         phys_w: f32,
         phys_h: f32,
@@ -42,8 +43,8 @@ impl ActiveAreaGeometry {
         let offset_x = viz_center_x - draw_w / 2.0;
         let offset_y = viz_center_y - draw_h / 2.0;
 
-        let aa_center_x = offset_x + active_area.x * scale;
-        let aa_center_y = offset_y + active_area.y * scale;
+        let aa_center_x = active_area.x.mul_add(scale, offset_x);
+        let aa_center_y = active_area.y.mul_add(scale, offset_y);
 
         let half_w = (active_area.w * scale) / 2.0;
         let half_h = (active_area.h * scale) / 2.0;
@@ -59,14 +60,13 @@ impl ActiveAreaGeometry {
         ];
 
         for (px, py) in &mut points {
-            let rx = *px * cos - *py * sin;
-            let ry = *px * sin + *py * cos;
+            let rx = (*px).mul_add(cos, -(*py * sin));
+            let ry = (*px).mul_add(sin, *py * cos);
             *px = rx + aa_center_x;
             *py = ry + aa_center_y;
         }
 
-        let mut osu_playfield_points = None;
-        if show_osu_playfield && target_w > 0.0 && target_h > 0.0 {
+        let osu_playfield_points = if show_osu_playfield && target_w > 0.0 && target_h > 0.0 {
             let h_pf = active_area.h * (1028.0 / target_h);
             let w_pf = (target_h * (1316.0 / 1080.0) / target_w) * active_area.w;
             let y_offset_mm = active_area.h * (18.0 / target_h);
@@ -83,13 +83,15 @@ impl ActiveAreaGeometry {
             ];
 
             for (px, py) in &mut pf_points {
-                let rx = *px * cos - *py * sin;
-                let ry = *px * sin + *py * cos;
+                let rx = (*px).mul_add(cos, -(*py * sin));
+                let ry = (*px).mul_add(sin, *py * cos);
                 *px = rx + aa_center_x;
                 *py = ry + aa_center_y;
             }
-            osu_playfield_points = Some(pf_points);
-        }
+            Some(pf_points)
+        } else {
+            None
+        };
 
         Self {
             scale,
@@ -104,6 +106,12 @@ impl ActiveAreaGeometry {
 }
 
 #[cfg(test)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::float_cmp
+)]
 mod tests {
     use super::*;
     use crate::core::config::models::ActiveArea;

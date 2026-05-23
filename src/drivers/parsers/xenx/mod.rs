@@ -5,74 +5,62 @@ pub struct XenxParser;
 
 impl ReportParser for XenxParser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
-        if data.len() < 2 {
-            return None;
-        }
-
-        let raw = data
-            .iter()
-            .map(|b| format!("{:02X}", b))
-            .collect::<Vec<_>>()
-            .join(" ");
-
-        match data[0] {
-            0x01 => {
-                // Tablet Report
-                if data[1] == 0 {
+        match data {
+            // Tablet Report
+            [0x01, b1, x_lo, x_hi, y_lo, y_hi, p_lo, p_hi, ..] => {
+                if *b1 == 0 {
                     return None; // Out of range
                 }
 
-                if data.len() < 8 {
-                    return None;
-                }
-                let x = u16::from_le_bytes([data[2], data[3]]);
-                let y = u16::from_le_bytes([data[4], data[5]]);
-                let pressure = u16::from_le_bytes([data[6], data[7]]);
+                let x = u16::from_le_bytes([*x_lo, *x_hi]);
+                let y = u16::from_le_bytes([*y_lo, *y_hi]);
+                let pressure = u16::from_le_bytes([*p_lo, *p_hi]);
 
                 let mut buttons: u8 = 0;
-                if (data[1] & 0x02) != 0 {
+                if (*b1 & 0x02) != 0 {
                     buttons |= 1 << 0;
                 }
-                if (data[1] & 0x04) != 0 {
+                if (*b1 & 0x04) != 0 {
                     buttons |= 1 << 1;
                 }
-                let eraser = (data[1] & 0x40) != 0;
+                let eraser = (*b1 & 0x40) != 0;
 
-                let status = if pressure > 0 { "Contact" } else { "Hover" };
+                let status = if pressure > 0 {
+                    crate::drivers::TabletStatus::Contact
+                } else {
+                    crate::drivers::TabletStatus::Hover
+                };
 
-                Some(TabletData {
-                    status: status.to_string(),
+                let mut tablet_data = TabletData {
+                    status,
                     x,
                     y,
                     pressure,
                     buttons,
                     eraser,
-                    raw_data: raw,
                     is_connected: true,
                     ..Default::default()
-                })
+                };
+                tablet_data.set_raw(data);
+                Some(tablet_data)
             }
-            0x02 => {
-                // Aux Report
-                if data.len() < 12 {
-                    return None;
-                }
+            // Aux Report
+            [0x02, _, aux_data @ ..] if aux_data.len() >= 8 => {
                 let mut buttons: u8 = 0;
-
-                // data[2..11] are booleans for aux buttons
-                for i in 0..8 {
-                    if data[2 + i] != 0 {
+                for (i, &val) in aux_data.iter().take(8).enumerate() {
+                    if val != 0 {
                         buttons |= 1 << i;
                     }
                 }
 
-                Some(TabletData {
-                    status: "Aux".to_string(),
+                let mut tablet_data = TabletData {
+                    status: crate::drivers::TabletStatus::Aux,
                     buttons,
-                    raw_data: raw,
                     is_connected: true,
                     ..Default::default()
-                })
+                };
+                tablet_data.set_raw(data);
+                Some(tablet_data)
             }
             _ => None,
         }
@@ -80,6 +68,12 @@ impl ReportParser for XenxParser {
 }
 
 #[cfg(test)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::float_cmp
+)]
 mod tests {
     use super::*;
 
@@ -90,7 +84,7 @@ mod tests {
         let report = parser
             .parse(&data)
             .ok_or("Xenx parser failed to parse tablet packet")?;
-        assert_eq!(report.status, "Contact");
+        assert_eq!(report.status, crate::drivers::TabletStatus::Contact);
         assert_eq!(report.x, 258);
         assert_eq!(report.pressure, 1);
         assert_eq!(report.buttons, 3);

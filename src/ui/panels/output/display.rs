@@ -36,11 +36,11 @@ pub fn render_display_section(
                 let offset_x = rect.center().x - (desk_w * scale) / 2.0;
                 let offset_y = rect.center().y - (desk_h * scale) / 2.0;
 
-                for d in app.displays.iter() {
+                for d in &app.displays {
                     let s_rect = egui::Rect::from_min_size(
                         egui::pos2(
-                            offset_x + (d.x as f32 - min_x) * scale,
-                            offset_y + (d.y as f32 - min_y) * scale,
+                            (d.x as f32 - min_x).mul_add(scale, offset_x),
+                            (d.y as f32 - min_y).mul_add(scale, offset_y),
                         ),
                         egui::vec2(d.width as f32 * scale, d.height as f32 * scale),
                     );
@@ -62,8 +62,8 @@ pub fn render_display_section(
 
                 let t_rect = egui::Rect::from_min_size(
                     egui::pos2(
-                        offset_x + (config.target_area.x - min_x) * scale,
-                        offset_y + (config.target_area.y - min_y) * scale,
+                        (config.target_area.x - min_x).mul_add(scale, offset_x),
+                        (config.target_area.y - min_y).mul_add(scale, offset_y),
                     ),
                     egui::vec2(config.target_area.w * scale, config.target_area.h * scale),
                 );
@@ -118,16 +118,16 @@ pub fn render_display_section(
                     opacity_factor: 1.0,
                 });
 
-                let ratio = if config.target_area.h != 0.0 {
-                    config.target_area.w / config.target_area.h
-                } else {
+                let ratio = if config.target_area.h == 0.0 {
                     0.0
+                } else {
+                    config.target_area.w / config.target_area.h
                 };
                 ui.painter().text(
                     t_rect.center() + egui::vec2(0.0, 12.0),
                     egui::Align2::CENTER_CENTER,
-                    format!("{:.4}", ratio).replace(".", ","),
-                    font_id.clone(),
+                    format!("{ratio:.4}").replace('.', ","),
+                    font_id,
                     color,
                 );
 

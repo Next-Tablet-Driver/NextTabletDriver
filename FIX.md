@@ -1,0 +1,2 @@
+- Search Tablet also with `ProductID` and not only `VendorID`
+- Fix bugs with pen detection, and Area calibration on Linux Systems

@@ -5,102 +5,99 @@ pub struct InspiroyParser;
 
 impl ReportParser for InspiroyParser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
-        if data.len() < 8 {
-            return None;
-        }
+        match data {
+            // Out of range
+            [_, 0x00, ..] => None,
 
-        let raw = data
-            .iter()
-            .take(14)
-            .map(|b| format!("{:02X}", b))
-            .collect::<Vec<_>>()
-            .join(" ");
-
-        match data[1] {
-            0x00 => return None, // OutOfRange
-            0xE0 | 0xE3 => {
-                // Aux Report
-                if data.len() < 7 {
-                    return None;
-                }
-                let buttons = data[4]; // first 8 buttons
-                return Some(TabletData {
-                    status: "Aux".to_string(),
-                    buttons,
-                    raw_data: raw,
+            // Aux Report
+            [_, 0xE0 | 0xE3, _, _, b4, ..] => {
+                let mut tablet_data = TabletData {
+                    status: crate::drivers::TabletStatus::Aux,
+                    buttons: *b4,
                     is_connected: true,
                     ..Default::default()
-                });
+                };
+                tablet_data.set_raw(data);
+                Some(tablet_data)
             }
-            0xF1 | 0xF0 => {
-                // Wheel Report
-                return Some(TabletData {
-                    status: "Aux".to_string(),
+
+            // Wheel Report
+            [_, 0xF1 | 0xF0, ..] => {
+                let mut tablet_data = TabletData {
+                    status: crate::drivers::TabletStatus::Aux,
                     buttons: 0,
-                    raw_data: raw,
                     is_connected: true,
                     ..Default::default()
-                });
+                };
+                tablet_data.set_raw(data);
+                Some(tablet_data)
             }
-            _ => {}
+
+            // Standard Tablet Report
+            [
+                _,
+                b1,
+                x_low,
+                x_high,
+                y_low,
+                y_high,
+                p_low,
+                p_high,
+                rest @ ..,
+            ] => {
+                let (b8, b9, tx, ty) = match rest {
+                    [b8, b9, tx, ty, ..] => (*b8, *b9, *tx, *ty),
+                    [b8, b9, tx, ..] => (*b8, *b9, *tx, 0),
+                    [b8, b9, ..] => (*b8, *b9, 0, 0),
+                    [b8, ..] => (*b8, 0, 0, 0),
+                    _ => (0, 0, 0, 0),
+                };
+
+                let x = u32::from(*x_low) | (u32::from(*x_high) << 8) | u32::from(b8 & 1) << 16;
+                let y = u32::from(*y_low) | (u32::from(*y_high) << 8) | u32::from(b9 & 1) << 16;
+                let pressure = u16::from(*p_low) | (u16::from(*p_high) << 8);
+
+                let tilt_x = tx.cast_signed().wrapping_mul(-1);
+                let tilt_y = ty.cast_signed().wrapping_mul(-1);
+
+                let buttons = (*b1 >> 1) & 0x07;
+                let eraser = (*b1 & 0x10) != 0;
+
+                let status = if pressure > 0 {
+                    crate::drivers::TabletStatus::Contact
+                } else if (*b1 & 0x01) != 0 {
+                    crate::drivers::TabletStatus::Hover
+                } else {
+                    crate::drivers::TabletStatus::OutOfRange
+                };
+
+                let mut tablet_data = TabletData {
+                    status,
+                    x: x as u16,
+                    y: y as u16,
+                    pressure,
+                    tilt_x,
+                    tilt_y,
+                    buttons,
+                    eraser,
+                    is_connected: true,
+                    ..Default::default()
+                };
+                tablet_data.set_raw(data);
+                Some(tablet_data)
+            }
+            _ => None,
         }
-
-        // Huion/Inspiroy standard report style (Giano)
-        // Position X: [2] | [3] << 8 | ([8] & 1) << 16
-        // Position Y: [4] | [5] << 8 | ([9] & 1) << 16
-        // Pressure: [6] | [7] << 8
-
-        let x = (data[2] as u32)
-            | ((data[3] as u32) << 8)
-            | ((data.get(8).unwrap_or(&0) & 1) as u32) << 16;
-        let y = (data[4] as u32)
-            | ((data[5] as u32) << 8)
-            | ((data.get(9).unwrap_or(&0) & 1) as u32) << 16;
-        let pressure = (data[6] as u16) | ((data[7] as u16) << 8);
-
-        // Tilt (X at 10, Y at 11) - OTD uses * -1 for Giano
-        let tilt_x = if data.len() >= 11 {
-            (data[10] as i8).wrapping_mul(-1)
-        } else {
-            0
-        };
-        let tilt_y = if data.len() >= 12 {
-            (data[11] as i8).wrapping_mul(-1)
-        } else {
-            0
-        };
-
-        // Buttons (Byte 1)
-        let buttons = (data[1] >> 1) & 0x07; // Bits 1, 2, 3
-        let eraser = (data[1] & 0x10) != 0; // OTD sometimes uses bit 4 for eraser or similar
-
-        let status = if pressure > 0 {
-            "Contact".to_string()
-        } else if (data[1] & 0x01) != 0 {
-            "Hover".to_string()
-        } else {
-            "Out of Range".to_string()
-        };
-
-        Some(TabletData {
-            status,
-            x: x as u16, // Assuming we keep u16 for now, but 3 bytes might exceed.
-            // OTD uses uint for position. Let's check if we should upgrade TabletData
-            y: y as u16,
-            pressure,
-            tilt_x,
-            tilt_y,
-            buttons,
-            eraser,
-            hover_distance: 0,
-            raw_data: raw,
-            is_connected: true,
-            ..Default::default()
-        })
     }
 }
 
 #[cfg(test)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::float_cmp
+)]
 mod tests {
     use super::*;
 
@@ -111,7 +108,7 @@ mod tests {
         let report = parser
             .parse(&data)
             .ok_or("Inspiroy parser failed to parse tablet packet")?;
-        assert_eq!(report.status, "Contact");
+        assert_eq!(report.status, crate::drivers::TabletStatus::Contact);
         assert_eq!(report.x, 258);
         assert_eq!(report.pressure, 3);
         Ok(())

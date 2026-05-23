@@ -5,30 +5,18 @@ pub struct BambooV2AuxParser;
 
 impl ReportParser for BambooV2AuxParser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
-        if data.is_empty() {
-            return None;
-        }
-        let raw = data
-            .iter()
-            .map(|b| format!("{:02X}", b))
-            .collect::<Vec<_>>()
-            .join(" ");
-
-        if data[0] == 0x02 {
-            // IntuosV2AuxReport style
-            if data.len() < 2 {
-                return None;
+        match data {
+            [0x02, b1, ..] => {
+                let mut tablet_data = TabletData {
+                    status: crate::drivers::TabletStatus::Aux,
+                    buttons: *b1,
+                    is_connected: true,
+                    ..Default::default()
+                };
+                tablet_data.set_raw(data);
+                Some(tablet_data)
             }
-            let buttons = data[1];
-            Some(TabletData {
-                status: "Aux".to_string(),
-                buttons,
-                raw_data: raw,
-                is_connected: true,
-                ..Default::default()
-            })
-        } else {
-            None
+            _ => None,
         }
     }
 }

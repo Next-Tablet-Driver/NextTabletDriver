@@ -5,64 +5,58 @@ pub struct BambooPadParser;
 
 impl ReportParser for BambooPadParser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
-        if data.len() < 24 {
-            return None;
-        }
-
-        let raw = data
-            .iter()
-            .map(|b| format!("{:02X}", b))
-            .collect::<Vec<_>>()
-            .join(" ");
-
-        if data[0] == 0x10 {
-            if data[1] == 0x01 {
-                // Tablet Report
-                let x = u16::from_le_bytes([data[3], data[4]]);
-                let y = u16::from_le_bytes([data[5], data[6]]);
-                let pressure = u16::from_le_bytes([data[7], data[8]]);
+        match data {
+            // Tablet Report
+            [0x10, 0x01, b2, x_lo, x_hi, y_lo, y_hi, p_lo, p_hi, ..] => {
+                let x = u16::from_le_bytes([*x_lo, *x_hi]);
+                let y = u16::from_le_bytes([*y_lo, *y_hi]);
+                let pressure = u16::from_le_bytes([*p_lo, *p_hi]);
 
                 let mut buttons: u8 = 0;
-                if (data[2] & 0x02) != 0 {
+                if (*b2 & 0x02) != 0 {
                     buttons |= 1 << 0;
                 }
-                let eraser = (data[2] & 0x08) != 0;
+                let eraser = (*b2 & 0x08) != 0;
 
-                let status = if pressure > 0 { "Contact" } else { "Hover" };
+                let status = if pressure > 0 {
+                    crate::drivers::TabletStatus::Contact
+                } else {
+                    crate::drivers::TabletStatus::Hover
+                };
 
-                Some(TabletData {
-                    status: status.to_string(),
+                let mut tablet_data = TabletData {
+                    status,
                     x,
                     y,
                     pressure,
                     buttons,
                     eraser,
-                    raw_data: raw,
                     is_connected: true,
                     ..Default::default()
-                })
-            } else if data[1] == 0x06 {
-                // Aux Report
+                };
+                tablet_data.set_raw(data);
+                Some(tablet_data)
+            }
+            // Aux Report - needs to check index 23
+            [0x10, 0x06, .., b23] if data.len() >= 24 => {
                 let mut buttons: u8 = 0;
-                if data[23] == 1 {
+                if *b23 == 1 {
                     buttons |= 1 << 0;
                 }
-                if data[23] == 2 {
+                if *b23 == 2 {
                     buttons |= 1 << 1;
                 }
 
-                Some(TabletData {
-                    status: "Aux".to_string(),
+                let mut tablet_data = TabletData {
+                    status: crate::drivers::TabletStatus::Aux,
                     buttons,
-                    raw_data: raw,
                     is_connected: true,
                     ..Default::default()
-                })
-            } else {
-                None
+                };
+                tablet_data.set_raw(data);
+                Some(tablet_data)
             }
-        } else {
-            None
+            _ => None,
         }
     }
 }

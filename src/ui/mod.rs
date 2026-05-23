@@ -1,6 +1,6 @@
 //! # User Interface
 //!
-//! This module contains the frontend implementation of NextTabletDriver using
+//! This module contains the frontend implementation of `NextTabletDriver` using
 //! the immediate-mode GUI library `egui`. It is divided into global `components`
 //! (like the menu bar and tabs), distinct `panels` (the content of each tab),
 //! and the styling `theme`.

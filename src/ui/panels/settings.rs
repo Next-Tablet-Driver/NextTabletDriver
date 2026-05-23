@@ -3,6 +3,7 @@ use crate::core::config::models::MappingConfig;
 use crate::ui::theme::{panel_bg, panel_border, ui_input_box_u16, ui_input_box_u32};
 use eframe::egui;
 
+#[allow(clippy::too_many_lines)]
 pub fn render_settings_panel(
     _app: &TabletMapperApp,
     ui: &mut egui::Ui,
@@ -23,7 +24,7 @@ pub fn render_settings_panel(
                 .changed()
                 && let Err(e) = crate::startup::set_run_at_startup(config.run_at_startup)
             {
-                log::error!(target: "Config", "Failed to update startup setting: {}", e);
+                log::error!(target: "Config", "Failed to update startup setting: {e}");
                 config.run_at_startup = old_run_at_startup;
             }
 
@@ -155,7 +156,7 @@ fn render_card<R>(
             ui.vertical(|ui| {
                 ui.horizontal(|ui| {
                     ui.label(
-                        egui::RichText::new(format!("{} {}", icon, title))
+                        egui::RichText::new(format!("{icon} {title}"))
                             .size(15.0)
                             .strong(),
                     );

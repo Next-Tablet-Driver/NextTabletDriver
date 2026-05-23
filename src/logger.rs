@@ -1,6 +1,9 @@
 use chrono::Local;
+use crossbeam_channel::Sender;
 use log::{LevelFilter, Log, Metadata, Record};
+use std::collections::VecDeque;
 use std::sync::{Arc, LazyLock, RwLock};
+use std::thread;
 
 #[derive(Debug, Clone)]
 pub struct LogEntry {
@@ -11,11 +14,20 @@ pub struct LogEntry {
 }
 
 pub struct GlobalLogger {
-    pub entries: Arc<RwLock<Vec<LogEntry>>>,
+    pub sender: Sender<LogEntry>,
 }
 
-pub static LOG_BUFFER: LazyLock<Arc<RwLock<Vec<LogEntry>>>> =
-    LazyLock::new(|| Arc::new(RwLock::new(Vec::new())));
+pub const MAX_LOGS: usize = 1000;
+
+pub static LOG_BUFFER: LazyLock<Arc<RwLock<VecDeque<LogEntry>>>> =
+    LazyLock::new(|| Arc::new(RwLock::new(VecDeque::with_capacity(MAX_LOGS))));
+
+/// Global monotonic log sequence counter.
+///
+/// Incremented every time a log is successfully added to `LOG_BUFFER` or the buffer is cleared.
+/// The UI uses this sequence number to invalidate its console cache instead of relying on
+/// `LOG_BUFFER.len()`, which fails to trigger updates once the circular buffer reaches `MAX_LOGS` capacity.
+pub static LOG_SEQUENCE: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
 impl Log for GlobalLogger {
     fn enabled(&self, _metadata: &Metadata) -> bool {
@@ -27,7 +39,7 @@ impl Log for GlobalLogger {
             let target = record.target();
 
             // Whitelist: only these named targets appear in the in-app console
-            let allowed_targets = [
+            let is_allowed = [
                 "App",
                 "UI",
                 "HID",
@@ -43,11 +55,14 @@ impl Log for GlobalLogger {
                 "Telemetry",
                 "Driver",
                 "Detect",
-            ];
-            let is_allowed = allowed_targets
-                .iter()
-                .any(|&t| target == t || target.starts_with(&format!("{}::", t)))
+            ]
+            .iter()
+            .any(|&t| target == t || target.starts_with(&format!("{t}::")))
                 || target.starts_with("NextTabletDriver");
+
+            if !is_allowed {
+                return;
+            }
 
             let entry = LogEntry {
                 time: Local::now().format("%H:%M:%S").to_string(),
@@ -56,42 +71,65 @@ impl Log for GlobalLogger {
                 message: format!("{}", record.args()),
             };
 
-            if cfg!(debug_assertions) {
-                let log_line = format!(
-                    "[{}] {} [{}] {}",
-                    entry.time, entry.level, entry.group, entry.message
-                );
-                println!("{}", log_line);
-
-                if let Ok(mut file) = std::fs::OpenOptions::new()
-                    .create(true)
-                    .append(true)
-                    .open("debug.log")
-                {
-                    use std::io::Write;
-                    let _ = writeln!(file, "{}", log_line);
-                }
-            }
-
-            if is_allowed && let Ok(mut entries) = self.entries.write() {
-                entries.push(entry);
-
-                // Ring buffer: evict oldest when full
-                if entries.len() > 500 {
-                    entries.remove(0);
-                }
-            }
+            // Send to worker thread (non-blocking)
+            let _ = self.sender.send(entry);
         }
     }
 
     fn flush(&self) {}
 }
 
-pub fn init() {
-    let logger = GlobalLogger {
-        entries: LOG_BUFFER.clone(),
-    };
+/// Initializes the global logger.
+///
+/// # Errors
+///
+/// This function returns an error if:
+/// - It fails to spawn the background logger worker thread.
+/// - It fails to set the global logger instance.
+pub fn init() -> Result<(), String> {
+    let (sender, receiver) = crossbeam_channel::unbounded::<LogEntry>();
+
+    // Spawn the logger worker thread
+    let spawn_result = thread::Builder::new()
+        .name("LoggerWorker".to_string())
+        .spawn(move || {
+            while let Ok(entry) = receiver.recv() {
+                // 1. Console & File Output (Debug only)
+                if cfg!(debug_assertions) {
+                    let log_line = format!(
+                        "[{}] {} [{}] {}",
+                        entry.time, entry.level, entry.group, entry.message
+                    );
+                    println!("{log_line}");
+
+                    if let Ok(mut file) = std::fs::OpenOptions::new()
+                        .create(true)
+                        .append(true)
+                        .open("debug.log")
+                    {
+                        use std::io::Write;
+                        let _ = writeln!(file, "{log_line}");
+                    }
+                }
+
+                // 2. Update UI Buffer
+                if let Ok(mut entries) = LOG_BUFFER.write() {
+                    if entries.len() >= MAX_LOGS {
+                        entries.pop_front();
+                    }
+                    entries.push_back(entry);
+                    LOG_SEQUENCE.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                }
+            }
+        });
+
+    if let Err(e) = spawn_result {
+        return Err(format!("Failed to spawn logger worker thread: {e}"));
+    }
+
+    let logger = GlobalLogger { sender };
+
     log::set_boxed_logger(Box::new(logger))
         .map(|()| log::set_max_level(LevelFilter::Debug))
-        .expect("Failed to initialize logger");
+        .map_err(|e| format!("Logger initialization failed: {e}"))
 }

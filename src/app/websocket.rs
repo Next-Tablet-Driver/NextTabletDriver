@@ -7,14 +7,15 @@
 use std::collections::HashMap;
 use std::net::TcpListener;
 use std::sync::Arc;
+use std::sync::atomic::Ordering;
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use serde::Serialize;
 use tungstenite::protocol::WebSocket;
 use tungstenite::{Message, accept};
 
-use crate::engine::state::{LockResultExt, SharedState};
+use crate::engine::state::{LockRecoveryExt, SharedState};
 
 /// The JSON payload broadcasted to all connected WebSocket clients.
 ///
@@ -46,17 +47,24 @@ struct WsPayload {
 /// # Networking
 /// - Binds to `127.0.0.1` (localhost only) for security.
 /// - Uses non-blocking sockets to allow for graceful client disconnection and reconnects.
-pub fn websocket_loop(shared: Arc<SharedState>) {
+pub fn websocket_loop(shared: &Arc<SharedState>) {
     let mut current_port = 0;
     let mut listener: Option<TcpListener> = None;
     let mut clients: HashMap<usize, WebSocket<std::net::TcpStream>> = HashMap::new();
     let mut next_client_id = 0;
 
     loop {
+        if shared.shutdown_requested.load(Ordering::Relaxed) {
+            log::info!(target: "WebSocket", "Shutdown requested, exiting WebSocket loop");
+            break;
+        }
+
+        let frame_start = Instant::now();
+
         let (enabled, port, hz, send_coords, send_pressure, _send_tilt, send_status) = {
-            let config = shared.config.read().ignore_poison();
+            let config = shared.config.read().unwrap_or_log("config");
             let ws = &config.websocket;
-            (
+            let res = (
                 ws.enabled,
                 ws.port,
                 ws.polling_rate_hz.max(1),
@@ -64,7 +72,9 @@ pub fn websocket_loop(shared: Arc<SharedState>) {
                 ws.send_pressure,
                 ws.send_tilt,
                 ws.send_status,
-            )
+            );
+            drop(config);
+            res
         };
 
         if !enabled {
@@ -74,18 +84,22 @@ pub fn websocket_loop(shared: Arc<SharedState>) {
                 listener = None;
             }
         } else if listener.is_none() || current_port != port {
-            log::info!(target: "WebSocket", "Starting WebSocket Server on 127.0.0.1:{}", port);
+            log::info!(target: "WebSocket", "Starting WebSocket Server on 127.0.0.1:{port}");
             clients.clear();
 
-            match TcpListener::bind(format!("127.0.0.1:{}", port)) {
-                Ok(l) => {
-                    l.set_nonblocking(true)
-                        .expect("Failed to set WebSocket listener to non-blocking");
-                    listener = Some(l);
-                    current_port = port;
-                }
+            match TcpListener::bind(format!("127.0.0.1:{port}")) {
+                Ok(l) => match l.set_nonblocking(true) {
+                    Ok(()) => {
+                        listener = Some(l);
+                        current_port = port;
+                    }
+                    Err(e) => {
+                        log::error!(target: "WebSocket", "Failed to set WebSocket listener to non-blocking: {e}");
+                        listener = None;
+                    }
+                },
                 Err(e) => {
-                    log::error!(target: "WebSocket", "Failed to bind to port {}: {}", port, e);
+                    log::error!(target: "WebSocket", "Failed to bind to port {port}: {e}");
                     listener = None;
                 }
             }
@@ -94,33 +108,38 @@ pub fn websocket_loop(shared: Arc<SharedState>) {
         if let Some(l) = &listener {
             match l.accept() {
                 Ok((stream, addr)) => {
-                    log::info!(target: "WebSocket", "New connection from {}", addr);
-                    stream
-                        .set_nonblocking(false)
-                        .expect("Failed to set WebSocket stream to blocking"); // Blocking for WS handshake
-                    match accept(stream) {
-                        Ok(mut websocket) => {
-                            websocket
-                                .get_mut()
-                                .set_nonblocking(true)
-                                .expect("Failed to set WebSocket stream to non-blocking"); // Back to non-blocking for data
-                            clients.insert(next_client_id, websocket);
-                            next_client_id += 1;
-                        }
-                        Err(e) => {
-                            log::warn!(target: "WebSocket", "Error during WebSocket handshake: {}", e);
+                    if clients.len() >= 10 {
+                        log::warn!(target: "WebSocket", "Max clients reached (10), rejecting {addr}");
+                        continue;
+                    }
+
+                    log::info!(target: "WebSocket", "New connection from {addr}");
+                    if stream.set_nonblocking(false).is_ok() {
+                        match accept(stream) {
+                            Ok(mut websocket) => {
+                                if websocket.get_mut().set_nonblocking(true).is_ok() {
+                                    clients.insert(next_client_id, websocket);
+                                    next_client_id += 1;
+                                }
+                            }
+                            Err(e) => {
+                                log::warn!(target: "WebSocket", "Error during WebSocket handshake: {e}");
+                            }
                         }
                     }
                 }
                 Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {}
                 Err(e) => {
-                    log::error!(target: "WebSocket", "Listener error: {}", e);
+                    log::error!(target: "WebSocket", "Listener error: {e}");
                 }
             }
 
             if !clients.is_empty() {
-                let data: crate::drivers::TabletData =
-                    shared.tablet_data.read().ignore_poison().clone();
+                let data = shared
+                    .tablet_data
+                    .read()
+                    .map(|d| d.clone())
+                    .unwrap_or_default();
 
                 let payload = WsPayload {
                     x: if send_coords { Some(data.x) } else { None },
@@ -131,7 +150,7 @@ pub fn websocket_loop(shared: Arc<SharedState>) {
                         None
                     },
                     status: if send_status {
-                        Some(data.status.clone())
+                        Some(data.status.to_string())
                     } else {
                         None
                     },
@@ -145,7 +164,7 @@ pub fn websocket_loop(shared: Arc<SharedState>) {
                 if let Ok(json) = serde_json::to_string(&payload) {
                     let mut dead_clients = vec![];
 
-                    for (id, client) in clients.iter_mut() {
+                    for (id, client) in &mut clients {
                         if client.send(Message::Text(json.clone().into())).is_err() {
                             dead_clients.push(*id);
                         }
@@ -159,7 +178,13 @@ pub fn websocket_loop(shared: Arc<SharedState>) {
             }
         }
 
-        let sleep_ms = 1000 / hz;
-        thread::sleep(Duration::from_millis(sleep_ms as u64));
+        let target_duration = Duration::from_micros(1_000_000 / u64::from(hz));
+        let elapsed = frame_start.elapsed();
+
+        if elapsed < target_duration {
+            thread::sleep(target_duration.checked_sub(elapsed).unwrap_or_default());
+        } else {
+            log::trace!(target: "WebSocket", "Broadcast too slow, frame took {elapsed:?}");
+        }
     }
 }

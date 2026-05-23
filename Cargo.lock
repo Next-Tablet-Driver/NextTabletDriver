@@ -2596,6 +2596,7 @@ dependencies = [
  "egui_extras",
  "enigo",
  "evdev",
+ "gtk",
  "hex",
  "hidapi",
  "image",

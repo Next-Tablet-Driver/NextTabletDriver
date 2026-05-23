@@ -5,46 +5,52 @@ pub struct LifetecParser;
 
 impl ReportParser for LifetecParser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
-        if data.len() < 8 || data[0] != 0x02 {
-            return None;
+        match data {
+            [0x02, x_lo, x_hi, y_lo, y_hi, b5, p_lo, p_hi, ..] => {
+                let x = u16::from_le_bytes([*x_lo, *x_hi]);
+                let y = u16::from_le_bytes([*y_lo, *y_hi]);
+                let pressure = u16::from_le_bytes([*p_lo, *p_hi]);
+
+                let mut buttons: u8 = 0;
+                if (*b5 & 0x08) != 0 {
+                    buttons |= 1 << 0;
+                }
+                if (*b5 & 0x10) != 0 {
+                    buttons |= 1 << 1;
+                }
+
+                let status = if pressure > 0 {
+                    crate::drivers::TabletStatus::Contact
+                } else {
+                    crate::drivers::TabletStatus::Hover
+                };
+
+                let mut tablet_data = TabletData {
+                    status,
+                    x,
+                    y,
+                    pressure,
+                    tilt_x: 0,
+                    tilt_y: 0,
+                    buttons,
+                    is_connected: true,
+                    ..Default::default()
+                };
+                tablet_data.set_raw(data);
+                Some(tablet_data)
+            }
+            _ => None,
         }
-
-        let raw = data
-            .iter()
-            .map(|b| format!("{:02X}", b))
-            .collect::<Vec<_>>()
-            .join(" ");
-
-        let x = u16::from_le_bytes([data[1], data[2]]);
-        let y = u16::from_le_bytes([data[3], data[4]]);
-        let pressure = u16::from_le_bytes([data[6], data[7]]);
-
-        let mut buttons: u8 = 0;
-        if (data[5] & 0x08) != 0 {
-            buttons |= 1 << 0;
-        }
-        if (data[5] & 0x10) != 0 {
-            buttons |= 1 << 1;
-        }
-
-        let status = if pressure > 0 { "Contact" } else { "Hover" };
-
-        Some(TabletData {
-            status: status.to_string(),
-            x,
-            y,
-            pressure,
-            tilt_x: 0,
-            tilt_y: 0,
-            buttons,
-            raw_data: raw,
-            is_connected: true,
-            ..Default::default()
-        })
     }
 }
 
 #[cfg(test)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::float_cmp
+)]
 mod tests {
     use super::*;
 
@@ -55,7 +61,7 @@ mod tests {
         let report = parser
             .parse(&data)
             .ok_or("Lifetec parser failed to parse tablet packet")?;
-        assert_eq!(report.status, "Contact");
+        assert_eq!(report.status, crate::drivers::TabletStatus::Contact);
         assert_eq!(report.x, 258);
         assert_eq!(report.y, 772);
         assert_eq!(report.pressure, 1);

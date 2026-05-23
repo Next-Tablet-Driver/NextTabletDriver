@@ -9,7 +9,8 @@ pub struct IntuosProParser {
 }
 
 impl IntuosProParser {
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self {
             inner_v1: IntuosV1Parser::new(),
         }
@@ -23,40 +24,34 @@ impl Default for IntuosProParser {
 }
 
 impl IntuosProParser {
-    fn parse_internal(&self, data: &[u8], raw: String) -> Option<TabletData> {
-        match data[0] {
-            0x02 | 0x10 => self.inner_v1.parse_internal(data, raw),
-            0x03 => self.parse_aux(data, raw),
+    fn parse_internal(&self, data: &[u8]) -> Option<TabletData> {
+        match data {
+            [0x02 | 0x10, ..] => self.inner_v1.parse_internal(data),
+            [0x03, ..] => Self::parse_aux(data),
             _ => None,
         }
     }
 
-    fn parse_aux(&self, data: &[u8], raw: String) -> Option<TabletData> {
-        if data.len() < 5 {
-            return None;
+    fn parse_aux(data: &[u8]) -> Option<TabletData> {
+        match data {
+            [_, _, _, _, b4, ..] => {
+                let mut tablet_data = TabletData {
+                    status: crate::drivers::TabletStatus::Aux,
+                    buttons: *b4,
+                    is_connected: true,
+                    ..Default::default()
+                };
+                tablet_data.set_raw(data);
+                Some(tablet_data)
+            }
+            _ => None,
         }
-        let buttons = data[4];
-        Some(TabletData {
-            status: "Aux".to_string(),
-            buttons,
-            raw_data: raw,
-            is_connected: true,
-            ..Default::default()
-        })
     }
 }
 
 impl ReportParser for IntuosProParser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
-        if data.is_empty() {
-            return None;
-        }
-        let raw = data
-            .iter()
-            .map(|b| format!("{:02X}", b))
-            .collect::<Vec<_>>()
-            .join(" ");
-        self.parse_internal(data, raw)
+        self.parse_internal(data)
     }
 }
 
@@ -65,7 +60,8 @@ pub struct WacomDriverIntuosProParser {
 }
 
 impl WacomDriverIntuosProParser {
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self {
             inner: IntuosProParser::new(),
         }
@@ -80,14 +76,9 @@ impl Default for WacomDriverIntuosProParser {
 
 impl ReportParser for WacomDriverIntuosProParser {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
-        if data.len() < 2 {
-            return None;
+        match data {
+            [_, rest @ ..] => self.inner.parse_internal(rest),
+            _ => None,
         }
-        let raw = data
-            .iter()
-            .map(|b| format!("{:02X}", b))
-            .collect::<Vec<_>>()
-            .join(" ");
-        self.inner.parse_internal(&data[1..], raw)
     }
 }
