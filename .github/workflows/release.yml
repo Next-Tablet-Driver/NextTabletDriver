@@ -4,6 +4,12 @@ on:
     push:
         tags:
             - "v*"
+    workflow_dispatch:
+        inputs:
+            ref_name:
+                description: "Tag name to simulate (e.g. v1.0.0-test)"
+                required: true
+                default: "v0.0.0-test"
 
 permissions:
     contents: write
@@ -71,7 +77,7 @@ jobs:
                   sudo apt-get install -y pkg-config libudev-dev patchelf libfuse2 wget unzip dpkg-dev build-essential \
                     libgtk-3-dev libglib2.0-dev libgdk-pixbuf2.0-dev libpango1.0-dev libcairo2-dev libatk1.0-dev \
                     libx11-dev libxrandr-dev libxfixes-dev libxrender-dev libx11-xcb-dev libxkbcommon-dev \
-                    libgl1-mesa-dev libegl1-mesa-dev libgles2-mesa-dev
+                    libgl1-mesa-dev libegl1-mesa-dev libgles2-mesa-dev libxdo-dev
 
             - name: Build release (glibc)
               run: cargo build --workspace --release --all-features
@@ -100,8 +106,8 @@ jobs:
                   # Embed update information pointing to GitHub Releases (zsync transport)
                   LDAI_UPDATE_INFORMATION: "gh-releases-zsync|${{ github.repository_owner }}|${{ github.event.repository.name }}|latest|next_tablet_driver-*x86_64.AppImage.zsync"
                   # Force output filename to include tag/version
-                  LDAI_OUTPUT: "next_tablet_driver-${{ github.ref_name }}-x86_64.AppImage"
-                  LDAI_VERSION: "${{ github.ref_name }}"
+                  LDAI_OUTPUT: "next_tablet_driver-${{ github.event.inputs.ref_name || github.ref_name }}-x86_64.AppImage"
+                  LDAI_VERSION: "${{ github.event.inputs.ref_name || github.ref_name }}"
               run: |
                   ./linuxdeploy-x86_64.AppImage --appdir AppDir -d AppDir/usr/share/applications/next_tablet_driver.desktop -i AppDir/usr/share/icons/hicolor/256x256/apps/next_tablet_driver.png --output appimage || true
                   APPIMAGE=$(ls -1 *.AppImage 2>/dev/null | head -n 1 || true)
@@ -173,7 +179,7 @@ jobs:
             - name: Install musl build dependencies
               run: |
                   sudo apt-get update
-                  sudo apt-get install -y musl-tools build-essential pkg-config libssl-dev curl
+                  sudo apt-get install -y musl-tools build-essential pkg-config libssl-dev curl libxdo-dev libudev-dev
 
             - name: Add MUSL target
               run: rustup target add x86_64-unknown-linux-musl
@@ -191,7 +197,7 @@ jobs:
                   if [ -f "$BIN" ]; then
                     cp "$BIN" musl_upload/next_tablet_driver
                     chmod +x musl_upload/next_tablet_driver
-                    tar -czf musl_upload/next_tablet_driver-linux-musl-${{ github.ref_name }}.tar.gz -C musl_upload next_tablet_driver
+                    tar -czf musl_upload/next_tablet_driver-linux-musl-${{ github.event.inputs.ref_name || github.ref_name }}.tar.gz -C musl_upload next_tablet_driver
                     echo "created=true" >> $GITHUB_OUTPUT
                   else
                     echo "MUSL build not available" > musl_upload/musl_not_built.txt
@@ -242,10 +248,11 @@ jobs:
                   echo "EOF" >> $GITHUB_OUTPUT
 
             - name: Create GitHub Release with artifacts
+              if: github.event_name == 'push'
               uses: softprops/action-gh-release@v2
               with:
-                  tag_name: ${{ github.ref_name }}
-                  name: Release ${{ github.ref_name }}
+                  tag_name: ${{ github.event.inputs.ref_name || github.ref_name }}
+                  name: Release ${{ github.event.inputs.ref_name || github.ref_name }}
                   generate_release_notes: true
                   files: ${{ steps.collect.outputs.files }}
               env:
