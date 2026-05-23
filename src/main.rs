@@ -163,7 +163,7 @@ fn main() -> eframe::Result {
                 Some(f) // Keeps flock alive for the process lifetime
             }
             Err(e) => {
-                log::warn!(target: "Startup", "Could not create lock file at {:?}: {}", lock_path, e);
+                log::warn!(target: "Startup", "Could not create lock file at {lock_path:?}: {e}");
                 None
             }
         }
