@@ -64,6 +64,12 @@ impl Transformer {
 }
 
 #[cfg(test)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::float_cmp
+)]
 mod tests {
     use super::*;
 
@@ -89,7 +95,7 @@ mod tests {
         let (x_mm, y_mm) = t.execute(50, 75, 0.0, 1000.0, 100.0, 200.0);
         assert_eq!(x_mm, 0.0);
         // y dimension is still valid
-        assert!((y_mm - (75.0_f32 * (200.0 / 1000.0))).abs() < 1e-6);
+        assert!(75.0_f32.mul_add(-(200.0 / 1000.0), y_mm).abs() < 1e-6);
     }
 
     #[test]

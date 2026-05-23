@@ -107,6 +107,12 @@ impl Projector {
 }
 
 #[cfg(test)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::float_cmp
+)]
 mod tests {
     use super::*;
     use crate::core::config::models::MappingConfig;
@@ -121,8 +127,8 @@ mod tests {
         let shared = Arc::new(SharedState::new());
 
         let (sx, sy) = p.project_absolute(0.5, 0.5, &cfg, &shared);
-        assert!((sx - (cfg.target_area.w * 0.5)).abs() < 1e-6);
-        assert!((sy - (cfg.target_area.h * 0.5)).abs() < 1e-6);
+        assert!((cfg.target_area.w.mul_add(-0.5, sx)).abs() < f32::EPSILON);
+        assert!(cfg.target_area.h.mul_add(-0.5, sy).abs() < f32::EPSILON);
         assert_eq!(p.abs_screen, Some((sx, sy)));
     }
 
@@ -153,7 +159,9 @@ mod tests {
         // Prime the previous position
         let _ = p.project_relative(0.0, 0.0, &cfg);
         // Simulate inactivity by setting packet_time far in the past
-        p.packet_time = Instant::now() - Duration::from_millis(10);
+        p.packet_time = Instant::now()
+            .checked_sub(Duration::from_millis(10))
+            .unwrap();
         p.rel_mm = Some((1.0, 1.0));
 
         // Now project_relative should detect the timeout and reset to None -> produce zero delta

@@ -125,6 +125,12 @@ impl Filter for SpeedStatsFilter {
 }
 
 #[cfg(test)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::float_cmp
+)]
 mod tests {
     use super::*;
     use crate::core::config::models::MappingConfig;
@@ -145,7 +151,9 @@ mod tests {
         filter.process(0.0, 0.0, &config);
 
         // Move 10mm in 0.1s => 100mm/s
-        filter.last_time = Instant::now() - Duration::from_millis(100);
+        filter.last_time = Instant::now()
+            .checked_sub(Duration::from_millis(100))
+            .unwrap();
         filter.process(0.1, 0.0, &config);
 
         let speed = shared.stats.read().unwrap().handspeed;
@@ -166,7 +174,7 @@ mod tests {
         filter.process(0.0, 0.0, &config);
 
         // Move 1000mm (1m) in 1s => 1m/s
-        filter.last_time = Instant::now() - Duration::from_secs(1);
+        filter.last_time = Instant::now().checked_sub(Duration::from_secs(1)).unwrap();
         filter.process(1.0, 0.0, &config);
 
         let speed = shared.stats.read().unwrap().handspeed;

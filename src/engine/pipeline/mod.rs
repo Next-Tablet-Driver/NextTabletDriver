@@ -161,6 +161,12 @@ impl Pipeline {
 }
 
 #[cfg(test)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::float_cmp
+)]
 mod tests {
     use super::*;
     use crate::core::config::models::MappingConfig;
@@ -171,7 +177,7 @@ mod tests {
 
     struct MockDriver;
     impl crate::drivers::NextTabletDriver for MockDriver {
-        fn get_name(&self) -> &str {
+        fn get_name(&self) -> &'static str {
             "Mock Driver"
         }
         fn get_specs(&self) -> (f32, f32, f32) {
@@ -223,8 +229,10 @@ mod tests {
     #[test]
     fn test_pipeline_pressure_threshold() {
         let mut pipeline = Pipeline::new();
-        let mut config = MappingConfig::default();
-        config.tip_threshold = 50; // 50%
+        let config = MappingConfig {
+            tip_threshold: 50,
+            ..Default::default()
+        };
 
         // max_p = 1000.0, so threshold = 500.0
         assert!(pipeline.evaluate_pressure(501, 1000.0, &config));
@@ -234,9 +242,11 @@ mod tests {
     #[test]
     fn test_pipeline_disable_pressure() {
         let mut pipeline = Pipeline::new();
-        let mut config = MappingConfig::default();
-        config.disable_pressure = true;
-        config.tip_threshold = 50;
+        let config = MappingConfig {
+            disable_pressure: true,
+            tip_threshold: 50,
+            ..Default::default()
+        };
 
         // Should always be true (down) regardless of raw pressure
         assert!(pipeline.evaluate_pressure(0, 1000.0, &config));

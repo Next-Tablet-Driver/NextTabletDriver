@@ -552,6 +552,12 @@ impl MappingConfig {
 }
 
 #[cfg(test)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::float_cmp
+)]
 mod tests {
     use super::*;
 
@@ -566,26 +572,30 @@ mod tests {
 
     #[test]
     fn test_normalize_rotation_active_area() {
-        let mut area = ActiveArea::default();
-        area.rotation = 450.0;
+        let mut area = ActiveArea {
+            rotation: 450.0,
+            ..Default::default()
+        };
         area.normalize_rotation();
-        assert_eq!(area.rotation, 90.0);
+        assert!((area.rotation - 90.0).abs() < f32::EPSILON);
 
         area.rotation = -90.0;
         area.normalize_rotation();
-        assert_eq!(area.rotation, 270.0);
+        assert!((area.rotation - 270.0).abs() < f32::EPSILON);
 
         area.rotation = 360.0;
         area.normalize_rotation();
-        assert_eq!(area.rotation, 0.0);
+        assert!((area.rotation - 0.0).abs() < f32::EPSILON);
     }
 
     #[test]
     fn test_normalize_rotation_relative_config() {
-        let mut cfg = RelativeConfig::default();
-        cfg.rotation = -45.0;
+        let mut cfg = RelativeConfig {
+            rotation: -45.0,
+            ..Default::default()
+        };
         cfg.normalize_rotation();
-        assert_eq!(cfg.rotation, 315.0);
+        assert!((cfg.rotation - 315.0).abs() < f32::EPSILON);
     }
 
     #[test]
@@ -598,7 +608,7 @@ mod tests {
             rotation: 450.0,
         };
         area.clamp_to_surface(160.0, 100.0);
-        assert_eq!(area.rotation, 90.0);
+        assert!((area.rotation - 90.0).abs() < f32::EPSILON);
     }
 
     #[test]

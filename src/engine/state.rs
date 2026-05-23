@@ -158,6 +158,12 @@ pub struct SharedState {
 }
 
 #[cfg(test)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::float_cmp
+)]
 mod tests {
     use super::*;
     use std::sync::{Arc, Mutex, RwLock};
@@ -174,9 +180,8 @@ mod tests {
         });
         let _ = handle.join(); // ignore the panic from the spawned thread
 
-        let lock_result = m.lock();
-        // This should recover by resetting the inner value to Default
-        let guard = lock_result.unwrap_or_reset("test_mutex");
+        // Recover by resetting the inner value to Default
+        let guard = m.lock().unwrap_or_reset("test_mutex");
         assert_eq!(*guard, String::default());
 
         // Ensure the underlying data is actually reset
@@ -184,6 +189,7 @@ mod tests {
         // The lock remains poisoned in the OS-level primitive; use unwrap_or_log to access the inner value.
         let inner = m.lock().unwrap_or_log("test_mutex_check");
         assert_eq!(*inner, String::default());
+        drop(inner);
     }
 
     #[test]
@@ -196,9 +202,9 @@ mod tests {
         });
         let _ = handle.join();
 
-        let res = r.write();
-        let guard = res.unwrap_or_reset("test_rwlock");
+        let guard = r.write().unwrap_or_reset("test_rwlock");
         assert!(guard.is_empty());
+        drop(guard);
     }
 
     #[test]
@@ -211,9 +217,9 @@ mod tests {
         });
         let _ = handle.join();
 
-        let res = m.lock();
-        let guard = res.unwrap_or_log("test_mutex_log");
+        let guard = m.lock().unwrap_or_log("test_mutex_log");
         // The value should still be accessible (we didn't modify it before panic)
         assert_eq!(*guard, 42u32);
+        drop(guard);
     }
 }

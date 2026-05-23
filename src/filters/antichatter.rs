@@ -94,6 +94,12 @@ impl Filter for DevocubAntichatter {
 }
 
 #[cfg(test)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::float_cmp
+)]
 mod tests {
     use super::*;
     use crate::core::config::models::MappingConfig;
@@ -116,8 +122,8 @@ mod tests {
         let config = create_test_config(false, 10.0);
 
         let (x, y) = filter.process(0.5, 0.5, &config);
-        assert_eq!(x, 0.5);
-        assert_eq!(y, 0.5);
+        assert!((x - 0.5).abs() < f32::EPSILON);
+        assert!((y - 0.5).abs() < f32::EPSILON);
     }
 
     #[test]
@@ -130,7 +136,7 @@ mod tests {
         let (x, y) = filter.process(1.0, 1.0, &config);
 
         // Average of (0,0) and (1,1) should be (0.5, 0.5)
-        assert_eq!(x, 0.5);
-        assert_eq!(y, 0.5);
+        assert!((x - 0.5).abs() < f32::EPSILON);
+        assert!((y - 0.5).abs() < f32::EPSILON);
     }
 }
