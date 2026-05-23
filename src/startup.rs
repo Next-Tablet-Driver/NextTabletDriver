@@ -137,8 +137,7 @@ mod platform {
     ///
     /// Creates or removes a `.desktop` file following the XDG Autostart specification.
     pub fn set_run_at_startup(enabled: bool) -> Result<(), Box<dyn std::error::Error>> {
-        let desktop_path =
-            get_desktop_path().ok_or("Could not determine autostart directory path")?;
+        let desktop_path = get_desktop_path();
 
         if enabled {
             if let Some(parent) = desktop_path.parent() {
@@ -171,7 +170,7 @@ mod platform {
 
     /// Checks if the application is currently configured to run at startup.
     pub fn is_run_at_startup_registered() -> bool {
-        get_desktop_path().is_some_and(|p| p.exists())
+        get_desktop_path().exists()
     }
 }
 
