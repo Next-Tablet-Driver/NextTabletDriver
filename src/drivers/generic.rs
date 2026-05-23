@@ -16,7 +16,8 @@ use super::{NextTabletDriver, TabletData};
 /// to the specific sub-parser (Wacom, Huion, XP-Pen, etc.) defined in the config.
 pub struct GenericNextTabletDriver {
     config: TabletConfiguration,
-    // digitizer: Option<DigitizerIdentifier>,
+    #[allow(dead_code)]
+    digitizer: Option<DigitizerIdentifier>,
     vid: u16,
     pid: u16,
     parser: Box<dyn ReportParser>,
@@ -36,7 +37,7 @@ impl GenericNextTabletDriver {
 
         Self {
             config,
-            // digitizer: Some(digitizer),
+            digitizer: Some(digitizer.clone()),
             vid,
             pid,
             parser,
