@@ -38,13 +38,14 @@ impl Default for Injector {
     }
 }
 
+#[allow(clippy::panic)]
 fn create_uinput_device_builder() -> evdev::uinput::VirtualDeviceBuilder<'static> {
     match VirtualDevice::builder() {
         Ok(builder) => builder,
         Err(e) => {
             log::error!(
                 target: "Injector",
-                "CRITICAL ERROR: Failed to open /dev/uinput: {}.\n\
+                "CRITICAL ERROR: Failed to open /dev/uinput: {e}.\n\
                 This typically means the uinput kernel module is not loaded or you don't have permission to write to '/dev/uinput'.\n\
                 \n\
                 TO RESOLVE THIS (Linux):\n\
@@ -55,8 +56,7 @@ fn create_uinput_device_builder() -> evdev::uinput::VirtualDeviceBuilder<'static
                 3. Add your user to the 'input' group:\n\
                    sudo usermod -aG input $USER\n\
                 4. Log out and log back in, or run:\n\
-                   sudo udevadm control --reload-rules && sudo udevadm trigger --sysname-match=uinput\n",
-                e
+                   sudo udevadm control --reload-rules && sudo udevadm trigger --sysname-match=uinput\n"
             );
             panic!(
                 "Failed to open /dev/uinput: {e}. Please configure uinput udev rules as printed above."
@@ -78,6 +78,7 @@ impl Injector {
     /// # Panics
     /// Panics if `/dev/uinput` cannot be opened (missing permissions or kernel module).
     #[must_use]
+    #[allow(clippy::expect_used)]
     pub fn new() -> Self {
         let mut tablet_keys = AttributeSet::<KeyCode>::new();
         tablet_keys.insert(KeyCode::BTN_TOUCH);

@@ -154,13 +154,12 @@ mod platform {
             let desktop_content = format!(
                 "[Desktop Entry]\n\
                  Type=Application\n\
-                 Name={}\n\
+                 Name={APP_NAME}\n\
                  Comment=Tablet Driver for Osu! and Drawing\n\
-                 Exec={}\n\
+                 Exec={exe_path_str}\n\
                  Terminal=false\n\
                  X-GNOME-Autostart-enabled=true\n\
-                 StartupNotify=false\n",
-                APP_NAME, exe_path_str
+                 StartupNotify=false\n"
             );
 
             fs::write(&desktop_path, desktop_content)?;
