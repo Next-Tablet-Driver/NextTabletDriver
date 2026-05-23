@@ -77,6 +77,7 @@ impl Injector {
     ///
     /// # Panics
     /// Panics if `/dev/uinput` cannot be opened (missing permissions or kernel module).
+    #[must_use]
     pub fn new() -> Self {
         let mut tablet_keys = AttributeSet::<KeyCode>::new();
         tablet_keys.insert(KeyCode::BTN_TOUCH);
@@ -162,7 +163,7 @@ impl Injector {
         ];
 
         if let Err(e) = self.virtual_tablet.emit(&events) {
-            log::error!(target: "Injector", "Failed to emit proximity event: {}", e);
+            log::error!(target: "Injector", "Failed to emit proximity event: {e}");
         }
 
         self.last_proximity = Some(in_proximity);
@@ -229,7 +230,7 @@ impl Injector {
         ];
 
         if let Err(e) = self.virtual_tablet.emit(&events) {
-            log::error!(target: "Injector", "Failed to emit absolute events: {}", e);
+            log::error!(target: "Injector", "Failed to emit absolute events: {e}");
         }
     }
 
@@ -253,7 +254,7 @@ impl Injector {
             ];
 
             if let Err(e) = self.virtual_mouse.emit(&events) {
-                log::error!(target: "Injector", "Failed to emit relative events: {}", e);
+                log::error!(target: "Injector", "Failed to emit relative events: {e}");
             }
         }
     }
@@ -276,7 +277,7 @@ impl Injector {
         ];
 
         if let Err(e) = self.virtual_tablet.emit(&events) {
-            log::error!(target: "Injector", "Failed to emit button event: {}", e);
+            log::error!(target: "Injector", "Failed to emit button event: {e}");
         }
 
         // BTN_LEFT on mouse device for apps that don't honor BTN_TOUCH
@@ -286,7 +287,7 @@ impl Injector {
         ];
 
         if let Err(e) = self.virtual_mouse.emit(&mouse_events) {
-            log::error!(target: "Injector", "Failed to emit mouse button event: {}", e);
+            log::error!(target: "Injector", "Failed to emit mouse button event: {e}");
         }
 
         self.last_pressure_down = is_down;

@@ -73,13 +73,13 @@ impl NextTabletDriver for GenericNextTabletDriver {
         #[cfg(target_os = "linux")]
         {
             if let Some(ref d) = self.digitizer {
-                if let Some(expected_len) = d.input_report_length {
-                    if data.len() == expected_len {
-                        let mut buf = Vec::with_capacity(data.len() + 1);
-                        buf.push(0x00);
-                        buf.extend_from_slice(data);
-                        return self.parser.parse(&buf);
-                    }
+                if let Some(expected_len) = d.input_report_length
+                    && data.len() == expected_len
+                {
+                    let mut buf = Vec::with_capacity(data.len() + 1);
+                    buf.push(0x00);
+                    buf.extend_from_slice(data);
+                    return self.parser.parse(&buf);
                 }
             }
         }

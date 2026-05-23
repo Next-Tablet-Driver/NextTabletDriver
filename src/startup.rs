@@ -114,23 +114,23 @@ mod platform {
     use super::*;
 
     /// Returns the path to the autostart directory: `~/.config/autostart/`.
-    fn get_autostart_dir() -> Option<PathBuf> {
-        let config_dir = std::env::var("XDG_CONFIG_HOME")
-            .map(PathBuf::from)
-            .unwrap_or_else(|_| {
+    fn get_autostart_dir() -> std::path::PathBuf {
+        let config_dir = env::var("XDG_CONFIG_HOME").map_or_else(
+            |_| {
                 UserDirs::new()
                     .map(|dirs| dirs.home_dir().join(".config"))
                     .unwrap_or_else(|| PathBuf::from(".config"))
-            });
-        Some(config_dir.join("autostart"))
+            },
+            PathBuf::from,
+        );
+        config_dir.join("autostart")
     }
 
     /// Returns the full path to the `.desktop` autostart entry.
-    fn get_desktop_path() -> Option<PathBuf> {
-        get_autostart_dir().map(|mut p| {
-            p.push(format!("{}.desktop", APP_NAME));
-            p
-        })
+    fn get_desktop_path() -> PathBuf {
+        let mut p = get_autostart_dir();
+        p.push(format!("{APP_NAME}.desktop"));
+        p
     }
 
     /// Enables or disables the application's automatic launch at session startup.
@@ -161,17 +161,17 @@ mod platform {
             );
 
             fs::write(&desktop_path, desktop_content)?;
-            log::info!(target: "Startup", "Created autostart entry: {:?}", desktop_path);
+            log::info!(target: "Startup", "Created autostart entry: {desktop_path:?}");
         } else if desktop_path.exists() {
             fs::remove_file(&desktop_path)?;
-            log::info!(target: "Startup", "Removed autostart entry: {:?}", desktop_path);
+            log::info!(target: "Startup", "Removed autostart entry: {desktop_path:?}");
         }
         Ok(())
     }
 
     /// Checks if the application is currently configured to run at startup.
     pub fn is_run_at_startup_registered() -> bool {
-        get_desktop_path().map(|p| p.exists()).unwrap_or(false)
+        get_desktop_path().is_some_and(|p| p.exists())
     }
 }
 
