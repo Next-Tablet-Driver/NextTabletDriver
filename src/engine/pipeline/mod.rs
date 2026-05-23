@@ -196,6 +196,10 @@ mod tests {
 
     #[test]
     fn test_pipeline_absolute_normalization() {
+        if std::fs::metadata("/dev/uinput").is_err() {
+            return;
+        }
+
         let mut pipeline = Pipeline::new();
         let mut config = MappingConfig::default();
         config.active_area.x = 50.0;
