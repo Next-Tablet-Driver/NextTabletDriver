@@ -111,13 +111,16 @@ mod platform {
 // Linux Implementation .desktop file in ~/.config/autostart/
 #[cfg(target_os = "linux")]
 mod platform {
-    use super::{env, UserDirs, PathBuf, APP_NAME, fs};
+    use super::{APP_NAME, PathBuf, UserDirs, env, fs};
 
     /// Returns the path to the autostart directory: `~/.config/autostart/`.
     fn get_autostart_dir() -> std::path::PathBuf {
         let config_dir = env::var("XDG_CONFIG_HOME").map_or_else(
             |_| {
-                UserDirs::new().map_or_else(|| PathBuf::from(".config"), |dirs| dirs.home_dir().join(".config"))
+                UserDirs::new().map_or_else(
+                    || PathBuf::from(".config"),
+                    |dirs| dirs.home_dir().join(".config"),
+                )
             },
             PathBuf::from,
         );

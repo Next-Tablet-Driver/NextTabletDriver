@@ -72,7 +72,7 @@ impl NextTabletDriver for GenericNextTabletDriver {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
         #[cfg(target_os = "linux")]
         {
-            if let Some(ref d) = self.digitizer 
+            if let Some(ref d) = self.digitizer
                 && let Some(expected_len) = d.input_report_length
                 && data.len() == expected_len
             {
