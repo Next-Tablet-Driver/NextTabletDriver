@@ -42,7 +42,7 @@ impl Injector {
         }
     }
 
-    pub fn set_proximity(&mut self, _in_proximity: bool) {}
+    pub const fn set_proximity(&mut self, _in_proximity: bool) {}
 
     /// Injects an absolute cursor position on the screen.
     /// Used by `Absolute` driver mode.
@@ -57,6 +57,7 @@ impl Injector {
     /// * `_u` / `_v` - Normalized UV coordinates (unused on Windows).
     /// * `_pressure` - Pressure (unused on Windows).
     /// * `_tilt_x` / `_tilt_y` - Tilt (unused on Windows).
+    #[allow(clippy::too_many_arguments)]
     pub fn move_absolute(
         &mut self,
         target_x: f32,

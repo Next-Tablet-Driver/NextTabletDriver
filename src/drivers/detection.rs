@@ -1,11 +1,14 @@
-use crate::drivers::config::{DigitizerIdentifier, TabletConfiguration};
 use crate::drivers::NextTabletDriver;
+use crate::drivers::config::{DigitizerIdentifier, TabletConfiguration};
 use crate::drivers::config_loader::INDEXED_CONFIGS;
 use crate::drivers::generic::GenericNextTabletDriver;
 use hidapi::{HidApi, HidDevice};
 use std::time::{Duration, Instant};
 
-fn get_expected_interface(config: &TabletConfiguration, digitizer: &DigitizerIdentifier) -> Option<i32> {
+fn get_expected_interface(
+    config: &TabletConfiguration,
+    digitizer: &DigitizerIdentifier,
+) -> Option<i32> {
     let value = digitizer
         .attributes
         .as_ref()
@@ -24,8 +27,8 @@ fn get_expected_interface(config: &TabletConfiguration, digitizer: &DigitizerIde
     }
 }
 
-use std::sync::Mutex;
 use std::collections::HashSet;
+use std::sync::Mutex;
 
 static WARNED_UNSUPPORTED: Mutex<Option<HashSet<(u16, u16)>>> = Mutex::new(None);
 
@@ -53,7 +56,10 @@ pub fn detect_tablet(api: &HidApi) -> Option<(HidDevice, Box<dyn NextTabletDrive
         let pid = device_info.product_id();
 
         if !index.contains_key(&(vid, pid)) {
-            let m_str = device_info.manufacturer_string().unwrap_or("").to_lowercase();
+            let m_str = device_info
+                .manufacturer_string()
+                .unwrap_or("")
+                .to_lowercase();
             let p_str = device_info.product_string().unwrap_or("").to_lowercase();
             let is_tablet_brand = matches!(vid, 0x056a | 0x256c | 0x28bd | 0x5543 | 0x0b57)
                 || m_str.contains("tablet")
@@ -70,18 +76,23 @@ pub fn detect_tablet(api: &HidApi) -> Option<(HidDevice, Box<dyn NextTabletDrive
                 || p_str.contains("drawing monitor");
 
             if is_tablet_brand {
-                let mut guard = WARNED_UNSUPPORTED.lock().unwrap();
-                let set = guard.get_or_insert_with(HashSet::new);
-                if set.insert((vid, pid)) {
+                let is_new_entry = match WARNED_UNSUPPORTED.lock() {
+                    Ok(mut guard) => guard.get_or_insert_with(HashSet::new).insert((vid, pid)),
+                    Err(poisoned) => {
+                        let mut guard = poisoned.into_inner();
+                        guard.get_or_insert_with(HashSet::new).insert((vid, pid))
+                    }
+                };
+
+                if is_new_entry {
+                    let manufacturer = device_info.manufacturer_string().unwrap_or("<Unknown>");
+                    let product = device_info.product_string().unwrap_or("<Unknown>");
+
                     log::warn!(
                         target: "Detect",
-                        "Found unrecognized potential tablet device: [{:04x}:{:04x}] '{}' - '{}'.\n\
+                        "Found unrecognized potential tablet device: [{vid:04x}:{pid:04x}] '{manufacturer}' - '{product}'.\n\
                         No configuration file was found for this model. You can create a custom JSON configuration \
-                        in the 'tablets/' directory to add support for it.",
-                        vid,
-                        pid,
-                        device_info.manufacturer_string().unwrap_or("<Unknown>"),
-                        device_info.product_string().unwrap_or("<Unknown>")
+                        in the 'tablets/' directory to add support for it."
                     );
                 }
             }
@@ -93,10 +104,10 @@ pub fn detect_tablet(api: &HidApi) -> Option<(HidDevice, Box<dyn NextTabletDrive
                 let interface = device_info.interface_number();
                 let path = device_info.path();
 
-                if let Some(expected) = get_expected_interface(config, digitizer) {
-                    if expected != interface {
-                        continue;
-                    }
+                if let Some(expected) = get_expected_interface(config, digitizer)
+                    && expected != interface
+                {
+                    continue;
                 }
 
                 log::debug!(
@@ -185,14 +196,22 @@ pub fn detect_tablet(api: &HidApi) -> Option<(HidDevice, Box<dyn NextTabletDrive
 
                         return Some((
                             device,
-                            Box::new(GenericNextTabletDriver::new(config.clone(), digitizer.clone(), vid, pid)),
+                            Box::new(GenericNextTabletDriver::new(
+                                config.clone(),
+                                digitizer,
+                                vid,
+                                pid,
+                            )),
                             vid,
                             pid,
                         ));
                     }
                     Err(e) => {
                         let err_str = e.to_string().to_lowercase();
-                        if err_str.contains("permission") || err_str.contains("denied") || err_str.contains("access") {
+                        if err_str.contains("permission")
+                            || err_str.contains("denied")
+                            || err_str.contains("access")
+                        {
                             log::error!(
                                 target: "Detect",
                                 "PERMISSION DENIED: Could not open tablet '{}' at path {:?} (Interface {}) due to insufficient privileges.\n\

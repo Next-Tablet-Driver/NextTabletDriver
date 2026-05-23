@@ -58,7 +58,9 @@ fn create_uinput_device_builder() -> evdev::uinput::VirtualDeviceBuilder<'static
                    sudo udevadm control --reload-rules && sudo udevadm trigger --sysname-match=uinput\n",
                 e
             );
-            panic!("Failed to open /dev/uinput: {e}. Please configure uinput udev rules as printed above.");
+            panic!(
+                "Failed to open /dev/uinput: {e}. Please configure uinput udev rules as printed above."
+            );
         }
     }
 }

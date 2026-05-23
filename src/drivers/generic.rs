@@ -4,7 +4,7 @@
 //! with all supported tablet models. It reads their JSON configurations, routes
 //! initialization patterns, and instantiates the correct specific data parser.
 
-use super::config::{TabletConfiguration, DigitizerIdentifier};
+use super::config::{DigitizerIdentifier, TabletConfiguration};
 use super::parsers::{ReportParser, create_parser};
 use super::{NextTabletDriver, TabletData};
 
@@ -16,7 +16,7 @@ use super::{NextTabletDriver, TabletData};
 /// to the specific sub-parser (Wacom, Huion, XP-Pen, etc.) defined in the config.
 pub struct GenericNextTabletDriver {
     config: TabletConfiguration,
-    digitizer: Option<DigitizerIdentifier>,
+    // digitizer: Option<DigitizerIdentifier>,
     vid: u16,
     pid: u16,
     parser: Box<dyn ReportParser>,
@@ -24,14 +24,19 @@ pub struct GenericNextTabletDriver {
 
 impl GenericNextTabletDriver {
     #[must_use]
-    pub fn new(config: TabletConfiguration, digitizer: DigitizerIdentifier, vid: u16, pid: u16) -> Self {
+    pub fn new(
+        config: TabletConfiguration,
+        digitizer: &DigitizerIdentifier,
+        vid: u16,
+        pid: u16,
+    ) -> Self {
         let parser_name = digitizer.report_parser.as_str();
 
         let parser = create_parser(parser_name);
 
         Self {
             config,
-            digitizer: Some(digitizer),
+            // digitizer: Some(digitizer),
             vid,
             pid,
             parser,

@@ -129,8 +129,7 @@ pub fn create_parser(parser_name: &str) -> Box<dyn ReportParser> {
             if !parser_name.is_empty() {
                 log::warn!(
                     target: "Driver",
-                    "Unknown report parser '{}' specified in configuration. Falling back to FallbackParser.",
-                    parser_name
+                    "Unknown report parser '{parser_name}' specified in configuration. Falling back to FallbackParser."
                 );
             }
             Box::new(fallback::FallbackParser)
