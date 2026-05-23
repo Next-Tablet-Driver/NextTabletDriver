@@ -196,7 +196,8 @@ mod tests {
 
     #[test]
     fn test_pipeline_absolute_normalization() {
-        if std::fs::metadata("/dev/uinput").is_err() {
+        use std::fs::OpenOptions;
+        if OpenOptions::new().write(true).open("/dev/uinput").is_err() {
             return;
         }
 
