@@ -53,8 +53,7 @@ pub fn render_performance_panel(
 
                 ui.label("HID Read:");
                 ui.label(
-                    egui::RichText::new(format!("{:.3}ms", stats.hid_read_ms))
-                        .color(semantic.info),
+                    egui::RichText::new(format!("{:.3}ms", stats.hid_read_ms)).color(semantic.info),
                 );
                 ui.label(
                     egui::RichText::new(format!("{:.3}ms", stats.avg_hid_read_ms))
@@ -100,9 +99,7 @@ pub fn render_performance_panel(
                 ui.end_row();
 
                 ui.label("UI Sync:");
-                ui.label(
-                    egui::RichText::new(format!("{ui_latency:.3}ms")).color(semantic.warning),
-                );
+                ui.label(egui::RichText::new(format!("{ui_latency:.3}ms")).color(semantic.warning));
                 ui.label(
                     egui::RichText::new(format!("{avg_ui_latency:.3}ms"))
                         .color(semantic.warning)

@@ -21,7 +21,8 @@ pub struct SemanticColors {
 }
 
 impl SemanticColors {
-    pub fn default(dark_mode: bool) -> Self {
+    #[must_use]
+    pub const fn default(dark_mode: bool) -> Self {
         if dark_mode {
             Self {
                 success: egui::Color32::from_rgb(166, 227, 161),
@@ -108,27 +109,43 @@ pub fn apply_theme(ctx: &egui::Context, theme: &ThemePreference) {
             let v = egui::Visuals::dark();
             if let Some(config) = crate::settings::themes::load_custom_theme(name) {
                 semantic = SemanticColors::default(config.colors.dark_mode);
-                
+
                 if let Some(ref c) = config.colors.success_color {
-                    semantic.success = crate::core::config::theme_models::ThemeConfig::parse_color(c, semantic.success);
+                    semantic.success = crate::core::config::theme_models::ThemeConfig::parse_color(
+                        c,
+                        semantic.success,
+                    );
                 }
                 if let Some(ref c) = config.colors.warning_color {
-                    semantic.warning = crate::core::config::theme_models::ThemeConfig::parse_color(c, semantic.warning);
+                    semantic.warning = crate::core::config::theme_models::ThemeConfig::parse_color(
+                        c,
+                        semantic.warning,
+                    );
                 }
                 if let Some(ref c) = config.colors.error_color {
-                    semantic.error = crate::core::config::theme_models::ThemeConfig::parse_color(c, semantic.error);
+                    semantic.error = crate::core::config::theme_models::ThemeConfig::parse_color(
+                        c,
+                        semantic.error,
+                    );
                 }
                 if let Some(ref c) = config.colors.info_color {
-                    semantic.info = crate::core::config::theme_models::ThemeConfig::parse_color(c, semantic.info);
+                    semantic.info = crate::core::config::theme_models::ThemeConfig::parse_color(
+                        c,
+                        semantic.info,
+                    );
                 }
                 // Playfield color: use explicit override, otherwise keep the default osu! pink.
                 if let Some(ref c) = config.colors.playfield_color {
-                    semantic.playfield = crate::core::config::theme_models::ThemeConfig::parse_color(c, semantic.playfield);
+                    semantic.playfield =
+                        crate::core::config::theme_models::ThemeConfig::parse_color(
+                            c,
+                            semantic.playfield,
+                        );
                 }
-                
+
                 let style = config.to_style(&ctx.style());
                 ctx.set_style(style);
-                
+
                 // Return early so we don't overwrite the custom style with the hardcoded
                 // spacing and corner radius below.
                 ctx.data_mut(|d| d.insert_temp(egui::Id::new("SemanticColors"), semantic));
@@ -141,7 +158,7 @@ pub fn apply_theme(ctx: &egui::Context, theme: &ThemePreference) {
     let accent_color = visuals.selection.bg_fill;
 
     let mut style = (*ctx.style()).clone();
-    
+
     // Apply the newly constructed visuals to the style first!
     // This prevents default Egui dark theme widgets from overriding light/custom themes.
     style.visuals = visuals.clone();
@@ -173,32 +190,35 @@ pub fn apply_theme(ctx: &egui::Context, theme: &ThemePreference) {
         egui::Stroke::new(1.0, accent_color.gamma_multiply(0.5));
     style.visuals.widgets.active.bg_stroke = egui::Stroke::new(1.0, accent_color);
 
-    style.visuals.widgets.hovered.bg_fill =
-        visuals.widgets.hovered.bg_fill.gamma_multiply(0.8);
+    style.visuals.widgets.hovered.bg_fill = visuals.widgets.hovered.bg_fill.gamma_multiply(0.8);
 
     style.visuals.selection.bg_fill = accent_color;
     style.visuals.selection.stroke = egui::Stroke::new(1.0, visuals.strong_text_color());
 
     ctx.set_style(style);
-    
+
     // Store semantic colors in context memory
     ctx.data_mut(|d| d.insert_temp(egui::Id::new("SemanticColors"), semantic));
 }
 
 /// Helper function to retrieve the active semantic colors
+#[must_use]
 pub fn semantic_colors(ctx: &egui::Context) -> SemanticColors {
-    ctx.data(|d| d.get_temp(egui::Id::new("SemanticColors")).unwrap_or_else(|| SemanticColors::default(ctx.style().visuals.dark_mode)))
+    ctx.data(|d| {
+        d.get_temp(egui::Id::new("SemanticColors"))
+            .unwrap_or_else(|| SemanticColors::default(ctx.style().visuals.dark_mode))
+    })
 }
 
 /// Returns a color for panel backgrounds that adapts to dark/light mode.
 #[must_use]
-pub fn panel_bg(visuals: &egui::Visuals) -> egui::Color32 {
+pub const fn panel_bg(visuals: &egui::Visuals) -> egui::Color32 {
     visuals.panel_fill
 }
 
 /// Returns a color for panel borders that adapts to dark/light mode.
 #[must_use]
-pub fn panel_border(visuals: &egui::Visuals) -> egui::Color32 {
+pub const fn panel_border(visuals: &egui::Visuals) -> egui::Color32 {
     visuals.widgets.noninteractive.bg_stroke.color
 }
 

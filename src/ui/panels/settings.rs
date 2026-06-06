@@ -84,24 +84,29 @@ pub fn render_settings_panel(
                             crate::core::config::models::ThemePreference::CatppuccinMocha,
                             "Catppuccin Mocha",
                         );
-                        
+
                         let custom_themes = crate::settings::themes::list_custom_themes();
                         if !custom_themes.is_empty() {
                             ui.separator();
                             for name in custom_themes {
                                 ui.selectable_value(
                                     &mut config.theme,
-                                    crate::core::config::models::ThemePreference::Custom(name.clone()),
+                                    crate::core::config::models::ThemePreference::Custom(
+                                        name.clone(),
+                                    ),
                                     name,
                                 );
                             }
                         }
                     });
 
-                if let crate::core::config::models::ThemePreference::Custom(name) = &config.theme.clone() {
+                if let crate::core::config::models::ThemePreference::Custom(name) =
+                    &config.theme.clone()
+                {
                     let mut delete = false;
                     ui.scope(|ui| {
-                        ui.style_mut().visuals.widgets.inactive.bg_fill = egui::Color32::TRANSPARENT;
+                        ui.style_mut().visuals.widgets.inactive.bg_fill =
+                            egui::Color32::TRANSPARENT;
                         ui.style_mut().visuals.widgets.inactive.bg_stroke = egui::Stroke::NONE;
                         if ui
                             .button(
@@ -114,26 +119,29 @@ pub fn render_settings_panel(
                             delete = true;
                         }
                     });
-                    if delete {
-                        if let Ok(_) = crate::settings::themes::delete_custom_theme(name) {
-                            config.theme = crate::core::config::models::ThemePreference::System;
-                        }
+                    if delete && crate::settings::themes::delete_custom_theme(name) == Ok(()) {
+                        config.theme = crate::core::config::models::ThemePreference::System;
                     }
                 }
-                    
+
                 ui.add_space(10.0);
-                if ui.button(format!("{} Import Theme (.json)", egui_phosphor::regular::DOWNLOAD_SIMPLE)).clicked() {
-                    if let Some(path) = rfd::FileDialog::new()
+                if ui
+                    .button(format!(
+                        "{} Import Theme (.json)",
+                        egui_phosphor::regular::DOWNLOAD_SIMPLE
+                    ))
+                    .clicked()
+                    && let Some(path) = rfd::FileDialog::new()
                         .add_filter("Theme File", &["json"])
-                        .pick_file() 
-                    {
-                        match crate::settings::themes::import_theme_json(&path) {
-                            Ok(name) => {
-                                config.theme = crate::core::config::models::ThemePreference::Custom(name);
-                            }
-                            Err(e) => {
-                                log::error!(target: "UI", "Failed to import theme: {e}");
-                            }
+                        .pick_file()
+                {
+                    match crate::settings::themes::import_theme_json(&path) {
+                        Ok(name) => {
+                            config.theme =
+                                crate::core::config::models::ThemePreference::Custom(name);
+                        }
+                        Err(e) => {
+                            log::error!(target: "UI", "Failed to import theme: {e}");
                         }
                     }
                 }

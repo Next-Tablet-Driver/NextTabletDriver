@@ -88,12 +88,7 @@ pub fn render_debugger_panel(snapshot: &UiSnapshot, displayed_hz: f32, ui: &mut 
                 );
                 ui.add_space(10.0);
                 let tilt_str = format!("X: {}, Y: {}", tablet_data.tilt_x, tablet_data.tilt_y);
-                status_card(
-                    ui,
-                    "PEN TILT",
-                    &tilt_str,
-                    ui.visuals().selection.bg_fill,
-                );
+                status_card(ui, "PEN TILT", &tilt_str, ui.visuals().selection.bg_fill);
             });
             col1.vertical(|ui| {
                 status_card(

@@ -128,6 +128,17 @@ pub fn save_settings(name: &str, config: &MappingConfig) -> Result<(), String> {
     Ok(())
 }
 
+/// Validates that the selected theme exists, reverting to System if it doesn't.
+fn validate_theme(config: &mut MappingConfig, corrections: &mut Vec<String>) {
+    if let crate::core::config::models::ThemePreference::Custom(name) = &config.theme {
+        let available = crate::settings::themes::list_custom_themes();
+        if !available.contains(name) {
+            corrections.push(format!("Custom theme '{name}' not found, reverting to System"));
+            config.theme = crate::core::config::models::ThemePreference::System;
+        }
+    }
+}
+
 /// Persists the current session state to `last_session.json`.
 ///
 /// Called asynchronously from a background saver thread — never from the UI thread.
@@ -156,9 +167,13 @@ pub fn load_last_session() -> Option<(MappingConfig, Vec<String>)> {
     match fs::read_to_string(&path) {
         Ok(content) => match serde_json::from_str::<MappingConfig>(&content) {
             Ok(mut config) => {
-                let corrections = config.validate_and_repair();
+                let mut corrections = config.validate_and_repair();
+                validate_theme(&mut config, &mut corrections);
+                
                 if !corrections.is_empty() {
                     log::warn!(target: "Config", "Last session config had {} field(s) repaired", corrections.len());
+                    // Automatically save the repaired config
+                    let _ = save_last_session(&config);
                 }
                 log::info!(target: "Config", "Loaded last session from {}", path.display());
                 Some((config, corrections))
@@ -191,9 +206,13 @@ pub fn load_settings_from_file(path: &Path) -> Result<(MappingConfig, Vec<String
         e.to_string()
     })?;
 
-    let corrections = config.validate_and_repair();
+    let mut corrections = config.validate_and_repair();
+    validate_theme(&mut config, &mut corrections);
+
     if !corrections.is_empty() {
         log::warn!(target: "Config", "Config from {} had {} field(s) repaired", path.display(), corrections.len());
+        // Automatically save the repaired config
+        let _ = save_to_path(path, &config);
     }
 
     log::info!(target: "Config", "Loaded settings from {}", path.display());

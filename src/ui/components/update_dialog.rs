@@ -95,9 +95,7 @@ pub fn render_update_dialog(app: &mut TabletMapperApp, ctx: &egui::Context) {
                                 .auto_shrink([false; 2])
                                 .show(ui, |ui| {
                                     ui.label(
-                                        egui::RichText::new(body)
-                                            .size(13.0)
-                                            .color(text_color),
+                                        egui::RichText::new(body).size(13.0).color(text_color),
                                     );
                                 });
                         });

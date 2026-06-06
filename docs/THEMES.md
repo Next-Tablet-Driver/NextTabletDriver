@@ -1,36 +1,36 @@
-# Guide de Création de Thèmes pour NextTabletDriver
+# Theme Creation Guide for NextTabletDriver
 
-NextTabletDriver supporte des thèmes 100% personnalisables via des fichiers JSON.
-Vous avez un contrôle absolu sur la palette de couleurs : rien n'est hardcodé. Vous contrôlez les couleurs sémantiques (statuts, console), les fonds de tous les champs de texte et sélecteurs, ainsi que la structure de l'interface (arrondi, espacements, bordures).
-
----
-
-## Démarrage rapide
-
-1. Copiez `example-theme.json` (à la racine du projet) dans votre dossier `themes/`.
-2. Ouvrez NextTabletDriver.
-3. Allez dans **Settings → Application Theme → Import Theme (.json)**.
-4. Sélectionnez votre fichier. Le thème s'applique **immédiatement**.
-
-> Si votre fichier JSON contient une erreur de syntaxe, l'application revient automatiquement au thème sombre par défaut.
+NextTabletDriver supports 100% customizable themes via JSON files.
+You have absolute control over the color palette: nothing is hardcoded. You control semantic colors (statuses, console), backgrounds for all text fields and dropdowns, as well as the interface structure (corner rounding, spacing, borders).
 
 ---
 
-## Structure complète d'un `theme.json`
+## Quick Start
+
+1. Download the [example theme](https://raw.githubusercontent.com/Next-Tablet-Driver/NextTabletDriver-Themes/refs/heads/main/00%20EXAMPLE/theme.json) and place it into your `themes/` folder.
+2. Open NextTabletDriver.
+3. Go to **Settings > Application Theme > Import Theme (.json)**.
+4. Select your file. The theme applies **immediately**.
+
+> If your JSON file contains a syntax error, the application will automatically revert to the default dark theme.
+
+---
+
+## Full Structure of a `theme.json`
 
 ```json
 {
   "metadata": {
-    "name": "Mon Thème",
-    "author": "Votre Nom",
+    "name": "My Theme",
+    "author": "Your Name",
     "version": "1.0",
-    "update_url": "https://raw.githubusercontent.com/.../theme.json"
+    "update_url": "https://raw.githubusercontent.com/Next-Tablet-Driver/NextTabletDriver-Themes/refs/heads/main/00%20EXAMPLE/theme.json"
   },
   "colors": {
     "dark_mode": true,
 
-    "panel_bg":          "#12121c",
-    "window_bg":         "#0a0a0f",
+    "panel_bg":         "#12121c",
+    "window_bg":        "#0a0a0f",
     "text_color":        "#a0a0b5",
     "strong_text_color": "#ffffff",
     "accent_color":      "#ff007f",
@@ -58,82 +58,82 @@ Vous avez un contrôle absolu sur la palette de couleurs : rien n'est hardcodé.
 
 ---
 
-## Référence des champs
+## Field Reference
 
 ### `metadata`
 
-| Champ | Type | Obligatoire | Description |
+| Field | Type | Required | Description |
 |---|---|---|---|
-| `name` | string | ✅ | Nom du thème affiché dans les paramètres. |
-| `author` | string | ✅ | Votre nom / pseudo. |
-| `version` | string | ✅ | Version du thème (ex : `"1.0"`). Utile pour gérer vos mises à jour. |
-| `update_url` | string | ❌ | URL directe vers le fichier `.json` brut (ex: GitHub Raw). **Réservé pour un futur système de mise à jour automatique des thèmes** — documenter ce champ maintenant permet de l'activer sans breaking change plus tard. |
+| `name` | string | ✅ | Name of the theme displayed in the settings. |
+| `author` | string | ✅ | Your name / alias. |
+| `version` | string | ✅ | Theme version (e.g., `"1.0"`). Useful for managing your updates. |
+| `update_url` | string | ❌ | Direct URL to the raw `.json` file (e.g., GitHub Raw). **Reserved for a future automatic theme update system** — documenting this field now allows activating it without a breaking change later. |
 
 ---
 
 ### `colors`
 
-Toutes les couleurs utilisent le format **hexadécimal** :
-- `"#RRGGBB"` → couleur opaque (ex: `"#ff0000"` pour rouge)
-- `"#RRGGBBAA"` → couleur avec canal alpha (ex: `"#ff000080"` pour rouge à 50%)
+All colors use **hexadecimal** format:
+- `"#RRGGBB"` → opaque color (e.g., `"#ff0000"` for red)
+- `"#RRGGBBAA"` → color with alpha channel (e.g., `"#ff000080"` for 50% red)
 
-#### Palette principale (obligatoire)
+#### Main Palette (Required)
 
-| Champ | Description |
+| Field | Description |
 |---|---|
-| `dark_mode` | `true` ou `false`. Indique si le thème est sombre ou clair. Egui utilise ce flag pour ajuster des micro-détails internes (ombres, états désactivés, etc.). |
-| `panel_bg` | Fond des cartes, groupes, et panneaux de paramètres. |
-| `window_bg` | Fond global de la fenêtre de l'application. |
-| `text_color` | Texte normal (labels, descriptions). |
-| `strong_text_color` | Texte en gras, titres, et texte survolé. |
-| `accent_color` | Couleur principale du thème : checkboxes, sélections, widgets actifs, curseurs. |
-| `border_color` | Bordures entre cartes et panneaux. |
-| `widget_bg` | Fond de tous les boutons, champs de saisie (inputs), et listes déroulantes (combo boxes). |
-| `widget_hover` | Fond de ces mêmes éléments à l'état survolé. |
-| `widget_active` | Fond de ces mêmes éléments à l'état cliqué/actif. |
+| `dark_mode` | `true` or `false`. Indicates if the theme is dark or light. Egui uses this flag to adjust internal micro-details (shadows, disabled states, etc.). |
+| `panel_bg` | Background of cards, groups, and settings panels. |
+| `window_bg` | Global background of the application window. |
+| `text_color` | Normal text (labels, descriptions). |
+| `strong_text_color` | Bold text, titles, and hovered text. |
+| `accent_color` | Main theme color: checkboxes, selections, active widgets, sliders. |
+| `border_color` | Borders between cards and panels. |
+| `widget_bg` | Background of all buttons, text inputs, and combo boxes. |
+| `widget_hover` | Background of these same elements in hovered state. |
+| `widget_active` | Background of these same elements in clicked/active state. |
 
-#### Couleurs sémantiques (optionnel)
+#### Semantic Colors (Optional)
 
-Ces couleurs contrôlent les indicateurs de statut dans toute l'interface. Si omises, des valeurs par défaut adaptées à `dark_mode` sont utilisées.
+These colors control the status indicators throughout the interface. If omitted, default values suitable for `dark_mode` are used.
 
-| Champ | Où c'est utilisé |
+| Field | Where it's used |
 |---|---|
-| `success_color` | Badge "RUNNING", items "NEW" dans la Release tab, latence Parser, point de contact du stylet. |
-| `warning_color` | Items "FIX" dans la Release tab, latence UI Sync, carte Report Rate dans le Debugger. |
-| `error_color` | Badge "STOPPED", items "DEL" dans la Release tab. |
-| `info_color` | Items "IMP" dans la Release tab, logs INFO de la console, latence HID Read, carte Pressure dans le Debugger. |
-| `playfield_color` | Couleur du rectangle osu! Playfield dans la prévisualisation de la tablette. Par défaut : rose osu! (`#ff69b4`). Utilisez `#RRGGBBAA` pour ajuster la transparence du fond (ex: `#ff69b480`). |
+| `success_color` | "RUNNING" badge, "NEW" items in the Release tab, Parser latency, stylus touch point. |
+| `warning_color` | "FIX" items in the Release tab, UI Sync latency, Report Rate card in the Debugger. |
+| `error_color` | "STOPPED" badge, "DEL" items in the Release tab. |
+| `info_color` | "IMP" items in the Release tab, console INFO logs, HID Read latency, Pressure card in the Debugger. |
+| `playfield_color` | Color of the osu! Playfield rectangle in the tablet preview. Default: osu! pink (`#ff69b4`). Use `#RRGGBBAA` to adjust background transparency (e.g., `#ff69b480`). |
 
 ---
 
-### `spacing` *(bloc entièrement optionnel)*
+### `spacing` *(completely optional block)*
 
-Omettre ce bloc conserve les espacements par défaut d'egui.
+Omitting this block keeps the default egui spacing.
 
-| Champ | Type | Description |
+| Field | Type | Description |
 |---|---|---|
-| `corner_radius` | float | Arrondi (en pixels) appliqué à tous les widgets, boutons, panneaux et à la fenêtre. |
-| `item_spacing_x` | float | Espace horizontal entre deux éléments consécutifs. |
-| `item_spacing_y` | float | Espace vertical entre deux éléments consécutifs. |
-| `button_padding_x` | float | Padding horizontal à l'intérieur d'un bouton. |
-| `button_padding_y` | float | Padding vertical à l'intérieur d'un bouton. |
-| `border_width` | float | Épaisseur des bordures. Les panneaux utilisent automatiquement la moitié de cette valeur. |
+| `corner_radius` | float | Corner rounding (in pixels) applied to all widgets, buttons, panels, and the window. |
+| `item_spacing_x` | float | Horizontal space between two consecutive elements. |
+| `item_spacing_y` | float | Vertical space between two consecutive elements. |
+| `button_padding_x` | float | Horizontal padding inside a button. |
+| `button_padding_y` | float | Vertical padding inside a button. |
+| `border_width` | float | Border thickness. Panels automatically use half of this value. |
 
 ---
 
-## Conseils de design
+## Design Tips
 
-- **Contrastes** : assurez-vous que `text_color` est lisible sur `panel_bg` et `window_bg`.
-- **Cohérence** : `widget_active` et `accent_color` peuvent être identiques pour un thème simple.
-- **Transparences** : utilisez le format `#RRGGBBAA` pour des effets de superposition subtils sur les widgets.
-- **Thème clair** : pensez à mettre `dark_mode: false` et à choisir des couleurs `panel_bg`/`window_bg` claires.
+- **Contrasts**: Ensure `text_color` is readable on `panel_bg` and `window_bg`.
+- **Consistency**: `widget_active` and `accent_color` can be identical for a simple theme.
+- **Transparencies**: Use `#RRGGBBAA` format for subtle overlay effects on widgets.
+- **Light Theme**: Remember to set `dark_mode: false` and choose light `panel_bg`/`window_bg` colors.
 
 ---
 
-## Partager votre thème
+## Sharing Your Theme
 
-1. Publiez votre `theme.json` sur GitHub (ou tout hébergeur).
-2. Renseignez le lien **GitHub Raw** dans `update_url` (exemple : `https://raw.githubusercontent.com/VotreUser/repo/main/theme.json`).
-3. Partagez l'URL directe du `.json` pour que les utilisateurs puissent l'importer en un clic via **Import Theme**.
+1. Publish your `theme.json` on GitHub (or any host).
+2. Enter the **GitHub Raw** link in `update_url` (example: `https://raw.githubusercontent.com/YourUser/repo/main/theme.json`).
+3. Share the direct URL to the `.json` so users can import it with one click via **Import Theme**.
 
-> Le système de mise à jour automatique via `update_url` est prévu pour une prochaine version.
+> The automatic update system via `update_url` is planned for a future release.
