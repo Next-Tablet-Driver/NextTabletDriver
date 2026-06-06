@@ -9,33 +9,142 @@ use crate::core::config::models::ThemePreference;
 
 use eframe::egui;
 
+#[derive(Clone, Copy)]
+pub struct SemanticColors {
+    pub success: egui::Color32,
+    pub warning: egui::Color32,
+    pub error: egui::Color32,
+    pub info: egui::Color32,
+    /// Color used for the osu! playfield overlay in the tablet preview.
+    /// Defaults to the iconic osu! pink so it is recognizable out of the box.
+    pub playfield: egui::Color32,
+}
+
+impl SemanticColors {
+    pub fn default(dark_mode: bool) -> Self {
+        if dark_mode {
+            Self {
+                success: egui::Color32::from_rgb(166, 227, 161),
+                warning: egui::Color32::from_rgb(249, 226, 175),
+                error: egui::Color32::from_rgb(243, 139, 168),
+                info: egui::Color32::from_rgb(137, 180, 250),
+                playfield: egui::Color32::from_rgb(255, 105, 180),
+            }
+        } else {
+            Self {
+                success: egui::Color32::from_rgb(64, 160, 43),
+                warning: egui::Color32::from_rgb(223, 142, 29),
+                error: egui::Color32::from_rgb(210, 15, 57),
+                info: egui::Color32::from_rgb(30, 102, 245),
+                playfield: egui::Color32::from_rgb(255, 105, 180),
+            }
+        }
+    }
+}
+
 /// Injects custom spacing, colors, and strokes into the `egui::Context`.
 /// Called once at application startup.
-pub fn apply_theme(ctx: &egui::Context, theme: ThemePreference) {
-    match theme {
-        ThemePreference::Light => ctx.set_visuals(egui::Visuals::light()),
-        ThemePreference::Dark => ctx.set_visuals(egui::Visuals::dark()),
-        ThemePreference::System => ctx.set_visuals(egui::Visuals::default()),
-        ThemePreference::CatppuccinLatte => catppuccin_egui::set_theme(ctx, catppuccin_egui::LATTE),
+pub fn apply_theme(ctx: &egui::Context, theme: &ThemePreference) {
+    let mut semantic = SemanticColors::default(true);
+    let visuals = match theme {
+        ThemePreference::Light => {
+            semantic = SemanticColors::default(false);
+            let mut v = egui::Visuals::light();
+            v.panel_fill = egui::Color32::from_gray(250);
+            v.widgets.noninteractive.bg_stroke.color = egui::Color32::from_gray(235);
+            v.selection.bg_fill = egui::Color32::from_rgb(0, 120, 215);
+            v
+        }
+        ThemePreference::Dark => {
+            semantic = SemanticColors::default(true);
+            let mut v = egui::Visuals::dark();
+            v.panel_fill = egui::Color32::from_gray(45);
+            v.widgets.noninteractive.bg_stroke.color = egui::Color32::from_gray(60);
+            v.selection.bg_fill = egui::Color32::from_rgb(0, 120, 215);
+            v
+        }
+        ThemePreference::System => {
+            let mut v = egui::Visuals::default();
+            semantic = SemanticColors::default(v.dark_mode);
+            if v.dark_mode {
+                v.panel_fill = egui::Color32::from_gray(45);
+                v.widgets.noninteractive.bg_stroke.color = egui::Color32::from_gray(60);
+            } else {
+                v.panel_fill = egui::Color32::from_gray(250);
+                v.widgets.noninteractive.bg_stroke.color = egui::Color32::from_gray(235);
+            }
+            v.selection.bg_fill = egui::Color32::from_rgb(0, 120, 215);
+            v
+        }
+        ThemePreference::CatppuccinLatte => {
+            semantic = SemanticColors::default(false);
+            catppuccin_egui::set_theme(ctx, catppuccin_egui::LATTE);
+            let mut v = ctx.style().visuals.clone();
+            v.selection.bg_fill = catppuccin_egui::LATTE.blue;
+            v
+        }
         ThemePreference::CatppuccinFrappe => {
+            semantic = SemanticColors::default(true);
             catppuccin_egui::set_theme(ctx, catppuccin_egui::FRAPPE);
+            let mut v = ctx.style().visuals.clone();
+            v.selection.bg_fill = catppuccin_egui::FRAPPE.blue;
+            v
         }
         ThemePreference::CatppuccinMacchiato => {
+            semantic = SemanticColors::default(true);
             catppuccin_egui::set_theme(ctx, catppuccin_egui::MACCHIATO);
+            let mut v = ctx.style().visuals.clone();
+            v.selection.bg_fill = catppuccin_egui::MACCHIATO.blue;
+            v
         }
-        ThemePreference::CatppuccinMocha => catppuccin_egui::set_theme(ctx, catppuccin_egui::MOCHA),
-    }
-
-    // Determine the accent color based on theme
-    let accent_color = match theme {
-        ThemePreference::CatppuccinLatte => catppuccin_egui::LATTE.blue,
-        ThemePreference::CatppuccinFrappe => catppuccin_egui::FRAPPE.blue,
-        ThemePreference::CatppuccinMacchiato => catppuccin_egui::MACCHIATO.blue,
-        ThemePreference::CatppuccinMocha => catppuccin_egui::MOCHA.blue,
-        _ => egui::Color32::from_rgb(0, 120, 215),
+        ThemePreference::CatppuccinMocha => {
+            semantic = SemanticColors::default(true);
+            catppuccin_egui::set_theme(ctx, catppuccin_egui::MOCHA);
+            let mut v = ctx.style().visuals.clone();
+            v.selection.bg_fill = catppuccin_egui::MOCHA.blue;
+            v
+        }
+        ThemePreference::Custom(name) => {
+            let v = egui::Visuals::dark();
+            if let Some(config) = crate::settings::themes::load_custom_theme(name) {
+                semantic = SemanticColors::default(config.colors.dark_mode);
+                
+                if let Some(ref c) = config.colors.success_color {
+                    semantic.success = crate::core::config::theme_models::ThemeConfig::parse_color(c, semantic.success);
+                }
+                if let Some(ref c) = config.colors.warning_color {
+                    semantic.warning = crate::core::config::theme_models::ThemeConfig::parse_color(c, semantic.warning);
+                }
+                if let Some(ref c) = config.colors.error_color {
+                    semantic.error = crate::core::config::theme_models::ThemeConfig::parse_color(c, semantic.error);
+                }
+                if let Some(ref c) = config.colors.info_color {
+                    semantic.info = crate::core::config::theme_models::ThemeConfig::parse_color(c, semantic.info);
+                }
+                // Playfield color: use explicit override, otherwise keep the default osu! pink.
+                if let Some(ref c) = config.colors.playfield_color {
+                    semantic.playfield = crate::core::config::theme_models::ThemeConfig::parse_color(c, semantic.playfield);
+                }
+                
+                let style = config.to_style(&ctx.style());
+                ctx.set_style(style);
+                
+                // Return early so we don't overwrite the custom style with the hardcoded
+                // spacing and corner radius below.
+                ctx.data_mut(|d| d.insert_temp(egui::Id::new("SemanticColors"), semantic));
+                return;
+            }
+            v
+        }
     };
 
+    let accent_color = visuals.selection.bg_fill;
+
     let mut style = (*ctx.style()).clone();
+    
+    // Apply the newly constructed visuals to the style first!
+    // This prevents default Egui dark theme widgets from overriding light/custom themes.
+    style.visuals = visuals.clone();
 
     // Spacing & Rounding
     style.spacing.item_spacing = egui::vec2(8.0, 8.0);
@@ -52,8 +161,7 @@ pub fn apply_theme(ctx: &egui::Context, theme: ThemePreference) {
 
     style.visuals.widgets.noninteractive.bg_stroke = egui::Stroke::new(
         0.5,
-        style
-            .visuals
+        visuals
             .widgets
             .noninteractive
             .bg_stroke
@@ -66,36 +174,32 @@ pub fn apply_theme(ctx: &egui::Context, theme: ThemePreference) {
     style.visuals.widgets.active.bg_stroke = egui::Stroke::new(1.0, accent_color);
 
     style.visuals.widgets.hovered.bg_fill =
-        style.visuals.widgets.hovered.bg_fill.gamma_multiply(0.8);
+        visuals.widgets.hovered.bg_fill.gamma_multiply(0.8);
 
     style.visuals.selection.bg_fill = accent_color;
-    style.visuals.selection.stroke = egui::Stroke::new(1.0, egui::Color32::WHITE);
+    style.visuals.selection.stroke = egui::Stroke::new(1.0, visuals.strong_text_color());
 
     ctx.set_style(style);
+    
+    // Store semantic colors in context memory
+    ctx.data_mut(|d| d.insert_temp(egui::Id::new("SemanticColors"), semantic));
+}
+
+/// Helper function to retrieve the active semantic colors
+pub fn semantic_colors(ctx: &egui::Context) -> SemanticColors {
+    ctx.data(|d| d.get_temp(egui::Id::new("SemanticColors")).unwrap_or_else(|| SemanticColors::default(ctx.style().visuals.dark_mode)))
 }
 
 /// Returns a color for panel backgrounds that adapts to dark/light mode.
 #[must_use]
 pub fn panel_bg(visuals: &egui::Visuals) -> egui::Color32 {
-    if visuals.window_fill == egui::Visuals::dark().window_fill {
-        egui::Color32::from_gray(45)
-    } else if visuals.window_fill == egui::Visuals::light().window_fill {
-        egui::Color32::from_gray(250)
-    } else {
-        visuals.panel_fill // Use the theme's own panel color (e.g., Mantle for Catppuccin)
-    }
+    visuals.panel_fill
 }
 
 /// Returns a color for panel borders that adapts to dark/light mode.
 #[must_use]
 pub fn panel_border(visuals: &egui::Visuals) -> egui::Color32 {
-    if visuals.window_fill == egui::Visuals::dark().window_fill {
-        egui::Color32::from_gray(60)
-    } else if visuals.window_fill == egui::Visuals::light().window_fill {
-        egui::Color32::from_gray(235)
-    } else {
-        visuals.widgets.noninteractive.bg_stroke.color
-    }
+    visuals.widgets.noninteractive.bg_stroke.color
 }
 
 /// Returns a subtle text color for labels.
@@ -107,11 +211,7 @@ pub fn label_color(visuals: &egui::Visuals) -> egui::Color32 {
 /// Returns the accent background color (blue area) that adapts to theme.
 #[must_use]
 pub fn accent_bg(visuals: &egui::Visuals) -> egui::Color32 {
-    if visuals.dark_mode {
-        egui::Color32::from_rgba_unmultiplied(60, 120, 180, 255) // Darker blue
-    } else {
-        egui::Color32::from_rgba_unmultiplied(137, 196, 244, 255) // Original light blue
-    }
+    visuals.selection.bg_fill.gamma_multiply(0.8)
 }
 
 /// Renders a standardized section header with a title and a horizontal separator line.
@@ -149,10 +249,6 @@ pub fn ui_labeled_box<R>(
     let label_clr = label_color(visuals);
 
     ui.scope(|ui| {
-        ui.style_mut().visuals.widgets.inactive.bg_fill = egui::Color32::TRANSPARENT;
-        ui.style_mut().visuals.widgets.inactive.bg_stroke = egui::Stroke::NONE;
-        ui.style_mut().visuals.widgets.hovered.bg_fill = egui::Color32::from_white_alpha(15);
-        ui.style_mut().visuals.widgets.active.bg_fill = egui::Color32::from_white_alpha(20);
         ui.style_mut().spacing.button_padding = egui::vec2(6.0, 2.0);
 
         egui::Frame::new()
@@ -361,8 +457,6 @@ pub fn ui_setting_row(ui: &mut egui::Ui, label: &str, value: &mut f32, unit: &st
     let label_clr = label_color(visuals);
 
     ui.scope(|ui| {
-        ui.style_mut().visuals.widgets.inactive.bg_fill = egui::Color32::from_white_alpha(8);
-        ui.style_mut().visuals.widgets.hovered.bg_fill = egui::Color32::from_white_alpha(15);
         ui.style_mut().spacing.button_padding = egui::vec2(8.0, 3.0);
 
         egui::Frame::new()

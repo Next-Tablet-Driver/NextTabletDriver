@@ -4,6 +4,9 @@ use eframe::egui;
 pub fn render_update_dialog(app: &mut TabletMapperApp, ctx: &egui::Context) {
     if let crate::app::autoupdate::UpdateStatus::Available(release) = &app.update_status {
         let screen_rect = ctx.content_rect();
+
+        // Semi-transparent backdrop to dim the content behind the dialog.
+        // Uses a dark overlay regardless of theme — this is intentional for modal focus.
         egui::Area::new(egui::Id::new("update_overlay"))
             .interactable(true)
             .fixed_pos(screen_rect.min)
@@ -19,6 +22,17 @@ pub fn render_update_dialog(app: &mut TabletMapperApp, ctx: &egui::Context) {
             .clone()
             .unwrap_or_else(|| "No changelog provided.".to_string());
 
+        let v = ctx.style().visuals.clone();
+        let dialog_bg = v.window_fill;
+        let header_bg = v.panel_fill;
+        let border_color = v.widgets.noninteractive.bg_stroke.color;
+        let strong_text = v.strong_text_color();
+        let weak_text = v.weak_text_color();
+        let text_color = v.text_color();
+        let accent = v.selection.bg_fill;
+        // Use a contrasting text on the accent button: white for dark accents, strong_text for light ones
+        let accent_text = strong_text;
+
         egui::Window::new("Update Available")
             .title_bar(false)
             .collapsible(false)
@@ -29,15 +43,15 @@ pub fn render_update_dialog(app: &mut TabletMapperApp, ctx: &egui::Context) {
             .open(&mut open)
             .frame(
                 egui::Frame::window(&ctx.style())
-                    .fill(egui::Color32::from_rgb(20, 22, 25))
+                    .fill(dialog_bg)
                     .corner_radius(4.0)
                     .inner_margin(0.0)
-                    .stroke(egui::Stroke::new(1.0, egui::Color32::from_gray(60))),
+                    .stroke(egui::Stroke::new(1.0, border_color)),
             )
             .show(ctx, |ui| {
                 ui.vertical(|ui| {
                     egui::Frame::new()
-                        .fill(egui::Color32::from_rgb(30, 34, 40))
+                        .fill(header_bg)
                         .corner_radius(egui::CornerRadius {
                             nw: 12,
                             ne: 12,
@@ -52,13 +66,13 @@ pub fn render_update_dialog(app: &mut TabletMapperApp, ctx: &egui::Context) {
                                     egui::RichText::new("Update Available!")
                                         .size(24.0)
                                         .strong()
-                                        .color(egui::Color32::WHITE),
+                                        .color(strong_text),
                                 );
                                 ui.add_space(5.0);
                                 ui.label(
                                     egui::RichText::new(format!("Version {version}"))
                                         .size(14.0)
-                                        .color(egui::Color32::from_gray(180)),
+                                        .color(weak_text),
                                 );
                             });
                         });
@@ -72,7 +86,7 @@ pub fn render_update_dialog(app: &mut TabletMapperApp, ctx: &egui::Context) {
                                 egui::RichText::new("What's new:")
                                     .strong()
                                     .size(16.0)
-                                    .color(egui::Color32::LIGHT_GRAY),
+                                    .color(strong_text),
                             );
                             ui.add_space(8.0);
 
@@ -83,7 +97,7 @@ pub fn render_update_dialog(app: &mut TabletMapperApp, ctx: &egui::Context) {
                                     ui.label(
                                         egui::RichText::new(body)
                                             .size(13.0)
-                                            .color(egui::Color32::from_gray(160)),
+                                            .color(text_color),
                                     );
                                 });
                         });
@@ -97,10 +111,10 @@ pub fn render_update_dialog(app: &mut TabletMapperApp, ctx: &egui::Context) {
                                 let later_btn = egui::Button::new(
                                     egui::RichText::new("Remind Me Later")
                                         .size(14.0)
-                                        .color(egui::Color32::WHITE),
+                                        .color(text_color),
                                 )
                                 .fill(egui::Color32::TRANSPARENT)
-                                .stroke(egui::Stroke::new(1.0, egui::Color32::WHITE))
+                                .stroke(egui::Stroke::new(1.0, border_color))
                                 .min_size(egui::vec2(120.0, 36.0));
 
                                 if ui.add(later_btn).clicked() {
@@ -114,9 +128,9 @@ pub fn render_update_dialog(app: &mut TabletMapperApp, ctx: &egui::Context) {
                                             egui::RichText::new("Install Update")
                                                 .size(14.0)
                                                 .strong()
-                                                .color(egui::Color32::BLACK),
+                                                .color(accent_text),
                                         )
-                                        .fill(egui::Color32::from_rgb(0, 120, 215))
+                                        .fill(accent)
                                         .corner_radius(4.0)
                                         .min_size(egui::vec2(160.0, 36.0));
 

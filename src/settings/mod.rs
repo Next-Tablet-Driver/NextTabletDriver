@@ -1,3 +1,5 @@
+pub mod themes;
+
 use crate::core::config::models::MappingConfig;
 use directories::ProjectDirs;
 use serde::{Deserialize, Serialize};

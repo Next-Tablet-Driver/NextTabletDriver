@@ -1,0 +1,33 @@
+{
+  "metadata": {
+    "name": "Neon",
+    "author": "iSweat",
+    "version": "1.0",
+    "update_url": "https://raw.githubusercontent.com/Next-Tablet-Driver/NextTabletDriver-Themes/main/Neon/theme.json"
+  },
+  "colors": {
+    "dark_mode": true,
+    "window_bg": "#0a0a0f",
+    "panel_bg": "#12121c",
+    "border_color": "#232333",
+    "strong_text_color": "#ffffff",
+    "text_color": "#bcbcd0",
+    "accent_color": "#ff007f",
+    "widget_bg": "#1c1c2a",
+    "widget_hover": "#2a2a3f",
+    "widget_active": "#ff007f",
+    "success_color": "#2ed573",
+    "warning_color": "#ffa502",
+    "error_color": "#ff4757",
+    "info_color": "#1e90ff",
+    "playfield_color": "#ffffff"
+  },
+  "spacing": {
+    "corner_radius": 4.0,
+    "item_spacing_x": 8.0,
+    "item_spacing_y": 8.0,
+    "button_padding_x": 4.0,
+    "button_padding_y": 4.0,
+    "border_width": 2.0
+  }
+}

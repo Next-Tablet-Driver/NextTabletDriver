@@ -1,0 +1,3 @@
+- snap area ("Display section")
+- round value (pixel perfect)
+- fix maximum export log (500 lines)

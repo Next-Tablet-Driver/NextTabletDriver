@@ -44,7 +44,7 @@ pub fn render_footer(
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     ui.label(
                         egui::RichText::new(format!("V{}", crate::VERSION))
-                            .color(egui::Color32::GRAY)
+                            .color(ui.visuals().weak_text_color())
                             .strong(),
                     );
                     ui.add_space(8.0);
