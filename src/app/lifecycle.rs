@@ -43,7 +43,7 @@ impl TabletMapperApp {
         }
 
         // 1. Setup UI Appearance
-        crate::ui::theme::apply_theme(ctx, config.theme);
+        crate::ui::theme::apply_theme(ctx, &config.theme);
         Self::setup_fonts(ctx);
 
         // 2. Build initial state

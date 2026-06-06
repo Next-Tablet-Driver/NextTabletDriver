@@ -90,7 +90,7 @@ impl TabletMapperApp {
                         if ui
                             .button(
                                 egui::RichText::new("Close Anyway")
-                                    .color(egui::Color32::from_rgb(220, 80, 80)),
+                                    .color(crate::ui::theme::semantic_colors(ctx).error),
                             )
                             .clicked()
                         {
@@ -113,16 +113,17 @@ impl TabletMapperApp {
             ctx.request_repaint_after(Duration::from_millis(100));
         }
 
+        let semantic = crate::ui::theme::semantic_colors(ctx);
+        let toast_text = ctx.style().visuals.strong_text_color();
+
         for (i, toast) in self.toasts.iter().enumerate() {
             let offset_y = (i as f32).mul_add(50.0, 10.0);
             let id = egui::Id::new("toast").with(i);
 
-            let (bg_color, text_color) = match toast.level {
-                ToastLevel::Info => (egui::Color32::from_rgb(40, 120, 60), egui::Color32::WHITE),
-                ToastLevel::Warning => {
-                    (egui::Color32::from_rgb(180, 130, 30), egui::Color32::WHITE)
-                }
-                ToastLevel::Error => (egui::Color32::from_rgb(180, 50, 50), egui::Color32::WHITE),
+            let bg_color = match toast.level {
+                ToastLevel::Info => semantic.success,
+                ToastLevel::Warning => semantic.warning,
+                ToastLevel::Error => semantic.error,
             };
 
             egui::Area::new(id)
@@ -134,7 +135,7 @@ impl TabletMapperApp {
                         .corner_radius(6.0)
                         .inner_margin(egui::Margin::symmetric(12, 8))
                         .show(ui, |ui| {
-                            ui.label(egui::RichText::new(&toast.message).color(text_color));
+                            ui.label(egui::RichText::new(&toast.message).color(toast_text));
                         });
                 });
         }

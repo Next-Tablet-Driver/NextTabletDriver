@@ -61,11 +61,7 @@ pub fn render_tablet_section(ui: &mut egui::Ui, config: &mut MappingConfig, snap
             let points: Vec<egui::Pos2> =
                 geo.points.iter().map(|(x, y)| egui::pos2(*x, *y)).collect();
 
-            let stroke_color = if ui.visuals().dark_mode {
-                egui::Color32::WHITE
-            } else {
-                egui::Color32::BLACK
-            };
+            let stroke_color = ui.visuals().strong_text_color();
 
             ui.painter().add(egui::Shape::convex_polygon(
                 points.clone(),
@@ -83,19 +79,16 @@ pub fn render_tablet_section(ui: &mut egui::Ui, config: &mut MappingConfig, snap
                 let pf_points: Vec<egui::Pos2> =
                     pf_points.iter().map(|(x, y)| egui::pos2(*x, *y)).collect();
 
+                let semantic = crate::ui::theme::semantic_colors(ui.ctx());
                 ui.painter().add(egui::Shape::convex_polygon(
                     pf_points,
-                    egui::Color32::from_rgba_unmultiplied(255, 105, 180, 40),
-                    egui::Stroke::new(1.5, egui::Color32::from_rgb(255, 105, 180)),
+                    semantic.playfield.gamma_multiply(0.2),
+                    egui::Stroke::new(1.5, semantic.playfield),
                 ));
             }
 
             let font_id = egui::FontId::proportional(11.0);
-            let color = if ui.visuals().dark_mode {
-                egui::Color32::from_gray(20)
-            } else {
-                egui::Color32::BLACK
-            };
+            let color = ui.visuals().window_fill;
 
             let rot_rad = config.active_area.rotation.to_radians();
             if let [p0, p1, _, p3, ..] = points.as_slice() {
@@ -160,11 +153,7 @@ pub fn render_tablet_section(ui: &mut egui::Ui, config: &mut MappingConfig, snap
                 let cy =
                     ((f32::from(tablet_data.y) / max_h) * phys_h).mul_add(geo.scale, geo.offset_y);
                 if full_rect.contains(egui::pos2(cx, cy)) {
-                    let cursor_color = if ui.visuals().dark_mode {
-                        egui::Color32::WHITE
-                    } else {
-                        egui::Color32::BLACK
-                    };
+                    let cursor_color = ui.visuals().strong_text_color();
                     ui.painter()
                         .circle_filled(egui::pos2(cx, cy), 3.0, cursor_color);
                 }

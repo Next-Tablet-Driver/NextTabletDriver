@@ -40,8 +40,13 @@ pub fn render_settings_panel(
                 ui.label(egui::RichText::new("Application Theme").strong());
                 ui.add_space(10.0);
 
+                let theme_name = match &config.theme {
+                    crate::core::config::models::ThemePreference::Custom(name) => name.clone(),
+                    _ => format!("{:?}", config.theme),
+                };
+
                 egui::ComboBox::from_id_salt("theme_selector")
-                    .selected_text(format!("{:?}", config.theme))
+                    .selected_text(theme_name)
                     .show_ui(ui, |ui| {
                         ui.selectable_value(
                             &mut config.theme,
@@ -79,7 +84,67 @@ pub fn render_settings_panel(
                             crate::core::config::models::ThemePreference::CatppuccinMocha,
                             "Catppuccin Mocha",
                         );
+
+                        let custom_themes = crate::settings::themes::list_custom_themes();
+                        if !custom_themes.is_empty() {
+                            ui.separator();
+                            for name in custom_themes {
+                                ui.selectable_value(
+                                    &mut config.theme,
+                                    crate::core::config::models::ThemePreference::Custom(
+                                        name.clone(),
+                                    ),
+                                    name,
+                                );
+                            }
+                        }
                     });
+
+                if let crate::core::config::models::ThemePreference::Custom(name) =
+                    &config.theme.clone()
+                {
+                    let mut delete = false;
+                    ui.scope(|ui| {
+                        ui.style_mut().visuals.widgets.inactive.bg_fill =
+                            egui::Color32::TRANSPARENT;
+                        ui.style_mut().visuals.widgets.inactive.bg_stroke = egui::Stroke::NONE;
+                        if ui
+                            .button(
+                                egui::RichText::new(egui_phosphor::regular::TRASH)
+                                    .color(crate::ui::theme::semantic_colors(ui.ctx()).error),
+                            )
+                            .on_hover_text("Delete custom theme")
+                            .clicked()
+                        {
+                            delete = true;
+                        }
+                    });
+                    if delete && crate::settings::themes::delete_custom_theme(name) == Ok(()) {
+                        config.theme = crate::core::config::models::ThemePreference::System;
+                    }
+                }
+
+                ui.add_space(10.0);
+                if ui
+                    .button(format!(
+                        "{} Import Theme (.json)",
+                        egui_phosphor::regular::DOWNLOAD_SIMPLE
+                    ))
+                    .clicked()
+                    && let Some(path) = rfd::FileDialog::new()
+                        .add_filter("Theme File", &["json"])
+                        .pick_file()
+                {
+                    match crate::settings::themes::import_theme_json(&path) {
+                        Ok(name) => {
+                            config.theme =
+                                crate::core::config::models::ThemePreference::Custom(name);
+                        }
+                        Err(e) => {
+                            log::error!(target: "UI", "Failed to import theme: {e}");
+                        }
+                    }
+                }
             });
         },
     );
@@ -95,10 +160,11 @@ pub fn render_settings_panel(
                 ui.checkbox(&mut config.websocket.enabled, "Enable WebSocket Server");
 
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    let semantic = crate::ui::theme::semantic_colors(ui.ctx());
                     let (text, color) = if config.websocket.enabled {
-                        ("RUNNING", egui::Color32::from_rgb(166, 227, 161))
+                        ("RUNNING", semantic.success)
                     } else {
-                        ("STOPPED", egui::Color32::from_rgb(243, 139, 168))
+                        ("STOPPED", semantic.error)
                     };
 
                     egui::Frame::new()

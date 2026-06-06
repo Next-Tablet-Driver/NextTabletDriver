@@ -109,7 +109,7 @@ pub enum DriverMode {
 }
 
 /// User preference for application theme.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum ThemePreference {
     #[default]
     System,
@@ -119,6 +119,7 @@ pub enum ThemePreference {
     CatppuccinFrappe,
     CatppuccinMacchiato,
     CatppuccinMocha,
+    Custom(String),
 }
 
 /// Settings specific to [`DriverMode::Relative`] operation.

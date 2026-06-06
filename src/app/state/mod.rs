@@ -208,7 +208,7 @@ impl TabletMapperApp {
     pub fn reset_to_default(&mut self) {
         {
             let mut shared_config = self.shared.config.write().unwrap_or_log("config");
-            let theme = shared_config.theme;
+            let theme = shared_config.theme.clone();
             let run_at_startup = shared_config.run_at_startup;
             *shared_config = MappingConfig::default();
             shared_config.theme = theme;

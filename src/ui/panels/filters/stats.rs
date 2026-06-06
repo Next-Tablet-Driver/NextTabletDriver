@@ -151,7 +151,7 @@ fn render_stat_badge(ui: &mut egui::Ui, label: &str, value: &str, unit: &str) {
         ui.label(egui::RichText::new(label).weak().size(10.0));
         ui.add_space(2.0);
 
-        let accent = egui::Color32::from_rgb(0, 150, 255);
+        let accent = ui.visuals().selection.bg_fill;
 
         egui::Frame::new()
             .fill(accent.gamma_multiply(0.1))

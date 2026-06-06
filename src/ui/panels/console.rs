@@ -3,10 +3,11 @@ use eframe::egui;
 
 pub fn render_console_panel(app: &mut TabletMapperApp, ui: &mut egui::Ui) {
     fn level_button(ui: &mut egui::Ui, selected: &mut bool, label: &str, color: egui::Color32) {
+        let unselected_stroke = ui.visuals().widgets.noninteractive.bg_stroke.color;
         let stroke_color = if *selected {
             color.gamma_multiply(0.8)
         } else {
-            egui::Color32::from_white_alpha(20)
+            unselected_stroke
         };
         let fill_color = if *selected {
             color.gamma_multiply(0.15)
@@ -29,6 +30,8 @@ pub fn render_console_panel(app: &mut TabletMapperApp, ui: &mut egui::Ui) {
         }
     }
 
+    let semantic = crate::ui::theme::semantic_colors(ui.ctx());
+
     ui.add_space(5.0);
 
     ui.horizontal(|ui| {
@@ -46,30 +49,12 @@ pub fn render_console_panel(app: &mut TabletMapperApp, ui: &mut egui::Ui) {
         ui.separator();
         ui.add_space(10.0);
 
-        level_button(
-            ui,
-            &mut app.console_show_info,
-            "Info",
-            egui::Color32::from_rgb(137, 180, 250),
-        );
-        level_button(
-            ui,
-            &mut app.console_show_warn,
-            "Warn",
-            egui::Color32::from_rgb(249, 226, 175),
-        );
-        level_button(
-            ui,
-            &mut app.console_show_error,
-            "Error",
-            egui::Color32::from_rgb(243, 139, 168),
-        );
-        level_button(
-            ui,
-            &mut app.console_show_debug,
-            "Debug",
-            egui::Color32::from_rgb(166, 172, 205),
-        );
+        level_button(ui, &mut app.console_show_info, "Info", semantic.info);
+        level_button(ui, &mut app.console_show_warn, "Warn", semantic.warning);
+        level_button(ui, &mut app.console_show_error, "Error", semantic.error);
+        // Debug color: use a muted version of the text color (no dedicated semantic slot)
+        let debug_color = ui.visuals().weak_text_color();
+        level_button(ui, &mut app.console_show_debug, "Debug", debug_color);
     });
 
     ui.add_space(8.0);
@@ -86,6 +71,7 @@ pub fn render_console_panel(app: &mut TabletMapperApp, ui: &mut egui::Ui) {
         egui::vec2(ui.available_width(), table_height),
         egui::Layout::top_down(egui::Align::LEFT),
         |ui| {
+            let semantic = crate::ui::theme::semantic_colors(ui.ctx());
             egui::Frame::new()
                 .fill(ui.visuals().window_fill)
                 .inner_margin(0.0)
@@ -127,18 +113,10 @@ pub fn render_console_panel(app: &mut TabletMapperApp, ui: &mut egui::Ui) {
 
                                     row.col(|ui| {
                                         let (color, text) = match log.level.as_str() {
-                                            "Error" => {
-                                                (egui::Color32::from_rgb(243, 139, 168), "ERROR")
-                                            }
-                                            "Warn" => {
-                                                (egui::Color32::from_rgb(249, 226, 175), "WARN")
-                                            }
-                                            "Info" => {
-                                                (egui::Color32::from_rgb(137, 180, 250), "INFO")
-                                            }
-                                            "Debug" => {
-                                                (egui::Color32::from_rgb(166, 172, 205), "DEBUG")
-                                            }
+                                            "Error" => (semantic.error, "ERROR"),
+                                            "Warn" => (semantic.warning, "WARN"),
+                                            "Info" => (semantic.info, "INFO"),
+                                            "Debug" => (ui.visuals().weak_text_color(), "DEBUG"),
                                             _ => (ui.visuals().text_color(), log.level.as_str()),
                                         };
                                         ui.label(
@@ -188,11 +166,12 @@ pub fn render_console_panel(app: &mut TabletMapperApp, ui: &mut egui::Ui) {
     ui.add_space(5.0);
 
     // 2. Footer Area
+    let semantic = crate::ui::theme::semantic_colors(ui.ctx());
     ui.horizontal(|ui| {
         if ui
             .button(
                 egui::RichText::new(format!("{} Clear Console", egui_phosphor::regular::TRASH))
-                    .color(egui::Color32::from_rgb(243, 139, 168)),
+                    .color(semantic.error),
             )
             .on_hover_text("Remove all logs from memory")
             .clicked()

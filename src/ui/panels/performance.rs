@@ -18,6 +18,7 @@ pub fn render_performance_panel(
     let stats = &snapshot.stats;
     let (max_w, max_h) = snapshot.hardware_size;
     let mut reset_requested = false;
+    let semantic = crate::ui::theme::semantic_colors(ui.ctx());
 
     ui.add_space(10.0);
 
@@ -52,12 +53,11 @@ pub fn render_performance_panel(
 
                 ui.label("HID Read:");
                 ui.label(
-                    egui::RichText::new(format!("{:.3}ms", stats.hid_read_ms))
-                        .color(egui::Color32::LIGHT_BLUE),
+                    egui::RichText::new(format!("{:.3}ms", stats.hid_read_ms)).color(semantic.info),
                 );
                 ui.label(
                     egui::RichText::new(format!("{:.3}ms", stats.avg_hid_read_ms))
-                        .color(egui::Color32::LIGHT_BLUE)
+                        .color(semantic.info)
                         .weak(),
                 );
                 ui.label(
@@ -77,11 +77,11 @@ pub fn render_performance_panel(
                 ui.label("Parser:");
                 ui.label(
                     egui::RichText::new(format!("{:.3}ms", stats.parser_ms))
-                        .color(egui::Color32::LIGHT_GREEN),
+                        .color(semantic.success),
                 );
                 ui.label(
                     egui::RichText::new(format!("{:.3}ms", stats.avg_parser_ms))
-                        .color(egui::Color32::LIGHT_GREEN)
+                        .color(semantic.success)
                         .weak(),
                 );
                 ui.label(
@@ -99,12 +99,10 @@ pub fn render_performance_panel(
                 ui.end_row();
 
                 ui.label("UI Sync:");
-                ui.label(
-                    egui::RichText::new(format!("{ui_latency:.3}ms")).color(egui::Color32::GOLD),
-                );
+                ui.label(egui::RichText::new(format!("{ui_latency:.3}ms")).color(semantic.warning));
                 ui.label(
                     egui::RichText::new(format!("{avg_ui_latency:.3}ms"))
-                        .color(egui::Color32::GOLD)
+                        .color(semantic.warning)
                         .weak(),
                 );
                 ui.label(
@@ -133,7 +131,7 @@ pub fn render_performance_panel(
                 ui.label(
                     egui::RichText::new(format!("{total_current:.3}ms"))
                         .strong()
-                        .color(egui::Color32::WHITE),
+                        .color(ui.visuals().strong_text_color()),
                 );
                 ui.end_row();
             });
@@ -192,7 +190,7 @@ pub fn render_performance_panel(
         ui.add_space(8.0);
 
         egui::Frame::new()
-            .fill(egui::Color32::from_gray(20))
+            .fill(ui.visuals().extreme_bg_color)
             .corner_radius(4.0)
             .inner_margin(8.0)
             .show(ui, |ui| {
@@ -221,7 +219,7 @@ pub fn render_performance_panel(
                     egui::RichText::new(tablet_data.raw_hex())
                         .code()
                         .size(11.0)
-                        .color(egui::Color32::LIGHT_GRAY),
+                        .color(ui.visuals().text_color()),
                 );
             });
     });

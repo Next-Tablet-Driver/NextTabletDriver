@@ -77,7 +77,7 @@ impl TabletMapperApp {
                 log::info!(target: "Config", "Configuration changed via UI");
             }
             if config.theme != initial.theme {
-                crate::ui::theme::apply_theme(ctx, config.theme);
+                crate::ui::theme::apply_theme(ctx, &config.theme);
             }
             {
                 let mut shared_config = self.shared.config.write().unwrap_or_log("config");

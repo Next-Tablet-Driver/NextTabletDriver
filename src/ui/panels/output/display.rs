@@ -67,11 +67,7 @@ pub fn render_display_section(
                     ),
                     egui::vec2(config.target_area.w * scale, config.target_area.h * scale),
                 );
-                let stroke_color = if ui.visuals().dark_mode {
-                    egui::Color32::WHITE
-                } else {
-                    egui::Color32::BLACK
-                };
+                let stroke_color = ui.visuals().strong_text_color();
 
                 ui.painter()
                     .rect_filled(t_rect, 0.0, crate::ui::theme::accent_bg(ui.visuals()));
@@ -86,11 +82,7 @@ pub fn render_display_section(
                     .circle_filled(t_rect.center(), 1.5, stroke_color);
 
                 let font_id = egui::FontId::proportional(12.0);
-                let color = if ui.visuals().dark_mode {
-                    egui::Color32::from_gray(20)
-                } else {
-                    egui::Color32::BLACK
-                };
+                let color = ui.visuals().window_fill;
 
                 ui.painter().text(
                     t_rect.center_top() + egui::vec2(0.0, 5.0),

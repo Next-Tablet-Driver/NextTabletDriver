@@ -207,32 +207,33 @@ fn render_release_entry(ui: &mut egui::Ui, entry: &ReleaseEntry) {
 
                 ui.add_space(12.0);
 
+                let semantic = crate::ui::theme::semantic_colors(ui.ctx());
                 render_category(
                     ui,
                     "NEW",
                     egui_phosphor::regular::PLUS_CIRCLE,
-                    egui::Color32::from_rgb(166, 227, 161),
+                    semantic.success,
                     entry.additions,
                 );
                 render_category(
                     ui,
                     "FIX",
                     egui_phosphor::regular::WRENCH,
-                    egui::Color32::from_rgb(249, 226, 175),
+                    semantic.warning,
                     entry.fixes,
                 );
                 render_category(
                     ui,
                     "IMP",
                     egui_phosphor::regular::CHART_LINE_UP,
-                    egui::Color32::from_rgb(137, 180, 250),
+                    semantic.info,
                     entry.improvements,
                 );
                 render_category(
                     ui,
                     "DEL",
                     egui_phosphor::regular::MINUS_CIRCLE,
-                    egui::Color32::from_rgb(243, 139, 168),
+                    semantic.error,
                     entry.removals,
                 );
             });

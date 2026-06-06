@@ -81,18 +81,19 @@ fn render_sidebar_item(
     selected: &mut String,
 ) {
     let is_selected = selected == filter_id;
-    let visuals = ui.visuals();
-
-    let text_color = if is_selected {
-        visuals.strong_text_color()
-    } else {
-        visuals.text_color().gamma_multiply(0.6)
-    };
-
-    let bg_color = if is_selected {
-        egui::Color32::from_white_alpha(10)
-    } else {
-        egui::Color32::TRANSPARENT
+    let (text_color, bg_color, selection_color) = {
+        let visuals = ui.visuals();
+        let tc = if is_selected {
+            visuals.strong_text_color()
+        } else {
+            visuals.text_color().gamma_multiply(0.6)
+        };
+        let bg = if is_selected {
+            visuals.widgets.hovered.bg_fill
+        } else {
+            egui::Color32::TRANSPARENT
+        };
+        (tc, bg, visuals.selection.bg_fill)
     };
 
     let margin = 10.0;
@@ -127,7 +128,7 @@ fn render_sidebar_item(
                 egui::pos2(response.rect.left() - 7.0, response.rect.bottom() - 8.0),
             ),
             2.0,
-            egui::Color32::from_rgb(0, 150, 255),
+            selection_color,
         );
     }
 }
