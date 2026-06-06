@@ -133,7 +133,9 @@ fn validate_theme(config: &mut MappingConfig, corrections: &mut Vec<String>) {
     if let crate::core::config::models::ThemePreference::Custom(name) = &config.theme {
         let available = crate::settings::themes::list_custom_themes();
         if !available.contains(name) {
-            corrections.push(format!("Custom theme '{name}' not found, reverting to System"));
+            corrections.push(format!(
+                "Custom theme '{name}' not found, reverting to System"
+            ));
             config.theme = crate::core::config::models::ThemePreference::System;
         }
     }
@@ -169,7 +171,7 @@ pub fn load_last_session() -> Option<(MappingConfig, Vec<String>)> {
             Ok(mut config) => {
                 let mut corrections = config.validate_and_repair();
                 validate_theme(&mut config, &mut corrections);
-                
+
                 if !corrections.is_empty() {
                     log::warn!(target: "Config", "Last session config had {} field(s) repaired", corrections.len());
                     // Automatically save the repaired config
