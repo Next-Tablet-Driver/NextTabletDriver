@@ -63,6 +63,7 @@ impl TabletMapperApp {
         self.render_toasts(ctx);
         self.render_debugger_window(ctx, snapshot);
         self.render_performance_window(ctx, snapshot);
+        self.render_udev_warning(ctx);
     }
 
     pub fn render_close_confirmation(&mut self, ctx: &egui::Context) {
@@ -100,6 +101,56 @@ impl TabletMapperApp {
                             ctx.send_viewport_cmd(egui::ViewportCommand::Close);
                         }
                     });
+                    ui.add_space(4.0);
+                });
+            });
+    }
+
+    pub fn render_udev_warning(&mut self, ctx: &egui::Context) {
+        if !self.missing_udev_rules {
+            return;
+        }
+
+        let frame = egui::Frame::window(&ctx.style()).shadow(Shadow::NONE);
+        egui::Window::new("Missing Udev Rules (Linux)")
+            .collapsible(false)
+            .resizable(false)
+            .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
+            .frame(frame)
+            .show(ctx, |ui| {
+                ui.vertical_centered(|ui| {
+                    ui.add_space(8.0);
+                    ui.label(egui::RichText::new("NextTabletDriver needs udev rules to work properly.").strong());
+                    ui.add_space(8.0);
+                    ui.label("Without these rules, you will experience 'Double Input'");
+                    ui.label("and the driver may lack permission to read your tablet.");
+                    ui.add_space(16.0);
+                    ui.label(egui::RichText::new("How to fix this:").strong());
+                    ui.add_space(4.0);
+
+                    let code_bg = ctx.style().visuals.faint_bg_color;
+                    egui::Frame::new()
+                        .fill(code_bg)
+                        .corner_radius(4.0)
+                        .inner_margin(egui::Margin::same(8))
+                        .show(ui, |ui| {
+                            ui.horizontal(|ui| {
+                                ui.label(egui::RichText::new("sudo cp scripts/99-nexttabletdriver.rules /etc/udev/rules.d/").monospace());
+                            });
+                            ui.horizontal(|ui| {
+                                ui.label(egui::RichText::new("sudo udevadm control --reload-rules && sudo udevadm trigger").monospace());
+                            });
+                            ui.horizontal(|ui| {
+                                ui.label(egui::RichText::new("sudo usermod -aG input $USER").monospace());
+                            });
+                        });
+
+                    ui.add_space(8.0);
+                    ui.label(egui::RichText::new("You may need to log out and log back in.").italics());
+                    ui.add_space(12.0);
+                    if ui.button("I have installed the rules").clicked() {
+                        self.missing_udev_rules = false;
+                    }
                     ui.add_space(4.0);
                 });
             });

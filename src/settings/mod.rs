@@ -143,7 +143,7 @@ fn validate_theme(config: &mut MappingConfig, corrections: &mut Vec<String>) {
 
 /// Persists the current session state to `last_session.json`.
 ///
-/// Called asynchronously from a background saver thread — never from the UI thread.
+/// Called asynchronously from a background saver thread - never from the UI thread.
 ///
 /// # Errors
 /// Returns an error if the settings directory cannot be resolved or if `save_to_path` fails.

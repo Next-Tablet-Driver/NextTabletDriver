@@ -1,10 +1,10 @@
-# NextTabletDriver — Linux Setup Guide
+# NextTabletDriver - Linux Setup Guide
 
 ## Prerequisites
 
 NextTabletDriver communicates with your tablet via raw USB (HID) and creates a
 virtual input device through the Linux kernel's `uinput` interface.
-This works **natively** with X11, Wayland, and XWayland — no compatibility layer needed.
+This works **natively** with X11, Wayland, and XWayland no compatibility layer needed.
 
 ## Quick Setup
 
@@ -41,16 +41,14 @@ manually copying udev rules:
 { pkgs, ... }:
 
 {
-  # Grant access to /dev/uinput for the input group
-  services.udev.extraRules = ''
-    KERNEL=="uinput", SUBSYSTEM=="misc", MODE="0660", GROUP="input", TAG+="uaccess"
-    SUBSYSTEM=="hidraw", ATTRS{idVendor}=="056a", MODE="0660", GROUP="input"
-    SUBSYSTEM=="hidraw", ATTRS{idVendor}=="28bd", MODE="0660", GROUP="input"
-    SUBSYSTEM=="hidraw", ATTRS{idVendor}=="5543", MODE="0660", GROUP="input"
-    SUBSYSTEM=="hidraw", ATTRS{idVendor}=="2179", MODE="0660", GROUP="input"
-    SUBSYSTEM=="hidraw", ATTRS{idVendor}=="0416", MODE="0660", GROUP="input"
-    SUBSYSTEM=="hidraw", ATTRS{idVendor}=="256c", MODE="0660", GROUP="input"
-  '';
+  # Install NextTabletDriver udev rules to grant permissions and prevent double input
+  services.udev.packages = [
+    (pkgs.writeTextFile {
+      name = "nexttabletdriver-udev-rules";
+      text = builtins.readFile ./scripts/99-nexttabletdriver.rules;
+      destination = "/etc/udev/rules.d/99-nexttabletdriver.rules";
+    })
+  ];
 
   # Ensure the uinput kernel module is loaded
   boot.kernelModules = [ "uinput" ];
@@ -94,9 +92,21 @@ echo "uinput" | sudo tee /etc/modules-load.d/uinput.conf
 Once the driver is running and a tablet is connected:
 
 ```bash
-# List all input devices — look for "NextTabletDriver Virtual Pen"
+# List all input devices - look for "NextTabletDriver Virtual Pen"
 cat /proc/bus/input/devices
 
 # Watch events in real time
 sudo libinput debug-events
 ```
+
+## Adding a Custom Tablet
+
+If you add a custom tablet configuration JSON inside the `tablets/` directory, you will need to regenerate the udev rules to ensure it is properly ignored by Wayland/X11.
+
+You can regenerate the rules by running the included PowerShell script:
+
+```bash
+pwsh scripts/generate_udev_rules.ps1
+```
+
+Then, reinstall the rules using the steps in the **Quick Setup** section.

@@ -47,4 +47,4 @@ pub mod startup;
 pub mod ui;
 
 /// Version.
-pub const VERSION: &str = "1.26.0606.01";
+pub const VERSION: &str = "1.26.1006.01";

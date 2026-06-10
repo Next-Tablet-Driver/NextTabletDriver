@@ -98,6 +98,18 @@ impl TabletMapperApp {
             console_cache_full_text: String::new(),
             show_close_confirm: false,
             force_close: false,
+            missing_udev_rules: {
+                #[cfg(target_os = "linux")]
+                {
+                    !std::path::Path::new("/etc/udev/rules.d/99-nexttabletdriver.rules").exists()
+                        && !std::path::Path::new("/usr/lib/udev/rules.d/99-nexttabletdriver.rules")
+                            .exists()
+                }
+                #[cfg(not(target_os = "linux"))]
+                {
+                    false
+                }
+            },
         }
     }
 

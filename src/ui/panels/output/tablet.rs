@@ -82,7 +82,7 @@ pub fn render_tablet_section(ui: &mut egui::Ui, config: &mut MappingConfig, snap
                 let semantic = crate::ui::theme::semantic_colors(ui.ctx());
                 ui.painter().add(egui::Shape::convex_polygon(
                     pf_points,
-                    semantic.playfield.gamma_multiply(0.2),
+                    semantic.playfield.gamma_multiply(0.25),
                     egui::Stroke::new(1.5, semantic.playfield),
                 ));
             }
@@ -170,7 +170,6 @@ pub fn render_tablet_section(ui: &mut egui::Ui, config: &mut MappingConfig, snap
                 ui.add_space(10.0);
                 ui.checkbox(&mut config.show_osu_playfield, "Show Osu!Playfield");
             });
-            ui.add_space(5.0);
             egui::Grid::new("tablet_grid")
                 .spacing(egui::vec2(10.0, 10.0))
                 .show(ui, |ui| {

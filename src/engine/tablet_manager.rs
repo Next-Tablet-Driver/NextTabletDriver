@@ -370,7 +370,7 @@ fn process_packet(
 
         // Only send to the UI channel when the window is visible.
         // When hidden in the system tray, the UI thread is idle and
-        // nobody consumes the channel — skipping prevents unbounded growth.
+        // nobody consumes the channel - skipping prevents unbounded growth.
         if shared.is_visible.load(Ordering::Relaxed) {
             let _ = tablet_sender.send(data);
         }

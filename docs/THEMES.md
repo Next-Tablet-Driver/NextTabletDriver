@@ -21,10 +21,10 @@ You have absolute control over the color palette: nothing is hardcoded. You cont
 ```json
 {
   "metadata": {
-    "name": "My Theme",
-    "author": "Your Name",
+    "name": "Theme Name",
+    "author": "Name",
     "version": "1.0",
-    "update_url": "https://raw.githubusercontent.com/Next-Tablet-Driver/NextTabletDriver-Themes/refs/heads/main/00%20EXAMPLE/theme.json"
+    "update_url": "https://raw.githubusercontent.com/Next-Tablet-Driver/NextTabletDriver-Themes/refs/heads/main/<Name>/theme.json"
   },
   "colors": {
     "dark_mode": true,
@@ -67,15 +67,15 @@ You have absolute control over the color palette: nothing is hardcoded. You cont
 | `name` | string | ✅ | Name of the theme displayed in the settings. |
 | `author` | string | ✅ | Your name / alias. |
 | `version` | string | ✅ | Theme version (e.g., `"1.0"`). Useful for managing your updates. |
-| `update_url` | string | ❌ | Direct URL to the raw `.json` file (e.g., GitHub Raw). **Reserved for a future automatic theme update system** — documenting this field now allows activating it without a breaking change later. |
+| `update_url` | string | ❌ | Direct URL to the raw `.json` file (e.g., GitHub Raw). **Reserved for a future automatic theme update system** documenting this field now allows activating it without a breaking change later. |
 
 ---
 
 ### `colors`
 
 All colors use **hexadecimal** format:
-- `"#RRGGBB"` → opaque color (e.g., `"#ff0000"` for red)
-- `"#RRGGBBAA"` → color with alpha channel (e.g., `"#ff000080"` for 50% red)
+- `"#RRGGBB"` -> opaque color (e.g., `"#ff0000"` for red)
+- `"#RRGGBBAA"` -> color with alpha channel (e.g., `"#ff000080"` for 50% red)
 
 #### Main Palette (Required)
 

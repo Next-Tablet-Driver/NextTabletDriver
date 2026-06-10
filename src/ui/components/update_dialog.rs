@@ -6,7 +6,7 @@ pub fn render_update_dialog(app: &mut TabletMapperApp, ctx: &egui::Context) {
         let screen_rect = ctx.content_rect();
 
         // Semi-transparent backdrop to dim the content behind the dialog.
-        // Uses a dark overlay regardless of theme — this is intentional for modal focus.
+        // Uses a dark overlay regardless of theme - this is intentional for modal focus.
         egui::Area::new(egui::Id::new("update_overlay"))
             .interactable(true)
             .fixed_pos(screen_rect.min)

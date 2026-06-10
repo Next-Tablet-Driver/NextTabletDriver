@@ -89,6 +89,9 @@ pub struct TabletMapperApp {
     pub show_close_confirm: bool,
     /// If true, bypasses close confirmation dialog and exits immediately.
     pub force_close: bool,
+
+    /// Set to true on Linux if the required udev rules are not installed.
+    pub missing_udev_rules: bool,
 }
 
 const MAX_TOASTS: usize = 3;

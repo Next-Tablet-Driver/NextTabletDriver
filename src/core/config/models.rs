@@ -371,6 +371,9 @@ pub struct MappingConfig {
     /// Whether to display a visual guide of the osu! playfield within the active area grid.
     #[serde(default)]
     pub show_osu_playfield: bool,
+    /// Whether to snap the target area to display edges when resizing/moving.
+    #[serde(default = "default_true")]
+    pub display_snapping: bool,
 }
 
 impl Default for MappingConfig {
@@ -395,6 +398,7 @@ impl Default for MappingConfig {
             theme: ThemePreference::default(),
             lock_aspect_ratio: false,
             show_osu_playfield: false,
+            display_snapping: default_true(),
         }
     }
 }
