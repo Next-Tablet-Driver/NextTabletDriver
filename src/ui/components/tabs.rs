@@ -1,4 +1,5 @@
 use crate::app::state::{AppTab, TabletMapperApp};
+use crate::t;
 use eframe::egui;
 
 pub fn render_tabs(app: &mut TabletMapperApp, ctx: &egui::Context) {
@@ -16,12 +17,16 @@ pub fn render_tabs(app: &mut TabletMapperApp, ctx: &egui::Context) {
         )
         .show(ctx, |ui| {
             ui.horizontal(|ui| {
-                ui.selectable_value(&mut app.active_tab, AppTab::Output, "Output");
-                ui.selectable_value(&mut app.active_tab, AppTab::Filters, "Filters");
-                ui.selectable_value(&mut app.active_tab, AppTab::PenSettings, "Pen Settings");
-                ui.selectable_value(&mut app.active_tab, AppTab::Console, "Console");
-                ui.selectable_value(&mut app.active_tab, AppTab::Settings, "Settings");
-                ui.selectable_value(&mut app.active_tab, AppTab::Release, "Release");
+                ui.selectable_value(&mut app.active_tab, AppTab::Output, t!("tabs.output"));
+                ui.selectable_value(&mut app.active_tab, AppTab::Filters, t!("tabs.filters"));
+                ui.selectable_value(
+                    &mut app.active_tab,
+                    AppTab::PenSettings,
+                    t!("tabs.pen_settings"),
+                );
+                ui.selectable_value(&mut app.active_tab, AppTab::Console, t!("tabs.console"));
+                ui.selectable_value(&mut app.active_tab, AppTab::Settings, t!("tabs.settings"));
+                ui.selectable_value(&mut app.active_tab, AppTab::Release, t!("tabs.release"));
             });
         });
 }

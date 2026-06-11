@@ -1,5 +1,6 @@
 use crate::app::state::TabletMapperApp;
 use crate::core::config::models::MappingConfig;
+use crate::t;
 use crate::ui::theme::{ui_input_box, ui_section_header};
 use eframe::egui;
 
@@ -12,7 +13,7 @@ pub fn render_display_section(
     max_x: f32,
     max_y: f32,
 ) {
-    ui_section_header(ui, "Display");
+    ui_section_header(ui, &t!("output.display"));
 
     egui::Frame::canvas(ui.style())
         .fill(crate::ui::theme::panel_bg(ui.visuals()))
@@ -203,7 +204,7 @@ pub fn render_display_section(
     ui.add_space(10.0);
     ui.horizontal(|ui| {
         ui.add_space(20.0);
-        ui.checkbox(&mut config.display_snapping, "Enable Edge Snapping");
+        ui.checkbox(&mut config.display_snapping, t!("output.edge_snapping"));
     });
 
     ui.horizontal(|ui| {

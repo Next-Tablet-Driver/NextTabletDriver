@@ -1,4 +1,5 @@
 use crate::core::config::models::MappingConfig;
+use crate::t;
 use std::path::PathBuf;
 use std::time::Instant;
 
@@ -41,15 +42,15 @@ impl ProfileState {
     #[must_use]
     pub fn display_name(&self, current: &MappingConfig) -> String {
         let base = if self.path.is_some() {
-            &self.name
+            self.name.clone()
         } else {
-            "Unsaved Session"
+            t!("footer.unsaved_session")
         };
 
         if self.is_dirty(current) {
             format!("*{base}")
         } else {
-            base.to_string()
+            base
         }
     }
 

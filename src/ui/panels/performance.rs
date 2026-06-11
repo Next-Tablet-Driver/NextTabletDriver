@@ -1,5 +1,6 @@
 use crate::app::state::UiSnapshot;
 use crate::engine::state::SharedState;
+use crate::t;
 use eframe::egui;
 use std::sync::Arc;
 
@@ -25,12 +26,12 @@ pub fn render_performance_panel(
     ui.group(|ui| {
         ui.horizontal(|ui| {
             ui.label(
-                egui::RichText::new("Latency Pipeline Analysis")
+                egui::RichText::new(t!("performance.latency_title"))
                     .strong()
                     .size(14.0),
             );
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                if ui.button("Reset Stats").clicked() {
+                if ui.button(t!("performance.reset_stats")).clicked() {
                     if let Ok(mut s) = shared.stats.write() {
                         s.reset_latency();
                     }
@@ -44,14 +45,14 @@ pub fn render_performance_panel(
             .num_columns(5)
             .spacing([20.0, 8.0])
             .show(ui, |ui| {
-                ui.label("Component");
-                ui.label("Current");
-                ui.label("AVG (EMA)");
-                ui.label("Min");
-                ui.label("Max");
+                ui.label(t!("performance.component"));
+                ui.label(t!("performance.current"));
+                ui.label(t!("performance.avg_ema"));
+                ui.label(t!("performance.min"));
+                ui.label(t!("performance.max"));
                 ui.end_row();
 
-                ui.label("HID Read:");
+                ui.label(t!("performance.hid_read"));
                 ui.label(
                     egui::RichText::new(format!("{:.3}ms", stats.hid_read_ms)).color(semantic.info),
                 );
@@ -74,7 +75,7 @@ pub fn render_performance_panel(
                 ui.label(egui::RichText::new(format!("{:.3}ms", stats.max_hid_read_ms)).weak());
                 ui.end_row();
 
-                ui.label("Parser:");
+                ui.label(t!("performance.parser"));
                 ui.label(
                     egui::RichText::new(format!("{:.3}ms", stats.parser_ms))
                         .color(semantic.success),
@@ -98,7 +99,7 @@ pub fn render_performance_panel(
                 ui.label(egui::RichText::new(format!("{:.3}ms", stats.max_parser_ms)).weak());
                 ui.end_row();
 
-                ui.label("UI Sync:");
+                ui.label(t!("performance.ui_sync"));
                 ui.label(egui::RichText::new(format!("{ui_latency:.3}ms")).color(semantic.warning));
                 ui.label(
                     egui::RichText::new(format!("{avg_ui_latency:.3}ms"))
@@ -127,7 +128,7 @@ pub fn render_performance_panel(
                 ui.end_row();
 
                 let total_current = stats.hid_read_ms + stats.parser_ms + ui_latency;
-                ui.label(egui::RichText::new("Total Software Lag:").strong());
+                ui.label(egui::RichText::new(t!("performance.total_lag")).strong());
                 ui.label(
                     egui::RichText::new(format!("{total_current:.3}ms"))
                         .strong()
@@ -137,7 +138,7 @@ pub fn render_performance_panel(
             });
 
         ui.add_space(5.0);
-        ui.weak("Total Software Lag: USB Arrival -> UI Paint. Excludes OS/Monitor lag.");
+        ui.weak(t!("performance.total_lag_note"));
     });
 
     ui.add_space(20.0);
@@ -145,39 +146,42 @@ pub fn render_performance_panel(
     ui.columns(2, |cols| {
         if let [col0, col1, ..] = cols {
             col0.group(|ui| {
-                ui.label(egui::RichText::new("Packet Flow").strong());
+                ui.label(egui::RichText::new(t!("performance.packet_flow")).strong());
                 ui.add_space(5.0);
-                ui.label(format!("Total Count: {}", stats.total_packets));
-                ui.label(format!("Polling Rate: {displayed_hz:.1} Hz"));
+                ui.label(t!("performance.total_count", count = stats.total_packets));
+                ui.label(t!(
+                    "performance.polling_rate",
+                    hz = format!("{displayed_hz:.1}")
+                ));
 
                 if displayed_hz > 1.0 {
                     let interval = 1000.0 / displayed_hz;
-                    ui.label(format!("Avg Interval: {interval:.2} ms"));
+                    ui.label(t!(
+                        "performance.avg_interval",
+                        interval = format!("{interval:.2}")
+                    ));
                 } else {
-                    ui.label("Avg Interval: Static / Idle");
+                    ui.label(t!("performance.idle"));
                 }
             });
 
             col1.group(|ui| {
-                ui.label(egui::RichText::new("Hardware Info").strong());
+                ui.label(egui::RichText::new(t!("performance.hardware_info")).strong());
                 ui.add_space(5.0);
-                ui.label(format!(
-                    "Resolution: {} x {}",
-                    (max_w.max(0.0)) as u32,
-                    (max_h.max(0.0)) as u32
+                ui.label(t!(
+                    "performance.resolution",
+                    w = (max_w.max(0.0)) as u32,
+                    h = (max_h.max(0.0)) as u32
                 ));
-                ui.label(format!(
-                    "Current Pen Status: {}",
-                    tablet_data.status.as_str()
+                ui.label(t!(
+                    "performance.pen_status",
+                    status = tablet_data.status.as_str()
                 ));
-                ui.label(format!(
-                    "Connected: {}",
-                    if tablet_data.is_connected {
-                        "Yes"
-                    } else {
-                        "No"
-                    }
-                ));
+                if tablet_data.is_connected {
+                    ui.label(t!("performance.connected_yes"));
+                } else {
+                    ui.label(t!("performance.connected_no"));
+                }
             });
         }
     });
@@ -186,7 +190,7 @@ pub fn render_performance_panel(
 
     ui.group(|ui| {
         ui.set_width(ui.available_width());
-        ui.label(egui::RichText::new("Live Packet Capture (Real-Time)").strong());
+        ui.label(egui::RichText::new(t!("performance.live_capture")).strong());
         ui.add_space(8.0);
 
         egui::Frame::new()

@@ -191,7 +191,10 @@ fn main() -> eframe::Result {
     // 2. Initialize Shared State
     let shared = SharedStateFactory::create(config.clone(), is_first_run);
 
-    // 3. Initialize Services and Channels
+    // 3. Initialize I18N locale from persisted config
+    next_tablet_driver::i18n::set_locale(config.language);
+
+    // 4. Initialize Services and Channels
     let (tablet_sender, tablet_receiver) = crossbeam_channel::unbounded();
     let update_service = UpdateService::new();
     let update_receiver = update_service.receiver.clone();
@@ -201,13 +204,13 @@ fn main() -> eframe::Result {
     // We must hold onto `_tray_service` so the tray icon doesn't get dropped.
     let _tray_service = TrayService::new(&shared);
 
-    // 4. Spawn Background Threads via Supervisor
+    // 5. Spawn Background Threads via Supervisor
     ThreadSupervisor::spawn_engine(Arc::clone(&shared), tablet_sender);
     ThreadSupervisor::spawn_websocket(Arc::clone(&shared));
     ThreadSupervisor::spawn_saver(save_receiver);
     update_service.start_check();
 
-    // 5. Main App Loop
+    // 6. Main App Loop
     // eframe blocks until the window is closed. When minimized to tray, the window closes
     // and eframe returns. We sleep until the tray restores the window, then restart eframe.
     loop {

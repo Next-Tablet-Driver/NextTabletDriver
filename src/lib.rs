@@ -32,6 +32,8 @@
 //! *   **[`drivers`]**: Protocol definitions and hardware-specific parsers.
 //! *   **[`engine`]**: The execution core that links the UI, drivers, and OS.
 //! *   **[`filters`]**: Digital signal processing for pen data.
+//! *   **[`i18n`]**: Internationalization support.
+//! *   **[`logger`]**: Logging utilities.
 //! *   **[`settings`]**: Persistence logic for user configurations.
 //! *   **[`startup`]**: Platform-specific autostart registration.
 //! *   **[`ui`]**: Graphical components and theming.
@@ -41,10 +43,11 @@ pub mod core;
 pub mod drivers;
 pub mod engine;
 pub mod filters;
+pub mod i18n;
 pub mod logger;
 pub mod settings;
 pub mod startup;
 pub mod ui;
 
 /// Version.
-pub const VERSION: &str = "1.26.1006.01";
+pub const VERSION: &str = "1.26.1106.01 [DEV ONLY]";

@@ -1,11 +1,13 @@
-use crate::app::state::{TabletMapperApp, UiSnapshot};
+use crate::app::state::{TabletMapperApp, ToastLevel, UiSnapshot};
 use crate::core::config::models::MappingConfig;
+use crate::i18n::Locale;
+use crate::t;
 use crate::ui::theme::{panel_bg, panel_border, ui_input_box_u16, ui_input_box_u32};
 use eframe::egui;
 
 #[allow(clippy::too_many_lines)]
 pub fn render_settings_panel(
-    _app: &TabletMapperApp,
+    app: &mut TabletMapperApp,
     ui: &mut egui::Ui,
     config: &mut MappingConfig,
     _snapshot: &UiSnapshot,
@@ -14,13 +16,16 @@ pub fn render_settings_panel(
 
     render_card(
         ui,
-        "General Settings",
+        &t!("settings.general.title"),
         egui_phosphor::regular::GEAR_SIX,
         |ui| {
             let old_run_at_startup = config.run_at_startup;
             if ui
-                .checkbox(&mut config.run_at_startup, "Run at startup")
-                .on_hover_text("Automatically launch the application when your session starts.")
+                .checkbox(
+                    &mut config.run_at_startup,
+                    t!("settings.general.run_at_startup"),
+                )
+                .on_hover_text(t!("settings.general.run_at_startup_tooltip"))
                 .changed()
                 && let Err(e) = crate::startup::set_run_at_startup(config.run_at_startup)
             {
@@ -31,13 +36,13 @@ pub fn render_settings_panel(
             ui.add_space(4.0);
             ui.checkbox(
                 &mut config.system_tray_on_minimize,
-                "System Tray when Minimize",
+                t!("settings.general.system_tray"),
             )
-            .on_hover_text("Hide the application to the system tray when minimized.");
+            .on_hover_text(t!("settings.general.system_tray_tooltip"));
 
             ui.add_space(12.0);
             ui.horizontal(|ui| {
-                ui.label(egui::RichText::new("Application Theme").strong());
+                ui.label(egui::RichText::new(t!("settings.general.theme")).strong());
                 ui.add_space(10.0);
 
                 let theme_name = match &config.theme {
@@ -113,7 +118,7 @@ pub fn render_settings_panel(
                                 egui::RichText::new(egui_phosphor::regular::TRASH)
                                     .color(crate::ui::theme::semantic_colors(ui.ctx()).error),
                             )
-                            .on_hover_text("Delete custom theme")
+                            .on_hover_text(t!("settings.general.delete_theme"))
                             .clicked()
                         {
                             delete = true;
@@ -127,8 +132,9 @@ pub fn render_settings_panel(
                 ui.add_space(10.0);
                 if ui
                     .button(format!(
-                        "{} Import Theme (.json)",
-                        egui_phosphor::regular::DOWNLOAD_SIMPLE
+                        "{} {}",
+                        egui_phosphor::regular::DOWNLOAD_SIMPLE,
+                        t!("settings.general.import_theme")
                     ))
                     .clicked()
                     && let Some(path) = rfd::FileDialog::new()
@@ -153,18 +159,58 @@ pub fn render_settings_panel(
 
     render_card(
         ui,
-        "WebSocket Server",
+        &t!("settings.language.title"),
+        egui_phosphor::regular::TRANSLATE,
+        |ui| {
+            ui.horizontal(|ui| {
+                ui.label(egui::RichText::new(t!("settings.language.label")).strong());
+                ui.add_space(10.0);
+
+                let current_locale = config.language;
+                let mut new_locale = current_locale;
+
+                egui::ComboBox::from_id_salt("language_selector")
+                    .selected_text(current_locale.display_name())
+                    .show_ui(ui, |ui| {
+                        for &locale in Locale::all() {
+                            ui.selectable_value(&mut new_locale, locale, locale.display_name());
+                        }
+                    });
+
+                if new_locale != current_locale {
+                    config.language = new_locale;
+                    crate::i18n::set_locale(new_locale);
+                    app.push_toast(
+                        t!(
+                            "toast.language_changed",
+                            language = new_locale.display_name()
+                        ),
+                        ToastLevel::Info,
+                    );
+                }
+            });
+        },
+    );
+
+    ui.add_space(15.0);
+
+    render_card(
+        ui,
+        &t!("settings.websocket.title"),
         egui_phosphor::regular::WIFI_HIGH,
         |ui| {
             ui.horizontal(|ui| {
-                ui.checkbox(&mut config.websocket.enabled, "Enable WebSocket Server");
+                ui.checkbox(
+                    &mut config.websocket.enabled,
+                    t!("settings.websocket.enable"),
+                );
 
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     let semantic = crate::ui::theme::semantic_colors(ui.ctx());
                     let (text, color) = if config.websocket.enabled {
-                        ("RUNNING", semantic.success)
+                        (t!("settings.websocket.running"), semantic.success)
                     } else {
-                        ("STOPPED", semantic.error)
+                        (t!("settings.websocket.stopped"), semantic.error)
                     };
 
                     egui::Frame::new()
@@ -188,14 +234,30 @@ pub fn render_settings_panel(
                 });
 
                 ui.add_space(15.0);
-                ui.label(egui::RichText::new("Payload Data").weak().size(11.0));
+                ui.label(
+                    egui::RichText::new(t!("settings.websocket.payload"))
+                        .weak()
+                        .size(11.0),
+                );
                 ui.add_space(4.0);
 
                 ui.horizontal(|ui| {
-                    ui.checkbox(&mut config.websocket.send_coordinates, "Coords");
-                    ui.checkbox(&mut config.websocket.send_pressure, "Pressure");
-                    ui.checkbox(&mut config.websocket.send_tilt, "Tilt");
-                    ui.checkbox(&mut config.websocket.send_status, "Status");
+                    ui.checkbox(
+                        &mut config.websocket.send_coordinates,
+                        t!("settings.websocket.coords"),
+                    );
+                    ui.checkbox(
+                        &mut config.websocket.send_pressure,
+                        t!("settings.websocket.pressure"),
+                    );
+                    ui.checkbox(
+                        &mut config.websocket.send_tilt,
+                        t!("settings.websocket.tilt"),
+                    );
+                    ui.checkbox(
+                        &mut config.websocket.send_status,
+                        t!("settings.websocket.status"),
+                    );
                 });
             });
         },

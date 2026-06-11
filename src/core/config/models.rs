@@ -4,6 +4,7 @@
 //! the application's configuration state (typically saved to `settings.json`).
 //! It includes models for tablet mapping areas, UI preferences, and filter settings.
 
+use crate::i18n::Locale;
 use serde::{Deserialize, Serialize};
 
 /// Represents the absolute physical mapping area on the tablet surface.
@@ -374,6 +375,9 @@ pub struct MappingConfig {
     /// Whether to snap the target area to display edges when resizing/moving.
     #[serde(default = "default_true")]
     pub display_snapping: bool,
+    /// The user's preferred UI language.
+    #[serde(default)]
+    pub language: Locale,
 }
 
 impl Default for MappingConfig {
@@ -399,6 +403,7 @@ impl Default for MappingConfig {
             lock_aspect_ratio: false,
             show_osu_playfield: false,
             display_snapping: default_true(),
+            language: Locale::default(),
         }
     }
 }

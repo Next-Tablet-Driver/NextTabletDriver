@@ -1,11 +1,12 @@
 use crate::app::state::UiSnapshot;
 use crate::core::config::models::MappingConfig;
 use crate::core::math::geometry::ActiveAreaGeometry;
+use crate::t;
 use crate::ui::theme::{ui_input_box, ui_section_header};
 use eframe::egui;
 
 pub fn render_tablet_section(ui: &mut egui::Ui, config: &mut MappingConfig, snapshot: &UiSnapshot) {
-    ui_section_header(ui, "Tablet");
+    ui_section_header(ui, &t!("output.tablet"));
 
     if let crate::engine::state::EngineStatus::Failed(ref reason) = snapshot.engine_status {
         ui.add(egui::Label::new(
@@ -168,9 +169,15 @@ pub fn render_tablet_section(ui: &mut egui::Ui, config: &mut MappingConfig, snap
         ui.add_space(20.0);
         ui.vertical(|ui| {
             ui.horizontal(|ui| {
-                ui.checkbox(&mut config.lock_aspect_ratio, "Force Aspect Ratio");
+                ui.checkbox(
+                    &mut config.lock_aspect_ratio,
+                    t!("output.force_aspect_ratio"),
+                );
                 ui.add_space(10.0);
-                ui.checkbox(&mut config.show_osu_playfield, "Show Osu!Playfield");
+                ui.checkbox(
+                    &mut config.show_osu_playfield,
+                    t!("output.show_osu_playfield"),
+                );
             });
             egui::Grid::new("tablet_grid")
                 .spacing(egui::vec2(10.0, 10.0))

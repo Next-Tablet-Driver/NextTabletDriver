@@ -1,4 +1,5 @@
 use crate::app::state::{TabletMapperApp, UiSnapshot};
+use crate::t;
 use eframe::egui;
 use std::sync::atomic::Ordering;
 
@@ -22,17 +23,20 @@ pub fn render_footer(
             ui.horizontal(|ui| {
                 let mut current_mode = config.mode;
                 egui::ComboBox::from_id_salt("mode_combo")
-                    .selected_text(format!("{current_mode:?} Mode"))
+                    .selected_text(t!(
+                        "footer.mode.current",
+                        mode = format!("{current_mode:?}")
+                    ))
                     .show_ui(ui, |ui| {
                         ui.selectable_value(
                             &mut current_mode,
                             crate::core::config::models::DriverMode::Absolute,
-                            "Absolute Mode",
+                            t!("footer.mode.absolute"),
                         );
                         ui.selectable_value(
                             &mut current_mode,
                             crate::core::config::models::DriverMode::Relative,
-                            "Relative Mode",
+                            t!("footer.mode.relative"),
                         );
                     });
 
@@ -56,7 +60,7 @@ pub fn render_footer(
                             egui::RichText::new(&profile_display).strong()
                         };
                         ui.label(label_text);
-                        ui.label("Profile:");
+                        ui.label(t!("footer.profile"));
                     });
 
                     egui::ComboBox::from_id_salt("device_combo")

@@ -3,6 +3,7 @@ pub mod stats;
 
 use crate::app::state::{TabletMapperApp, UiSnapshot};
 use crate::core::config::models::MappingConfig;
+use crate::t;
 use crate::ui::theme::{panel_bg, panel_border};
 use eframe::egui;
 
@@ -34,7 +35,11 @@ pub fn render_filters_panel(
                         ui.set_min_height(sidebar_height);
                         ui.spacing_mut().item_spacing.y = 2.0;
 
-                        ui.label(egui::RichText::new("AVAILABLE FILTERS").weak().size(10.0));
+                        ui.label(
+                            egui::RichText::new(t!("filters.available"))
+                                .weak()
+                                .size(10.0),
+                        );
                         ui.add_space(8.0);
 
                         render_sidebar_item(
@@ -65,7 +70,7 @@ pub fn render_filters_panel(
                 "HandSpeed WebSocket" => stats::render_stats_settings(app, ui, config, snapshot),
                 _ => {
                     ui.centered_and_justified(|ui| {
-                        ui.label("Select a filter to configure");
+                        ui.label(t!("filters.select"));
                     });
                 }
             }

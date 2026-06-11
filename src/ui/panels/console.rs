@@ -1,4 +1,5 @@
 use crate::app::state::TabletMapperApp;
+use crate::t;
 use eframe::egui;
 
 pub fn render_console_panel(app: &mut TabletMapperApp, ui: &mut egui::Ui) {
@@ -38,7 +39,7 @@ pub fn render_console_panel(app: &mut TabletMapperApp, ui: &mut egui::Ui) {
         ui.label(egui_phosphor::regular::MAGNIFYING_GLASS);
         ui.add(
             egui::TextEdit::singleline(&mut app.console_search)
-                .hint_text("Search logs...")
+                .hint_text(t!("console.search"))
                 .desired_width(200.0),
         );
         if ui.button(egui_phosphor::regular::X).clicked() {
@@ -89,16 +90,16 @@ pub fn render_console_panel(app: &mut TabletMapperApp, ui: &mut egui::Ui) {
                         .column(Column::remainder().at_least(250.0)) // Message
                         .header(25.0, |mut header| {
                             header.col(|ui| {
-                                ui.strong("Time");
+                                ui.strong(t!("console.col.time"));
                             });
                             header.col(|ui| {
-                                ui.strong("Level");
+                                ui.strong(t!("console.col.level"));
                             });
                             header.col(|ui| {
-                                ui.strong("Group");
+                                ui.strong(t!("console.col.group"));
                             });
                             header.col(|ui| {
-                                ui.strong("Message");
+                                ui.strong(t!("console.col.message"));
                             });
                         })
                         .body(|body| {
@@ -170,10 +171,14 @@ pub fn render_console_panel(app: &mut TabletMapperApp, ui: &mut egui::Ui) {
     ui.horizontal(|ui| {
         if ui
             .button(
-                egui::RichText::new(format!("{} Clear Console", egui_phosphor::regular::TRASH))
-                    .color(semantic.error),
+                egui::RichText::new(format!(
+                    "{} {}",
+                    egui_phosphor::regular::TRASH,
+                    t!("console.clear")
+                ))
+                .color(semantic.error),
             )
-            .on_hover_text("Remove all logs from memory")
+            .on_hover_text(t!("console.clear_tooltip"))
             .clicked()
             && let Ok(mut entries) = crate::logger::LOG_BUFFER.write()
         {
@@ -182,8 +187,12 @@ pub fn render_console_panel(app: &mut TabletMapperApp, ui: &mut egui::Ui) {
         }
 
         if ui
-            .button(format!("{} Copy All Logs", egui_phosphor::regular::COPY))
-            .on_hover_text("Copy every log entry, ignoring search and level filters")
+            .button(format!(
+                "{} {}",
+                egui_phosphor::regular::COPY,
+                t!("console.copy_all")
+            ))
+            .on_hover_text(t!("console.copy_all_tooltip"))
             .clicked()
         {
             ui.output_mut(|o| {
@@ -194,10 +203,10 @@ pub fn render_console_panel(app: &mut TabletMapperApp, ui: &mut egui::Ui) {
 
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             ui.label(
-                egui::RichText::new(format!(
-                    "Showing {} / {} logs",
-                    filtered_logs.len(),
-                    all_logs_count
+                egui::RichText::new(t!(
+                    "console.showing_logs",
+                    shown = filtered_logs.len(),
+                    total = all_logs_count
                 ))
                 .size(13.0)
                 .color(ui.visuals().text_color().gamma_multiply(0.6)),

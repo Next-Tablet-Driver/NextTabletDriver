@@ -4,6 +4,8 @@ pub mod snapshot;
 pub use models::*;
 pub use snapshot::*;
 
+use crate::t;
+
 use crate::core::config::models::MappingConfig;
 use crossbeam_channel::Receiver;
 use display_info::DisplayInfo;
@@ -133,20 +135,17 @@ impl TabletMapperApp {
                 });
                 if !corrections.is_empty() {
                     self.push_toast(
-                        format!(
-                            "Config repaired: {} field(s) reset to defaults",
-                            corrections.len()
-                        ),
+                        t!("toast.config_repaired", count = corrections.len()),
                         ToastLevel::Warning,
                     );
                 }
                 self.push_toast(
-                    format!("Loaded profile: {}", self.profile.name),
+                    t!("toast.profile_loaded", name = &self.profile.name),
                     ToastLevel::Info,
                 );
             }
             Err(e) => {
-                self.push_toast(format!("Failed to load profile: {e}"), ToastLevel::Error);
+                self.push_toast(t!("toast.load_failed", error = e), ToastLevel::Error);
             }
         }
     }
@@ -170,10 +169,10 @@ impl TabletMapperApp {
                 Ok(()) => {
                     self.profile.mark_saved(&config);
                     let _ = self.save_sender.try_send(config);
-                    self.push_toast("Settings saved".to_string(), ToastLevel::Info);
+                    self.push_toast(t!("toast.settings_saved"), ToastLevel::Info);
                 }
                 Err(e) => {
-                    self.push_toast(format!("Failed to save: {e}"), ToastLevel::Error);
+                    self.push_toast(t!("toast.save_failed", error = e), ToastLevel::Error);
                 }
             }
         } else {
@@ -199,10 +198,10 @@ impl TabletMapperApp {
                         profile_name: self.profile.name.clone(),
                         profile_path: self.profile.path.clone(),
                     });
-                    self.push_toast("Settings saved".to_string(), ToastLevel::Info);
+                    self.push_toast(t!("toast.settings_saved"), ToastLevel::Info);
                 }
                 Err(e) => {
-                    self.push_toast(format!("Failed to save: {e}"), ToastLevel::Error);
+                    self.push_toast(t!("toast.save_failed", error = e), ToastLevel::Error);
                 }
             }
         }
@@ -213,18 +212,17 @@ impl TabletMapperApp {
             let mut shared_config = self.shared.config.write().unwrap_or_log("config");
             let theme = shared_config.theme.clone();
             let run_at_startup = shared_config.run_at_startup;
+            let language = shared_config.language;
             *shared_config = MappingConfig::default();
             shared_config.theme = theme;
             shared_config.run_at_startup = run_at_startup;
+            shared_config.language = language;
             self.shared
                 .config_version
                 .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
             drop(shared_config);
         }
-        self.push_toast(
-            "Settings reset to default (Unsaved)".to_string(),
-            ToastLevel::Info,
-        );
+        self.push_toast(t!("toast.reset_default"), ToastLevel::Info);
     }
 
     pub fn export_settings(&mut self, config: &MappingConfig) {
@@ -234,8 +232,8 @@ impl TabletMapperApp {
             .save_file()
         {
             match crate::settings::save_to_path(&path, config) {
-                Ok(()) => self.push_toast("Settings exported".to_string(), ToastLevel::Info),
-                Err(e) => self.push_toast(format!("Export failed: {e}"), ToastLevel::Error),
+                Ok(()) => self.push_toast(t!("toast.settings_exported"), ToastLevel::Info),
+                Err(e) => self.push_toast(t!("toast.export_failed", error = e), ToastLevel::Error),
             }
         }
     }
@@ -250,15 +248,12 @@ impl TabletMapperApp {
                     self.apply_config(cfg);
                     if !corrections.is_empty() {
                         self.push_toast(
-                            format!(
-                                "Imported config repaired: {} field(s) reset",
-                                corrections.len()
-                            ),
+                            t!("toast.import_repaired", count = corrections.len()),
                             ToastLevel::Warning,
                         );
                     }
                 }
-                Err(e) => self.push_toast(format!("Import failed: {e}"), ToastLevel::Error),
+                Err(e) => self.push_toast(t!("toast.import_failed", error = e), ToastLevel::Error),
             }
         }
     }

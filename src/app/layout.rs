@@ -1,4 +1,5 @@
 use crate::app::state::{AppTab, TabletMapperApp, ToastLevel, UiSnapshot};
+use crate::t;
 use crate::ui::panels::console::render_console_panel;
 use crate::ui::panels::filters::render_filters_panel;
 use crate::ui::panels::output::render_output_panel;
@@ -72,7 +73,7 @@ impl TabletMapperApp {
         }
 
         let frame = egui::Frame::window(&ctx.style()).shadow(Shadow::NONE);
-        egui::Window::new("Unsaved Changes")
+        egui::Window::new(t!("dialog.unsaved.title"))
             .collapsible(false)
             .resizable(false)
             .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
@@ -80,17 +81,17 @@ impl TabletMapperApp {
             .show(ctx, |ui| {
                 ui.vertical_centered(|ui| {
                     ui.add_space(8.0);
-                    ui.label("Are you sure you want to close the application?");
-                    ui.label("The current profile has unsaved changes.");
+                    ui.label(t!("dialog.unsaved.message"));
+                    ui.label(t!("dialog.unsaved.detail"));
                     ui.add_space(12.0);
                     ui.horizontal(|ui| {
-                        if ui.button("Cancel").clicked() {
+                        if ui.button(t!("dialog.unsaved.cancel")).clicked() {
                             self.show_close_confirm = false;
                         }
                         ui.add_space(8.0);
                         if ui
                             .button(
-                                egui::RichText::new("Close Anyway")
+                                egui::RichText::new(t!("dialog.unsaved.close"))
                                     .color(crate::ui::theme::semantic_colors(ctx).error),
                             )
                             .clicked()
@@ -112,7 +113,7 @@ impl TabletMapperApp {
         }
 
         let frame = egui::Frame::window(&ctx.style()).shadow(Shadow::NONE);
-        egui::Window::new("Missing Udev Rules (Linux)")
+        egui::Window::new(t!("dialog.udev.title"))
             .collapsible(false)
             .resizable(false)
             .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
@@ -120,12 +121,12 @@ impl TabletMapperApp {
             .show(ctx, |ui| {
                 ui.vertical_centered(|ui| {
                     ui.add_space(8.0);
-                    ui.label(egui::RichText::new("NextTabletDriver needs udev rules to work properly.").strong());
+                    ui.label(egui::RichText::new(t!("dialog.udev.message")).strong());
                     ui.add_space(8.0);
-                    ui.label("Without these rules, you will experience 'Double Input'");
-                    ui.label("and the driver may lack permission to read your tablet.");
+                    ui.label(t!("dialog.udev.detail_1"));
+                    ui.label(t!("dialog.udev.detail_2"));
                     ui.add_space(16.0);
-                    ui.label(egui::RichText::new("How to fix this:").strong());
+                    ui.label(egui::RichText::new(t!("dialog.udev.how_to_fix")).strong());
                     ui.add_space(4.0);
 
                     let code_bg = ctx.style().visuals.faint_bg_color;
@@ -146,9 +147,9 @@ impl TabletMapperApp {
                         });
 
                     ui.add_space(8.0);
-                    ui.label(egui::RichText::new("You may need to log out and log back in.").italics());
+                    ui.label(egui::RichText::new(t!("dialog.udev.logout")).italics());
                     ui.add_space(12.0);
-                    if ui.button("I have installed the rules").clicked() {
+                    if ui.button(t!("dialog.udev.done")).clicked() {
                         self.missing_udev_rules = false;
                     }
                     ui.add_space(4.0);
@@ -201,7 +202,7 @@ impl TabletMapperApp {
         ctx.show_viewport_immediate(
             egui::ViewportId::from_hash_of("debugger_viewport"),
             egui::ViewportBuilder::default()
-                .with_title("Tablet Debugger")
+                .with_title(t!("debugger.title"))
                 .with_inner_size([600.0, 750.0])
                 .with_resizable(true),
             |ctx, _| {
@@ -245,7 +246,7 @@ impl TabletMapperApp {
         ctx.show_viewport_immediate(
             egui::ViewportId::from_hash_of("performance_viewport"),
             egui::ViewportBuilder::default()
-                .with_title("Input Lag & Performance Analysis")
+                .with_title(t!("performance.viewport_title"))
                 .with_inner_size([500.0, 600.0])
                 .with_resizable(true),
             |ctx, _| {
@@ -260,7 +261,7 @@ impl TabletMapperApp {
                     ui.vertical_centered(|ui| {
                         ui.add_space(5.0);
                         ui.heading(
-                            egui::RichText::new("Driver Performance Monitor")
+                            egui::RichText::new(t!("performance.title"))
                                 .strong()
                                 .extra_letter_spacing(1.0),
                         );
