@@ -95,6 +95,9 @@ impl TabletMapperApp {
             console_cache_search: String::new(),
             console_cache_filters: (true, true, true, true),
             console_cache_filtered: Vec::new(),
+            theme_store_open: false,
+            theme_store_loading: false,
+            theme_store_list: std::sync::Arc::new(std::sync::Mutex::new(None)),
             show_close_confirm: false,
             force_close: false,
             missing_udev_rules: {

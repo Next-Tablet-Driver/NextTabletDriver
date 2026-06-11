@@ -35,8 +35,16 @@
   "settings.general.system_tray_tooltip": "Masquer l'application dans la zone de notification lorsqu'elle est réduite.",
   "settings.general.theme": "Thème de l'application",
   "settings.general.delete_theme": "Supprimer le thème personnalisé",
-  "settings.general.import_theme": "Importer un thème (.json)",
-
+  "settings.general.import_theme": "Importer un Thème (Fichier local)",
+  "settings.theme.title": "Thèmes",
+  "settings.theme.label": "Thème Actuel",
+  "settings.theme.download_title": "Télécharger un Thème GitHub",
+  "settings.theme.browse_online": "Parcourir les Thèmes en ligne",
+  "settings.theme.store_title": "Magasin de Thèmes",
+  "settings.theme.download_btn": "Télécharger",
+  "settings.theme.installed": "Possédé",
+  "settings.theme.download_success": "Thème téléchargé avec succès !",
+  "settings.theme.download_error": "Erreur lors du téléchargement :",
   "settings.language.title": "Langue",
   "settings.language.label": "Langue de l'interface",
 

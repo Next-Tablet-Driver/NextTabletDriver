@@ -50,10 +50,19 @@ pub fn load_custom_theme(name: &str) -> Option<ThemeConfig> {
 /// Returns an error if the file cannot be read or parsed.
 pub fn import_theme_json(source_path: &std::path::Path) -> Result<String, String> {
     let content = fs::read_to_string(source_path).map_err(|e| e.to_string())?;
+    import_theme_from_string(&content)
+}
 
+/// Imports a new theme directly from a JSON string.
+/// It creates a folder using the sanitized theme name and writes the JSON.
+///
+/// # Errors
+///
+/// Returns an error if the string is invalid JSON or cannot be written to disk.
+pub fn import_theme_from_string(content: &str) -> Result<String, String> {
     // Validate that it is a proper ThemeConfig
     let config: ThemeConfig =
-        serde_json::from_str(&content).map_err(|e| format!("Invalid theme format: {e}"))?;
+        serde_json::from_str(content).map_err(|e| format!("Invalid theme format: {e}"))?;
 
     let safe_name = crate::settings::sanitize_profile_name(&config.metadata.name);
     let theme_folder = get_themes_dir().join(&safe_name);

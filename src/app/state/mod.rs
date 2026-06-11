@@ -17,6 +17,8 @@ use crate::app::autoupdate::UpdateStatus;
 use crate::drivers::TabletData;
 use crate::engine::state::{LockRecoveryExt, SharedState};
 
+pub type ThemeStoreResult = Result<Vec<String>, String>;
+
 /// The core application state structure used by the `eframe` (egui) integration.
 #[allow(clippy::struct_excessive_bools)]
 pub struct TabletMapperApp {
@@ -84,6 +86,11 @@ pub struct TabletMapperApp {
     pub console_cache_filters: (bool, bool, bool, bool),
     /// List of pre-filtered log entries currently loaded in the console UI.
     pub console_cache_filtered: Vec<crate::logger::LogEntry>,
+
+    // Theme Store State
+    pub theme_store_open: bool,
+    pub theme_store_loading: bool,
+    pub theme_store_list: std::sync::Arc<std::sync::Mutex<Option<ThemeStoreResult>>>,
 
     /// Toggle to render the close confirmation dialog modal.
     pub show_close_confirm: bool,
