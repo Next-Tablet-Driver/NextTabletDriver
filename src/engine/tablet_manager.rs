@@ -151,6 +151,10 @@ pub fn run_manager(shared: &Arc<SharedState>, tablet_sender: &Sender<TabletData>
     }
 }
 
+/// Adjusts the execution priority of the polling thread.
+///
+/// On Windows, sets the thread priority to `TIME_CRITICAL`.
+/// On Linux, attempts to nice the thread to `-11` (requires `CAP_SYS_NICE` or root permissions).
 fn init_thread_priority() {
     // SAFETY: These are standard OS-specific calls to increase thread priority
     // for low-latency USB polling.
@@ -180,6 +184,9 @@ fn init_thread_priority() {
     }
 }
 
+/// Instantiates and configures the signal filtering pipeline.
+///
+/// Registers standard pipeline stages such as `DevocubAntichatter` and `SpeedStatsFilter`.
 fn init_filter_pipeline(shared: &Arc<SharedState>, config: &MappingConfig) -> FilterPipeline {
     let mut filters = FilterPipeline::new();
     filters.add(Box::new(
@@ -192,6 +199,10 @@ fn init_filter_pipeline(shared: &Arc<SharedState>, config: &MappingConfig) -> Fi
     filters
 }
 
+/// Handles tablet connection events.
+///
+/// Populates shared state device metadata, resets configuration parameters, and triggers
+/// a configuration increment if this is the first run to propagate the initial active area settings.
 fn on_device_connected(
     shared: &Arc<SharedState>,
     driver: &dyn crate::drivers::NextTabletDriver,
@@ -228,6 +239,10 @@ fn on_device_connected(
     }
 }
 
+/// Handles tablet disconnection events.
+///
+/// Cleans up shared state, restoring the default "No Tablet Detected" device state and zeroing
+/// coordinate parameters to prevent incorrect pointer inputs.
 fn on_disconnected(shared: &Arc<SharedState>) {
     log::info!(target: "HID", "Device disconnected, resetting shared state");
     *shared.device_state.write().unwrap_or_reset("device_state") =
@@ -236,6 +251,10 @@ fn on_disconnected(shared: &Arc<SharedState>) {
         crate::drivers::TabletData::default();
 }
 
+/// The main packet reading loop of the engine thread.
+///
+/// Polls the raw HID device for byte reports and coordinates configuration reloading and packet
+/// processing.
 #[allow(clippy::too_many_arguments)]
 fn run_polling_loop(
     device: &hidapi::HidDevice,
@@ -325,6 +344,13 @@ fn run_polling_loop(
     }
 }
 
+/// Parses, processes, and submits a raw USB packet.
+///
+/// Evaluates parser and filter execution durations and reports performance lag spikes to the logs:
+/// 1. If parsing + processing time exceeds 5.0ms.
+/// 2. If the duration between consecutive active reports exceeds 25.0ms.
+///
+/// Emits statistics updates and forwards output frames to the GUI thread.
 #[allow(clippy::too_many_arguments)]
 fn process_packet(
     raw: &[u8],
@@ -414,6 +440,7 @@ fn process_packet(
     }
 }
 
+/// Checks for changed configuration versions and applies hot-reloading to the pipelines.
 fn maybe_reload_config(
     shared: &Arc<SharedState>,
     filters: &mut FilterPipeline,

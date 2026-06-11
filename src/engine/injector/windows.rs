@@ -44,14 +44,15 @@ impl Injector {
         }
     }
 
+    /// Updates stylus proximity state. Unused on Windows since proximity
+    /// tracking is handled at the system level.
     pub const fn set_proximity(&mut self, _in_proximity: bool) {}
 
     /// Injects an absolute cursor position on the screen.
     /// Used by `Absolute` driver mode.
     ///
-    /// On Windows, reads the current cursor position via `GetCursorPos` and
-    /// applies a relative delta to reach the target. This avoids the DPI scaling
-    /// issues that come with `SendInput` absolute coordinate encoding.
+    /// Directs mouse coordinate injection via Enigo using absolute pixel
+    /// coordinates (`Coordinate::Abs`).
     ///
     /// # Arguments
     /// * `target_x` - Target X coordinate in OS pixels.
@@ -80,6 +81,11 @@ impl Injector {
         self.remainder_y = 0.0;
     }
 
+    /// Injects relative mouse movement on the screen.
+    /// Used by `Relative` driver mode.
+    ///
+    /// Accumulates sub-pixel movement remainders and emits relative move
+    /// events once they accumulate to at least a full integer pixel.
     pub fn move_relative(&mut self, dx: f32, dy: f32) {
         let total_dx = dx + self.remainder_x;
         let total_dy = dy + self.remainder_y;

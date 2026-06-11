@@ -5,21 +5,37 @@ use std::collections::VecDeque;
 use std::sync::{Arc, LazyLock, RwLock};
 use std::thread;
 
+/// Represents a structured log entry captured from the application's logging pipeline.
+///
+/// Log entries are processed by the background logger thread, written to the local log file,
+/// and stored in a circular buffer used to feed the in-app UI console.
 #[derive(Debug, Clone)]
 pub struct LogEntry {
+    /// Formatted timestamp of when the log was recorded.
     pub time: String,
+    /// Logging level string representation (e.g. "INFO", "DEBUG", "WARN", "ERROR").
     pub level: String,
+    /// Target category/module (e.g. "HID", `TabletManager`).
     pub group: String,
+    /// Message content.
     pub message: String,
+    /// Lowercase combination of module group and message for fast search filtering.
     pub search_text: String,
 }
 
+/// The application-wide log sink implementing the [`Log`] trait.
+///
+/// Dispatches log records to a background worker thread via a crossbeam channel,
+/// filtering logs using a whitelist to control what reaches the in-app console.
 pub struct GlobalLogger {
+    /// Channel sender to transfer log records to the background logging worker.
     pub sender: Sender<LogEntry>,
 }
 
+/// Maximum capacity of the in-memory circular log buffer.
 pub const MAX_LOGS: usize = 2000;
 
+/// Thread-safe circular buffer holding the latest logs for GUI presentation.
 pub static LOG_BUFFER: LazyLock<Arc<RwLock<VecDeque<LogEntry>>>> =
     LazyLock::new(|| Arc::new(RwLock::new(VecDeque::with_capacity(MAX_LOGS))));
 

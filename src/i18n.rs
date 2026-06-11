@@ -67,7 +67,8 @@ struct I18n {
 }
 
 impl I18n {
-    /// Creates a new `I18n` instance with the given locale.
+    /// Creates a new `I18n` instance with the given locale, loading its translations
+    /// alongside the English fallback.
     fn new(locale: Locale) -> Self {
         let fallback = Self::load_locale(Locale::English);
         let translations = if locale == Locale::English {
@@ -82,7 +83,7 @@ impl I18n {
         }
     }
 
-    /// Loads a locale file from the embedded directory into a flat `HashMap`.
+    /// Loads a locale file from the embedded directory and deserializes it into a flat `HashMap`.
     fn load_locale(locale: Locale) -> HashMap<String, String> {
         let filename = locale.filename();
         LOCALES_DIR
@@ -99,7 +100,10 @@ impl I18n {
             })
     }
 
-    /// Looks up a translation key, falling back to English, then to the raw key.
+    /// Looks up a translation key in the active dictionary.
+    ///
+    /// If not found, falls back to the English dictionary. If still not found,
+    /// returns the key itself as a fallback string and logs a warning.
     fn get(&self, key: &str) -> String {
         self.translations
             .get(key)

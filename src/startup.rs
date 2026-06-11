@@ -182,6 +182,9 @@ mod platform {
 pub use platform::is_run_at_startup_registered;
 pub use platform::set_run_at_startup;
 
+/// Queries the operating system for the total amount of physical memory (RAM) in bytes.
+///
+/// On Windows, queries `GlobalMemoryStatusEx`.
 #[cfg(windows)]
 fn get_memory_info() -> Option<u64> {
     use windows_sys::Win32::System::SystemInformation::{GlobalMemoryStatusEx, MEMORYSTATUSEX};
@@ -205,6 +208,9 @@ fn get_memory_info() -> Option<u64> {
     }
 }
 
+/// Queries the operating system for the total amount of physical memory (RAM) in bytes.
+///
+/// On Linux, parses `/proc/meminfo`.
 #[cfg(not(windows))]
 fn get_memory_info() -> Option<u64> {
     #[cfg(target_os = "linux")]
@@ -225,6 +231,7 @@ fn get_memory_info() -> Option<u64> {
     None
 }
 
+/// Reads `/etc/os-release` to extract the system's human-readable distribution name.
 #[cfg(target_os = "linux")]
 fn get_linux_distro() -> Option<String> {
     if let Ok(release) = std::fs::read_to_string("/etc/os-release") {
