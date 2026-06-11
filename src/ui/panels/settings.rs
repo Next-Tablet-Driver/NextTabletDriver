@@ -158,7 +158,11 @@ fn render_theme_selector(ui: &mut egui::Ui, config: &mut MappingConfig) {
     });
 }
 
-fn render_theme_external_actions(app: &mut TabletMapperApp, ui: &mut egui::Ui, config: &mut MappingConfig) {
+fn render_theme_external_actions(
+    app: &mut TabletMapperApp,
+    ui: &mut egui::Ui,
+    config: &mut MappingConfig,
+) {
     ui.horizontal(|ui| {
         ui.label(egui::RichText::new(t!("settings.theme.download_title")).strong());
     });
