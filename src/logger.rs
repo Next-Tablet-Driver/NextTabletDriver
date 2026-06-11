@@ -17,7 +17,7 @@ pub struct GlobalLogger {
     pub sender: Sender<LogEntry>,
 }
 
-pub const MAX_LOGS: usize = 1000;
+pub const MAX_LOGS: usize = 2000;
 
 pub static LOG_BUFFER: LazyLock<Arc<RwLock<VecDeque<LogEntry>>>> =
     LazyLock::new(|| Arc::new(RwLock::new(VecDeque::with_capacity(MAX_LOGS))));
@@ -93,23 +93,30 @@ pub fn init() -> Result<(), String> {
     let spawn_result = thread::Builder::new()
         .name("LoggerWorker".to_string())
         .spawn(move || {
-            while let Ok(entry) = receiver.recv() {
-                // 1. Console & File Output (Debug only)
-                if cfg!(debug_assertions) {
-                    let log_line = format!(
-                        "[{}] {} [{}] {}",
-                        entry.time, entry.level, entry.group, entry.message
-                    );
-                    println!("{log_line}");
+            let log_dir = crate::settings::get_settings_dir();
+            let session_log_path = log_dir.join("session.log");
 
-                    if let Ok(mut file) = std::fs::OpenOptions::new()
-                        .create(true)
-                        .append(true)
-                        .open("debug.log")
-                    {
-                        use std::io::Write;
-                        let _ = writeln!(file, "{log_line}");
-                    }
+            let mut session_file = std::fs::OpenOptions::new()
+                .create(true)
+                .write(true)
+                .truncate(true)
+                .open(&session_log_path)
+                .ok();
+
+            while let Ok(entry) = receiver.recv() {
+                let log_line = format!(
+                    "[{}] {} [{}] {}",
+                    entry.time, entry.level, entry.group, entry.message
+                );
+
+                // 1. Unbounded File Output
+                if let Some(file) = &mut session_file {
+                    use std::io::Write;
+                    let _ = writeln!(file, "{log_line}");
+                }
+
+                if cfg!(debug_assertions) {
+                    println!("{log_line}");
                 }
 
                 // 2. Update UI Buffer

@@ -94,9 +94,11 @@
 
   "console.search": "Search logs...",
   "console.clear": "Clear Console",
-  "console.clear_tooltip": "Remove all logs from memory",
-  "console.copy_all": "Copy All Logs",
-  "console.copy_all_tooltip": "Copy every log entry, ignoring search and level filters",
+  "console.clear_tooltip": "Clear all currently visible logs",
+  "console.copy_all": "Copy Visible",
+  "console.copy_all_tooltip": "Copy currently visible logs to clipboard",
+  "console.export_logs": "Export All",
+  "console.export_logs_tooltip": "Export the entire unlimited log history to a file",
   "console.showing_logs": "Showing {shown} / {total} logs",
   "console.col.time": "Time",
   "console.col.level": "Level",
@@ -129,6 +131,7 @@
 
   "toast.settings_saved": "Settings saved",
   "toast.settings_exported": "Settings exported",
+  "toast.logs_exported": "Logs exported successfully",
   "toast.profile_loaded": "Loaded profile: {name}",
   "toast.load_failed": "Failed to load profile: {error}",
   "toast.save_failed": "Failed to save: {error}",

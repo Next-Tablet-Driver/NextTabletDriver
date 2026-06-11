@@ -168,6 +168,8 @@ pub fn render_console_panel(app: &mut TabletMapperApp, ui: &mut egui::Ui) {
 
     // 2. Footer Area
     let semantic = crate::ui::theme::semantic_colors(ui.ctx());
+    let mut toast_to_push = None;
+
     ui.horizontal(|ui| {
         if ui
             .button(
@@ -201,6 +203,33 @@ pub fn render_console_panel(app: &mut TabletMapperApp, ui: &mut egui::Ui) {
             });
         }
 
+        if ui
+            .button(format!(
+                "{} {}",
+                egui_phosphor::regular::DOWNLOAD_SIMPLE,
+                t!("console.export_logs")
+            ))
+            .on_hover_text(t!("console.export_logs_tooltip"))
+            .clicked()
+            && let Some(save_path) = rfd::FileDialog::new()
+                .set_file_name("session_logs.txt")
+                .add_filter("Text File", &["txt", "log"])
+                .save_file()
+        {
+            let session_log_path = crate::settings::get_settings_dir().join("session.log");
+            if let Err(e) = std::fs::copy(&session_log_path, &save_path) {
+                toast_to_push = Some((
+                    t!("toast.export_failed", error = e),
+                    crate::app::state::ToastLevel::Error,
+                ));
+            } else {
+                toast_to_push = Some((
+                    t!("toast.logs_exported"),
+                    crate::app::state::ToastLevel::Info,
+                ));
+            }
+        }
+
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             ui.label(
                 egui::RichText::new(t!(
@@ -213,4 +242,8 @@ pub fn render_console_panel(app: &mut TabletMapperApp, ui: &mut egui::Ui) {
             );
         });
     });
+
+    if let Some((msg, level)) = toast_to_push {
+        app.push_toast(msg, level);
+    }
 }
