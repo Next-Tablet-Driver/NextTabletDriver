@@ -195,7 +195,7 @@ fn main() -> eframe::Result {
     next_tablet_driver::i18n::set_locale(config.language);
 
     // 4. Initialize Services and Channels
-    let (tablet_sender, tablet_receiver) = crossbeam_channel::unbounded();
+    let (tablet_sender, tablet_receiver) = crossbeam_channel::bounded(60);
     let update_service = UpdateService::new();
     let update_receiver = update_service.receiver.clone();
     let update_sender = update_service.sender.clone();

@@ -11,6 +11,7 @@ pub struct LogEntry {
     pub level: String,
     pub group: String,
     pub message: String,
+    pub search_text: String,
 }
 
 pub struct GlobalLogger {
@@ -64,11 +65,17 @@ impl Log for GlobalLogger {
                 return;
             }
 
+            let level = format!("{:?}", record.level());
+            let group = target.to_string();
+            let message = format!("{}", record.args());
+            let search_text = format!("{} {}", group.to_lowercase(), message.to_lowercase());
+
             let entry = LogEntry {
                 time: Local::now().format("%H:%M:%S").to_string(),
-                level: format!("{:?}", record.level()),
-                group: target.to_string(),
-                message: format!("{}", record.args()),
+                level,
+                group,
+                message,
+                search_text,
             };
 
             // Send to worker thread (non-blocking)

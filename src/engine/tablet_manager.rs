@@ -303,7 +303,7 @@ fn run_polling_loop(
                 };
                 pipeline.process(&out, driver, local_config, injector, filters, shared);
                 if shared.is_visible.load(Ordering::Relaxed) {
-                    let _ = tablet_sender.send(out);
+                    let _ = tablet_sender.try_send(out);
                 }
 
                 // Still check for config even when out of range
@@ -372,7 +372,7 @@ fn process_packet(
         // When hidden in the system tray, the UI thread is idle and
         // nobody consumes the channel - skipping prevents unbounded growth.
         if shared.is_visible.load(Ordering::Relaxed) {
-            let _ = tablet_sender.send(data);
+            let _ = tablet_sender.try_send(data);
         }
     }
 }

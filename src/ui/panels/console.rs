@@ -62,7 +62,7 @@ pub fn render_console_panel(app: &mut TabletMapperApp, ui: &mut egui::Ui) {
     ui.separator();
     ui.add_space(2.0);
 
-    let (all_logs_count, filtered_logs, full_log_text) = app.get_filtered_logs();
+    let (all_logs_count, filtered_logs) = app.get_filtered_logs();
 
     let footer_height = 45.0;
     let table_height = ui.available_height() - footer_height;
@@ -197,9 +197,13 @@ pub fn render_console_panel(app: &mut TabletMapperApp, ui: &mut egui::Ui) {
             .on_hover_text(t!("console.copy_all_tooltip"))
             .clicked()
         {
+            let copy_text = filtered_logs
+                .iter()
+                .map(|l| format!("[{}] {} [{}] {}", l.time, l.level, l.group, l.message))
+                .collect::<Vec<_>>()
+                .join("\n");
             ui.output_mut(|o| {
-                o.commands
-                    .push(egui::OutputCommand::CopyText(full_log_text.to_string()));
+                o.commands.push(egui::OutputCommand::CopyText(copy_text));
             });
         }
 

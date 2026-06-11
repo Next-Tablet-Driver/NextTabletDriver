@@ -84,8 +84,6 @@ pub struct TabletMapperApp {
     pub console_cache_filters: (bool, bool, bool, bool),
     /// List of pre-filtered log entries currently loaded in the console UI.
     pub console_cache_filtered: Vec<crate::logger::LogEntry>,
-    /// Flattened textual string of all matching logs, optimized for clipboard copy.
-    pub console_cache_full_text: String,
 
     /// Toggle to render the close confirmation dialog modal.
     pub show_close_confirm: bool,
@@ -258,7 +256,7 @@ impl TabletMapperApp {
         }
     }
 
-    pub fn get_filtered_logs(&mut self) -> (usize, &[crate::logger::LogEntry], &str) {
+    pub fn get_filtered_logs(&mut self) -> (usize, &[crate::logger::LogEntry]) {
         let logs = crate::logger::LOG_BUFFER.read().unwrap_or_log("logs");
         let current_filters = (
             self.console_show_info,
@@ -272,11 +270,7 @@ impl TabletMapperApp {
             && self.console_cache_search == self.console_search
             && self.console_cache_filters == current_filters
         {
-            return (
-                logs.len(),
-                &self.console_cache_filtered,
-                &self.console_cache_full_text,
-            );
+            return (logs.len(), &self.console_cache_filtered);
         }
         let search_lower = self.console_search.to_lowercase();
         let mut filtered: Vec<_> = logs
@@ -295,29 +289,19 @@ impl TabletMapperApp {
                 if search_lower.is_empty() {
                     return true;
                 }
-                log.message.to_lowercase().contains(&search_lower)
-                    || log.group.to_lowercase().contains(&search_lower)
+                log.search_text.contains(&search_lower)
             })
             .cloned()
             .collect();
         filtered.reverse();
-        let full_text = logs
-            .iter()
-            .map(|l| format!("[{}] {} [{}] {}", l.time, l.level, l.group, l.message))
-            .collect::<Vec<_>>()
-            .join("\n");
-        self.console_cache_log_sequence = current_sequence;
-        let total_count = logs.len();
+        let all_count = logs.len();
         drop(logs);
+        self.console_cache_filtered = filtered;
+        self.console_cache_log_sequence = current_sequence;
         self.console_cache_search = self.console_search.clone();
         self.console_cache_filters = current_filters;
-        self.console_cache_filtered = filtered;
-        self.console_cache_full_text = full_text;
-        (
-            total_count,
-            &self.console_cache_filtered,
-            &self.console_cache_full_text,
-        )
+
+        (all_count, &self.console_cache_filtered)
     }
 
     pub fn start_update(&mut self) {

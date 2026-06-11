@@ -95,7 +95,6 @@ impl TabletMapperApp {
             console_cache_search: String::new(),
             console_cache_filters: (true, true, true, true),
             console_cache_filtered: Vec::new(),
-            console_cache_full_text: String::new(),
             show_close_confirm: false,
             force_close: false,
             missing_udev_rules: {
