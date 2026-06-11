@@ -89,9 +89,13 @@ impl I18n {
             .get_file(filename)
             .and_then(|f| f.contents_utf8())
             .and_then(|content| serde_json::from_str::<HashMap<String, String>>(content).ok())
-            .unwrap_or_else(|| {
+            .map_or_else(|| {
                 log::error!(target: "I18N", "Failed to load locale file: {filename}");
                 HashMap::new()
+            }, |m| {
+                let len = m.len();
+                log::info!(target: "I18N", "Loaded translations for locale {locale:?} ({len} keys)");
+                m
             })
     }
 
@@ -163,4 +167,47 @@ macro_rules! t {
             $( (stringify!($name), &format!("{}", $value)) ),+
         ])
     };
+}
+
+#[cfg(test)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic
+)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_translation_lookup() {
+        set_locale(Locale::English);
+        assert_eq!(translate("tabs.output"), "Output");
+        assert_eq!(translate("tabs.filters"), "Filters");
+    }
+
+    #[test]
+    fn test_fallback_logic() {
+        set_locale(Locale::French);
+        assert_eq!(translate("this.key.does.not.exist.at.all"), "this.key.does.not.exist.at.all");
+        set_locale(Locale::English);
+    }
+
+    #[test]
+    fn test_locale_switching() {
+        set_locale(Locale::French);
+        assert_eq!(translate("tabs.output"), "Sortie");
+
+        set_locale(Locale::English);
+        assert_eq!(translate("tabs.output"), "Output");
+    }
+
+    #[test]
+    fn test_interpolation() {
+        set_locale(Locale::English);
+        let interpolated = translate_with("toast.profile_loaded", &[("name", "TestProfile")]);
+        assert_eq!(interpolated, "Loaded profile: TestProfile");
+
+        let macro_interpolated = t!("toast.profile_loaded", name = "TestProfile");
+        assert_eq!(macro_interpolated, "Loaded profile: TestProfile");
+    }
 }

@@ -169,3 +169,128 @@ impl ThemeConfig {
         style
     }
 }
+
+#[cfg(test)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::float_cmp,
+    clippy::bool_assert_comparison
+)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_color() {
+        let fallback = egui::Color32::from_rgb(255, 0, 0);
+
+        // #RRGGBB format
+        assert_eq!(ThemeConfig::parse_color("#00ff00", fallback), egui::Color32::from_rgb(0, 255, 0));
+        // Without # format
+        assert_eq!(ThemeConfig::parse_color("0000ff", fallback), egui::Color32::from_rgb(0, 0, 255));
+        // #RRGGBBAA format
+        assert_eq!(ThemeConfig::parse_color("#ff00ff80", fallback), egui::Color32::from_rgba_unmultiplied(255, 0, 255, 128));
+        // Invalid hex length (too short) -> fallback
+        assert_eq!(ThemeConfig::parse_color("#fff", fallback), fallback);
+        // Invalid characters (radix parses fail, resulting in 0)
+        assert_eq!(ThemeConfig::parse_color("#zzzzzz", fallback), egui::Color32::from_rgb(0, 0, 0));
+    }
+
+    #[test]
+    fn test_theme_config_deserialization() {
+        let json_content = r##"{
+            "metadata": {
+                "name": "CustomDark",
+                "author": "Tester",
+                "version": "1.0.0",
+                "update_url": null
+            },
+            "colors": {
+                "dark_mode": true,
+                "panel_bg": "#1e1e1e",
+                "window_bg": "#121212",
+                "text_color": "#e0e0e0",
+                "strong_text_color": "#ffffff",
+                "accent_color": "#0078d7",
+                "border_color": "#333333",
+                "widget_bg": "#252525",
+                "widget_hover": "#303030",
+                "widget_active": "#353535",
+                "success_color": "#00ff00",
+                "warning_color": "#ffaa00",
+                "error_color": "#ff0000",
+                "info_color": "#0078d7",
+                "playfield_color": "#ff69b4",
+                "playfield_opacity": 0.3
+            },
+            "spacing": {
+                "corner_radius": 6.0,
+                "item_spacing_x": 8.0,
+                "item_spacing_y": 8.0,
+                "button_padding_x": 10.0,
+                "button_padding_y": 5.0,
+                "border_width": 1.5
+            }
+        }"##;
+
+        let config: Result<ThemeConfig, _> = serde_json::from_str(json_content);
+        assert!(config.is_ok());
+        let theme = config.unwrap();
+        assert_eq!(theme.metadata.name, "CustomDark");
+        assert_eq!(theme.colors.dark_mode, true);
+        assert_eq!(theme.colors.panel_bg, "#1e1e1e");
+        assert_eq!(theme.spacing.as_ref().unwrap().corner_radius, Some(6.0));
+    }
+
+    #[test]
+    fn test_to_style_mapping() {
+        let theme = ThemeConfig {
+            metadata: ThemeMetadata {
+                name: "TestTheme".to_string(),
+                author: "Tester".to_string(),
+                version: "1.0.0".to_string(),
+                update_url: None,
+            },
+            colors: ThemeColors {
+                dark_mode: true,
+                panel_bg: "#1e1e1e".to_string(),
+                window_bg: "#121212".to_string(),
+                text_color: "#e0e0e0".to_string(),
+                strong_text_color: "#ffffff".to_string(),
+                accent_color: "#0078d7".to_string(),
+                border_color: "#333333".to_string(),
+                widget_bg: "#252525".to_string(),
+                widget_hover: "#303030".to_string(),
+                widget_active: "#353535".to_string(),
+                success_color: None,
+                warning_color: None,
+                error_color: None,
+                info_color: None,
+                playfield_color: None,
+                playfield_opacity: None,
+            },
+            spacing: Some(ThemeSpacing {
+                corner_radius: Some(8.0),
+                item_spacing_x: Some(12.0),
+                item_spacing_y: Some(12.0),
+                button_padding_x: Some(14.0),
+                button_padding_y: Some(6.0),
+                border_width: Some(2.0),
+            }),
+        };
+
+        let base_style = egui::Style::default();
+        let style = theme.to_style(&base_style);
+
+        // Verify that spacing attributes are applied correctly
+        assert_eq!(style.spacing.item_spacing.x, 12.0);
+        assert_eq!(style.spacing.item_spacing.y, 12.0);
+        assert_eq!(style.spacing.button_padding.x, 14.0);
+        assert_eq!(style.spacing.button_padding.y, 6.0);
+
+        // Verify corner radius (rounding) on widgets
+        let expected_radius = egui::CornerRadius::same(8);
+        assert_eq!(style.visuals.widgets.inactive.corner_radius, expected_radius);
+    }
+}

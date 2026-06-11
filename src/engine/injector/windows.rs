@@ -34,6 +34,8 @@ impl Injector {
             }
         });
 
+        log::info!(target: "Injector", "Windows Injector initialized successfully.");
+
         Self {
             enigo,
             last_pressure_down: false,
@@ -100,8 +102,10 @@ impl Injector {
     /// API spam.
     pub fn set_left_button(&mut self, is_down: bool) {
         if is_down && !self.last_pressure_down {
+            log::debug!(target: "Injector", "Pen tip DOWN (Left Click Pressed)");
             let _ = self.enigo.button(Button::Left, Direction::Press);
         } else if !is_down && self.last_pressure_down {
+            log::debug!(target: "Injector", "Pen tip UP (Left Click Released)");
             let _ = self.enigo.button(Button::Left, Direction::Release);
         }
         self.last_pressure_down = is_down;
