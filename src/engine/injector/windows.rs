@@ -68,29 +68,14 @@ impl Injector {
         _tilt_x: i32,
         _tilt_y: i32,
     ) {
-        #[cfg(windows)]
-        use windows_sys::Win32::Foundation::POINT;
-        #[cfg(windows)]
-        use windows_sys::Win32::UI::WindowsAndMessaging::GetCursorPos;
-        // SAFETY: We are calling GetCursorPos with a valid pointer to a POINT struct.
-        unsafe {
-            let mut current_pos = POINT { x: 0, y: 0 };
-            if GetCursorPos(&raw mut current_pos) != 0 {
-                let target_px = target_x.round() as i32;
-                let target_py = target_y.round() as i32;
+        let target_px = target_x.round() as i32;
+        let target_py = target_y.round() as i32;
 
-                let dx = target_px - current_pos.x;
-                let dy = target_py - current_pos.y;
+        let _ = self.enigo.move_mouse(target_px, target_py, Coordinate::Abs);
 
-                if dx != 0 || dy != 0 {
-                    let _ = self.enigo.move_mouse(dx, dy, Coordinate::Rel);
-
-                    // Reset accumulators so relative mode starts clean after a mode switch
-                    self.remainder_x = 0.0;
-                    self.remainder_y = 0.0;
-                }
-            }
-        }
+        // Reset accumulators so relative mode starts clean after a mode switch
+        self.remainder_x = 0.0;
+        self.remainder_y = 0.0;
     }
 
     pub fn move_relative(&mut self, dx: f32, dy: f32) {
