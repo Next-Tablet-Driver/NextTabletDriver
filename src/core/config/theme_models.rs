@@ -31,6 +31,8 @@ pub struct ThemeColors {
     // Dedicated color for the osu! playfield overlay on the tablet preview.
     // If omitted, falls back to `info_color` (or the theme's default info color).
     pub playfield_color: Option<String>,
+    // Opacity multiplier for the osu! playfield fill. Defaults to 0.25.
+    pub playfield_opacity: Option<f32>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

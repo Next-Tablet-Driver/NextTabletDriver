@@ -1,0 +1,25 @@
+pkgbase = nexttabletdriver-git
+	pkgdesc = Low-latency tablet driver for osu! and drawing
+	pkgver = 1.1.0
+	pkgrel = 1
+	url = https://github.com/Next-Tablet-Driver/NextTabletDriver
+	arch = x86_64
+	license = MIT
+	makedepends = cargo
+	makedepends = git
+	makedepends = jq
+	makedepends = pkgconf
+	depends = gcc-libs
+	depends = glibc
+	depends = gtk3
+	depends = hidapi
+	depends = libglvnd
+	depends = libxkbcommon
+	depends = wayland
+	provides = nexttabletdriver
+	conflicts = nexttabletdriver
+	conflicts = nexttabletdriver-bin
+	source = nexttabletdriver::git+https://github.com/Next-Tablet-Driver/NextTabletDriver.git
+	sha256sums = SKIP
+
+pkgname = nexttabletdriver-git

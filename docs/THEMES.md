@@ -43,7 +43,8 @@ You have absolute control over the color palette: nothing is hardcoded. You cont
     "warning_color": "#f9e2af",
     "error_color":   "#f38ba8",
     "info_color":    "#89b4fa",
-    "playfield_color": "#ff69b4"
+    "playfield_color": "#ff69b4",
+    "playfield_opacity": 0.25
   },
   "spacing": {
     "corner_radius":    8.0,
@@ -102,7 +103,8 @@ These colors control the status indicators throughout the interface. If omitted,
 | `warning_color` | "FIX" items in the Release tab, UI Sync latency, Report Rate card in the Debugger. |
 | `error_color` | "STOPPED" badge, "DEL" items in the Release tab. |
 | `info_color` | "IMP" items in the Release tab, console INFO logs, HID Read latency, Pressure card in the Debugger. |
-| `playfield_color` | Color of the osu! Playfield rectangle in the tablet preview. Default: osu! pink (`#ff69b4`). Use `#RRGGBBAA` to adjust background transparency (e.g., `#ff69b480`). |
+| `playfield_color` | Color of the osu! Playfield rectangle in the tablet preview. Default: osu! pink (`#ff69b4`). |
+| `playfield_opacity` | Fill opacity multiplier for the osu! Playfield rectangle. Range: `0.0` to `1.0`. Default: `0.25`. |
 
 ---
 

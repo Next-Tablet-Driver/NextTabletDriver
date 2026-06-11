@@ -18,6 +18,8 @@ pub struct SemanticColors {
     /// Color used for the osu! playfield overlay in the tablet preview.
     /// Defaults to the iconic osu! pink so it is recognizable out of the box.
     pub playfield: egui::Color32,
+    /// Fill opacity multiplier used for the osu! playfield overlay.
+    pub playfield_opacity: f32,
 }
 
 impl SemanticColors {
@@ -30,6 +32,7 @@ impl SemanticColors {
                 error: egui::Color32::from_rgb(243, 139, 168),
                 info: egui::Color32::from_rgb(137, 180, 250),
                 playfield: egui::Color32::from_rgb(255, 105, 180),
+                playfield_opacity: 0.25,
             }
         } else {
             Self {
@@ -38,6 +41,7 @@ impl SemanticColors {
                 error: egui::Color32::from_rgb(210, 15, 57),
                 info: egui::Color32::from_rgb(30, 102, 245),
                 playfield: egui::Color32::from_rgb(255, 105, 180),
+                playfield_opacity: 0.25,
             }
         }
     }
@@ -141,6 +145,9 @@ pub fn apply_theme(ctx: &egui::Context, theme: &ThemePreference) {
                             c,
                             semantic.playfield,
                         );
+                }
+                if let Some(opacity) = config.colors.playfield_opacity {
+                    semantic.playfield_opacity = opacity.clamp(0.0, 1.0);
                 }
 
                 let style = config.to_style(&ctx.style());

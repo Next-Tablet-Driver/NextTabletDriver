@@ -182,10 +182,8 @@ pub fn render_console_panel(app: &mut TabletMapperApp, ui: &mut egui::Ui) {
         }
 
         if ui
-            .button(format!(
-                "{} Copy Unfiltered Logs",
-                egui_phosphor::regular::COPY
-            ))
+            .button(format!("{} Copy All Logs", egui_phosphor::regular::COPY))
+            .on_hover_text("Copy every log entry, ignoring search and level filters")
             .clicked()
         {
             ui.output_mut(|o| {

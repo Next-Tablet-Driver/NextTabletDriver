@@ -82,7 +82,9 @@ pub fn render_tablet_section(ui: &mut egui::Ui, config: &mut MappingConfig, snap
                 let semantic = crate::ui::theme::semantic_colors(ui.ctx());
                 ui.painter().add(egui::Shape::convex_polygon(
                     pf_points,
-                    semantic.playfield.gamma_multiply(0.25),
+                    semantic
+                        .playfield
+                        .gamma_multiply(semantic.playfield_opacity),
                     egui::Stroke::new(1.5, semantic.playfield),
                 ));
             }
