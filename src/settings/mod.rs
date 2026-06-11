@@ -271,6 +271,53 @@ pub fn list_profiles() -> Vec<(String, PathBuf)> {
     profiles
 }
 
+/// Logs the current driver mapping configuration settings to the tracking log target.
+pub fn log_mapping_config(config: &MappingConfig, prefix: &str) {
+    log::info!(target: "Tracking", "=== CONFIGURATION LOG ({prefix}) ===");
+    log::info!(target: "Tracking", "Mode: {:?}", config.mode);
+    log::info!(
+        target: "Tracking",
+        "Active Area -> Width: {:.2}, Height: {:.2} | Offsets -> X: {:.2}, Y: {:.2} | Rotation: {:.1} deg",
+        config.active_area.w,
+        config.active_area.h,
+        config.active_area.x,
+        config.active_area.y,
+        config.active_area.rotation
+    );
+    log::info!(
+        target: "Tracking",
+        "Target Area -> Width: {:.2}, Height: {:.2} | Offsets -> X: {:.2}, Y: {:.2}",
+        config.target_area.w,
+        config.target_area.h,
+        config.target_area.x,
+        config.target_area.y
+    );
+    log::info!(
+        target: "Tracking",
+        "Antichatter -> Enabled: {} | Latency: {:.1}ms | Strength: {:.2}",
+        config.antichatter.enabled,
+        config.antichatter.latency,
+        config.antichatter.antichatter_strength
+    );
+    log::info!(
+        target: "Tracking",
+        "Stylus -> Tip Threshold: {} | Eraser Threshold: {} | Disable Pressure: {} | Disable Tilt: {}",
+        config.tip_threshold,
+        config.eraser_threshold,
+        config.disable_pressure,
+        config.disable_tilt
+    );
+    log::info!(
+        target: "Tracking",
+        "General -> UI Theme: {:?} | Lock Aspect Ratio: {} | Show Playfield: {} | UI Language: {:?}",
+        config.theme,
+        config.lock_aspect_ratio,
+        config.show_osu_playfield,
+        config.language
+    );
+    log::info!(target: "Tracking", "========================================");
+}
+
 #[cfg(test)]
 #[allow(
     clippy::unwrap_used,
@@ -331,7 +378,10 @@ mod tests {
         assert!(loaded.is_some());
         let loaded = loaded.unwrap();
         assert_eq!(loaded.profile_name, "Default Profile");
-        assert_eq!(loaded.profile_path, Some(PathBuf::from("C:\\some\\path.json")));
+        assert_eq!(
+            loaded.profile_path,
+            Some(PathBuf::from("C:\\some\\path.json"))
+        );
     }
 
     #[test]

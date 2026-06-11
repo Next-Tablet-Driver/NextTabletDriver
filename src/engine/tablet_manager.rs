@@ -251,6 +251,7 @@ fn run_polling_loop(
     let mut buf = [0u8; 64];
     let mut last_config_check = Instant::now();
     let mut last_stats_update = Instant::now();
+    let mut last_packet_time: Option<(Instant, crate::drivers::TabletStatus)> = None;
 
     loop {
         if shared.shutdown_requested.load(Ordering::Relaxed) {
@@ -282,6 +283,7 @@ fn run_polling_loop(
                             filters,
                             local_config,
                             &mut last_stats_update,
+                            &mut last_packet_time,
                         );
                     }
                     maybe_reload_config(
@@ -336,6 +338,7 @@ fn process_packet(
     filters: &mut FilterPipeline,
     local_config: &MappingConfig,
     last_stats_update: &mut Instant,
+    last_packet_time: &mut Option<(Instant, crate::drivers::TabletStatus)>,
 ) {
     let parse_start = Instant::now();
     if let Some(mut data) = driver.parse(raw) {
@@ -343,7 +346,41 @@ fn process_packet(
         data.receive_time = Some(read_start);
         data.parser_time = parse_duration;
 
+        let process_start = Instant::now();
         pipeline.process(&data, driver, local_config, injector, filters, shared);
+        let process_duration = process_start.elapsed();
+
+        let total_dur = parse_duration + process_duration;
+        if total_dur > Duration::from_millis(5) {
+            log::warn!(
+                target: "PerfSpike",
+                "LAG SPIKE: Packet parsing & processing took {total_dur:.2?} (parsing: {parse_duration:.2?}, processing: {process_duration:.2?}, HID read: {read_duration:.2?})"
+            );
+        }
+
+        let now = Instant::now();
+        if let Some((last_time, last_status)) = last_packet_time {
+            let is_curr_active = !matches!(
+                data.status,
+                crate::drivers::TabletStatus::Disconnected
+                    | crate::drivers::TabletStatus::OutOfRange
+            );
+            let is_prev_active = !matches!(
+                last_status,
+                crate::drivers::TabletStatus::Disconnected
+                    | crate::drivers::TabletStatus::OutOfRange
+            );
+            if is_curr_active && is_prev_active {
+                let interval = now.duration_since(*last_time);
+                if interval > Duration::from_millis(25) {
+                    log::warn!(
+                        target: "PerfSpike",
+                        "LAG SPIKE: Delay between active packets was {interval:.2?} (exceeded 25ms threshold)"
+                    );
+                }
+            }
+        }
+        *last_packet_time = Some((now, data.status));
 
         shared.packet_count.fetch_add(1, Ordering::Relaxed);
 
@@ -397,5 +434,6 @@ fn maybe_reload_config(
         *local_config_version = cv;
         filters.update_config(local_config);
         log::info!(target: "Config", "Configuration reloaded to version {cv}");
+        crate::settings::log_mapping_config(local_config, &format!("Reload v{cv}"));
     }
 }

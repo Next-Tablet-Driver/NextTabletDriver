@@ -56,6 +56,9 @@ impl Log for GlobalLogger {
                 "Telemetry",
                 "Driver",
                 "Detect",
+                "Tracking",
+                "PerfSpike",
+                "Injector",
             ]
             .iter()
             .any(|&t| target == t || target.starts_with(&format!("{t}::")))

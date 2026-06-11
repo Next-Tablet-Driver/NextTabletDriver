@@ -186,6 +186,18 @@ pub fn detect_tablet(api: &HidApi) -> Option<(HidDevice, Box<dyn NextTabletDrive
                             init_start.elapsed(),
                         );
 
+                        log::info!(
+                            target: "Tracking",
+                            "TABLET DETAILS: Name: '{}' | Width: {}mm, Height: {}mm | MaxX: {}, MaxY: {} | MaxPressure: {} | Parser: {}",
+                            config.name,
+                            config.specifications.digitizer.width,
+                            config.specifications.digitizer.height,
+                            config.specifications.digitizer.max_x,
+                            config.specifications.digitizer.max_y,
+                            config.specifications.pen.max_pressure,
+                            digitizer.report_parser
+                        );
+
                         log::debug!(
                             target: "Detect",
                             "Timings -> Enum: {:.2?} | Open: {:.2?} | Total: {:.2?}",

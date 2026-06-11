@@ -170,16 +170,15 @@ macro_rules! t {
 }
 
 #[cfg(test)]
-#[allow(
-    clippy::unwrap_used,
-    clippy::expect_used,
-    clippy::panic
-)]
+#[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 mod tests {
     use super::*;
 
+    static TEST_MUTEX: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
     #[test]
     fn test_translation_lookup() {
+        let _guard = TEST_MUTEX.lock().unwrap();
         set_locale(Locale::English);
         assert_eq!(translate("tabs.output"), "Output");
         assert_eq!(translate("tabs.filters"), "Filters");
@@ -187,13 +186,18 @@ mod tests {
 
     #[test]
     fn test_fallback_logic() {
+        let _guard = TEST_MUTEX.lock().unwrap();
         set_locale(Locale::French);
-        assert_eq!(translate("this.key.does.not.exist.at.all"), "this.key.does.not.exist.at.all");
+        assert_eq!(
+            translate("this.key.does.not.exist.at.all"),
+            "this.key.does.not.exist.at.all"
+        );
         set_locale(Locale::English);
     }
 
     #[test]
     fn test_locale_switching() {
+        let _guard = TEST_MUTEX.lock().unwrap();
         set_locale(Locale::French);
         assert_eq!(translate("tabs.output"), "Sortie");
 
@@ -203,6 +207,7 @@ mod tests {
 
     #[test]
     fn test_interpolation() {
+        let _guard = TEST_MUTEX.lock().unwrap();
         set_locale(Locale::English);
         let interpolated = translate_with("toast.profile_loaded", &[("name", "TestProfile")]);
         assert_eq!(interpolated, "Loaded profile: TestProfile");

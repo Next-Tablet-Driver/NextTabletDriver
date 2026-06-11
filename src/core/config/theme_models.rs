@@ -186,15 +186,27 @@ mod tests {
         let fallback = egui::Color32::from_rgb(255, 0, 0);
 
         // #RRGGBB format
-        assert_eq!(ThemeConfig::parse_color("#00ff00", fallback), egui::Color32::from_rgb(0, 255, 0));
+        assert_eq!(
+            ThemeConfig::parse_color("#00ff00", fallback),
+            egui::Color32::from_rgb(0, 255, 0)
+        );
         // Without # format
-        assert_eq!(ThemeConfig::parse_color("0000ff", fallback), egui::Color32::from_rgb(0, 0, 255));
+        assert_eq!(
+            ThemeConfig::parse_color("0000ff", fallback),
+            egui::Color32::from_rgb(0, 0, 255)
+        );
         // #RRGGBBAA format
-        assert_eq!(ThemeConfig::parse_color("#ff00ff80", fallback), egui::Color32::from_rgba_unmultiplied(255, 0, 255, 128));
+        assert_eq!(
+            ThemeConfig::parse_color("#ff00ff80", fallback),
+            egui::Color32::from_rgba_unmultiplied(255, 0, 255, 128)
+        );
         // Invalid hex length (too short) -> fallback
         assert_eq!(ThemeConfig::parse_color("#fff", fallback), fallback);
         // Invalid characters (radix parses fail, resulting in 0)
-        assert_eq!(ThemeConfig::parse_color("#zzzzzz", fallback), egui::Color32::from_rgb(0, 0, 0));
+        assert_eq!(
+            ThemeConfig::parse_color("#zzzzzz", fallback),
+            egui::Color32::from_rgb(0, 0, 0)
+        );
     }
 
     #[test]
@@ -291,6 +303,9 @@ mod tests {
 
         // Verify corner radius (rounding) on widgets
         let expected_radius = egui::CornerRadius::same(8);
-        assert_eq!(style.visuals.widgets.inactive.corner_radius, expected_radius);
+        assert_eq!(
+            style.visuals.widgets.inactive.corner_radius,
+            expected_radius
+        );
     }
 }
