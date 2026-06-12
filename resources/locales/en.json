@@ -43,8 +43,13 @@
   "settings.theme.store_title": "Theme Store",
   "settings.theme.download_btn": "Download",
   "settings.theme.installed": "Owned",
+  "settings.theme.apply": "Apply",
   "settings.theme.download_success": "Theme downloaded successfully!",
   "settings.theme.download_error": "Failed to download theme:",
+  "settings.theme.search_hint": "Search themes...",
+  "settings.theme.filter_all": "All",
+  "settings.theme.filter_dark": "Dark",
+  "settings.theme.filter_light": "Light",
 
   "settings.language.title": "Language",
   "settings.language.label": "Interface Language",

@@ -43,8 +43,13 @@
   "settings.theme.store_title": "Magasin de Thèmes",
   "settings.theme.download_btn": "Télécharger",
   "settings.theme.installed": "Possédé",
+  "settings.theme.apply": "Appliquer",
   "settings.theme.download_success": "Thème téléchargé avec succès !",
   "settings.theme.download_error": "Erreur lors du téléchargement :",
+  "settings.theme.search_hint": "Rechercher des thèmes...",
+  "settings.theme.filter_all": "Tous",
+  "settings.theme.filter_dark": "Sombres",
+  "settings.theme.filter_light": "Clairs",
   "settings.language.title": "Langue",
   "settings.language.label": "Langue de l'interface",
 

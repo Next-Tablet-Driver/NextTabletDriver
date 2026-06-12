@@ -98,6 +98,8 @@ impl TabletMapperApp {
             theme_store_open: false,
             theme_store_loading: false,
             theme_store_list: std::sync::Arc::new(std::sync::Mutex::new(None)),
+            theme_store_search: String::new(),
+            theme_store_filter_mode: None,
             show_close_confirm: false,
             force_close: false,
             missing_udev_rules: {

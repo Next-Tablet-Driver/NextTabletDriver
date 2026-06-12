@@ -67,9 +67,7 @@ fn render_theme_settings(app: &mut TabletMapperApp, ui: &mut egui::Ui, config: &
         },
     );
 
-    if app.theme_store_open {
-        render_theme_store_window(app, ui, config);
-    }
+    crate::ui::components::theme_store::render_theme_store_viewport(app, ui, config);
 }
 
 fn render_theme_selector(ui: &mut egui::Ui, config: &mut MappingConfig) {
@@ -177,41 +175,7 @@ fn render_theme_external_actions(
             .clicked()
         {
             app.theme_store_open = true;
-            let is_none = app.theme_store_list.lock().map_or(true, |g| g.is_none());
-            if is_none {
-                app.theme_store_loading = true;
-                let list_arc = std::sync::Arc::clone(&app.theme_store_list);
-                std::thread::spawn(move || {
-                    let url = "https://api.github.com/repos/Next-Tablet-Driver/NextTabletDriver-Themes/contents/";
-                    let result = match ureq::get(url).call() {
-                        Ok(response) => response.into_json::<serde_json::Value>().map_or_else(
-                            |_| Some(Err("Failed to parse JSON".to_string())),
-                            |json| {
-                                json.as_array().map_or_else(
-                                    || Some(Err("Invalid API response".to_string())),
-                                    |arr| {
-                                        let mut themes = Vec::new();
-                                        for item in arr {
-                                            if item["type"].as_str() == Some("dir")
-                                                && let Some(name) = item["name"].as_str()
-                                                && name != "00 EXAMPLE"
-                                                && name != ".github"
-                                            {
-                                                themes.push(name.to_string());
-                                            }
-                                        }
-                                        Some(Ok(themes))
-                                    },
-                                )
-                            },
-                        ),
-                        Err(e) => Some(Err(format!("Network error: {e}"))),
-                    };
-                    if let Ok(mut guard) = list_arc.lock() {
-                        *guard = result;
-                    }
-                });
-            }
+            app.fetch_theme_store_list();
         }
 
         ui.add_space(10.0);
@@ -239,124 +203,7 @@ fn render_theme_external_actions(
     });
 }
 
-fn render_theme_store_window(app: &mut TabletMapperApp, ui: &egui::Ui, config: &mut MappingConfig) {
-    let mut open = app.theme_store_open;
-    egui::Window::new(t!("settings.theme.store_title"))
-        .open(&mut open)
-        .collapsible(false)
-        .resizable(true)
-        .default_width(300.0)
-        .default_height(400.0)
-        .show(ui.ctx(), |ui| {
-            if let Ok(lock) = app.theme_store_list.lock() {
-                match &*lock {
-                    None => {
-                        ui.vertical_centered(|ui| {
-                            ui.add_space(20.0);
-                            ui.add(egui::Spinner::new());
-                            ui.label("Fetching from GitHub...");
-                        });
-                    }
-                    Some(Err(e)) => {
-                        ui.colored_label(crate::ui::theme::semantic_colors(ui.ctx()).error, e);
-                    }
-                    Some(Ok(themes)) => {
-                        let local_themes = crate::settings::themes::list_custom_themes();
-                        egui::ScrollArea::vertical()
-                            .auto_shrink([false, false])
-                            .show(ui, |ui| {
-                                for theme in themes {
-                                    render_theme_store_item(ui, theme, &local_themes, config);
-                                    ui.add_space(8.0);
-                                }
-                            });
-                    }
-                }
-            } else {
-                ui.colored_label(
-                    crate::ui::theme::semantic_colors(ui.ctx()).error,
-                    "Failed to load themes",
-                );
-            }
-        });
-    app.theme_store_open = open;
-}
 
-fn render_theme_store_item(
-    ui: &mut egui::Ui,
-    theme: &str,
-    local_themes: &[String],
-    config: &mut MappingConfig,
-) {
-    let is_installed = local_themes.contains(&theme.to_string());
-    egui::Frame::NONE
-        .fill(ui.visuals().widgets.noninteractive.bg_fill)
-        .corner_radius(8.0)
-        .inner_margin(12.0)
-        .stroke(ui.visuals().widgets.noninteractive.bg_stroke)
-        .show(ui, |ui| {
-            ui.horizontal(|ui| {
-                ui.label(egui::RichText::new(theme).strong().size(16.0));
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    if is_installed {
-                        ui.add_enabled_ui(false, |ui| {
-                            let _ = ui.button(format!(
-                                "{} {}",
-                                egui_phosphor::regular::CHECK,
-                                t!("settings.theme.installed")
-                            ));
-                        });
-                    } else if ui
-                        .button(format!(
-                            "{} {}",
-                            egui_phosphor::regular::DOWNLOAD_SIMPLE,
-                            t!("settings.theme.download_btn")
-                        ))
-                        .clicked()
-                    {
-                        download_and_install_theme(theme, config);
-                    }
-                });
-            });
-        });
-}
-
-fn download_and_install_theme(theme: &str, config: &mut MappingConfig) {
-    let url = format!(
-        "https://raw.githubusercontent.com/Next-Tablet-Driver/NextTabletDriver-Themes/refs/heads/main/{theme}/theme.json"
-    );
-    match ureq::get(&url).call() {
-        Ok(response) => {
-            if let Ok(content) = response.into_string() {
-                match crate::settings::themes::import_theme_from_string(&content) {
-                    Ok(safe_name) => {
-                        config.theme =
-                            crate::core::config::models::ThemePreference::Custom(safe_name);
-                        log::info!(
-                            target: "ThemeStore",
-                            "{} ({theme})",
-                            t!("settings.theme.download_success")
-                        );
-                    }
-                    Err(e) => {
-                        log::error!(
-                            target: "ThemeStore",
-                            "{} {e}",
-                            t!("settings.theme.download_error")
-                        );
-                    }
-                }
-            }
-        }
-        Err(e) => {
-            log::error!(
-                target: "ThemeStore",
-                "{} {e}",
-                t!("settings.theme.download_error")
-            );
-        }
-    }
-}
 
 fn render_language_settings(
     app: &mut TabletMapperApp,

@@ -17,7 +17,15 @@ use crate::app::autoupdate::UpdateStatus;
 use crate::drivers::TabletData;
 use crate::engine::state::{LockRecoveryExt, SharedState};
 
-pub type ThemeStoreResult = Result<Vec<String>, String>;
+use crate::core::config::theme_models::ThemeMetadata;
+
+#[derive(Clone, Debug)]
+pub struct ThemeStoreItem {
+    pub metadata: ThemeMetadata,
+    pub dark_mode: bool,
+}
+
+pub type ThemeStoreResult = Result<Vec<ThemeStoreItem>, String>;
 
 /// The core application state structure used by the `eframe` (egui) integration.
 #[allow(clippy::struct_excessive_bools)]
@@ -91,6 +99,8 @@ pub struct TabletMapperApp {
     pub theme_store_open: bool,
     pub theme_store_loading: bool,
     pub theme_store_list: std::sync::Arc<std::sync::Mutex<Option<ThemeStoreResult>>>,
+    pub theme_store_search: String,
+    pub theme_store_filter_mode: Option<bool>,
 
     /// Toggle to render the close confirmation dialog modal.
     pub show_close_confirm: bool,
@@ -356,5 +366,39 @@ impl TabletMapperApp {
             drop(shared_config);
         }
         let _ = self.save_sender.try_send(cfg);
+    }
+
+    pub fn fetch_theme_store_list(&mut self) {
+        let is_none = self.theme_store_list.lock().map_or(true, |g| g.is_none());
+        if is_none {
+            self.theme_store_loading = true;
+            let list_arc = std::sync::Arc::clone(&self.theme_store_list);
+            std::thread::spawn(move || {
+                let result = crate::settings::themes::fetch_theme_store_list_sync();
+                if let Ok(mut guard) = list_arc.lock() {
+                    *guard = Some(result);
+                }
+            });
+        }
+    }
+
+    pub fn download_theme(&mut self, theme: &str, config: &mut MappingConfig) {
+        match crate::settings::themes::download_and_install_theme_sync(theme) {
+            Ok(safe_name) => {
+                config.theme = crate::core::config::models::ThemePreference::Custom(safe_name);
+                log::info!(
+                    target: "ThemeStore",
+                    "{} ({theme})",
+                    t!("settings.theme.download_success")
+                );
+            }
+            Err(e) => {
+                log::error!(
+                    target: "ThemeStore",
+                    "{} {e}",
+                    t!("settings.theme.download_error")
+                );
+            }
+        }
     }
 }

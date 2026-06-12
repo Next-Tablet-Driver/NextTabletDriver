@@ -97,6 +97,75 @@ pub fn delete_custom_theme(name: &str) -> Result<(), String> {
     Ok(())
 }
 
+use crate::app::state::ThemeStoreItem;
+use crate::core::config::theme_models::ThemeMetadata;
+
+/// Fetches the list of themes from the GitHub repository synchronously.
+pub fn fetch_theme_store_list_sync() -> Result<Vec<ThemeStoreItem>, String> {
+    let url = "https://api.github.com/repos/Next-Tablet-Driver/NextTabletDriver-Themes/contents/";
+    match ureq::get(url).call() {
+        Ok(response) => response.into_json::<serde_json::Value>().map_or_else(
+            |_| Err("Failed to parse JSON".to_string()),
+            |json| {
+                json.as_array().map_or_else(
+                    || Err("Invalid API response".to_string()),
+                    |arr| {
+                        let mut themes = Vec::new();
+                        for item in arr {
+                            if item["type"].as_str() == Some("dir")
+                                && let Some(name) = item["name"].as_str()
+                                && name != "00 EXAMPLE"
+                                && name != ".github"
+                            {
+                                let theme_url = format!("https://raw.githubusercontent.com/Next-Tablet-Driver/NextTabletDriver-Themes/refs/heads/main/{name}/theme.json");
+                                if let Ok(res) = ureq::get(&theme_url).call() {
+                                    if let Ok(content) = res.into_string() {
+                                        if let Ok(config) = serde_json::from_str::<ThemeConfig>(&content) {
+                                            themes.push(ThemeStoreItem {
+                                                metadata: config.metadata,
+                                                dark_mode: config.colors.dark_mode,
+                                            });
+                                        } else {
+                                            themes.push(ThemeStoreItem {
+                                                metadata: ThemeMetadata {
+                                                    name: name.to_string(),
+                                                    author: "Unknown".to_string(),
+                                                    version: "1.0".to_string(),
+                                                    update_url: None,
+                                                },
+                                                dark_mode: true,
+                                            });
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        Ok(themes)
+                    },
+                )
+            },
+        ),
+        Err(e) => Err(format!("Network error: {e}")),
+    }
+}
+
+/// Downloads and installs a theme synchronously from GitHub.
+pub fn download_and_install_theme_sync(theme: &str) -> Result<String, String> {
+    let url = format!(
+        "https://raw.githubusercontent.com/Next-Tablet-Driver/NextTabletDriver-Themes/refs/heads/main/{theme}/theme.json"
+    );
+    match ureq::get(&url).call() {
+        Ok(response) => {
+            if let Ok(content) = response.into_string() {
+                import_theme_from_string(&content)
+            } else {
+                Err("Failed to read response content".into())
+            }
+        }
+        Err(e) => Err(format!("Network error: {e}")),
+    }
+}
+
 #[cfg(test)]
 #[allow(
     clippy::unwrap_used,
