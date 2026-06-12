@@ -219,10 +219,8 @@ fn get_memory_info() -> Option<u64> {
             for line in content.lines() {
                 if line.starts_with("MemTotal:") {
                     let parts: Vec<&str> = line.split_whitespace().collect();
-                    if parts.len() >= 2 {
-                        if let Ok(kb) = parts[1].parse::<u64>() {
-                            return Some(kb * 1024); // KB to Bytes
-                        }
+                    if let Some(kb) = parts.get(1).and_then(|s| s.parse::<u64>().ok()) {
+                        return Some(kb * 1024); // KB to Bytes
                     }
                 }
             }
@@ -265,8 +263,7 @@ pub fn log_system_hardware() {
         #[cfg(target_os = "linux")]
         {
             std::fs::read_to_string("/etc/hostname")
-                .map(|s| s.trim().to_string())
-                .unwrap_or_else(|_| "Unknown".to_string())
+                .map_or_else(|_| "Unknown".to_string(), |s| s.trim().to_string())
         }
         #[cfg(not(target_os = "linux"))]
         {
