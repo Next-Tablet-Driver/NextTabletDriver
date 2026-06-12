@@ -130,15 +130,18 @@ impl ThemeConfig {
             egui::Stroke::new(noninteractive_border_w, border_color);
 
         visuals.widgets.inactive.bg_fill = widget_bg;
+        visuals.widgets.inactive.weak_bg_fill = widget_bg;
         visuals.widgets.inactive.fg_stroke = egui::Stroke::new(border_w, text_color);
         visuals.widgets.inactive.bg_stroke = egui::Stroke::NONE;
 
         visuals.widgets.hovered.bg_fill = widget_hover;
+        visuals.widgets.hovered.weak_bg_fill = widget_hover;
         visuals.widgets.hovered.fg_stroke = egui::Stroke::new(border_w, strong_text_color);
         visuals.widgets.hovered.bg_stroke =
             egui::Stroke::new(border_w, accent_color.gamma_multiply(0.5));
 
         visuals.widgets.active.bg_fill = widget_active;
+        visuals.widgets.active.weak_bg_fill = widget_active;
         visuals.widgets.active.fg_stroke = egui::Stroke::new(border_w, strong_text_color);
         visuals.widgets.active.bg_stroke = egui::Stroke::new(border_w, accent_color);
 
