@@ -6,7 +6,7 @@ use std::time::Duration;
 const POSTHOG_API_KEY: Option<&str> = option_env!("POSTHOG_API_KEY");
 const POSTHOG_URL: &str = "https://eu.i.posthog.com/capture/";
 
-/// Sends an anonymous telemetry event to PostHog in the background.
+/// Sends an anonymous telemetry event to `PostHog` in the background.
 ///
 /// If telemetry is disabled, this function does nothing.
 pub fn capture_event(
@@ -14,9 +14,8 @@ pub fn capture_event(
     properties: Option<serde_json::Value>,
     app_prefs: &crate::settings::app_preferences::AppPreferences,
 ) {
-    let api_key = match POSTHOG_API_KEY {
-        Some(key) => key,
-        None => return, // No telemetry without an API key
+    let Some(api_key) = POSTHOG_API_KEY else {
+        return; // No telemetry without an API key
     };
 
     if !app_prefs.telemetry_enabled {
@@ -49,15 +48,14 @@ pub fn capture_event(
     });
 
     // Merge custom properties into the payload's properties object
-    let mut final_payload = payload.clone();
+    let mut final_payload = payload;
     if let Some(payload_props) = final_payload
         .get_mut("properties")
         .and_then(|p| p.as_object_mut())
+        && let Some(custom_props) = props.as_object()
     {
-        if let Some(custom_props) = props.as_object() {
-            for (k, v) in custom_props {
-                payload_props.insert(k.clone(), v.clone());
-            }
+        for (k, v) in custom_props {
+            payload_props.insert(k.clone(), v.clone());
         }
     }
 

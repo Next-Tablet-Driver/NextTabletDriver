@@ -186,6 +186,7 @@ pub use platform::set_run_at_startup;
 ///
 /// On Windows, queries `GlobalMemoryStatusEx`.
 #[cfg(windows)]
+#[must_use]
 pub fn get_memory_info() -> Option<u64> {
     use windows_sys::Win32::System::SystemInformation::{GlobalMemoryStatusEx, MEMORYSTATUSEX};
     let mut mem_status = MEMORYSTATUSEX {

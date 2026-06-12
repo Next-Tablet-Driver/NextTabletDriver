@@ -73,7 +73,7 @@ fn manager_thread_iteration(shared_clone: &Arc<SharedState>, sender_clone: &Send
             crate::app::telemetry::capture_event(
                 "engine_error",
                 Some(serde_json::json!({
-                    "error_message": error_str.clone(),
+                    "error_message": error_str,
                     "context": "HID API Initialization"
                 })),
                 &app_prefs,

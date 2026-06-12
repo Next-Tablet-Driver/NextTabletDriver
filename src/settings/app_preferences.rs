@@ -22,7 +22,7 @@ pub struct AppPreferences {
     pub telemetry_id: String,
 }
 
-fn default_telemetry_enabled() -> bool {
+const fn default_telemetry_enabled() -> bool {
     true
 }
 

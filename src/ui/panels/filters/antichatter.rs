@@ -12,10 +12,14 @@ pub fn render_antichatter_settings(ui: &mut egui::Ui, config: &mut MappingConfig
         egui_phosphor::regular::WAVE_SINE,
         |ui| {
             ui.horizontal(|ui| {
-                if ui.checkbox(
-                    &mut config.antichatter.enabled,
-                    t!("filters.antichatter.enable"),
-                ).changed() && config.antichatter.enabled {
+                if ui
+                    .checkbox(
+                        &mut config.antichatter.enabled,
+                        t!("filters.antichatter.enable"),
+                    )
+                    .changed()
+                    && config.antichatter.enabled
+                {
                     let app_prefs = crate::settings::app_preferences::load_app_preferences();
                     crate::app::telemetry::capture_event(
                         "filter_enabled",
