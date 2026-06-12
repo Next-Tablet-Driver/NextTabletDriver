@@ -1,13 +1,8 @@
 use crate::app::state::TabletMapperApp;
-use crate::core::config::models::MappingConfig;
 use crate::t;
 use eframe::egui;
 
-pub fn render_theme_store_viewport(
-    app: &mut TabletMapperApp,
-    ui: &mut egui::Ui,
-    config: &mut MappingConfig,
-) {
+pub fn render_theme_store_viewport(app: &mut TabletMapperApp, ui: &mut egui::Ui) {
     if !app.theme_store_open {
         return;
     }
@@ -24,22 +19,21 @@ pub fn render_theme_store_viewport(
             // to avoid re-parsing the theme.json file and spamming logs every frame.
             ctx.set_style(ui.ctx().style());
             let semantic = crate::ui::theme::semantic_colors(ui.ctx());
-            ctx.memory_mut(|mem| mem.data.insert_temp(egui::Id::new("semantic_colors"), semantic));
+            ctx.memory_mut(|mem| {
+                mem.data
+                    .insert_temp(egui::Id::new("semantic_colors"), semantic);
+            });
             if ctx.input(|i| i.viewport().close_requested()) {
                 app.theme_store_open = false;
             }
 
             egui::CentralPanel::default().show(ctx, |ui| {
-                render_theme_store_content(app, ui, config);
+                render_theme_store_content(app, ui);
             });
         });
 }
 
-fn render_theme_store_content(
-    app: &mut TabletMapperApp,
-    ui: &mut egui::Ui,
-    config: &mut MappingConfig,
-) {
+fn render_theme_store_content(app: &mut TabletMapperApp, ui: &mut egui::Ui) {
     let semantic = crate::ui::theme::semantic_colors(ui.ctx());
 
     ui.add_space(8.0);
@@ -186,8 +180,9 @@ fn render_theme_store_content(
                                 ui.add_space(12.0);
                                 if local_themes.contains(&theme.name) {
                                     if ui.button(t!("settings.theme.apply", default = "Apply")).clicked() {
-                                        config.theme = crate::core::config::models::ThemePreference::Custom(theme.name.clone());
-                                        crate::ui::theme::apply_theme(ui.ctx(), &config.theme);
+                                        app.app_prefs.theme = crate::core::config::models::ThemePreference::Custom(theme.name.clone());
+                                        crate::ui::theme::apply_theme(ui.ctx(), &app.app_prefs.theme);
+                                        crate::settings::app_preferences::save_app_preferences(&app.app_prefs);
                                     }
                                     ui.add_enabled_ui(false, |ui| {
                                         let _ = ui.button(t!("settings.theme.installed"));
@@ -199,7 +194,7 @@ fn render_theme_store_content(
                                         t!("settings.theme.download_btn")
                                     ));
                                     if btn.clicked() {
-                                        app.download_theme(&theme.name, config);
+                                        app.download_theme(&theme.name);
                                     }
                                 }
                             });

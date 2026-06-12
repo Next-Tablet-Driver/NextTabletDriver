@@ -76,9 +76,6 @@ impl TabletMapperApp {
             if !is_interacting && self.metrics.last_hz_update.elapsed() > Duration::from_secs(1) {
                 log::info!(target: "Config", "Configuration changed via UI");
             }
-            if config.theme != initial.theme {
-                crate::ui::theme::apply_theme(ctx, &config.theme);
-            }
             {
                 let mut shared_config = self.shared.config.write().unwrap_or_log("config");
                 *shared_config = config.clone();

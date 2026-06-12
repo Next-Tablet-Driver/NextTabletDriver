@@ -1,3 +1,5 @@
+pub mod app_preferences;
+pub mod otd_import;
 pub mod themes;
 
 use crate::core::config::models::MappingConfig;
@@ -91,6 +93,49 @@ pub fn get_settings_dir() -> PathBuf {
     )
 }
 
+/// Returns the directory where user profile presets are stored (`Settings/profiles/`).
+#[must_use]
+pub fn get_profiles_dir() -> PathBuf {
+    let dir = get_settings_dir().join("profiles");
+    if !dir.exists() {
+        let _ = fs::create_dir_all(&dir);
+    }
+    dir
+}
+
+/// Migrates any legacy profile JSON files from the root `Settings/` directory
+/// into the `Settings/profiles/` subdirectory.
+///
+/// Only files that are not system files (e.g. `last_session`, `session_meta`,
+/// `app_preferences`) are moved.
+pub fn migrate_profiles_to_subdir() {
+    let root = get_settings_dir();
+    let profiles_dir = get_profiles_dir();
+    let system_files = ["last_session", "session_meta", "app_preferences"];
+
+    let Ok(entries) = fs::read_dir(&root) else {
+        return;
+    };
+
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.is_file()
+            && path.extension().and_then(|e| e.to_str()) == Some("json")
+            && let Some(stem) = path.file_stem().and_then(|s| s.to_str())
+            && !system_files.contains(&stem)
+        {
+            let dest = profiles_dir.join(entry.file_name());
+            if !dest.exists() {
+                if let Err(e) = fs::rename(&path, &dest) {
+                    log::warn!(target: "Config", "Failed to migrate profile '{stem}': {e}");
+                } else {
+                    log::info!(target: "Config", "Migrated profile '{stem}' to profiles/");
+                }
+            }
+        }
+    }
+}
+
 /// Atomically writes a `MappingConfig` to an arbitrary path on disk.
 ///
 /// Uses a write-to-temp-then-rename strategy to prevent corruption
@@ -151,7 +196,7 @@ pub fn sanitize_profile_name(name: &str) -> String {
 /// # Errors
 /// Returns an error if the profile name cannot be sanitized or if `save_to_path` fails.
 pub fn save_settings(name: &str, config: &MappingConfig) -> Result<(), String> {
-    let dir = get_settings_dir();
+    let dir = get_profiles_dir();
     let sanitized_name = sanitize_profile_name(name);
 
     let filename = if sanitized_name.to_lowercase().ends_with(".json") {
@@ -165,19 +210,6 @@ pub fn save_settings(name: &str, config: &MappingConfig) -> Result<(), String> {
     save_to_path(&path, config)?;
     log::info!(target: "Config", "Saved preset '{name}' (sanitized: '{sanitized_name}') to {}", path.display());
     Ok(())
-}
-
-/// Validates that the selected theme exists, reverting to System if it doesn't.
-fn validate_theme(config: &mut MappingConfig, corrections: &mut Vec<String>) {
-    if let crate::core::config::models::ThemePreference::Custom(name) = &config.theme {
-        let available = crate::settings::themes::list_custom_themes();
-        if !available.contains(name) {
-            corrections.push(format!(
-                "Custom theme '{name}' not found, reverting to System"
-            ));
-            config.theme = crate::core::config::models::ThemePreference::System;
-        }
-    }
 }
 
 /// Persists the current session state to `last_session.json`.
@@ -208,8 +240,7 @@ pub fn load_last_session() -> Option<(MappingConfig, Vec<String>)> {
     match fs::read_to_string(&path) {
         Ok(content) => match serde_json::from_str::<MappingConfig>(&content) {
             Ok(mut config) => {
-                let mut corrections = config.validate_and_repair();
-                validate_theme(&mut config, &mut corrections);
+                let corrections = config.validate_and_repair();
 
                 if !corrections.is_empty() {
                     log::warn!(target: "Config", "Last session config had {} field(s) repaired", corrections.len());
@@ -247,8 +278,7 @@ pub fn load_settings_from_file(path: &Path) -> Result<(MappingConfig, Vec<String
         e.to_string()
     })?;
 
-    let mut corrections = config.validate_and_repair();
-    validate_theme(&mut config, &mut corrections);
+    let corrections = config.validate_and_repair();
 
     if !corrections.is_empty() {
         log::warn!(target: "Config", "Config from {} had {} field(s) repaired", path.display(), corrections.len());
@@ -265,7 +295,7 @@ pub fn load_settings_from_file(path: &Path) -> Result<(MappingConfig, Vec<String
 /// Returns `(display_name, absolute_path)` pairs, excluding `last_session.json`.
 #[must_use]
 pub fn list_profiles() -> Vec<(String, PathBuf)> {
-    let dir = get_settings_dir();
+    let dir = get_profiles_dir();
     let mut profiles = Vec::new();
 
     let entries = match fs::read_dir(&dir) {
@@ -329,11 +359,9 @@ pub fn log_mapping_config(config: &MappingConfig, prefix: &str) {
     );
     log::info!(
         target: "Tracking",
-        "General -> UI Theme: {:?} | Lock Aspect Ratio: {} | Show Playfield: {} | UI Language: {:?}",
-        config.theme,
+        "General -> Lock Aspect Ratio: {} | Show Playfield: {}",
         config.lock_aspect_ratio,
-        config.show_osu_playfield,
-        config.language
+        config.show_osu_playfield
     );
 }
 

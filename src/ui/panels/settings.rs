@@ -16,10 +16,10 @@ pub fn render_settings_panel(
     render_general_settings(ui, config);
 
     ui.add_space(15.0);
-    render_theme_settings(app, ui, config);
+    render_theme_settings(app, ui);
 
     ui.add_space(15.0);
-    render_language_settings(app, ui, config);
+    render_language_settings(app, ui);
 
     ui.add_space(15.0);
     render_websocket_settings(ui, config);
@@ -55,67 +55,70 @@ fn render_general_settings(ui: &mut egui::Ui, config: &mut MappingConfig) {
     );
 }
 
-fn render_theme_settings(app: &mut TabletMapperApp, ui: &mut egui::Ui, config: &mut MappingConfig) {
+fn render_theme_settings(app: &mut TabletMapperApp, ui: &mut egui::Ui) {
     render_card(
         ui,
         &t!("settings.theme.title"),
         egui_phosphor::regular::PALETTE,
         |ui| {
-            render_theme_selector(ui, config);
+            render_theme_selector(app, ui);
             ui.add_space(10.0);
-            render_theme_external_actions(app, ui, config);
+            render_theme_external_actions(app, ui);
         },
     );
 
-    crate::ui::components::theme_store::render_theme_store_viewport(app, ui, config);
+    crate::ui::components::theme_store::render_theme_store_viewport(app, ui);
 }
 
-fn render_theme_selector(ui: &mut egui::Ui, config: &mut MappingConfig) {
+fn render_theme_selector(app: &mut TabletMapperApp, ui: &mut egui::Ui) {
+    let prefs = &mut app.app_prefs;
+    let old_theme = prefs.theme.clone();
+
     ui.horizontal(|ui| {
         ui.label(egui::RichText::new(t!("settings.theme.label")).strong());
         ui.add_space(10.0);
 
-        let theme_name = match &config.theme {
+        let theme_name = match &prefs.theme {
             crate::core::config::models::ThemePreference::Custom(name) => name.clone(),
-            _ => format!("{:?}", config.theme),
+            _ => format!("{:?}", prefs.theme),
         };
 
         egui::ComboBox::from_id_salt("theme_selector")
             .selected_text(theme_name)
             .show_ui(ui, |ui| {
                 ui.selectable_value(
-                    &mut config.theme,
+                    &mut prefs.theme,
                     crate::core::config::models::ThemePreference::System,
                     "System",
                 );
                 ui.selectable_value(
-                    &mut config.theme,
+                    &mut prefs.theme,
                     crate::core::config::models::ThemePreference::Light,
                     "Light",
                 );
                 ui.selectable_value(
-                    &mut config.theme,
+                    &mut prefs.theme,
                     crate::core::config::models::ThemePreference::Dark,
                     "Dark",
                 );
                 ui.separator();
                 ui.selectable_value(
-                    &mut config.theme,
+                    &mut prefs.theme,
                     crate::core::config::models::ThemePreference::CatppuccinLatte,
                     "Catppuccin Latte",
                 );
                 ui.selectable_value(
-                    &mut config.theme,
+                    &mut prefs.theme,
                     crate::core::config::models::ThemePreference::CatppuccinFrappe,
                     "Catppuccin Frappe",
                 );
                 ui.selectable_value(
-                    &mut config.theme,
+                    &mut prefs.theme,
                     crate::core::config::models::ThemePreference::CatppuccinMacchiato,
                     "Catppuccin Macchiato",
                 );
                 ui.selectable_value(
-                    &mut config.theme,
+                    &mut prefs.theme,
                     crate::core::config::models::ThemePreference::CatppuccinMocha,
                     "Catppuccin Mocha",
                 );
@@ -125,7 +128,7 @@ fn render_theme_selector(ui: &mut egui::Ui, config: &mut MappingConfig) {
                     ui.separator();
                     for name in custom_themes {
                         ui.selectable_value(
-                            &mut config.theme,
+                            &mut prefs.theme,
                             crate::core::config::models::ThemePreference::Custom(name.clone()),
                             name,
                         );
@@ -133,7 +136,7 @@ fn render_theme_selector(ui: &mut egui::Ui, config: &mut MappingConfig) {
                 }
             });
 
-        if let crate::core::config::models::ThemePreference::Custom(name) = &config.theme.clone() {
+        if let crate::core::config::models::ThemePreference::Custom(name) = &prefs.theme.clone() {
             let mut delete = false;
             ui.scope(|ui| {
                 ui.style_mut().visuals.widgets.inactive.bg_fill = egui::Color32::TRANSPARENT;
@@ -150,17 +153,18 @@ fn render_theme_selector(ui: &mut egui::Ui, config: &mut MappingConfig) {
                 }
             });
             if delete && crate::settings::themes::delete_custom_theme(name) == Ok(()) {
-                config.theme = crate::core::config::models::ThemePreference::System;
+                prefs.theme = crate::core::config::models::ThemePreference::System;
             }
         }
     });
+
+    if prefs.theme != old_theme {
+        crate::ui::theme::apply_theme(ui.ctx(), &prefs.theme);
+        crate::settings::app_preferences::save_app_preferences(prefs);
+    }
 }
 
-fn render_theme_external_actions(
-    app: &mut TabletMapperApp,
-    ui: &mut egui::Ui,
-    config: &mut MappingConfig,
-) {
+fn render_theme_external_actions(app: &mut TabletMapperApp, ui: &mut egui::Ui) {
     ui.horizontal(|ui| {
         ui.label(egui::RichText::new(t!("settings.theme.download_title")).strong());
     });
@@ -193,7 +197,10 @@ fn render_theme_external_actions(
         {
             match crate::settings::themes::import_theme_json(&path) {
                 Ok(name) => {
-                    config.theme = crate::core::config::models::ThemePreference::Custom(name);
+                    app.app_prefs.theme =
+                        crate::core::config::models::ThemePreference::Custom(name);
+                    crate::ui::theme::apply_theme(ui.ctx(), &app.app_prefs.theme);
+                    crate::settings::app_preferences::save_app_preferences(&app.app_prefs);
                 }
                 Err(e) => {
                     log::error!(target: "UI", "Failed to import theme: {e}");
@@ -203,11 +210,7 @@ fn render_theme_external_actions(
     });
 }
 
-fn render_language_settings(
-    app: &mut TabletMapperApp,
-    ui: &mut egui::Ui,
-    config: &mut MappingConfig,
-) {
+fn render_language_settings(app: &mut TabletMapperApp, ui: &mut egui::Ui) {
     render_card(
         ui,
         &t!("settings.language.title"),
@@ -217,7 +220,7 @@ fn render_language_settings(
                 ui.label(egui::RichText::new(t!("settings.language.label")).strong());
                 ui.add_space(10.0);
 
-                let current_locale = config.language;
+                let current_locale = app.app_prefs.language;
                 let mut new_locale = current_locale;
 
                 egui::ComboBox::from_id_salt("language_selector")
@@ -229,8 +232,9 @@ fn render_language_settings(
                     });
 
                 if new_locale != current_locale {
-                    config.language = new_locale;
+                    app.app_prefs.language = new_locale;
                     crate::i18n::set_locale(new_locale);
+                    crate::settings::app_preferences::save_app_preferences(&app.app_prefs);
                     app.push_toast(
                         t!(
                             "toast.language_changed",

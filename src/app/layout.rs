@@ -189,7 +189,12 @@ impl TabletMapperApp {
                         .corner_radius(6.0)
                         .inner_margin(egui::Margin::symmetric(12, 8))
                         .show(ui, |ui| {
-                            ui.label(egui::RichText::new(&toast.message).color(toast_text));
+                            ui.add(
+                                egui::Label::new(
+                                    egui::RichText::new(&toast.message).color(toast_text),
+                                )
+                                .wrap_mode(egui::TextWrapMode::Extend),
+                            );
                         });
                 });
         }

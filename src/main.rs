@@ -187,6 +187,9 @@ fn main() -> eframe::Result {
             egui::IconData::default()
         });
 
+    // 0. Migrate profiles if necessary
+    next_tablet_driver::settings::migrate_profiles_to_subdir();
+
     // 1. Load Configuration
     let config_start = std::time::Instant::now();
     let config_service = ConfigService::load();
@@ -199,7 +202,8 @@ fn main() -> eframe::Result {
     // 2. Initialize Shared State & I18N
     let state_start = std::time::Instant::now();
     let shared = SharedStateFactory::create(config.clone(), is_first_run);
-    next_tablet_driver::i18n::set_locale(config.language);
+    let app_prefs = next_tablet_driver::settings::app_preferences::load_app_preferences();
+    next_tablet_driver::i18n::set_locale(app_prefs.language);
     let state_duration = state_start.elapsed();
 
     // 3. Initialize Services and Channels

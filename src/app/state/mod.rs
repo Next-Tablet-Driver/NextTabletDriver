@@ -109,6 +109,9 @@ pub struct TabletMapperApp {
 
     /// Set to true on Linux if the required udev rules are not installed.
     pub missing_udev_rules: bool,
+
+    /// Application-level preferences (theme, language) stored separately from tablet config.
+    pub app_prefs: crate::settings::app_preferences::AppPreferences,
 }
 
 const MAX_TOASTS: usize = 3;
@@ -168,7 +171,7 @@ impl TabletMapperApp {
     /// Triggers an OS native file picker modal to select and load a profile JSON file.
     pub fn load_settings(&mut self) {
         if let Some(path) = rfd::FileDialog::new()
-            .set_directory(crate::settings::get_settings_dir())
+            .set_directory(crate::settings::get_profiles_dir())
             .add_filter("JSON", &["json"])
             .pick_file()
         {
@@ -197,7 +200,7 @@ impl TabletMapperApp {
 
     pub fn save_settings_as(&mut self, config: MappingConfig) {
         if let Some(path) = rfd::FileDialog::new()
-            .set_directory(crate::settings::get_settings_dir())
+            .set_directory(crate::settings::get_profiles_dir())
             .add_filter("JSON", &["json"])
             .save_file()
         {
@@ -225,13 +228,9 @@ impl TabletMapperApp {
     pub fn reset_to_default(&mut self) {
         {
             let mut shared_config = self.shared.config.write().unwrap_or_log("config");
-            let theme = shared_config.theme.clone();
             let run_at_startup = shared_config.run_at_startup;
-            let language = shared_config.language;
             *shared_config = MappingConfig::default();
-            shared_config.theme = theme;
             shared_config.run_at_startup = run_at_startup;
-            shared_config.language = language;
             self.shared
                 .config_version
                 .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
@@ -269,6 +268,34 @@ impl TabletMapperApp {
                     }
                 }
                 Err(e) => self.push_toast(t!("toast.import_failed", error = e), ToastLevel::Error),
+            }
+        }
+    }
+
+    pub fn import_otd_settings(&mut self) {
+        let mut dialog = rfd::FileDialog::new().add_filter("OTD JSON", &["json"]);
+
+        if let Some(base_dirs) = directories::BaseDirs::new() {
+            let local_app_data = base_dirs.data_local_dir();
+            let otd_dir = local_app_data.join("OpenTabletDriver");
+            if otd_dir.exists() {
+                dialog = dialog.set_directory(&otd_dir);
+            }
+        }
+
+        if let Some(path) = dialog.pick_file() {
+            match crate::settings::otd_import::import_otd_profile(&path) {
+                Ok(cfg) => {
+                    self.apply_config(cfg);
+                    self.push_toast(
+                        "OTD settings imported successfully".to_string(),
+                        ToastLevel::Info,
+                    );
+                }
+                Err(e) => self.push_toast(
+                    format!("Failed to import OTD settings: {e}"),
+                    ToastLevel::Error,
+                ),
             }
         }
     }
@@ -382,10 +409,12 @@ impl TabletMapperApp {
         }
     }
 
-    pub fn download_theme(&mut self, theme: &str, config: &mut MappingConfig) {
+    pub fn download_theme(&mut self, theme: &str) {
         match crate::settings::themes::download_and_install_theme_sync(theme) {
             Ok(safe_name) => {
-                config.theme = crate::core::config::models::ThemePreference::Custom(safe_name);
+                self.app_prefs.theme =
+                    crate::core::config::models::ThemePreference::Custom(safe_name);
+                crate::settings::app_preferences::save_app_preferences(&self.app_prefs);
                 log::info!(
                     target: "ThemeStore",
                     "{} ({theme})",

@@ -4,7 +4,6 @@
 //! the application's configuration state (typically saved to `settings.json`).
 //! It includes models for tablet mapping areas, UI preferences, and filter settings.
 
-use crate::i18n::Locale;
 use serde::{Deserialize, Serialize};
 
 /// Represents the absolute physical mapping area on the tablet surface.
@@ -363,9 +362,6 @@ pub struct MappingConfig {
     /// WebSocket server broadcast configuration.
     #[serde(default)]
     pub websocket: WebSocketConfig,
-    /// Active theme color scheme (Light, Dark, Catppuccin variants, System).
-    #[serde(default)]
-    pub theme: ThemePreference,
     /// Lock aspect ratio of the active area to match the target area screen aspect ratio.
     #[serde(default)]
     pub lock_aspect_ratio: bool,
@@ -375,9 +371,6 @@ pub struct MappingConfig {
     /// Whether to snap the target area to display edges when resizing/moving.
     #[serde(default = "default_true")]
     pub display_snapping: bool,
-    /// The user's preferred UI language.
-    #[serde(default)]
-    pub language: Locale,
 }
 
 impl Default for MappingConfig {
@@ -399,11 +392,9 @@ impl Default for MappingConfig {
             run_at_startup: false,
             system_tray_on_minimize: false,
             websocket: WebSocketConfig::default(),
-            theme: ThemePreference::default(),
             lock_aspect_ratio: false,
             show_osu_playfield: false,
             display_snapping: default_true(),
-            language: Locale::default(),
         }
     }
 }

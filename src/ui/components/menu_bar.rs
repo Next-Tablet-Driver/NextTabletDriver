@@ -43,6 +43,11 @@ pub fn render_menu_bar(app: &mut TabletMapperApp, ctx: &egui::Context, snapshot:
                         app.import_settings();
                     }
 
+                    if ui.button("Import OTD Settings").clicked() {
+                        ui.close();
+                        app.import_otd_settings();
+                    }
+
                     ui.separator();
 
                     ui.menu_button(t!("menu.file.presets"), |ui| {

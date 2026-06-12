@@ -56,18 +56,14 @@ pub fn run_manager(shared: &Arc<SharedState>, tablet_sender: &Sender<TabletData>
     }
 }
 
-fn manager_thread_iteration(
-    shared_clone: &Arc<SharedState>,
-    sender_clone: &Sender<TabletData>,
-) {
+fn manager_thread_iteration(shared_clone: &Arc<SharedState>, sender_clone: &Sender<TabletData>) {
     let hid_init_start = Instant::now();
     let hid_api = match hidapi::HidApi::new() {
         Ok(api) => {
             *shared_clone
                 .engine_status
                 .write()
-                .unwrap_or_reset("engine_status") =
-                crate::engine::state::EngineStatus::Running;
+                .unwrap_or_reset("engine_status") = crate::engine::state::EngineStatus::Running;
             api
         }
         Err(e) => {
@@ -103,15 +99,8 @@ fn manager_thread_iteration(
 
         if let Some((device, driver, vid, pid)) = detect_tablet(&hid_api) {
             log::info!(target: "HID", "Device connected: {vid:04x}:{pid:04x}");
-            on_device_connected(
-                shared_clone,
-                driver.as_ref(),
-                vid,
-                pid,
-                &mut local_config,
-            );
-            let mut local_config_version =
-                shared_clone.config_version.load(Ordering::Relaxed);
+            on_device_connected(shared_clone, driver.as_ref(), vid, pid, &mut local_config);
+            let mut local_config_version = shared_clone.config_version.load(Ordering::Relaxed);
 
             // Drain stale packets left by init sequence to prevent cursor teleport
             let mut drain_buf = [0u8; 64];
