@@ -213,6 +213,7 @@ pub fn get_memory_info() -> Option<u64> {
 ///
 /// On Linux, parses `/proc/meminfo`.
 #[cfg(not(windows))]
+#[must_use]
 pub fn get_memory_info() -> Option<u64> {
     #[cfg(target_os = "linux")]
     {
