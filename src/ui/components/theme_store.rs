@@ -20,8 +20,11 @@ pub fn render_theme_store_viewport(
 
     ui.ctx()
         .show_viewport_immediate(viewport_id, builder, |ctx, _class| {
-            crate::ui::theme::apply_theme(ctx, &config.theme);
-
+            // Inherit style and semantic colors from the main context
+            // to avoid re-parsing the theme.json file and spamming logs every frame.
+            ctx.set_style(ui.ctx().style());
+            let semantic = crate::ui::theme::semantic_colors(ui.ctx());
+            ctx.memory_mut(|mem| mem.data.insert_temp(egui::Id::new("semantic_colors"), semantic));
             if ctx.input(|i| i.viewport().close_requested()) {
                 app.theme_store_open = false;
             }
