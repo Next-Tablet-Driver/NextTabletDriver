@@ -6,7 +6,7 @@ use std::fs;
 /// Application-level preferences that are NOT tied to a specific tablet mapping profile.
 ///
 /// Persisted to `app_preferences.json` in the settings directory.
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct AppPreferences {
     /// The user's preferred UI theme.
     #[serde(default)]
@@ -14,6 +14,31 @@ pub struct AppPreferences {
     /// The user's preferred UI language.
     #[serde(default)]
     pub language: Locale,
+    /// Whether anonymous telemetry is enabled.
+    #[serde(default = "default_telemetry_enabled")]
+    pub telemetry_enabled: bool,
+    /// Anonymous distinct ID for telemetry.
+    #[serde(default = "default_telemetry_id")]
+    pub telemetry_id: String,
+}
+
+fn default_telemetry_enabled() -> bool {
+    true
+}
+
+fn default_telemetry_id() -> String {
+    uuid::Uuid::new_v4().to_string()
+}
+
+impl Default for AppPreferences {
+    fn default() -> Self {
+        Self {
+            theme: ThemePreference::default(),
+            language: Locale::default(),
+            telemetry_enabled: default_telemetry_enabled(),
+            telemetry_id: default_telemetry_id(),
+        }
+    }
 }
 
 /// Saves application preferences to `app_preferences.json`.

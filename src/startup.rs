@@ -186,7 +186,7 @@ pub use platform::set_run_at_startup;
 ///
 /// On Windows, queries `GlobalMemoryStatusEx`.
 #[cfg(windows)]
-fn get_memory_info() -> Option<u64> {
+pub fn get_memory_info() -> Option<u64> {
     use windows_sys::Win32::System::SystemInformation::{GlobalMemoryStatusEx, MEMORYSTATUSEX};
     let mut mem_status = MEMORYSTATUSEX {
         dwLength: std::mem::size_of::<MEMORYSTATUSEX>() as u32,
@@ -212,7 +212,7 @@ fn get_memory_info() -> Option<u64> {
 ///
 /// On Linux, parses `/proc/meminfo`.
 #[cfg(not(windows))]
-fn get_memory_info() -> Option<u64> {
+pub fn get_memory_info() -> Option<u64> {
     #[cfg(target_os = "linux")]
     {
         if let Ok(content) = std::fs::read_to_string("/proc/meminfo") {

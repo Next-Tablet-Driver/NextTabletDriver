@@ -291,6 +291,7 @@ impl TabletMapperApp {
                         "OTD settings imported successfully".to_string(),
                         ToastLevel::Info,
                     );
+                    crate::app::telemetry::capture_event("otd_imported", None, &self.app_prefs);
                 }
                 Err(e) => self.push_toast(
                     format!("Failed to import OTD settings: {e}"),
@@ -413,12 +414,17 @@ impl TabletMapperApp {
         match crate::settings::themes::download_and_install_theme_sync(theme) {
             Ok(safe_name) => {
                 self.app_prefs.theme =
-                    crate::core::config::models::ThemePreference::Custom(safe_name);
+                    crate::core::config::models::ThemePreference::Custom(safe_name.clone());
                 crate::settings::app_preferences::save_app_preferences(&self.app_prefs);
                 log::info!(
                     target: "ThemeStore",
                     "{} ({theme})",
                     t!("settings.theme.download_success")
+                );
+                crate::app::telemetry::capture_event(
+                    "theme_downloaded",
+                    Some(serde_json::json!({ "theme_name": safe_name })),
+                    &self.app_prefs,
                 );
             }
             Err(e) => {

@@ -33,6 +33,8 @@
   "settings.general.run_at_startup_tooltip": "Automatically launch the application when your session starts.",
   "settings.general.system_tray": "System Tray when Minimize",
   "settings.general.system_tray_tooltip": "Hide the application to the system tray when minimized.",
+  "settings.general.telemetry": "Enable Anonymous Usage Statistics",
+  "settings.general.telemetry_tooltip": "Send anonymous usage data (e.g., OS, app version) to help us improve NextTabletDriver.",
   "settings.general.theme": "Application Theme",
   "settings.general.delete_theme": "Delete custom theme",
   "settings.general.import_theme": "Import Theme (Local File)",

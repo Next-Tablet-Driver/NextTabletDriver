@@ -68,11 +68,21 @@ fn manager_thread_iteration(shared_clone: &Arc<SharedState>, sender_clone: &Send
         }
         Err(e) => {
             log::error!(target: "HID", "CRITICAL: Failed to initialise HID API: {e}");
+            let error_str = e.to_string();
+            let app_prefs = crate::settings::app_preferences::load_app_preferences();
+            crate::app::telemetry::capture_event(
+                "engine_error",
+                Some(serde_json::json!({
+                    "error_message": error_str.clone(),
+                    "context": "HID API Initialization"
+                })),
+                &app_prefs,
+            );
             *shared_clone
                 .engine_status
                 .write()
                 .unwrap_or_reset("engine_status") =
-                crate::engine::state::EngineStatus::Failed(e.to_string());
+                crate::engine::state::EngineStatus::Failed(error_str);
             return;
         }
     };
@@ -219,6 +229,17 @@ fn on_device_connected(
 
     *shared.device_state.write().unwrap_or_reset("device_state") = new_device.clone();
     log::info!(target: "TabletManager", "Tablet metadata populated: {}", new_device.name);
+
+    let app_prefs = crate::settings::app_preferences::load_app_preferences();
+    crate::app::telemetry::capture_event(
+        "tablet_connected",
+        Some(serde_json::json!({
+            "tablet_model": new_device.name,
+            "vendor_id": format!("{:#06X}", new_device.vid),
+            "product_id": format!("{:#06X}", new_device.pid),
+        })),
+        &app_prefs,
+    );
 
     let mut is_first = shared.is_first_run.write().unwrap_or_reset("is_first_run");
     if *is_first {

@@ -33,6 +33,8 @@ jobs:
 
             - name: Build Rust Project (release)
               run: cargo build --release
+              env:
+                  POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
 
             - name: Compile Inno Setup
               run: |
@@ -81,6 +83,8 @@ jobs:
 
             - name: Build release (glibc)
               run: cargo build --workspace --release --all-features
+              env:
+                  POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
 
             - name: Prepare AppDir
               run: |
@@ -188,6 +192,8 @@ jobs:
               run: |
                   set -x
                   cargo build --target x86_64-unknown-linux-musl --release --workspace --all-features || true
+              env:
+                  POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
 
             - id: package
               name: Package MUSL binary (or placeholder)

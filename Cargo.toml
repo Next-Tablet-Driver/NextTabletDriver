@@ -30,6 +30,7 @@ tray-icon = "0.22.0"
 sha2 = "0.10"
 hex = "0.4"
 image = { version = "0.25.10", default-features = false, features = ["png"] }
+uuid = { version = "1.23.3", features = ["v4", "serde"] }
 
 # Windows
 [target.'cfg(windows)'.dependencies]

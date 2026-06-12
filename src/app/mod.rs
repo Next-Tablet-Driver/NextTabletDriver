@@ -8,6 +8,7 @@ pub mod layout;
 pub mod lifecycle;
 pub mod services;
 pub mod state;
+pub mod telemetry;
 pub mod update;
 pub mod websocket;
 

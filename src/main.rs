@@ -204,6 +204,20 @@ fn main() -> eframe::Result {
     let shared = SharedStateFactory::create(config.clone(), is_first_run);
     let app_prefs = next_tablet_driver::settings::app_preferences::load_app_preferences();
     next_tablet_driver::i18n::set_locale(app_prefs.language);
+    let total_ram_gb = next_tablet_driver::startup::get_memory_info()
+        .map(|b| (b as f64 / 1_073_741_824.0).ceil() as u64);
+    let cpu_cores = std::env::var("NUMBER_OF_PROCESSORS")
+        .ok()
+        .and_then(|s| s.parse::<u32>().ok());
+    next_tablet_driver::app::telemetry::capture_event(
+        "app_started",
+        Some(serde_json::json!({
+            "language": app_prefs.language.display_name().to_string(),
+            "cpu_cores": cpu_cores,
+            "total_ram_gb": total_ram_gb,
+        })),
+        &app_prefs,
+    );
     let state_duration = state_start.elapsed();
 
     // 3. Initialize Services and Channels

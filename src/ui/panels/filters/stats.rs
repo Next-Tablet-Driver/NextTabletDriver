@@ -64,10 +64,17 @@ pub fn render_stats_settings(
         egui_phosphor::regular::GLOBE,
         |ui| {
             ui.horizontal(|ui| {
-                ui.checkbox(
+                if ui.checkbox(
                     &mut config.speed_stats.enabled,
                     t!("filters.stats.enable_server"),
-                );
+                ).changed() && config.speed_stats.enabled {
+                    let app_prefs = crate::settings::app_preferences::load_app_preferences();
+                    crate::app::telemetry::capture_event(
+                        "filter_enabled",
+                        Some(serde_json::json!({"filter_name": "HandSpeed"})),
+                        &app_prefs,
+                    );
+                }
             });
 
             ui.add_space(12.0);

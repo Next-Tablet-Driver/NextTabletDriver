@@ -33,6 +33,8 @@
   "settings.general.run_at_startup_tooltip": "Lancer automatiquement l'application au démarrage de votre session.",
   "settings.general.system_tray": "Zone de notification à la réduction",
   "settings.general.system_tray_tooltip": "Masquer l'application dans la zone de notification lorsqu'elle est réduite.",
+  "settings.general.telemetry": "Activer les statistiques d'utilisation anonymes",
+  "settings.general.telemetry_tooltip": "Envoie des données d'utilisation anonymes (ex: OS, version) pour nous aider à améliorer NextTabletDriver.",
   "settings.general.theme": "Thème de l'application",
   "settings.general.delete_theme": "Supprimer le thème personnalisé",
   "settings.general.import_theme": "Importer un Thème (Fichier local)",

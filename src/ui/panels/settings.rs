@@ -13,7 +13,7 @@ pub fn render_settings_panel(
     _snapshot: &UiSnapshot,
 ) {
     ui.add_space(15.0);
-    render_general_settings(ui, config);
+    render_general_settings(app, ui, config);
 
     ui.add_space(15.0);
     render_theme_settings(app, ui);
@@ -25,7 +25,7 @@ pub fn render_settings_panel(
     render_websocket_settings(ui, config);
 }
 
-fn render_general_settings(ui: &mut egui::Ui, config: &mut MappingConfig) {
+fn render_general_settings(app: &mut TabletMapperApp, ui: &mut egui::Ui, config: &mut MappingConfig) {
     render_card(
         ui,
         &t!("settings.general.title"),
@@ -51,6 +51,16 @@ fn render_general_settings(ui: &mut egui::Ui, config: &mut MappingConfig) {
                 t!("settings.general.system_tray"),
             )
             .on_hover_text(t!("settings.general.system_tray_tooltip"));
+
+            ui.add_space(4.0);
+            if ui.checkbox(
+                &mut app.app_prefs.telemetry_enabled,
+                t!("settings.general.telemetry"),
+            )
+            .on_hover_text(t!("settings.general.telemetry_tooltip"))
+            .changed() {
+                crate::settings::app_preferences::save_app_preferences(&app.app_prefs);
+            }
         },
     );
 }
