@@ -335,7 +335,6 @@ pub fn log_mapping_config(config: &MappingConfig, prefix: &str) {
         config.show_osu_playfield,
         config.language
     );
-    log::info!(target: "Tracking", "========================================");
 }
 
 #[cfg(test)]

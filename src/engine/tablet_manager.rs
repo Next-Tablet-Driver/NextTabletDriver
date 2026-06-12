@@ -40,102 +40,7 @@ pub fn run_manager(shared: &Arc<SharedState>, tablet_sender: &Sender<TabletData>
         let sender_clone = tablet_sender.clone();
 
         let result = panic::catch_unwind(move || {
-            let hid_init_start = Instant::now();
-            let hid_api = match hidapi::HidApi::new() {
-                Ok(api) => {
-                    *shared_clone
-                        .engine_status
-                        .write()
-                        .unwrap_or_reset("engine_status") =
-                        crate::engine::state::EngineStatus::Running;
-                    api
-                }
-                Err(e) => {
-                    log::error!(target: "HID", "CRITICAL: Failed to initialise HID API: {e}");
-                    *shared_clone
-                        .engine_status
-                        .write()
-                        .unwrap_or_reset("engine_status") =
-                        crate::engine::state::EngineStatus::Failed(e.to_string());
-                    return;
-                }
-            };
-            log::info!(target: "HID", "HID API initialised in {:.2?}", hid_init_start.elapsed());
-
-            let mut injector = Injector::new();
-            let mut pipeline = Pipeline::new();
-
-            init_thread_priority();
-
-            let mut local_config = shared_clone.config.read().unwrap_or_log("config").clone();
-            let mut filters = init_filter_pipeline(&shared_clone, &local_config);
-
-            loop {
-                if shared_clone.shutdown_requested.load(Ordering::Relaxed) {
-                    log::info!(target: "TabletManager", "Shutdown requested, exiting manager loop");
-                    break;
-                }
-
-                if shared_clone.reload_requested.swap(false, Ordering::Relaxed) {
-                    log::warn!(target: "TabletManager", "Engine reload requested, tearing down context...");
-                    break;
-                }
-
-                if let Some((device, driver, vid, pid)) = detect_tablet(&hid_api) {
-                    log::info!(target: "HID", "Device connected: {vid:04x}:{pid:04x}");
-                    on_device_connected(
-                        &shared_clone,
-                        driver.as_ref(),
-                        vid,
-                        pid,
-                        &mut local_config,
-                    );
-                    let mut local_config_version =
-                        shared_clone.config_version.load(Ordering::Relaxed);
-
-                    // Drain stale packets left by init sequence to prevent cursor teleport
-                    let mut drain_buf = [0u8; 64];
-                    let drain_deadline = Instant::now() + Duration::from_millis(100);
-                    while Instant::now() < drain_deadline {
-                        if shared_clone.shutdown_requested.load(Ordering::Relaxed)
-                            || shared_clone.reload_requested.load(Ordering::Relaxed)
-                        {
-                            break;
-                        }
-                        match device.read_timeout(&mut drain_buf, 10) {
-                            Ok(0) | Err(_) => break,
-                            Ok(_) => (),
-                        }
-                    }
-                    pipeline.reset_relative();
-
-                    run_polling_loop(
-                        &device,
-                        driver.as_ref(),
-                        &shared_clone,
-                        &sender_clone,
-                        &mut pipeline,
-                        &mut injector,
-                        &mut filters,
-                        &mut local_config,
-                        &mut local_config_version,
-                    );
-
-                    if shared_clone.shutdown_requested.load(Ordering::Relaxed) {
-                        log::info!(target: "TabletManager", "Shutdown requested, exiting manager loop after polling");
-                        break;
-                    }
-                    if shared_clone.reload_requested.load(Ordering::Relaxed) {
-                        log::warn!(target: "TabletManager", "Reload requested, breaking out to restart context...");
-                        break;
-                    }
-                    log::warn!(target: "HID", "Polling loop exited, restarting...");
-                }
-
-                on_disconnected(&shared_clone);
-                thread::sleep(Duration::from_millis(500));
-            }
-            on_disconnected(&shared_clone);
+            manager_thread_iteration(&shared_clone, &sender_clone);
         });
 
         if let Err(err) = result {
@@ -149,6 +54,108 @@ pub fn run_manager(shared: &Arc<SharedState>, tablet_sender: &Sender<TabletData>
         log::warn!(target: "TabletManager", "Engine context terminated, restarting in 1 second...");
         thread::sleep(Duration::from_secs(1));
     }
+}
+
+fn manager_thread_iteration(
+    shared_clone: &Arc<SharedState>,
+    sender_clone: &Sender<TabletData>,
+) {
+    let hid_init_start = Instant::now();
+    let hid_api = match hidapi::HidApi::new() {
+        Ok(api) => {
+            *shared_clone
+                .engine_status
+                .write()
+                .unwrap_or_reset("engine_status") =
+                crate::engine::state::EngineStatus::Running;
+            api
+        }
+        Err(e) => {
+            log::error!(target: "HID", "CRITICAL: Failed to initialise HID API: {e}");
+            *shared_clone
+                .engine_status
+                .write()
+                .unwrap_or_reset("engine_status") =
+                crate::engine::state::EngineStatus::Failed(e.to_string());
+            return;
+        }
+    };
+    log::info!(target: "HID", "HID API initialised in {:.2?}", hid_init_start.elapsed());
+
+    let mut injector = Injector::new();
+    let mut pipeline = Pipeline::new();
+
+    init_thread_priority();
+
+    let mut local_config = shared_clone.config.read().unwrap_or_log("config").clone();
+    let mut filters = init_filter_pipeline(shared_clone, &local_config);
+
+    loop {
+        if shared_clone.shutdown_requested.load(Ordering::Relaxed) {
+            log::info!(target: "TabletManager", "Shutdown requested, exiting manager loop");
+            break;
+        }
+
+        if shared_clone.reload_requested.swap(false, Ordering::Relaxed) {
+            log::warn!(target: "TabletManager", "Engine reload requested, tearing down context...");
+            break;
+        }
+
+        if let Some((device, driver, vid, pid)) = detect_tablet(&hid_api) {
+            log::info!(target: "HID", "Device connected: {vid:04x}:{pid:04x}");
+            on_device_connected(
+                shared_clone,
+                driver.as_ref(),
+                vid,
+                pid,
+                &mut local_config,
+            );
+            let mut local_config_version =
+                shared_clone.config_version.load(Ordering::Relaxed);
+
+            // Drain stale packets left by init sequence to prevent cursor teleport
+            let mut drain_buf = [0u8; 64];
+            let drain_deadline = Instant::now() + Duration::from_millis(100);
+            while Instant::now() < drain_deadline {
+                if shared_clone.shutdown_requested.load(Ordering::Relaxed)
+                    || shared_clone.reload_requested.load(Ordering::Relaxed)
+                {
+                    break;
+                }
+                match device.read_timeout(&mut drain_buf, 10) {
+                    Ok(0) | Err(_) => break,
+                    Ok(_) => (),
+                }
+            }
+            pipeline.reset_relative();
+
+            run_polling_loop(
+                &device,
+                driver.as_ref(),
+                shared_clone,
+                sender_clone,
+                &mut pipeline,
+                &mut injector,
+                &mut filters,
+                &mut local_config,
+                &mut local_config_version,
+            );
+
+            if shared_clone.shutdown_requested.load(Ordering::Relaxed) {
+                log::info!(target: "TabletManager", "Shutdown requested, exiting manager loop after polling");
+                break;
+            }
+            if shared_clone.reload_requested.load(Ordering::Relaxed) {
+                log::warn!(target: "TabletManager", "Reload requested, breaking out to restart context...");
+                break;
+            }
+            log::warn!(target: "HID", "Polling loop exited, restarting...");
+        }
+
+        on_disconnected(shared_clone);
+        thread::sleep(Duration::from_millis(500));
+    }
+    on_disconnected(shared_clone);
 }
 
 /// Adjusts the execution priority of the polling thread.

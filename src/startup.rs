@@ -276,7 +276,6 @@ pub fn log_system_hardware() {
 
     let total_ram = get_memory_info();
 
-    log::info!(target: "Tracking", "=== SYSTEM & HARDWARE PROFILER ===");
     log::info!(target: "Tracking", "OS: {os} | Architecture: {arch}");
 
     #[cfg(target_os = "linux")]
@@ -291,5 +290,4 @@ pub fn log_system_hardware() {
     } else {
         log::info!(target: "Tracking", "Total Physical RAM: Unknown");
     }
-    log::info!(target: "Tracking", "==================================");
 }
