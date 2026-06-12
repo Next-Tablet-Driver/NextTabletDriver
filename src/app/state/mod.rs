@@ -4,6 +4,8 @@ pub mod snapshot;
 pub use models::*;
 pub use snapshot::*;
 
+use crate::t;
+
 use crate::core::config::models::MappingConfig;
 use crossbeam_channel::Receiver;
 use display_info::DisplayInfo;
@@ -14,6 +16,16 @@ use std::time::Instant;
 use crate::app::autoupdate::UpdateStatus;
 use crate::drivers::TabletData;
 use crate::engine::state::{LockRecoveryExt, SharedState};
+
+use crate::core::config::theme_models::ThemeMetadata;
+
+#[derive(Clone, Debug)]
+pub struct ThemeStoreItem {
+    pub metadata: ThemeMetadata,
+    pub dark_mode: bool,
+}
+
+pub type ThemeStoreResult = Result<Vec<ThemeStoreItem>, String>;
 
 /// The core application state structure used by the `eframe` (egui) integration.
 #[allow(clippy::struct_excessive_bools)]
@@ -82,13 +94,24 @@ pub struct TabletMapperApp {
     pub console_cache_filters: (bool, bool, bool, bool),
     /// List of pre-filtered log entries currently loaded in the console UI.
     pub console_cache_filtered: Vec<crate::logger::LogEntry>,
-    /// Flattened textual string of all matching logs, optimized for clipboard copy.
-    pub console_cache_full_text: String,
+
+    // Theme Store State
+    pub theme_store_open: bool,
+    pub theme_store_loading: bool,
+    pub theme_store_list: std::sync::Arc<std::sync::Mutex<Option<ThemeStoreResult>>>,
+    pub theme_store_search: String,
+    pub theme_store_filter_mode: Option<bool>,
 
     /// Toggle to render the close confirmation dialog modal.
     pub show_close_confirm: bool,
     /// If true, bypasses close confirmation dialog and exits immediately.
     pub force_close: bool,
+
+    /// Set to true on Linux if the required udev rules are not installed.
+    pub missing_udev_rules: bool,
+
+    /// Application-level preferences (theme, language) stored separately from tablet config.
+    pub app_prefs: crate::settings::app_preferences::AppPreferences,
 }
 
 const MAX_TOASTS: usize = 3;
@@ -130,20 +153,17 @@ impl TabletMapperApp {
                 });
                 if !corrections.is_empty() {
                     self.push_toast(
-                        format!(
-                            "Config repaired: {} field(s) reset to defaults",
-                            corrections.len()
-                        ),
+                        t!("toast.config_repaired", count = corrections.len()),
                         ToastLevel::Warning,
                     );
                 }
                 self.push_toast(
-                    format!("Loaded profile: {}", self.profile.name),
+                    t!("toast.profile_loaded", name = &self.profile.name),
                     ToastLevel::Info,
                 );
             }
             Err(e) => {
-                self.push_toast(format!("Failed to load profile: {e}"), ToastLevel::Error);
+                self.push_toast(t!("toast.load_failed", error = e), ToastLevel::Error);
             }
         }
     }
@@ -151,7 +171,7 @@ impl TabletMapperApp {
     /// Triggers an OS native file picker modal to select and load a profile JSON file.
     pub fn load_settings(&mut self) {
         if let Some(path) = rfd::FileDialog::new()
-            .set_directory(crate::settings::get_settings_dir())
+            .set_directory(crate::settings::get_profiles_dir())
             .add_filter("JSON", &["json"])
             .pick_file()
         {
@@ -167,10 +187,10 @@ impl TabletMapperApp {
                 Ok(()) => {
                     self.profile.mark_saved(&config);
                     let _ = self.save_sender.try_send(config);
-                    self.push_toast("Settings saved".to_string(), ToastLevel::Info);
+                    self.push_toast(t!("toast.settings_saved"), ToastLevel::Info);
                 }
                 Err(e) => {
-                    self.push_toast(format!("Failed to save: {e}"), ToastLevel::Error);
+                    self.push_toast(t!("toast.save_failed", error = e), ToastLevel::Error);
                 }
             }
         } else {
@@ -180,7 +200,7 @@ impl TabletMapperApp {
 
     pub fn save_settings_as(&mut self, config: MappingConfig) {
         if let Some(path) = rfd::FileDialog::new()
-            .set_directory(crate::settings::get_settings_dir())
+            .set_directory(crate::settings::get_profiles_dir())
             .add_filter("JSON", &["json"])
             .save_file()
         {
@@ -196,10 +216,10 @@ impl TabletMapperApp {
                         profile_name: self.profile.name.clone(),
                         profile_path: self.profile.path.clone(),
                     });
-                    self.push_toast("Settings saved".to_string(), ToastLevel::Info);
+                    self.push_toast(t!("toast.settings_saved"), ToastLevel::Info);
                 }
                 Err(e) => {
-                    self.push_toast(format!("Failed to save: {e}"), ToastLevel::Error);
+                    self.push_toast(t!("toast.save_failed", error = e), ToastLevel::Error);
                 }
             }
         }
@@ -208,20 +228,15 @@ impl TabletMapperApp {
     pub fn reset_to_default(&mut self) {
         {
             let mut shared_config = self.shared.config.write().unwrap_or_log("config");
-            let theme = shared_config.theme.clone();
             let run_at_startup = shared_config.run_at_startup;
             *shared_config = MappingConfig::default();
-            shared_config.theme = theme;
             shared_config.run_at_startup = run_at_startup;
             self.shared
                 .config_version
                 .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
             drop(shared_config);
         }
-        self.push_toast(
-            "Settings reset to default (Unsaved)".to_string(),
-            ToastLevel::Info,
-        );
+        self.push_toast(t!("toast.reset_default"), ToastLevel::Info);
     }
 
     pub fn export_settings(&mut self, config: &MappingConfig) {
@@ -231,8 +246,8 @@ impl TabletMapperApp {
             .save_file()
         {
             match crate::settings::save_to_path(&path, config) {
-                Ok(()) => self.push_toast("Settings exported".to_string(), ToastLevel::Info),
-                Err(e) => self.push_toast(format!("Export failed: {e}"), ToastLevel::Error),
+                Ok(()) => self.push_toast(t!("toast.settings_exported"), ToastLevel::Info),
+                Err(e) => self.push_toast(t!("toast.export_failed", error = e), ToastLevel::Error),
             }
         }
     }
@@ -247,20 +262,46 @@ impl TabletMapperApp {
                     self.apply_config(cfg);
                     if !corrections.is_empty() {
                         self.push_toast(
-                            format!(
-                                "Imported config repaired: {} field(s) reset",
-                                corrections.len()
-                            ),
+                            t!("toast.import_repaired", count = corrections.len()),
                             ToastLevel::Warning,
                         );
                     }
                 }
-                Err(e) => self.push_toast(format!("Import failed: {e}"), ToastLevel::Error),
+                Err(e) => self.push_toast(t!("toast.import_failed", error = e), ToastLevel::Error),
             }
         }
     }
 
-    pub fn get_filtered_logs(&mut self) -> (usize, &[crate::logger::LogEntry], &str) {
+    pub fn import_otd_settings(&mut self) {
+        let mut dialog = rfd::FileDialog::new().add_filter("OTD JSON", &["json"]);
+
+        if let Some(base_dirs) = directories::BaseDirs::new() {
+            let local_app_data = base_dirs.data_local_dir();
+            let otd_dir = local_app_data.join("OpenTabletDriver");
+            if otd_dir.exists() {
+                dialog = dialog.set_directory(&otd_dir);
+            }
+        }
+
+        if let Some(path) = dialog.pick_file() {
+            match crate::settings::otd_import::import_otd_profile(&path) {
+                Ok(cfg) => {
+                    self.apply_config(cfg);
+                    self.push_toast(
+                        "OTD settings imported successfully".to_string(),
+                        ToastLevel::Info,
+                    );
+                    crate::app::telemetry::capture_event("otd_imported", None, &self.app_prefs);
+                }
+                Err(e) => self.push_toast(
+                    format!("Failed to import OTD settings: {e}"),
+                    ToastLevel::Error,
+                ),
+            }
+        }
+    }
+
+    pub fn get_filtered_logs(&mut self) -> (usize, &[crate::logger::LogEntry]) {
         let logs = crate::logger::LOG_BUFFER.read().unwrap_or_log("logs");
         let current_filters = (
             self.console_show_info,
@@ -274,11 +315,7 @@ impl TabletMapperApp {
             && self.console_cache_search == self.console_search
             && self.console_cache_filters == current_filters
         {
-            return (
-                logs.len(),
-                &self.console_cache_filtered,
-                &self.console_cache_full_text,
-            );
+            return (logs.len(), &self.console_cache_filtered);
         }
         let search_lower = self.console_search.to_lowercase();
         let mut filtered: Vec<_> = logs
@@ -297,29 +334,19 @@ impl TabletMapperApp {
                 if search_lower.is_empty() {
                     return true;
                 }
-                log.message.to_lowercase().contains(&search_lower)
-                    || log.group.to_lowercase().contains(&search_lower)
+                log.search_text.contains(&search_lower)
             })
             .cloned()
             .collect();
         filtered.reverse();
-        let full_text = logs
-            .iter()
-            .map(|l| format!("[{}] {} [{}] {}", l.time, l.level, l.group, l.message))
-            .collect::<Vec<_>>()
-            .join("\n");
-        self.console_cache_log_sequence = current_sequence;
-        let total_count = logs.len();
+        let all_count = logs.len();
         drop(logs);
+        self.console_cache_filtered = filtered;
+        self.console_cache_log_sequence = current_sequence;
         self.console_cache_search = self.console_search.clone();
         self.console_cache_filters = current_filters;
-        self.console_cache_filtered = filtered;
-        self.console_cache_full_text = full_text;
-        (
-            total_count,
-            &self.console_cache_filtered,
-            &self.console_cache_full_text,
-        )
+
+        (all_count, &self.console_cache_filtered)
     }
 
     pub fn start_update(&mut self) {
@@ -367,5 +394,46 @@ impl TabletMapperApp {
             drop(shared_config);
         }
         let _ = self.save_sender.try_send(cfg);
+    }
+
+    pub fn fetch_theme_store_list(&mut self) {
+        let is_none = self.theme_store_list.lock().map_or(true, |g| g.is_none());
+        if is_none {
+            self.theme_store_loading = true;
+            let list_arc = std::sync::Arc::clone(&self.theme_store_list);
+            std::thread::spawn(move || {
+                let result = crate::settings::themes::fetch_theme_store_list_sync();
+                if let Ok(mut guard) = list_arc.lock() {
+                    *guard = Some(result);
+                }
+            });
+        }
+    }
+
+    pub fn download_theme(&mut self, theme: &str) {
+        match crate::settings::themes::download_and_install_theme_sync(theme) {
+            Ok(safe_name) => {
+                self.app_prefs.theme =
+                    crate::core::config::models::ThemePreference::Custom(safe_name.clone());
+                crate::settings::app_preferences::save_app_preferences(&self.app_prefs);
+                log::info!(
+                    target: "ThemeStore",
+                    "{} ({theme})",
+                    t!("settings.theme.download_success")
+                );
+                crate::app::telemetry::capture_event(
+                    "theme_downloaded",
+                    Some(serde_json::json!({ "theme_name": safe_name })),
+                    &self.app_prefs,
+                );
+            }
+            Err(e) => {
+                log::error!(
+                    target: "ThemeStore",
+                    "{} {e}",
+                    t!("settings.theme.download_error")
+                );
+            }
+        }
     }
 }

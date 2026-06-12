@@ -34,6 +34,8 @@ impl Injector {
             }
         });
 
+        log::info!(target: "Injector", "Windows Injector initialized successfully.");
+
         Self {
             enigo,
             last_pressure_down: false,
@@ -42,14 +44,15 @@ impl Injector {
         }
     }
 
+    /// Updates stylus proximity state. Unused on Windows since proximity
+    /// tracking is handled at the system level.
     pub const fn set_proximity(&mut self, _in_proximity: bool) {}
 
     /// Injects an absolute cursor position on the screen.
     /// Used by `Absolute` driver mode.
     ///
-    /// On Windows, reads the current cursor position via `GetCursorPos` and
-    /// applies a relative delta to reach the target. This avoids the DPI scaling
-    /// issues that come with `SendInput` absolute coordinate encoding.
+    /// Directs mouse coordinate injection via Enigo using absolute pixel
+    /// coordinates (`Coordinate::Abs`).
     ///
     /// # Arguments
     /// * `target_x` - Target X coordinate in OS pixels.
@@ -68,31 +71,21 @@ impl Injector {
         _tilt_x: i32,
         _tilt_y: i32,
     ) {
-        #[cfg(windows)]
-        use windows_sys::Win32::Foundation::POINT;
-        #[cfg(windows)]
-        use windows_sys::Win32::UI::WindowsAndMessaging::GetCursorPos;
-        // SAFETY: We are calling GetCursorPos with a valid pointer to a POINT struct.
-        unsafe {
-            let mut current_pos = POINT { x: 0, y: 0 };
-            if GetCursorPos(&raw mut current_pos) != 0 {
-                let target_px = target_x.round() as i32;
-                let target_py = target_y.round() as i32;
+        let target_px = target_x.round() as i32;
+        let target_py = target_y.round() as i32;
 
-                let dx = target_px - current_pos.x;
-                let dy = target_py - current_pos.y;
+        let _ = self.enigo.move_mouse(target_px, target_py, Coordinate::Abs);
 
-                if dx != 0 || dy != 0 {
-                    let _ = self.enigo.move_mouse(dx, dy, Coordinate::Rel);
-
-                    // Reset accumulators so relative mode starts clean after a mode switch
-                    self.remainder_x = 0.0;
-                    self.remainder_y = 0.0;
-                }
-            }
-        }
+        // Reset accumulators so relative mode starts clean after a mode switch
+        self.remainder_x = 0.0;
+        self.remainder_y = 0.0;
     }
 
+    /// Injects relative mouse movement on the screen.
+    /// Used by `Relative` driver mode.
+    ///
+    /// Accumulates sub-pixel movement remainders and emits relative move
+    /// events once they accumulate to at least a full integer pixel.
     pub fn move_relative(&mut self, dx: f32, dy: f32) {
         let total_dx = dx + self.remainder_x;
         let total_dy = dy + self.remainder_y;
@@ -115,8 +108,10 @@ impl Injector {
     /// API spam.
     pub fn set_left_button(&mut self, is_down: bool) {
         if is_down && !self.last_pressure_down {
+            log::debug!(target: "Injector", "Pen tip DOWN (Left Click Pressed)");
             let _ = self.enigo.button(Button::Left, Direction::Press);
         } else if !is_down && self.last_pressure_down {
+            log::debug!(target: "Injector", "Pen tip UP (Left Click Released)");
             let _ = self.enigo.button(Button::Left, Direction::Release);
         }
         self.last_pressure_down = is_down;

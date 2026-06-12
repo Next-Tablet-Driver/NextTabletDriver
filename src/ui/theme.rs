@@ -18,6 +18,8 @@ pub struct SemanticColors {
     /// Color used for the osu! playfield overlay in the tablet preview.
     /// Defaults to the iconic osu! pink so it is recognizable out of the box.
     pub playfield: egui::Color32,
+    /// Fill opacity multiplier used for the osu! playfield overlay.
+    pub playfield_opacity: f32,
 }
 
 impl SemanticColors {
@@ -30,6 +32,7 @@ impl SemanticColors {
                 error: egui::Color32::from_rgb(243, 139, 168),
                 info: egui::Color32::from_rgb(137, 180, 250),
                 playfield: egui::Color32::from_rgb(255, 105, 180),
+                playfield_opacity: 0.25,
             }
         } else {
             Self {
@@ -38,6 +41,7 @@ impl SemanticColors {
                 error: egui::Color32::from_rgb(210, 15, 57),
                 info: egui::Color32::from_rgb(30, 102, 245),
                 playfield: egui::Color32::from_rgb(255, 105, 180),
+                playfield_opacity: 0.25,
             }
         }
     }
@@ -47,6 +51,21 @@ impl SemanticColors {
 /// Called once at application startup.
 pub fn apply_theme(ctx: &egui::Context, theme: &ThemePreference) {
     let mut semantic = SemanticColors::default(true);
+    let mut style = (*ctx.style()).clone();
+
+    // Default spacing & rounding (applied BEFORE theme, so Custom themes can override)
+    style.spacing.item_spacing = egui::vec2(8.0, 8.0);
+    style.spacing.button_padding = egui::vec2(8.0, 4.0);
+    style.spacing.interact_size.y = 20.0;
+
+    let corner_radius = egui::CornerRadius::same(4);
+    style.visuals.widgets.noninteractive.corner_radius = corner_radius;
+    style.visuals.widgets.inactive.corner_radius = corner_radius;
+    style.visuals.widgets.hovered.corner_radius = corner_radius;
+    style.visuals.widgets.active.corner_radius = corner_radius;
+    style.visuals.widgets.open.corner_radius = corner_radius;
+    style.visuals.window_corner_radius = corner_radius;
+
     let visuals = match theme {
         ThemePreference::Light => {
             semantic = SemanticColors::default(false);
@@ -106,76 +125,40 @@ pub fn apply_theme(ctx: &egui::Context, theme: &ThemePreference) {
             v
         }
         ThemePreference::Custom(name) => {
-            let v = egui::Visuals::dark();
             if let Some(config) = crate::settings::themes::load_custom_theme(name) {
                 semantic = SemanticColors::default(config.colors.dark_mode);
 
-                if let Some(ref c) = config.colors.success_color {
-                    semantic.success = crate::core::config::theme_models::ThemeConfig::parse_color(
-                        c,
-                        semantic.success,
-                    );
-                }
-                if let Some(ref c) = config.colors.warning_color {
-                    semantic.warning = crate::core::config::theme_models::ThemeConfig::parse_color(
-                        c,
-                        semantic.warning,
-                    );
-                }
-                if let Some(ref c) = config.colors.error_color {
-                    semantic.error = crate::core::config::theme_models::ThemeConfig::parse_color(
-                        c,
-                        semantic.error,
-                    );
-                }
-                if let Some(ref c) = config.colors.info_color {
-                    semantic.info = crate::core::config::theme_models::ThemeConfig::parse_color(
-                        c,
-                        semantic.info,
-                    );
-                }
-                // Playfield color: use explicit override, otherwise keep the default osu! pink.
-                if let Some(ref c) = config.colors.playfield_color {
-                    semantic.playfield =
-                        crate::core::config::theme_models::ThemeConfig::parse_color(
-                            c,
-                            semantic.playfield,
-                        );
+                let update_color = |opt: &Option<String>, target: &mut egui::Color32| {
+                    if let Some(c) = opt {
+                        *target =
+                            crate::core::config::theme_models::ThemeConfig::parse_color(c, *target);
+                    }
+                };
+
+                update_color(&config.colors.success_color, &mut semantic.success);
+                update_color(&config.colors.warning_color, &mut semantic.warning);
+                update_color(&config.colors.error_color, &mut semantic.error);
+                update_color(&config.colors.info_color, &mut semantic.info);
+                update_color(&config.colors.playfield_color, &mut semantic.playfield);
+
+                if let Some(opacity) = config.colors.playfield_opacity {
+                    semantic.playfield_opacity = opacity.clamp(0.0, 1.0);
                 }
 
-                let style = config.to_style(&ctx.style());
-                ctx.set_style(style);
-
-                // Return early so we don't overwrite the custom style with the hardcoded
-                // spacing and corner radius below.
-                ctx.data_mut(|d| d.insert_temp(egui::Id::new("SemanticColors"), semantic));
-                return;
+                // config.to_style takes the current style (which now has our default spacing)
+                // and overrides it with any custom spacing in the theme!
+                style = config.to_style(&style);
+                style.visuals.clone()
+            } else {
+                egui::Visuals::dark()
             }
-            v
         }
     };
 
     let accent_color = visuals.selection.bg_fill;
-
-    let mut style = (*ctx.style()).clone();
-
-    // Apply the newly constructed visuals to the style first!
-    // This prevents default Egui dark theme widgets from overriding light/custom themes.
     style.visuals = visuals.clone();
 
-    // Spacing & Rounding
-    style.spacing.item_spacing = egui::vec2(8.0, 8.0);
-    style.spacing.button_padding = egui::vec2(8.0, 4.0);
-    style.spacing.interact_size.y = 20.0;
-
-    let corner_radius = egui::CornerRadius::same(4);
-    style.visuals.widgets.noninteractive.corner_radius = corner_radius;
-    style.visuals.widgets.inactive.corner_radius = corner_radius;
-    style.visuals.widgets.hovered.corner_radius = corner_radius;
-    style.visuals.widgets.active.corner_radius = corner_radius;
-    style.visuals.widgets.open.corner_radius = corner_radius;
-    style.visuals.window_corner_radius = corner_radius;
-
+    // Standard NextTabletDriver widget interactive strokes
     style.visuals.widgets.noninteractive.bg_stroke = egui::Stroke::new(
         0.5,
         visuals
@@ -190,6 +173,8 @@ pub fn apply_theme(ctx: &egui::Context, theme: &ThemePreference) {
         egui::Stroke::new(1.0, accent_color.gamma_multiply(0.5));
     style.visuals.widgets.active.bg_stroke = egui::Stroke::new(1.0, accent_color);
 
+    // Only apply the gamma_multiply background hover if the theme isn't explicitly overriding it.
+    // Egui's default hovered bg is transparent for inactive widgets, but we want it tinted.
     style.visuals.widgets.hovered.bg_fill = visuals.widgets.hovered.bg_fill.gamma_multiply(0.8);
 
     style.visuals.selection.bg_fill = accent_color;

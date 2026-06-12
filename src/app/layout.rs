@@ -1,4 +1,5 @@
 use crate::app::state::{AppTab, TabletMapperApp, ToastLevel, UiSnapshot};
+use crate::t;
 use crate::ui::panels::console::render_console_panel;
 use crate::ui::panels::filters::render_filters_panel;
 use crate::ui::panels::output::render_output_panel;
@@ -63,6 +64,7 @@ impl TabletMapperApp {
         self.render_toasts(ctx);
         self.render_debugger_window(ctx, snapshot);
         self.render_performance_window(ctx, snapshot);
+        self.render_udev_warning(ctx);
     }
 
     pub fn render_close_confirmation(&mut self, ctx: &egui::Context) {
@@ -71,7 +73,7 @@ impl TabletMapperApp {
         }
 
         let frame = egui::Frame::window(&ctx.style()).shadow(Shadow::NONE);
-        egui::Window::new("Unsaved Changes")
+        egui::Window::new(t!("dialog.unsaved.title"))
             .collapsible(false)
             .resizable(false)
             .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
@@ -79,27 +81,79 @@ impl TabletMapperApp {
             .show(ctx, |ui| {
                 ui.vertical_centered(|ui| {
                     ui.add_space(8.0);
-                    ui.label("Are you sure you want to close the application?");
-                    ui.label("The current profile has unsaved changes.");
+                    ui.label(t!("dialog.unsaved.message"));
+                    ui.label(t!("dialog.unsaved.detail"));
                     ui.add_space(12.0);
                     ui.horizontal(|ui| {
-                        if ui.button("Cancel").clicked() {
+                        if ui.button(t!("dialog.unsaved.cancel")).clicked() {
                             self.show_close_confirm = false;
                         }
                         ui.add_space(8.0);
                         if ui
                             .button(
-                                egui::RichText::new("Close Anyway")
+                                egui::RichText::new(t!("dialog.unsaved.close"))
                                     .color(crate::ui::theme::semantic_colors(ctx).error),
                             )
                             .clicked()
                         {
-                            let _ = crate::settings::save_last_session(&self.profile.last_saved);
+                            if let Err(e) = crate::settings::save_last_session(&self.profile.last_saved) {
+                                log::error!(target: "App", "Failed to save last session on exit: {e}");
+                            }
                             self.force_close = true;
                             self.show_close_confirm = false;
                             ctx.send_viewport_cmd(egui::ViewportCommand::Close);
                         }
                     });
+                    ui.add_space(4.0);
+                });
+            });
+    }
+
+    pub fn render_udev_warning(&mut self, ctx: &egui::Context) {
+        if !self.missing_udev_rules {
+            return;
+        }
+
+        let frame = egui::Frame::window(&ctx.style()).shadow(Shadow::NONE);
+        egui::Window::new(t!("dialog.udev.title"))
+            .collapsible(false)
+            .resizable(false)
+            .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
+            .frame(frame)
+            .show(ctx, |ui| {
+                ui.vertical_centered(|ui| {
+                    ui.add_space(8.0);
+                    ui.label(egui::RichText::new(t!("dialog.udev.message")).strong());
+                    ui.add_space(8.0);
+                    ui.label(t!("dialog.udev.detail_1"));
+                    ui.label(t!("dialog.udev.detail_2"));
+                    ui.add_space(16.0);
+                    ui.label(egui::RichText::new(t!("dialog.udev.how_to_fix")).strong());
+                    ui.add_space(4.0);
+
+                    let code_bg = ctx.style().visuals.faint_bg_color;
+                    egui::Frame::new()
+                        .fill(code_bg)
+                        .corner_radius(4.0)
+                        .inner_margin(egui::Margin::same(8))
+                        .show(ui, |ui| {
+                            ui.horizontal(|ui| {
+                                ui.label(egui::RichText::new("sudo cp scripts/99-nexttabletdriver.rules /etc/udev/rules.d/").monospace());
+                            });
+                            ui.horizontal(|ui| {
+                                ui.label(egui::RichText::new("sudo udevadm control --reload-rules && sudo udevadm trigger").monospace());
+                            });
+                            ui.horizontal(|ui| {
+                                ui.label(egui::RichText::new("sudo usermod -aG input $USER").monospace());
+                            });
+                        });
+
+                    ui.add_space(8.0);
+                    ui.label(egui::RichText::new(t!("dialog.udev.logout")).italics());
+                    ui.add_space(12.0);
+                    if ui.button(t!("dialog.udev.done")).clicked() {
+                        self.missing_udev_rules = false;
+                    }
                     ui.add_space(4.0);
                 });
             });
@@ -135,7 +189,12 @@ impl TabletMapperApp {
                         .corner_radius(6.0)
                         .inner_margin(egui::Margin::symmetric(12, 8))
                         .show(ui, |ui| {
-                            ui.label(egui::RichText::new(&toast.message).color(toast_text));
+                            ui.add(
+                                egui::Label::new(
+                                    egui::RichText::new(&toast.message).color(toast_text),
+                                )
+                                .wrap_mode(egui::TextWrapMode::Extend),
+                            );
                         });
                 });
         }
@@ -150,7 +209,7 @@ impl TabletMapperApp {
         ctx.show_viewport_immediate(
             egui::ViewportId::from_hash_of("debugger_viewport"),
             egui::ViewportBuilder::default()
-                .with_title("Tablet Debugger")
+                .with_title(t!("debugger.title"))
                 .with_inner_size([600.0, 750.0])
                 .with_resizable(true),
             |ctx, _| {
@@ -194,7 +253,7 @@ impl TabletMapperApp {
         ctx.show_viewport_immediate(
             egui::ViewportId::from_hash_of("performance_viewport"),
             egui::ViewportBuilder::default()
-                .with_title("Input Lag & Performance Analysis")
+                .with_title(t!("performance.viewport_title"))
                 .with_inner_size([500.0, 600.0])
                 .with_resizable(true),
             |ctx, _| {
@@ -209,7 +268,7 @@ impl TabletMapperApp {
                     ui.vertical_centered(|ui| {
                         ui.add_space(5.0);
                         ui.heading(
-                            egui::RichText::new("Driver Performance Monitor")
+                            egui::RichText::new(t!("performance.title"))
                                 .strong()
                                 .extra_letter_spacing(1.0),
                         );

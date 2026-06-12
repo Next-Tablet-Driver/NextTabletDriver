@@ -101,11 +101,16 @@ fn set_fast_timer(enable: u8) {
 /// 3. Configures the GUI window options (icon, dimensions, title).
 /// 4. Enters the `eframe::run_native` GUI event loop.
 fn main() -> eframe::Result {
+    let startup_start = std::time::Instant::now();
+    let logger_start = std::time::Instant::now();
+
     if let Err(e) = logger::init() {
         eprintln!("CRITICAL: Failed to initialize logger: {e}");
         std::process::exit(1);
     }
+    let logger_duration = logger_start.elapsed();
 
+    let mutex_start = std::time::Instant::now();
     #[cfg(windows)]
     {
         use windows_sys::Win32::Foundation::{ERROR_ALREADY_EXISTS, GetLastError, HANDLE};
@@ -168,6 +173,7 @@ fn main() -> eframe::Result {
             }
         }
     };
+    let mutex_duration = mutex_start.elapsed();
 
     log::info!(target: "Startup", "NextTabletDriver v{} starting on {} ({})",
         next_tablet_driver::VERSION,
@@ -181,33 +187,74 @@ fn main() -> eframe::Result {
             egui::IconData::default()
         });
 
+    // 0. Migrate profiles if necessary
+    next_tablet_driver::settings::migrate_profiles_to_subdir();
+
     // 1. Load Configuration
+    let config_start = std::time::Instant::now();
     let config_service = ConfigService::load();
     let config = config_service.config.clone();
     let load_corrections = config_service.corrections;
     let is_first_run =
         load_corrections.is_empty() && !next_tablet_driver::settings::get_settings_dir().exists();
+    let config_duration = config_start.elapsed();
 
-    // 2. Initialize Shared State
+    // 2. Initialize Shared State & I18N
+    let state_start = std::time::Instant::now();
     let shared = SharedStateFactory::create(config.clone(), is_first_run);
+    let app_prefs = next_tablet_driver::settings::app_preferences::load_app_preferences();
+    next_tablet_driver::i18n::set_locale(app_prefs.language);
+    let total_ram_gb = next_tablet_driver::startup::get_memory_info()
+        .map(|b| (b as f64 / 1_073_741_824.0).ceil() as u64);
+    let cpu_cores = std::env::var("NUMBER_OF_PROCESSORS")
+        .ok()
+        .and_then(|s| s.parse::<u32>().ok());
+    next_tablet_driver::app::telemetry::capture_event(
+        "app_started",
+        Some(serde_json::json!({
+            "language": app_prefs.language.display_name().to_string(),
+            "cpu_cores": cpu_cores,
+            "total_ram_gb": total_ram_gb,
+        })),
+        &app_prefs,
+    );
+    let state_duration = state_start.elapsed();
 
     // 3. Initialize Services and Channels
-    let (tablet_sender, tablet_receiver) = crossbeam_channel::unbounded();
+    let services_start = std::time::Instant::now();
+    let (tablet_sender, tablet_receiver) = crossbeam_channel::bounded(60);
     let update_service = UpdateService::new();
     let update_receiver = update_service.receiver.clone();
     let update_sender = update_service.sender.clone();
     let (save_sender, save_receiver) = crossbeam_channel::bounded(1);
-
-    // We must hold onto `_tray_service` so the tray icon doesn't get dropped.
     let _tray_service = TrayService::new(&shared);
+    let services_duration = services_start.elapsed();
 
     // 4. Spawn Background Threads via Supervisor
+    let supervisor_start = std::time::Instant::now();
     ThreadSupervisor::spawn_engine(Arc::clone(&shared), tablet_sender);
     ThreadSupervisor::spawn_websocket(Arc::clone(&shared));
     ThreadSupervisor::spawn_saver(save_receiver);
     update_service.start_check();
+    let supervisor_duration = supervisor_start.elapsed();
 
-    // 5. Main App Loop
+    // Log tracking info and startup timeline
+    next_tablet_driver::startup::log_system_hardware();
+    next_tablet_driver::settings::log_mapping_config(&config, "Startup");
+
+    log::info!(
+        target: "Startup",
+        "TIMING - Logger: {:.2?} | Mutex/SingleInst: {:.2?} | Config Load: {:.2?} | Shared State: {:.2?} | Services/Tray: {:.2?} | Supervisor Threads: {:.2?} | Total Startup: {:.2?}",
+        logger_duration,
+        mutex_duration,
+        config_duration,
+        state_duration,
+        services_duration,
+        supervisor_duration,
+        startup_start.elapsed()
+    );
+
+    // 6. Main App Loop
     // eframe blocks until the window is closed. When minimized to tray, the window closes
     // and eframe returns. We sleep until the tray restores the window, then restart eframe.
     loop {
@@ -237,6 +284,20 @@ fn main() -> eframe::Result {
                 &format!("NextTabletDriver v{}", next_tablet_driver::VERSION),
                 options,
                 Box::new(move |cc| {
+                    if let Some(gl) = &cc.gl {
+                        use eframe::glow::HasContext;
+                        // SAFETY: Querying the renderer parameter string from a valid active glow OpenGL context is safe.
+                        let renderer = unsafe { gl.get_parameter_string(eframe::glow::RENDERER) };
+                        // SAFETY: Querying the vendor parameter string from a valid active glow OpenGL context is safe.
+                        let vendor = unsafe { gl.get_parameter_string(eframe::glow::VENDOR) };
+                        // SAFETY: Querying the version parameter string from a valid active glow OpenGL context is safe.
+                        let version = unsafe { gl.get_parameter_string(eframe::glow::VERSION) };
+
+                        log::info!(target: "Tracking", "GPU Renderer: {renderer}");
+                        log::info!(target: "Tracking", "GPU Vendor: {vendor}");
+                        log::info!(target: "Tracking", "OpenGL Version: {version}");
+                    }
+
                     Ok(Box::new(TabletMapperApp::new(
                         &cc.egui_ctx,
                         ctx_shared,

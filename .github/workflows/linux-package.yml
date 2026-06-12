@@ -45,6 +45,8 @@ jobs:
 
             - name: Build release (glibc)
               run: cargo build --workspace --release --all-features
+              env:
+                  POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
 
             - name: Run tests (native)
               run: cargo test --workspace --all-features --verbose
@@ -223,6 +225,8 @@ jobs:
               run: |
                   set -x
                   cargo build --target x86_64-unknown-linux-musl --release --workspace --all-features || true
+              env:
+                  POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
 
             - name: Package MUSL binary if present
               run: |

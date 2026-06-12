@@ -8,7 +8,7 @@
 //! - **Windows**: Uses `enigo` + `windows-sys` for mouse simulation via `SendInput`.
 //! - **Linux**: Creates a virtual tablet device via `/dev/uinput` (kernel module)
 //!   using the `evdev` crate. This approach is universally compatible with
-//!   X11, Wayland, and `XWayland` — the kernel sees it as real hardware.
+//!   X11, Wayland, and `XWayland` - the kernel sees it as real hardware.
 
 #[cfg(windows)]
 pub mod windows;

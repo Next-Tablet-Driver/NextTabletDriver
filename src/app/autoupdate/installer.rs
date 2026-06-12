@@ -1,7 +1,6 @@
 use super::models::{Asset, Release, UpdateStatus};
 use hex;
 use sha2::{Digest, Sha256};
-use std::env;
 use std::fs;
 use std::io::{Read, Write};
 use std::process::Command;
@@ -53,12 +52,12 @@ pub fn download_and_install(
         .and_then(|v| v.parse::<u64>().ok())
         .unwrap_or(0);
 
-    let mut temp_path = env::temp_dir();
+    let mut temp_path = crate::settings::get_settings_dir().join("updates");
+    fs::create_dir_all(&temp_path)?;
     temp_path.push(&asset.name);
 
     let mut downloaded: u64 = 0;
     let mut buffer = [0u8; 8192];
-    let mut hasher = Sha256::new();
     let mut reader = response.into_reader();
 
     {
@@ -70,7 +69,6 @@ pub fn download_and_install(
             }
             if let Some(chunk) = buffer.get(..bytes_read) {
                 file.write_all(chunk)?;
-                hasher.update(chunk);
             }
             downloaded += bytes_read as u64;
 
@@ -81,8 +79,23 @@ pub fn download_and_install(
         }
     }
 
-    // Verify SHA256 mandatory
-    let actual = hex::encode(hasher.finalize());
+    // Verify SHA256 mandatory - read the file back from disk to prevent TOCTOU attacks
+    let actual = {
+        let mut file = fs::File::open(&temp_path)?;
+        let mut file_hasher = Sha256::new();
+        let mut file_buffer = [0u8; 8192];
+        loop {
+            let bytes_read = file.read(&mut file_buffer)?;
+            if bytes_read == 0 {
+                break;
+            }
+            if let Some(chunk) = file_buffer.get(..bytes_read) {
+                file_hasher.update(chunk);
+            }
+        }
+        hex::encode(file_hasher.finalize())
+    };
+
     if actual.to_lowercase() != expected_hash.to_lowercase() {
         let _ = fs::remove_file(&temp_path);
         return Err(

@@ -1,5 +1,6 @@
 use crate::app::state::{TabletMapperApp, UiSnapshot};
 use crate::core::config::models::MappingConfig;
+use crate::t;
 use crate::ui::theme::{panel_border, ui_card, ui_input_box_u16};
 use eframe::egui;
 
@@ -13,50 +14,71 @@ pub fn render_stats_settings(
 
     ui.add_space(5.0);
 
-    ui_card(ui, "Live Statistics", egui_phosphor::regular::GAUGE, |ui| {
-        ui.horizontal(|ui| {
-            render_stat_badge(
-                ui,
-                "HandSpeed",
-                &format!("{:.2}", stats.handspeed),
-                match config.speed_stats.unit {
-                    crate::core::config::models::SpeedUnit::MillimetersPerSecond => "mm/s",
-                    crate::core::config::models::SpeedUnit::MetersPerSecond => "m/s",
-                    crate::core::config::models::SpeedUnit::KilometersPerHour => "km/h",
-                    crate::core::config::models::SpeedUnit::MilesPerHour => "mph",
-                },
-            );
+    ui_card(
+        ui,
+        &t!("filters.stats.live"),
+        egui_phosphor::regular::GAUGE,
+        |ui| {
+            ui.horizontal(|ui| {
+                render_stat_badge(
+                    ui,
+                    &t!("filters.stats.handspeed"),
+                    &format!("{:.2}", stats.handspeed),
+                    match config.speed_stats.unit {
+                        crate::core::config::models::SpeedUnit::MillimetersPerSecond => "mm/s",
+                        crate::core::config::models::SpeedUnit::MetersPerSecond => "m/s",
+                        crate::core::config::models::SpeedUnit::KilometersPerHour => "km/h",
+                        crate::core::config::models::SpeedUnit::MilesPerHour => "mph",
+                    },
+                );
 
-            ui.add_space(15.0);
+                ui.add_space(15.0);
 
-            let (dist_val, dist_unit) = stats.format_distance();
-            render_stat_badge(ui, "Total Distance", &dist_val, dist_unit);
+                let (dist_val, dist_unit) = stats.format_distance();
+                render_stat_badge(
+                    ui,
+                    &t!("filters.stats.total_distance"),
+                    &dist_val,
+                    dist_unit,
+                );
 
-            ui.add_space(15.0);
+                ui.add_space(15.0);
 
-            if ui
-                .button(egui_phosphor::regular::ARROWS_COUNTER_CLOCKWISE)
-                .on_hover_text("Reset accumulated distance")
-                .clicked()
-                && let Ok(mut stats) = app.shared.stats.write()
-            {
-                stats.reset_distance();
-            }
-        });
-    });
+                if ui
+                    .button(egui_phosphor::regular::ARROWS_COUNTER_CLOCKWISE)
+                    .on_hover_text(t!("filters.stats.reset_distance"))
+                    .clicked()
+                    && let Ok(mut stats) = app.shared.stats.write()
+                {
+                    stats.reset_distance();
+                }
+            });
+        },
+    );
 
     ui.add_space(15.0);
 
     ui_card(
         ui,
-        "Server Configuration",
+        &t!("filters.stats.server_config"),
         egui_phosphor::regular::GLOBE,
         |ui| {
             ui.horizontal(|ui| {
-                ui.checkbox(
-                    &mut config.speed_stats.enabled,
-                    "Enable Stats WebSocket Server",
-                );
+                if ui
+                    .checkbox(
+                        &mut config.speed_stats.enabled,
+                        t!("filters.stats.enable_server"),
+                    )
+                    .changed()
+                    && config.speed_stats.enabled
+                {
+                    let app_prefs = crate::settings::app_preferences::load_app_preferences();
+                    crate::app::telemetry::capture_event(
+                        "filter_enabled",
+                        Some(serde_json::json!({"filter_name": "HandSpeed"})),
+                        &app_prefs,
+                    );
+                }
             });
 
             ui.add_space(12.0);
@@ -76,8 +98,12 @@ pub fn render_stats_settings(
 
                     ui.add_space(8.0);
 
-                    crate::ui::theme::ui_labeled_box(ui, "Speed Unit", 170.0, |ui| {
-                        egui::ComboBox::from_id_salt("speed_unit_combo")
+                    crate::ui::theme::ui_labeled_box(
+                        ui,
+                        &t!("filters.stats.speed_unit"),
+                        170.0,
+                        |ui| {
+                            egui::ComboBox::from_id_salt("speed_unit_combo")
                             .selected_text(match config.speed_stats.unit {
                                 crate::core::config::models::SpeedUnit::MillimetersPerSecond => {
                                     "mm/s"
@@ -108,7 +134,8 @@ pub fn render_stats_settings(
                                     "mph",
                                 );
                             });
-                    });
+                        },
+                    );
                 });
             });
         },
@@ -118,19 +145,24 @@ pub fn render_stats_settings(
 
     ui_card(
         ui,
-        "Documentation & Logic",
+        &t!("filters.stats.docs"),
         egui_phosphor::regular::INFO,
         |ui| {
             ui.label(
-                egui::RichText::new(format!(
-                    "Listening at: ws://{}:{}",
-                    config.speed_stats.ip, config.speed_stats.port
+                egui::RichText::new(t!(
+                    "filters.stats.listening_at",
+                    ip = &config.speed_stats.ip,
+                    port = config.speed_stats.port
                 ))
                 .strong(),
             );
             ui.add_space(8.0);
 
-            ui.label(egui::RichText::new("Payload JSON Format").weak().size(11.0));
+            ui.label(
+                egui::RichText::new(t!("filters.stats.payload_format"))
+                    .weak()
+                    .size(11.0),
+            );
             ui.add_space(4.0);
 
             egui::Frame::new()

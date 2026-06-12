@@ -4,12 +4,19 @@ use crate::core::config::models::ActiveArea;
 /// This structure is independent of egui and can be unit tested.
 #[derive(Debug, Clone)]
 pub struct ActiveAreaGeometry {
+    /// Scaling factor from physical millimeters to visualization pixels.
     pub scale: f32,
+    /// X-axis layout offset of the visualized tablet area.
     pub offset_x: f32,
+    /// Y-axis layout offset of the visualized tablet area.
     pub offset_y: f32,
+    /// Visual X-coordinate of the active area's center point.
     pub aa_center_x: f32,
+    /// Visual Y-coordinate of the active area's center point.
     pub aa_center_y: f32,
+    /// Screen-space coordinate bounds mapping the tablet active area boundaries.
     pub points: Vec<(f32, f32)>,
+    /// Visual representation boundaries of the osu! playfield projected within the active area.
     pub osu_playfield_points: Option<Vec<(f32, f32)>>,
 }
 

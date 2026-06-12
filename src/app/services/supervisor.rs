@@ -24,6 +24,9 @@ impl ThreadSupervisor {
         log::info!(target: "Config", "Spawning Background Saver thread");
         std::thread::spawn(move || {
             while let Ok(cfg) = receiver.recv() {
+                // Debounce: Wait 500ms to accumulate rapid consecutive events
+                std::thread::sleep(std::time::Duration::from_millis(500));
+
                 let mut latest = cfg;
                 while let Ok(newer) = receiver.try_recv() {
                     latest = newer;

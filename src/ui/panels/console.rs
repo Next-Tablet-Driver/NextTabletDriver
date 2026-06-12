@@ -1,4 +1,5 @@
 use crate::app::state::TabletMapperApp;
+use crate::t;
 use eframe::egui;
 
 pub fn render_console_panel(app: &mut TabletMapperApp, ui: &mut egui::Ui) {
@@ -38,7 +39,7 @@ pub fn render_console_panel(app: &mut TabletMapperApp, ui: &mut egui::Ui) {
         ui.label(egui_phosphor::regular::MAGNIFYING_GLASS);
         ui.add(
             egui::TextEdit::singleline(&mut app.console_search)
-                .hint_text("Search logs...")
+                .hint_text(t!("console.search"))
                 .desired_width(200.0),
         );
         if ui.button(egui_phosphor::regular::X).clicked() {
@@ -61,7 +62,7 @@ pub fn render_console_panel(app: &mut TabletMapperApp, ui: &mut egui::Ui) {
     ui.separator();
     ui.add_space(2.0);
 
-    let (all_logs_count, filtered_logs, full_log_text) = app.get_filtered_logs();
+    let (all_logs_count, filtered_logs) = app.get_filtered_logs();
 
     let footer_height = 45.0;
     let table_height = ui.available_height() - footer_height;
@@ -89,16 +90,16 @@ pub fn render_console_panel(app: &mut TabletMapperApp, ui: &mut egui::Ui) {
                         .column(Column::remainder().at_least(250.0)) // Message
                         .header(25.0, |mut header| {
                             header.col(|ui| {
-                                ui.strong("Time");
+                                ui.strong(t!("console.col.time"));
                             });
                             header.col(|ui| {
-                                ui.strong("Level");
+                                ui.strong(t!("console.col.level"));
                             });
                             header.col(|ui| {
-                                ui.strong("Group");
+                                ui.strong(t!("console.col.group"));
                             });
                             header.col(|ui| {
-                                ui.strong("Message");
+                                ui.strong(t!("console.col.message"));
                             });
                         })
                         .body(|body| {
@@ -167,13 +168,19 @@ pub fn render_console_panel(app: &mut TabletMapperApp, ui: &mut egui::Ui) {
 
     // 2. Footer Area
     let semantic = crate::ui::theme::semantic_colors(ui.ctx());
+    let mut toast_to_push = None;
+
     ui.horizontal(|ui| {
         if ui
             .button(
-                egui::RichText::new(format!("{} Clear Console", egui_phosphor::regular::TRASH))
-                    .color(semantic.error),
+                egui::RichText::new(format!(
+                    "{} {}",
+                    egui_phosphor::regular::TRASH,
+                    t!("console.clear")
+                ))
+                .color(semantic.error),
             )
-            .on_hover_text("Remove all logs from memory")
+            .on_hover_text(t!("console.clear_tooltip"))
             .clicked()
             && let Ok(mut entries) = crate::logger::LOG_BUFFER.write()
         {
@@ -183,27 +190,64 @@ pub fn render_console_panel(app: &mut TabletMapperApp, ui: &mut egui::Ui) {
 
         if ui
             .button(format!(
-                "{} Copy Unfiltered Logs",
-                egui_phosphor::regular::COPY
+                "{} {}",
+                egui_phosphor::regular::COPY,
+                t!("console.copy_all")
             ))
+            .on_hover_text(t!("console.copy_all_tooltip"))
             .clicked()
         {
+            let copy_text = filtered_logs
+                .iter()
+                .map(|l| format!("[{}] {} [{}] {}", l.time, l.level, l.group, l.message))
+                .collect::<Vec<_>>()
+                .join("\n");
             ui.output_mut(|o| {
-                o.commands
-                    .push(egui::OutputCommand::CopyText(full_log_text.to_string()));
+                o.commands.push(egui::OutputCommand::CopyText(copy_text));
             });
+        }
+
+        if ui
+            .button(format!(
+                "{} {}",
+                egui_phosphor::regular::DOWNLOAD_SIMPLE,
+                t!("console.export_logs")
+            ))
+            .on_hover_text(t!("console.export_logs_tooltip"))
+            .clicked()
+            && let Some(save_path) = rfd::FileDialog::new()
+                .set_file_name("session_logs.txt")
+                .add_filter("Text File", &["txt", "log"])
+                .save_file()
+        {
+            let session_log_path = crate::settings::get_settings_dir().join("session.log");
+            if let Err(e) = std::fs::copy(&session_log_path, &save_path) {
+                toast_to_push = Some((
+                    t!("toast.export_failed", error = e),
+                    crate::app::state::ToastLevel::Error,
+                ));
+            } else {
+                toast_to_push = Some((
+                    t!("toast.logs_exported"),
+                    crate::app::state::ToastLevel::Info,
+                ));
+            }
         }
 
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             ui.label(
-                egui::RichText::new(format!(
-                    "Showing {} / {} logs",
-                    filtered_logs.len(),
-                    all_logs_count
+                egui::RichText::new(t!(
+                    "console.showing_logs",
+                    shown = filtered_logs.len(),
+                    total = all_logs_count
                 ))
                 .size(13.0)
                 .color(ui.visuals().text_color().gamma_multiply(0.6)),
             );
         });
     });
+
+    if let Some((msg, level)) = toast_to_push {
+        app.push_toast(msg, level);
+    }
 }

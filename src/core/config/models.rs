@@ -362,15 +362,15 @@ pub struct MappingConfig {
     /// WebSocket server broadcast configuration.
     #[serde(default)]
     pub websocket: WebSocketConfig,
-    /// Active theme color scheme (Light, Dark, Catppuccin variants, System).
-    #[serde(default)]
-    pub theme: ThemePreference,
     /// Lock aspect ratio of the active area to match the target area screen aspect ratio.
     #[serde(default)]
     pub lock_aspect_ratio: bool,
     /// Whether to display a visual guide of the osu! playfield within the active area grid.
     #[serde(default)]
     pub show_osu_playfield: bool,
+    /// Whether to snap the target area to display edges when resizing/moving.
+    #[serde(default = "default_true")]
+    pub display_snapping: bool,
 }
 
 impl Default for MappingConfig {
@@ -392,9 +392,9 @@ impl Default for MappingConfig {
             run_at_startup: false,
             system_tray_on_minimize: false,
             websocket: WebSocketConfig::default(),
-            theme: ThemePreference::default(),
             lock_aspect_ratio: false,
             show_osu_playfield: false,
+            display_snapping: default_true(),
         }
     }
 }

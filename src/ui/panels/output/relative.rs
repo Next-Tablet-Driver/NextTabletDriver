@@ -1,9 +1,10 @@
 use crate::core::config::models::MappingConfig;
+use crate::t;
 use crate::ui::theme::{ui_input_box, ui_input_box_u32, ui_section_header};
 use eframe::egui;
 
 pub fn render_relative_mode_ui(ui: &mut egui::Ui, config: &mut MappingConfig) {
-    ui_section_header(ui, "Relative");
+    ui_section_header(ui, &t!("output.relative"));
 
     ui.horizontal(|ui| {
         ui.add_space(20.0);

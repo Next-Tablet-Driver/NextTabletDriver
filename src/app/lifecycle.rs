@@ -43,7 +43,9 @@ impl TabletMapperApp {
         }
 
         // 1. Setup UI Appearance
-        crate::ui::theme::apply_theme(ctx, &config.theme);
+        let mut app_prefs = crate::settings::app_preferences::load_app_preferences();
+        crate::settings::app_preferences::validate_theme(&mut app_prefs);
+        crate::ui::theme::apply_theme(ctx, &app_prefs.theme);
         Self::setup_fonts(ctx);
 
         // 2. Build initial state
@@ -95,9 +97,26 @@ impl TabletMapperApp {
             console_cache_search: String::new(),
             console_cache_filters: (true, true, true, true),
             console_cache_filtered: Vec::new(),
-            console_cache_full_text: String::new(),
+            theme_store_open: false,
+            theme_store_loading: false,
+            theme_store_list: std::sync::Arc::new(std::sync::Mutex::new(None)),
+            theme_store_search: String::new(),
+            theme_store_filter_mode: None,
             show_close_confirm: false,
             force_close: false,
+            missing_udev_rules: {
+                #[cfg(target_os = "linux")]
+                {
+                    !std::path::Path::new("/etc/udev/rules.d/99-nexttabletdriver.rules").exists()
+                        && !std::path::Path::new("/usr/lib/udev/rules.d/99-nexttabletdriver.rules")
+                            .exists()
+                }
+                #[cfg(not(target_os = "linux"))]
+                {
+                    false
+                }
+            },
+            app_prefs,
         }
     }
 

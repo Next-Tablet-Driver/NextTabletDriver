@@ -1,37 +1,71 @@
 name: "🐛 Bug Report"
-description: "Report a driver malfunction or crash"
-labels: ["🐛 Bug", "🚨 Critical"]
+description: "Report a crash, malfunction, or unexpected behavior"
+title: "[Bug] "
+labels: ["🐛 Bug", "🚨 Needs Triage"]
 body:
   - type: markdown
     attributes:
-      value: "Thank you for reporting a bug! Please provide as much detail as possible to help me fix it."
+      value: |
+        ## Thank you for reporting a bug! 🐛
+        Please provide as much detail as possible to help us reproduce and fix the issue quickly.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: "Before reporting..."
+      options:
+        - label: "I have searched the existing issues to make sure this bug hasn't been reported yet."
+          required: true
+        - label: "I am using the latest version of NextTabletDriver."
+          required: true
+  - type: dropdown
+    id: os_version
+    attributes:
+      label: "Operating System"
+      description: "Select the OS where the bug occurred."
+      options:
+        - "Windows 11"
+        - "Windows 10"
+        - "Linux (Wayland)"
+        - "Linux (X11)"
+        - "Other"
+    validations:
+      required: true
+  - type: input
+    id: ntd_version
+    attributes:
+      label: "NextTabletDriver Version"
+      description: "Which version are you using? (e.g. v1.1.0 or commit hash if building from source)"
+      placeholder: "v1.1.0"
+    validations:
+      required: true
   - type: input
     id: tablet_model
     attributes:
       label: "Tablet Model"
-      placeholder: "e.g., Gaomon S620, Huion H640P..."
-    validations:
-      required: true
-  - type: dropdown
-    id: os_version
-    attributes:
-      label: "Windows Version"
-      options:
-        - "Windows 11"
-        - "Windows 10"
-        - "Other / Insider Build"
-    validations:
-      required: true
+      description: "If this issue is related to your tablet, please specify the exact model."
+      placeholder: "e.g., Gaomon S620, Wacom CTL-472..."
   - type: textarea
     id: description
     attributes:
       label: "Problem Description"
-      placeholder: "What exactly is happening?"
+      description: "What exactly is happening? What did you expect to happen?"
+      placeholder: "When I do X, Y happens instead of Z..."
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: "Steps to Reproduce"
+      description: "How can we trigger this bug? Provide numbered steps."
+      placeholder: |
+        1. Open NextTabletDriver
+        2. Click on...
+        3. See error...
     validations:
       required: true
   - type: textarea
     id: logs
     attributes:
-      label: "Console Logs"
-      placeholder: "Paste any error messages or logs from the terminal here..."
+      label: "Console Logs / Error Messages"
+      description: "Please paste any relevant error messages or logs. You can find them in the console tab or in `Settings/session.log`."
       render: shell

@@ -1,4 +1,5 @@
 use crate::app::state::UiSnapshot;
+use crate::t;
 use eframe::egui;
 
 pub fn render_debugger_panel(snapshot: &UiSnapshot, displayed_hz: f32, ui: &mut egui::Ui) {
@@ -52,9 +53,9 @@ pub fn render_debugger_panel(snapshot: &UiSnapshot, displayed_hz: f32, ui: &mut 
         }
     } else {
         let status_text = if is_detected {
-            "PEN OUT OF RANGE"
+            t!("debugger.pen_out_of_range")
         } else {
-            "NO USB DEVICE DETECTED"
+            t!("debugger.no_device")
         };
 
         ui.painter().text(
@@ -75,32 +76,37 @@ pub fn render_debugger_panel(snapshot: &UiSnapshot, displayed_hz: f32, ui: &mut 
             col0.vertical(|ui| {
                 status_card(
                     ui,
-                    "REPORT STATUS",
+                    &t!("debugger.report_status"),
                     tablet_data.status.as_str(),
                     semantic.success,
                 );
                 ui.add_space(10.0);
                 status_card(
                     ui,
-                    "COORDINATES",
+                    &t!("debugger.coordinates"),
                     &format!("X: {}, Y: {}", tablet_data.x, tablet_data.y),
                     ui.visuals().strong_text_color(),
                 );
                 ui.add_space(10.0);
                 let tilt_str = format!("X: {}, Y: {}", tablet_data.tilt_x, tablet_data.tilt_y);
-                status_card(ui, "PEN TILT", &tilt_str, ui.visuals().selection.bg_fill);
+                status_card(
+                    ui,
+                    &t!("debugger.pen_tilt"),
+                    &tilt_str,
+                    ui.visuals().selection.bg_fill,
+                );
             });
             col1.vertical(|ui| {
                 status_card(
                     ui,
-                    "REPORT RATE",
+                    &t!("debugger.report_rate"),
                     &format!("{displayed_hz:.0} Hz"),
                     semantic.warning,
                 );
                 ui.add_space(10.0);
                 status_card(
                     ui,
-                    "PRESSURE",
+                    &t!("debugger.pressure"),
                     &format!("{} / {}", tablet_data.pressure, max_p as u16),
                     semantic.info,
                 );
@@ -110,7 +116,7 @@ pub fn render_debugger_panel(snapshot: &UiSnapshot, displayed_hz: f32, ui: &mut 
                 let btn_str = format!("B1: {b1} | B2: {b2}");
                 status_card(
                     ui,
-                    "BUTTONS",
+                    &t!("debugger.buttons"),
                     &btn_str,
                     if b1 || b2 {
                         ui.visuals().selection.bg_fill
@@ -129,7 +135,11 @@ pub fn render_debugger_panel(snapshot: &UiSnapshot, displayed_hz: f32, ui: &mut 
         .show(ui, |ui: &mut egui::Ui| {
             ui.set_width(ui.available_width());
 
-            ui.label(egui::RichText::new("Raw Tablet Stream").weak().size(11.0));
+            ui.label(
+                egui::RichText::new(t!("debugger.raw_stream"))
+                    .weak()
+                    .size(11.0),
+            );
             ui.label(
                 egui::RichText::new(tablet_data.raw_hex())
                     .code()
@@ -140,7 +150,7 @@ pub fn render_debugger_panel(snapshot: &UiSnapshot, displayed_hz: f32, ui: &mut 
             ui.add_space(20.0);
 
             ui.label(
-                egui::RichText::new("Raw Tablet Stream (Binary)")
+                egui::RichText::new(t!("debugger.raw_binary"))
                     .weak()
                     .size(11.0),
             );

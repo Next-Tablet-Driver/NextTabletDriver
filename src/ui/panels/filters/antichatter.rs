@@ -1,4 +1,5 @@
 use crate::core::config::models::MappingConfig;
+use crate::t;
 use crate::ui::theme::{ui_card, ui_input_box, ui_setting_row};
 use eframe::egui;
 
@@ -7,26 +8,45 @@ pub fn render_antichatter_settings(ui: &mut egui::Ui, config: &mut MappingConfig
 
     ui_card(
         ui,
-        "Smoothing & Antichatter",
+        &t!("filters.antichatter.title"),
         egui_phosphor::regular::WAVE_SINE,
         |ui| {
             ui.horizontal(|ui| {
-                ui.checkbox(&mut config.antichatter.enabled, "Enable Antichatter");
+                if ui
+                    .checkbox(
+                        &mut config.antichatter.enabled,
+                        t!("filters.antichatter.enable"),
+                    )
+                    .changed()
+                    && config.antichatter.enabled
+                {
+                    let app_prefs = crate::settings::app_preferences::load_app_preferences();
+                    crate::app::telemetry::capture_event(
+                        "filter_enabled",
+                        Some(serde_json::json!({"filter_name": "Antichatter"})),
+                        &app_prefs,
+                    );
+                }
             });
             ui.add_space(10.0);
 
             ui.add_enabled_ui(config.antichatter.enabled, |ui| {
                 ui.vertical(|ui| {
-                    ui_setting_row(ui, "Latency (ms)", &mut config.antichatter.latency, "");
                     ui_setting_row(
                         ui,
-                        "Antichatter Strength",
+                        &t!("filters.antichatter.latency"),
+                        &mut config.antichatter.latency,
+                        "",
+                    );
+                    ui_setting_row(
+                        ui,
+                        &t!("filters.antichatter.strength"),
                         &mut config.antichatter.antichatter_strength,
                         "",
                     );
                     ui_setting_row(
                         ui,
-                        "Antichatter Multiplier",
+                        &t!("filters.antichatter.multiplier"),
                         &mut config.antichatter.antichatter_multiplier,
                         "",
                     );
@@ -50,7 +70,7 @@ pub fn render_antichatter_settings(ui: &mut egui::Ui, config: &mut MappingConfig
 
                     ui_setting_row(
                         ui,
-                        "Sampling Frequency",
+                        &t!("filters.antichatter.frequency"),
                         &mut config.antichatter.frequency,
                         "Hz",
                     );
@@ -63,13 +83,13 @@ pub fn render_antichatter_settings(ui: &mut egui::Ui, config: &mut MappingConfig
 
     ui_card(
         ui,
-        "Movement Prediction",
+        &t!("filters.prediction.title"),
         egui_phosphor::regular::CHART_LINE_UP,
         |ui| {
             ui.horizontal(|ui| {
                 ui.checkbox(
                     &mut config.antichatter.prediction_enabled,
-                    "Enable Prediction",
+                    t!("filters.prediction.enable"),
                 );
             });
             ui.add_space(10.0);
@@ -78,13 +98,13 @@ pub fn render_antichatter_settings(ui: &mut egui::Ui, config: &mut MappingConfig
                 ui.vertical(|ui| {
                     ui_setting_row(
                         ui,
-                        "Strength",
+                        &t!("filters.prediction.strength"),
                         &mut config.antichatter.prediction_strength,
                         "",
                     );
                     ui_setting_row(
                         ui,
-                        "Sharpness",
+                        &t!("filters.prediction.sharpness"),
                         &mut config.antichatter.prediction_sharpness,
                         "",
                     );

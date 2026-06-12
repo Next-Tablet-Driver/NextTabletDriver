@@ -1,4 +1,5 @@
 use crate::app::state::TabletMapperApp;
+use crate::t;
 use eframe::egui;
 
 pub fn render_update_dialog(app: &mut TabletMapperApp, ctx: &egui::Context) {
@@ -6,7 +7,7 @@ pub fn render_update_dialog(app: &mut TabletMapperApp, ctx: &egui::Context) {
         let screen_rect = ctx.content_rect();
 
         // Semi-transparent backdrop to dim the content behind the dialog.
-        // Uses a dark overlay regardless of theme — this is intentional for modal focus.
+        // Uses a dark overlay regardless of theme - this is intentional for modal focus.
         egui::Area::new(egui::Id::new("update_overlay"))
             .interactable(true)
             .fixed_pos(screen_rect.min)
@@ -20,7 +21,7 @@ pub fn render_update_dialog(app: &mut TabletMapperApp, ctx: &egui::Context) {
         let body = release
             .body
             .clone()
-            .unwrap_or_else(|| "No changelog provided.".to_string());
+            .unwrap_or_else(|| t!("dialog.update.no_changelog"));
 
         let v = ctx.style().visuals.clone();
         let dialog_bg = v.window_fill;
@@ -33,7 +34,7 @@ pub fn render_update_dialog(app: &mut TabletMapperApp, ctx: &egui::Context) {
         // Use a contrasting text on the accent button: white for dark accents, strong_text for light ones
         let accent_text = strong_text;
 
-        egui::Window::new("Update Available")
+        egui::Window::new(t!("dialog.update.title"))
             .title_bar(false)
             .collapsible(false)
             .resizable(false)
@@ -63,16 +64,19 @@ pub fn render_update_dialog(app: &mut TabletMapperApp, ctx: &egui::Context) {
                             ui.set_width(ui.available_width());
                             ui.vertical_centered(|ui| {
                                 ui.label(
-                                    egui::RichText::new("Update Available!")
+                                    egui::RichText::new(t!("dialog.update.header"))
                                         .size(24.0)
                                         .strong()
                                         .color(strong_text),
                                 );
                                 ui.add_space(5.0);
                                 ui.label(
-                                    egui::RichText::new(format!("Version {version}"))
-                                        .size(14.0)
-                                        .color(weak_text),
+                                    egui::RichText::new(t!(
+                                        "dialog.update.version",
+                                        version = &version
+                                    ))
+                                    .size(14.0)
+                                    .color(weak_text),
                                 );
                             });
                         });
@@ -83,7 +87,7 @@ pub fn render_update_dialog(app: &mut TabletMapperApp, ctx: &egui::Context) {
                         .inner_margin(egui::Margin::symmetric(20, 0))
                         .show(ui, |ui| {
                             ui.label(
-                                egui::RichText::new("What's new:")
+                                egui::RichText::new(t!("dialog.update.whats_new"))
                                     .strong()
                                     .size(16.0)
                                     .color(strong_text),
@@ -107,7 +111,7 @@ pub fn render_update_dialog(app: &mut TabletMapperApp, ctx: &egui::Context) {
                         .show(ui, |ui| {
                             ui.horizontal(|ui| {
                                 let later_btn = egui::Button::new(
-                                    egui::RichText::new("Remind Me Later")
+                                    egui::RichText::new(t!("dialog.update.later"))
                                         .size(14.0)
                                         .color(text_color),
                                 )
@@ -123,7 +127,7 @@ pub fn render_update_dialog(app: &mut TabletMapperApp, ctx: &egui::Context) {
                                     egui::Layout::right_to_left(egui::Align::Center),
                                     |ui| {
                                         let update_btn = egui::Button::new(
-                                            egui::RichText::new("Install Update")
+                                            egui::RichText::new(t!("dialog.update.install"))
                                                 .size(14.0)
                                                 .strong()
                                                 .color(accent_text),

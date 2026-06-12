@@ -6,4 +6,5 @@
 pub mod footer;
 pub mod menu_bar;
 pub mod tabs;
+pub mod theme_store;
 pub mod update_dialog;

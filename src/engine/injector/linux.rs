@@ -68,11 +68,11 @@ fn create_uinput_device_builder() -> evdev::uinput::VirtualDeviceBuilder<'static
 impl Injector {
     /// Creates both virtual devices via `/dev/uinput`:
     ///
-    /// 1. **Virtual Tablet** — Reports `EV_ABS` with `ABS_X`, `ABS_Y`, `ABS_PRESSURE`,
+    /// 1. **Virtual Tablet** - Reports `EV_ABS` with `ABS_X`, `ABS_Y`, `ABS_PRESSURE`,
     ///    `ABS_TILT_X`, `ABS_TILT_Y`, and key events for `BTN_TOUCH`, `BTN_TOOL_PEN`,
     ///    `BTN_STYLUS`, `BTN_STYLUS2`.
     ///
-    /// 2. **Virtual Mouse** — Reports `EV_REL` with `REL_X`, `REL_Y`, and
+    /// 2. **Virtual Mouse** - Reports `EV_REL` with `REL_X`, `REL_Y`, and
     ///    `BTN_LEFT` for relative mode operation.
     ///
     /// # Panics

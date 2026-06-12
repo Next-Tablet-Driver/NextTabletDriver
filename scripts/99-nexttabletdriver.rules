@@ -1,6 +1,6 @@
 # NextTabletDriver udev rules
 # Allows non-root users in the "input" group to access /dev/uinput
-# for creating virtual input devices.
+# and prevents double input by telling libinput to ignore the original tablets.
 #
 # Installation:
 #   sudo cp 99-nexttabletdriver.rules /etc/udev/rules.d/
@@ -15,12 +15,272 @@
 # Grant read/write access to /dev/uinput for the "input" group
 KERNEL=="uinput", SUBSYSTEM=="misc", MODE="0660", GROUP="input", TAG+="uaccess"
 
+# Remove virtual tablet joypad devices (prevents tablet acting as a controller in games)
+KERNEL=="js[0-9]*", SUBSYSTEM=="input", ATTRS{name}=="NextTabletDriver Virtual Pen", RUN+="/usr/bin/env rm %E{DEVNAME}"
+KERNEL=="js[0-9]*", SUBSYSTEM=="input", ATTRS{name}=="NextTabletDriver Virtual Mouse", RUN+="/usr/bin/env rm %E{DEVNAME}"
+
 # Grant read access to tablet HID devices via hidraw
-# This is needed so the driver can read raw USB packets from the tablet
-# without requiring root privileges.
 SUBSYSTEM=="hidraw", ATTRS{idVendor}=="056a", MODE="0660", GROUP="input"
-SUBSYSTEM=="hidraw", ATTRS{idVendor}=="28bd", MODE="0660", GROUP="input"
-SUBSYSTEM=="hidraw", ATTRS{idVendor}=="5543", MODE="0660", GROUP="input"
-SUBSYSTEM=="hidraw", ATTRS{idVendor}=="2179", MODE="0660", GROUP="input"
-SUBSYSTEM=="hidraw", ATTRS{idVendor}=="0416", MODE="0660", GROUP="input"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="6161", MODE="0660", GROUP="input"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="2feb", MODE="0660", GROUP="input"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="0543", MODE="0660", GROUP="input"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="172f", MODE="0660", GROUP="input"
 SUBSYSTEM=="hidraw", ATTRS{idVendor}=="256c", MODE="0660", GROUP="input"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="08ca", MODE="0660", GROUP="input"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="5543", MODE="0660", GROUP="input"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="0b57", MODE="0660", GROUP="input"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="28bd", MODE="0660", GROUP="input"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="0458", MODE="0660", GROUP="input"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="2d80", MODE="0660", GROUP="input"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="0ed1", MODE="0660", GROUP="input"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="0a12", MODE="0660", GROUP="input"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="0483", MODE="0660", GROUP="input"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="0531", MODE="0660", GROUP="input"
+
+# Prevent double input by ignoring the raw devices in libinput/Wayland/X11
+# Adesso Cybertablet K8
+SUBSYSTEM=="input", ATTRS{idVendor}=="28bd", ATTRS{idProduct}=="0910", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# Artisul A1201
+SUBSYSTEM=="input", ATTRS{idVendor}=="256c", ATTRS{idProduct}=="006d", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# Artisul A1201
+SUBSYSTEM=="input", ATTRS{idVendor}=="256c", ATTRS{idProduct}=="0064", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# Artisul AP604
+SUBSYSTEM=="input", ATTRS{idVendor}=="5543", ATTRS{idProduct}=="0054", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# Artisul M0610 Pro
+SUBSYSTEM=="input", ATTRS{idVendor}=="5543", ATTRS{idProduct}=="0081", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# Artisul M0610 Pro
+SUBSYSTEM=="input", ATTRS{idVendor}=="256c", ATTRS{idProduct}=="006f", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# Artisul M0610 Pro
+SUBSYSTEM=="input", ATTRS{idVendor}=="256c", ATTRS{idProduct}=="006e", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# Bosto BT-12HD
+SUBSYSTEM=="input", ATTRS{idVendor}=="0ed1", ATTRS{idProduct}=="7821", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# FlooGoo FMA100
+SUBSYSTEM=="input", ATTRS{idVendor}=="0a12", ATTRS{idProduct}=="4007", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# Genius G-Pen 560
+SUBSYSTEM=="input", ATTRS{idVendor}=="0458", ATTRS{idProduct}=="5003", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# Genius G-Pen F509
+SUBSYSTEM=="input", ATTRS{idVendor}=="172f", ATTRS{idProduct}=="0038", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# Huion H1061P
+SUBSYSTEM=="input", ATTRS{idVendor}=="256c", ATTRS{idProduct}=="0068", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# Huion H641P
+SUBSYSTEM=="input", ATTRS{idVendor}=="256c", ATTRS{idProduct}=="0066", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# Huion H951P
+SUBSYSTEM=="input", ATTRS{idVendor}=="256c", ATTRS{idProduct}=="0067", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# Huion Kamvas 13 (Gen 3)
+SUBSYSTEM=="input", ATTRS{idVendor}=="256c", ATTRS{idProduct}=="2008", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# Huion Kamvas 16 (Gen 3)
+SUBSYSTEM=="input", ATTRS{idVendor}=="256c", ATTRS{idProduct}=="2009", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# Huion Kamvas Pro 24 (Gen 3)
+SUBSYSTEM=="input", ATTRS{idVendor}=="256c", ATTRS{idProduct}=="006c", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# Huion L310
+SUBSYSTEM=="input", ATTRS{idVendor}=="256c", ATTRS{idProduct}=="2011", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# Huion L610
+SUBSYSTEM=="input", ATTRS{idVendor}=="256c", ATTRS{idProduct}=="2012", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# Huion Q630M
+SUBSYSTEM=="input", ATTRS{idVendor}=="256c", ATTRS{idProduct}=="0060", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# Huion RDS-220
+SUBSYSTEM=="input", ATTRS{idVendor}=="256c", ATTRS{idProduct}=="2001", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# KENTING K5540
+SUBSYSTEM=="input", ATTRS{idVendor}=="5543", ATTRS{idProduct}=="0004", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# LetSketch WP9620C
+SUBSYSTEM=="input", ATTRS{idVendor}=="6161", ATTRS{idProduct}=="4d15", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# LifeTec LT9570
+SUBSYSTEM=="input", ATTRS{idVendor}=="08ca", ATTRS{idProduct}=="0010", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# Monoprice MP1060-HA60
+SUBSYSTEM=="input", ATTRS{idVendor}=="5543", ATTRS{idProduct}=="0781", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# Parblo A609
+SUBSYSTEM=="input", ATTRS{idVendor}=="0b57", ATTRS{idProduct}=="9091", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# Parblo A610 Pro (Variant 2)
+SUBSYSTEM=="input", ATTRS{idVendor}=="0483", ATTRS{idProduct}=="a022", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# Parblo A610 Pro
+SUBSYSTEM=="input", ATTRS{idVendor}=="28bd", ATTRS{idProduct}=="1903", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# Parblo A640 V2
+SUBSYSTEM=="input", ATTRS{idVendor}=="0483", ATTRS{idProduct}=="a640", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# Parblo A640
+SUBSYSTEM=="input", ATTRS{idVendor}=="5543", ATTRS{idProduct}=="0061", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# Parblo Intangbo M
+SUBSYSTEM=="input", ATTRS{idVendor}=="0483", ATTRS{idProduct}=="a013", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# Parblo Intangbo S
+SUBSYSTEM=="input", ATTRS{idVendor}=="0483", ATTRS{idProduct}=="a014", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# Parblo Ninos M
+SUBSYSTEM=="input", ATTRS{idVendor}=="0483", ATTRS{idProduct}=="a005", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# Parblo Ninos N4
+SUBSYSTEM=="input", ATTRS{idVendor}=="0483", ATTRS{idProduct}=="a019", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# Parblo Ninos N7
+SUBSYSTEM=="input", ATTRS{idVendor}=="0483", ATTRS{idProduct}=="a020", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# Parblo Ninos N7B
+SUBSYSTEM=="input", ATTRS{idVendor}=="0483", ATTRS{idProduct}=="a20b", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# Parblo Ninos S
+SUBSYSTEM=="input", ATTRS{idVendor}=="0483", ATTRS{idProduct}=="a006", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# RobotPen T9A
+SUBSYSTEM=="input", ATTRS{idVendor}=="0483", ATTRS{idProduct}=="6003", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# Trust Flex Design Tablet
+SUBSYSTEM=="input", ATTRS{idVendor}=="172f", ATTRS{idProduct}=="0037", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# UC-Logic PF1209
+SUBSYSTEM=="input", ATTRS{idVendor}=="5543", ATTRS{idProduct}=="0042", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# UC-Logic TWMNA62
+SUBSYSTEM=="input", ATTRS{idVendor}=="5543", ATTRS{idProduct}=="0071", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# UGEE M708 V2
+SUBSYSTEM=="input", ATTRS{idVendor}=="28bd", ATTRS{idProduct}=="0924", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# UGEE M808
+SUBSYSTEM=="input", ATTRS{idVendor}=="28bd", ATTRS{idProduct}=="2903", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# UGEE M908
+SUBSYSTEM=="input", ATTRS{idVendor}=="28bd", ATTRS{idProduct}=="2902", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# UGEE S1060
+SUBSYSTEM=="input", ATTRS{idVendor}=="28bd", ATTRS{idProduct}=="0938", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# UGEE S640
+SUBSYSTEM=="input", ATTRS{idVendor}=="28bd", ATTRS{idProduct}=="0937", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# UGEE U1200
+SUBSYSTEM=="input", ATTRS{idVendor}=="28bd", ATTRS{idProduct}=="093b", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# UGEE U1600
+SUBSYSTEM=="input", ATTRS{idVendor}=="28bd", ATTRS{idProduct}=="093c", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# UGEE UE16
+SUBSYSTEM=="input", ATTRS{idVendor}=="28bd", ATTRS{idProduct}=="290c", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# VEIKK A15 Pro
+SUBSYSTEM=="input", ATTRS{idVendor}=="2feb", ATTRS{idProduct}=="0006", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# VEIKK A15 V2
+SUBSYSTEM=="input", ATTRS{idVendor}=="2feb", ATTRS{idProduct}=="0004", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# VEIKK A30 V2
+SUBSYSTEM=="input", ATTRS{idVendor}=="2feb", ATTRS{idProduct}=="0002", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# VEIKK A50 (Variant 2)
+SUBSYSTEM=="input", ATTRS{idVendor}=="2feb", ATTRS{idProduct}=="0003", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# VEIKK S640 V2
+SUBSYSTEM=="input", ATTRS{idVendor}=="2feb", ATTRS{idProduct}=="0001", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# VEIKK VK1060
+SUBSYSTEM=="input", ATTRS{idVendor}=="2feb", ATTRS{idProduct}=="0008", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# VEIKK VK1060PRO
+SUBSYSTEM=="input", ATTRS{idVendor}=="2feb", ATTRS{idProduct}=="0007", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# VEIKK VK1200
+SUBSYSTEM=="input", ATTRS{idVendor}=="2feb", ATTRS{idProduct}=="1005", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# VEIKK VK2200PRO
+SUBSYSTEM=="input", ATTRS{idVendor}=="2feb", ATTRS{idProduct}=="1006", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# VEIKK VK430 V2
+SUBSYSTEM=="input", ATTRS{idVendor}=="2feb", ATTRS{idProduct}=="0009", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# VEIKK VK640
+SUBSYSTEM=="input", ATTRS{idVendor}=="2feb", ATTRS{idProduct}=="0005", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# VEIKK Voila (VO1060)
+SUBSYSTEM=="input", ATTRS{idVendor}=="2feb", ATTRS{idProduct}=="000b", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# Wacom Cintiq 21UX (DTK-2100)
+SUBSYSTEM=="input", ATTRS{idVendor}=="056a", ATTRS{idProduct}=="00cc", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# Waltop Slim Tablet 5.8"
+SUBSYSTEM=="input", ATTRS{idVendor}=="172f", ATTRS{idProduct}=="0032", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# XenceLabs Pen Tablet Medium
+SUBSYSTEM=="input", ATTRS{idVendor}=="28bd", ATTRS{idProduct}=="5201", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# XenceLabs Pen Tablet Small
+SUBSYSTEM=="input", ATTRS{idVendor}=="28bd", ATTRS{idProduct}=="5204", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# XENX P1-640
+SUBSYSTEM=="input", ATTRS{idVendor}=="2d80", ATTRS{idProduct}=="2002", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# XENX P3-1060
+SUBSYSTEM=="input", ATTRS{idVendor}=="2d80", ATTRS{idProduct}=="2001", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# XENX X1-640
+SUBSYSTEM=="input", ATTRS{idVendor}=="2d80", ATTRS{idProduct}=="6001", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# XOPPOX D161
+SUBSYSTEM=="input", ATTRS{idVendor}=="2feb", ATTRS{idProduct}=="1004", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# XP-Pen Artist 10 (2nd Gen)
+SUBSYSTEM=="input", ATTRS{idVendor}=="28bd", ATTRS{idProduct}=="094d", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# XP-Pen Artist 10S
+SUBSYSTEM=="input", ATTRS{idVendor}=="5543", ATTRS{idProduct}=="004a", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# XP-Pen Artist 12 (2nd Gen)
+SUBSYSTEM=="input", ATTRS{idVendor}=="28bd", ATTRS{idProduct}=="094a", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# XP-Pen Artist 12 Pro
+SUBSYSTEM=="input", ATTRS{idVendor}=="28bd", ATTRS{idProduct}=="091f", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# XP-Pen Artist 12
+SUBSYSTEM=="input", ATTRS{idVendor}=="28bd", ATTRS{idProduct}=="080a", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# XP-Pen Artist 13 (2nd Gen)
+SUBSYSTEM=="input", ATTRS{idVendor}=="28bd", ATTRS{idProduct}=="094e", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# XP-Pen Artist 13.3 Pro V2
+SUBSYSTEM=="input", ATTRS{idVendor}=="28bd", ATTRS{idProduct}=="096e", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# XP-Pen Artist 13.3 Pro
+SUBSYSTEM=="input", ATTRS{idVendor}=="28bd", ATTRS{idProduct}=="092b", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# XP-Pen Artist 13.3
+SUBSYSTEM=="input", ATTRS{idVendor}=="28bd", ATTRS{idProduct}=="000b", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# XP-Pen Artist 15.6 Pro V2
+SUBSYSTEM=="input", ATTRS{idVendor}=="28bd", ATTRS{idProduct}=="096f", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# XP-Pen Artist 15.6 Pro
+SUBSYSTEM=="input", ATTRS{idVendor}=="28bd", ATTRS{idProduct}=="090d", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# XP-Pen Artist 15.6
+SUBSYSTEM=="input", ATTRS{idVendor}=="28bd", ATTRS{idProduct}=="000c", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# XP-Pen Artist 15.6
+SUBSYSTEM=="input", ATTRS{idVendor}=="28bd", ATTRS{idProduct}=="091a", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# XP-Pen Artist 16 (2nd Gen)
+SUBSYSTEM=="input", ATTRS{idVendor}=="28bd", ATTRS{idProduct}=="094c", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# XP-Pen Artist 16 Pro
+SUBSYSTEM=="input", ATTRS{idVendor}=="28bd", ATTRS{idProduct}=="094b", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# XP-Pen Artist 16
+SUBSYSTEM=="input", ATTRS{idVendor}=="5543", ATTRS{idProduct}=="004d", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# XP-Pen Artist 24 Pro
+SUBSYSTEM=="input", ATTRS{idVendor}=="28bd", ATTRS{idProduct}=="092d", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# XP-Pen Artist 24
+SUBSYSTEM=="input", ATTRS{idVendor}=="28bd", ATTRS{idProduct}=="093a", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# XP-Pen Artist Pro 14 (Gen2)
+SUBSYSTEM=="input", ATTRS{idVendor}=="28bd", ATTRS{idProduct}=="095a", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# XP-Pen Artist Pro 16 (Gen2)
+SUBSYSTEM=="input", ATTRS{idVendor}=="28bd", ATTRS{idProduct}=="095b", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# XP-Pen Artist Pro 19 (Gen2)
+SUBSYSTEM=="input", ATTRS{idVendor}=="28bd", ATTRS{idProduct}=="096a", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# XP-Pen Artist Pro 22 (Gen2)
+SUBSYSTEM=="input", ATTRS{idVendor}=="28bd", ATTRS{idProduct}=="096b", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# XP-Pen Artist Pro 24 (Gen2)
+SUBSYSTEM=="input", ATTRS{idVendor}=="28bd", ATTRS{idProduct}=="095c", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# XP-Pen Deco Fun XS (CT430)
+SUBSYSTEM=="input", ATTRS{idVendor}=="28bd", ATTRS{idProduct}=="0930", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# XP-Pen Deco 01 V2 (Variant 2)
+SUBSYSTEM=="input", ATTRS{idVendor}=="28bd", ATTRS{idProduct}=="0905", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# XP-Pen Deco 01 V2 (Variant 2)
+SUBSYSTEM=="input", ATTRS{idVendor}=="28bd", ATTRS{idProduct}=="0902", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# XP-Pen Deco 01
+SUBSYSTEM=="input", ATTRS{idVendor}=="28bd", ATTRS{idProduct}=="0042", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# XP-Pen Deco 02
+SUBSYSTEM=="input", ATTRS{idVendor}=="28bd", ATTRS{idProduct}=="0803", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# XP-Pen Deco 03
+SUBSYSTEM=="input", ATTRS{idVendor}=="28bd", ATTRS{idProduct}=="0096", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# XP-Pen Deco L
+SUBSYSTEM=="input", ATTRS{idVendor}=="28bd", ATTRS{idProduct}=="0935", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# XP-Pen Deco M
+SUBSYSTEM=="input", ATTRS{idVendor}=="28bd", ATTRS{idProduct}=="0936", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# XP-Pen Deco mini7 V2
+SUBSYSTEM=="input", ATTRS{idVendor}=="28bd", ATTRS{idProduct}=="0948", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# XP-Pen Deco mini7
+SUBSYSTEM=="input", ATTRS{idVendor}=="28bd", ATTRS{idProduct}=="0928", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# XP-Pen Deco Pro LW Gen2
+SUBSYSTEM=="input", ATTRS{idVendor}=="28bd", ATTRS{idProduct}=="0943", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# XP-Pen Deco Pro Medium
+SUBSYSTEM=="input", ATTRS{idVendor}=="28bd", ATTRS{idProduct}=="0904", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# XP-Pen Deco Pro MW Gen2
+SUBSYSTEM=="input", ATTRS{idVendor}=="28bd", ATTRS{idProduct}=="0942", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# XP-Pen Deco Pro Small
+SUBSYSTEM=="input", ATTRS{idVendor}=="28bd", ATTRS{idProduct}=="0909", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# XP-Pen Deco Pro XLW Gen2
+SUBSYSTEM=="input", ATTRS{idVendor}=="28bd", ATTRS{idProduct}=="0944", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# XP-Pen Innovator 16
+SUBSYSTEM=="input", ATTRS{idVendor}=="28bd", ATTRS{idProduct}=="092c", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# XP-Pen Star 02
+SUBSYSTEM=="input", ATTRS{idVendor}=="5543", ATTRS{idProduct}=="0050", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# XP-Pen Star 03 Pro
+SUBSYSTEM=="input", ATTRS{idVendor}=="28bd", ATTRS{idProduct}=="0077", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# XP-Pen Star 03 V2
+SUBSYSTEM=="input", ATTRS{idVendor}=="28bd", ATTRS{idProduct}=="0907", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# XP-Pen Star 05 V3
+SUBSYSTEM=="input", ATTRS{idVendor}=="28bd", ATTRS{idProduct}=="0071", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# XP-Pen Star 06
+SUBSYSTEM=="input", ATTRS{idVendor}=="28bd", ATTRS{idProduct}=="0078", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# XP-Pen Star 06C
+SUBSYSTEM=="input", ATTRS{idVendor}=="28bd", ATTRS{idProduct}=="0062", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# XP-Pen Star G430
+SUBSYSTEM=="input", ATTRS{idVendor}=="28bd", ATTRS{idProduct}=="0075", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# XP-Pen Star G430S V2
+SUBSYSTEM=="input", ATTRS{idVendor}=="28bd", ATTRS{idProduct}=="0913", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# XP-Pen Star G540 Pro
+SUBSYSTEM=="input", ATTRS{idVendor}=="28bd", ATTRS{idProduct}=="0061", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# XP-Pen Star G640 (Variant 2)
+SUBSYSTEM=="input", ATTRS{idVendor}=="28bd", ATTRS{idProduct}=="0914", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# XP-Pen Star G640
+SUBSYSTEM=="input", ATTRS{idVendor}=="28bd", ATTRS{idProduct}=="0094", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# XP-Pen Star G640S
+SUBSYSTEM=="input", ATTRS{idVendor}=="28bd", ATTRS{idProduct}=="0906", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# XP-Pen Star G960
+SUBSYSTEM=="input", ATTRS{idVendor}=="28bd", ATTRS{idProduct}=="0920", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# XP-Pen Star G960S Plus
+SUBSYSTEM=="input", ATTRS{idVendor}=="28bd", ATTRS{idProduct}=="0918", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+# XP-Pen Star G960S
+SUBSYSTEM=="input", ATTRS{idVendor}=="28bd", ATTRS{idProduct}=="0917", ENV{LIBINPUT_IGNORE_DEVICE}="1"
