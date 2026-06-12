@@ -18,20 +18,25 @@ pub fn render_theme_store_viewport(
         .with_inner_size([450.0, 500.0])
         .with_min_inner_size([300.0, 300.0]);
 
-    ui.ctx().show_viewport_immediate(viewport_id, builder, |ctx, _class| {
-        crate::ui::theme::apply_theme(ctx, &config.theme);
+    ui.ctx()
+        .show_viewport_immediate(viewport_id, builder, |ctx, _class| {
+            crate::ui::theme::apply_theme(ctx, &config.theme);
 
-        if ctx.input(|i| i.viewport().close_requested()) {
-            app.theme_store_open = false;
-        }
+            if ctx.input(|i| i.viewport().close_requested()) {
+                app.theme_store_open = false;
+            }
 
-        egui::CentralPanel::default().show(ctx, |ui| {
-            render_theme_store_content(app, ui, config);
+            egui::CentralPanel::default().show(ctx, |ui| {
+                render_theme_store_content(app, ui, config);
+            });
         });
-    });
 }
 
-fn render_theme_store_content(app: &mut TabletMapperApp, ui: &mut egui::Ui, config: &mut MappingConfig) {
+fn render_theme_store_content(
+    app: &mut TabletMapperApp,
+    ui: &mut egui::Ui,
+    config: &mut MappingConfig,
+) {
     let semantic = crate::ui::theme::semantic_colors(ui.ctx());
 
     ui.add_space(8.0);
@@ -44,7 +49,11 @@ fn render_theme_store_content(app: &mut TabletMapperApp, ui: &mut egui::Ui, conf
         );
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             ui.add_space(8.0);
-            if ui.button(egui_phosphor::regular::ARROWS_CLOCKWISE).on_hover_text("Refresh").clicked() {
+            if ui
+                .button(egui_phosphor::regular::ARROWS_CLOCKWISE)
+                .on_hover_text("Refresh")
+                .clicked()
+            {
                 if let Ok(mut lock) = app.theme_store_list.lock() {
                     *lock = None;
                 }
@@ -52,7 +61,7 @@ fn render_theme_store_content(app: &mut TabletMapperApp, ui: &mut egui::Ui, conf
             }
         });
     });
-    
+
     ui.add_space(4.0);
     ui.horizontal(|ui| {
         ui.add_space(8.0);
@@ -60,10 +69,13 @@ fn render_theme_store_content(app: &mut TabletMapperApp, ui: &mut egui::Ui, conf
         ui.label(search_icon);
         let _ = ui.add(
             egui::TextEdit::singleline(&mut app.theme_store_search)
-                .hint_text(t!("settings.theme.search_hint", default = "Search themes..."))
-                .desired_width(150.0)
+                .hint_text(t!(
+                    "settings.theme.search_hint",
+                    default = "Search themes..."
+                ))
+                .desired_width(150.0),
         );
-        
+
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             ui.add_space(8.0);
             egui::ComboBox::from_id_salt("theme_filter")
@@ -74,9 +86,21 @@ fn render_theme_store_content(app: &mut TabletMapperApp, ui: &mut egui::Ui, conf
                 })
                 .width(80.0)
                 .show_ui(ui, |ui| {
-                    ui.selectable_value(&mut app.theme_store_filter_mode, None, t!("settings.theme.filter_all", default = "All"));
-                    ui.selectable_value(&mut app.theme_store_filter_mode, Some(true), t!("settings.theme.filter_dark", default = "Dark"));
-                    ui.selectable_value(&mut app.theme_store_filter_mode, Some(false), t!("settings.theme.filter_light", default = "Light"));
+                    ui.selectable_value(
+                        &mut app.theme_store_filter_mode,
+                        None,
+                        t!("settings.theme.filter_all", default = "All"),
+                    );
+                    ui.selectable_value(
+                        &mut app.theme_store_filter_mode,
+                        Some(true),
+                        t!("settings.theme.filter_dark", default = "Dark"),
+                    );
+                    ui.selectable_value(
+                        &mut app.theme_store_filter_mode,
+                        Some(false),
+                        t!("settings.theme.filter_light", default = "Light"),
+                    );
                 });
             ui.label(egui::RichText::new(egui_phosphor::regular::FUNNEL));
         });
@@ -127,7 +151,6 @@ fn render_theme_store_content(app: &mut TabletMapperApp, ui: &mut egui::Ui, conf
                 }
                 Some(Ok(themes)) => {
                     let local_themes = crate::settings::themes::list_custom_themes();
-                    
                     let search_lower = app.theme_store_search.to_lowercase();
                     let filtered_themes: Vec<_> = themes.iter().filter(|item| {
                         if !search_lower.is_empty() {
@@ -137,14 +160,11 @@ fn render_theme_store_content(app: &mut TabletMapperApp, ui: &mut egui::Ui, conf
                                 return false;
                             }
                         }
-                        if let Some(mode) = app.theme_store_filter_mode {
-                            if item.dark_mode != mode {
-                                return false;
-                            }
+                        if let Some(mode) = app.theme_store_filter_mode && item.dark_mode != mode {
+                            return false;
                         }
                         true
                     }).collect();
-                    
                     ui.add_space(5.0);
                     for item in filtered_themes {
                         let theme = &item.metadata;
@@ -159,7 +179,6 @@ fn render_theme_store_content(app: &mut TabletMapperApp, ui: &mut egui::Ui, conf
                                 ui.label(egui::RichText::new(&theme.name).strong());
                                 ui.label(egui::RichText::new(format!("{} • v{}", theme.author, theme.version)).weak().size(11.0));
                             });
-                            
                             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                                 ui.add_space(12.0);
                                 if local_themes.contains(&theme.name) {

@@ -22,10 +22,17 @@ pub struct SessionMeta {
 /// Saves the active profile metadata to `session_meta.json`.
 pub fn save_session_meta(meta: &SessionMeta) {
     let path = get_settings_dir().join("session_meta.json");
-    if let Ok(json) = serde_json::to_string_pretty(meta) {
-        let tmp = path.with_extension("json.tmp");
-        if fs::write(&tmp, &json).is_ok() {
-            let _ = fs::rename(&tmp, &path);
+    match serde_json::to_string_pretty(meta) {
+        Ok(json) => {
+            let tmp = path.with_extension("json.tmp");
+            if let Err(e) = fs::write(&tmp, &json) {
+                log::error!(target: "Config", "Failed to write temp session meta: {e}");
+            } else if let Err(e) = fs::rename(&tmp, &path) {
+                log::error!(target: "Config", "Failed to rename temp session meta: {e}");
+            }
+        }
+        Err(e) => {
+            log::error!(target: "Config", "Failed to serialize session meta: {e}");
         }
     }
 }
@@ -34,8 +41,21 @@ pub fn save_session_meta(meta: &SessionMeta) {
 #[must_use]
 pub fn load_session_meta() -> Option<SessionMeta> {
     let path = get_settings_dir().join("session_meta.json");
-    let content = fs::read_to_string(&path).ok()?;
-    serde_json::from_str(&content).ok()
+    match fs::read_to_string(&path) {
+        Ok(content) => match serde_json::from_str(&content) {
+            Ok(meta) => Some(meta),
+            Err(e) => {
+                log::error!(target: "Config", "Failed to parse session meta: {e}");
+                None
+            }
+        },
+        Err(e) => {
+            if e.kind() != std::io::ErrorKind::NotFound {
+                log::error!(target: "Config", "Failed to read session meta: {e}");
+            }
+            None
+        }
+    }
 }
 
 #[cfg(test)]

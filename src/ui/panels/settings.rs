@@ -203,8 +203,6 @@ fn render_theme_external_actions(
     });
 }
 
-
-
 fn render_language_settings(
     app: &mut TabletMapperApp,
     ui: &mut egui::Ui,

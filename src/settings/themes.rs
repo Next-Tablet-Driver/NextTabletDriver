@@ -67,17 +67,25 @@ pub fn import_theme_json(source_path: &std::path::Path) -> Result<String, String
 /// Returns an error if the string is invalid JSON or cannot be written to disk.
 pub fn import_theme_from_string(content: &str) -> Result<String, String> {
     // Validate that it is a proper ThemeConfig
-    let config: ThemeConfig =
-        serde_json::from_str(content).map_err(|e| format!("Invalid theme format: {e}"))?;
+    let config: ThemeConfig = serde_json::from_str(content).map_err(|e| {
+        log::error!(target: "Theme", "Failed to parse theme JSON: {e}");
+        format!("Invalid theme format: {e}")
+    })?;
 
     let safe_name = crate::settings::sanitize_profile_name(&config.metadata.name);
     let theme_folder = get_themes_dir().join(&safe_name);
 
     if !theme_folder.exists() {
-        fs::create_dir_all(&theme_folder).map_err(|e| e.to_string())?;
+        fs::create_dir_all(&theme_folder).map_err(|e| {
+            log::error!(target: "Theme", "Failed to create directory {}: {e}", theme_folder.display());
+            e.to_string()
+        })?;
     }
 
-    fs::write(theme_folder.join("theme.json"), content).map_err(|e| e.to_string())?;
+    fs::write(theme_folder.join("theme.json"), content).map_err(|e| {
+        log::error!(target: "Theme", "Failed to write theme.json in {}: {e}", theme_folder.display());
+        e.to_string()
+    })?;
     log::info!(target: "Theme", "Successfully imported custom theme '{}' as '{}'", config.metadata.name, safe_name);
 
     Ok(safe_name)
@@ -101,6 +109,9 @@ use crate::app::state::ThemeStoreItem;
 use crate::core::config::theme_models::ThemeMetadata;
 
 /// Fetches the list of themes from the GitHub repository synchronously.
+///
+/// # Errors
+/// Returns an error if the network request fails, or if the API response is invalid JSON.
 pub fn fetch_theme_store_list_sync() -> Result<Vec<ThemeStoreItem>, String> {
     let url = "https://api.github.com/repos/Next-Tablet-Driver/NextTabletDriver-Themes/contents/";
     match ureq::get(url).call() {
@@ -117,26 +128,30 @@ pub fn fetch_theme_store_list_sync() -> Result<Vec<ThemeStoreItem>, String> {
                                 && name != "00 EXAMPLE"
                                 && name != ".github"
                             {
-                                let theme_url = format!("https://raw.githubusercontent.com/Next-Tablet-Driver/NextTabletDriver-Themes/refs/heads/main/{name}/theme.json");
-                                if let Ok(res) = ureq::get(&theme_url).call() {
-                                    if let Ok(content) = res.into_string() {
-                                        if let Ok(config) = serde_json::from_str::<ThemeConfig>(&content) {
-                                            themes.push(ThemeStoreItem {
-                                                metadata: config.metadata,
-                                                dark_mode: config.colors.dark_mode,
-                                            });
-                                        } else {
-                                            themes.push(ThemeStoreItem {
-                                                metadata: ThemeMetadata {
-                                                    name: name.to_string(),
-                                                    author: "Unknown".to_string(),
-                                                    version: "1.0".to_string(),
-                                                    update_url: None,
-                                                },
-                                                dark_mode: true,
-                                            });
-                                        }
+                                let encoded_name = name.replace(' ', "%20");
+                                let theme_url = format!("https://raw.githubusercontent.com/Next-Tablet-Driver/NextTabletDriver-Themes/refs/heads/main/{encoded_name}/theme.json");
+                                if let Ok(res) = ureq::get(&theme_url).call()
+                                    && let Ok(content) = res.into_string()
+                                {
+                                    if let Ok(config) = serde_json::from_str::<ThemeConfig>(&content) {
+                                        themes.push(ThemeStoreItem {
+                                            metadata: config.metadata,
+                                            dark_mode: config.colors.dark_mode,
+                                        });
+                                    } else {
+                                        log::error!(target: "ThemeStore", "Failed to parse theme.json for {name}");
+                                        themes.push(ThemeStoreItem {
+                                            metadata: ThemeMetadata {
+                                                name: name.to_string(),
+                                                author: "Unknown".to_string(),
+                                                version: "1.0".to_string(),
+                                                update_url: None,
+                                            },
+                                            dark_mode: true,
+                                        });
                                     }
+                                } else {
+                                    log::error!(target: "ThemeStore", "Failed to download theme.json for {name}");
                                 }
                             }
                         }
@@ -150,19 +165,26 @@ pub fn fetch_theme_store_list_sync() -> Result<Vec<ThemeStoreItem>, String> {
 }
 
 /// Downloads and installs a theme synchronously from GitHub.
+///
+/// # Errors
+/// Returns an error if the network request fails or if the theme content cannot be parsed.
 pub fn download_and_install_theme_sync(theme: &str) -> Result<String, String> {
+    let encoded_theme = theme.replace(' ', "%20");
     let url = format!(
-        "https://raw.githubusercontent.com/Next-Tablet-Driver/NextTabletDriver-Themes/refs/heads/main/{theme}/theme.json"
+        "https://raw.githubusercontent.com/Next-Tablet-Driver/NextTabletDriver-Themes/refs/heads/main/{encoded_theme}/theme.json"
     );
     match ureq::get(&url).call() {
-        Ok(response) => {
-            if let Ok(content) = response.into_string() {
-                import_theme_from_string(&content)
-            } else {
+        Ok(response) => response.into_string().map_or_else(
+            |e| {
+                log::error!(target: "ThemeStore", "Failed to read response content: {e}");
                 Err("Failed to read response content".into())
-            }
+            },
+            |content| import_theme_from_string(&content),
+        ),
+        Err(e) => {
+            log::error!(target: "ThemeStore", "Network error while downloading theme '{theme}': {e}");
+            Err(format!("Network error: {e}"))
         }
-        Err(e) => Err(format!("Network error: {e}")),
     }
 }
 

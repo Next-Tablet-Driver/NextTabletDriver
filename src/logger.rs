@@ -75,6 +75,8 @@ impl Log for GlobalLogger {
                 "Tracking",
                 "PerfSpike",
                 "Injector",
+                "ThemeStore",
+                "Theme",
             ]
             .iter()
             .any(|&t| target == t || target.starts_with(&format!("{t}::")))

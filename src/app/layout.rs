@@ -96,7 +96,9 @@ impl TabletMapperApp {
                             )
                             .clicked()
                         {
-                            let _ = crate::settings::save_last_session(&self.profile.last_saved);
+                            if let Err(e) = crate::settings::save_last_session(&self.profile.last_saved) {
+                                log::error!(target: "App", "Failed to save last session on exit: {e}");
+                            }
                             self.force_close = true;
                             self.show_close_confirm = false;
                             ctx.send_viewport_cmd(egui::ViewportCommand::Close);
