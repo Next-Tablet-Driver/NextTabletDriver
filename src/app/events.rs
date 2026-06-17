@@ -77,6 +77,8 @@ impl TabletMapperApp {
                 log::info!(target: "Tray", "Window minimized, closing eframe to sit in system tray...");
                 ctx.send_viewport_cmd(egui::ViewportCommand::Close);
                 self.shared.is_visible.store(false, Ordering::Release);
+                self.force_close = true;
+                ctx.request_repaint();
             }
             self.was_minimized = is_minimized;
         }

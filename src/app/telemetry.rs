@@ -73,3 +73,44 @@ pub fn capture_event(
         }
     });
 }
+
+fn anonymize_path(message: &str) -> String {
+    // A simple regex or string replacement to hide local usernames.
+    // e.g. C:\Users\Username\Documents -> C:\Users\<HIDDEN>\Documents
+    let mut cleaned = message.to_string();
+    if let Ok(user_profile) = std::env::var("USERPROFILE")
+        && let Some(username) = std::path::Path::new(&user_profile)
+            .file_name()
+            .and_then(|n| n.to_str())
+    {
+        cleaned = cleaned.replace(username, "<HIDDEN>");
+    }
+    cleaned
+}
+
+pub fn setup_panic_hook() {
+    let default_hook = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |panic_info| {
+        let payload = panic_info.to_string();
+        let anonymized = anonymize_path(&payload);
+
+        let crash_file = crate::settings::get_settings_dir().join("crash_report.json");
+        if let Ok(json) = serde_json::to_string(&json!({ "panic_message": anonymized })) {
+            let _ = std::fs::write(crash_file, json);
+        }
+
+        default_hook(panic_info);
+    }));
+}
+
+pub fn send_pending_crash_reports(app_prefs: &crate::settings::app_preferences::AppPreferences) {
+    let crash_file = crate::settings::get_settings_dir().join("crash_report.json");
+    if crash_file.exists() {
+        if let Ok(content) = std::fs::read_to_string(&crash_file)
+            && let Ok(json) = serde_json::from_str::<serde_json::Value>(&content)
+        {
+            capture_event("app_panicked", Some(json), app_prefs);
+        }
+        let _ = std::fs::remove_file(crash_file);
+    }
+}

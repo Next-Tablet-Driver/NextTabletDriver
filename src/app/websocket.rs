@@ -115,11 +115,22 @@ pub fn websocket_loop(shared: &Arc<SharedState>) {
 
                     log::info!(target: "WebSocket", "New connection from {addr}");
                     if stream.set_nonblocking(false).is_ok() {
+                        let _ = stream.set_read_timeout(Some(Duration::from_millis(100)));
+                        let _ = stream.set_write_timeout(Some(Duration::from_millis(100)));
                         match accept(stream) {
                             Ok(mut websocket) => {
                                 if websocket.get_mut().set_nonblocking(true).is_ok() {
                                     clients.insert(next_client_id, websocket);
                                     next_client_id += 1;
+
+                                    // Track connection
+                                    let prefs =
+                                        crate::settings::app_preferences::load_app_preferences();
+                                    crate::app::telemetry::capture_event(
+                                        "websocket_client_connected",
+                                        None,
+                                        &prefs,
+                                    );
                                 }
                             }
                             Err(e) => {
@@ -165,7 +176,12 @@ pub fn websocket_loop(shared: &Arc<SharedState>) {
                     let mut dead_clients = vec![];
 
                     for (id, client) in &mut clients {
-                        if client.send(Message::Text(json.clone().into())).is_err() {
+                        if let Err(e) = client.send(Message::Text(json.clone().into())) {
+                            if let tungstenite::Error::Io(ref io_err) = e
+                                && io_err.kind() == std::io::ErrorKind::WouldBlock
+                            {
+                                continue;
+                            }
                             dead_clients.push(*id);
                         }
                     }

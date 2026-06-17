@@ -101,6 +101,8 @@ fn set_fast_timer(enable: u8) {
 /// 3. Configures the GUI window options (icon, dimensions, title).
 /// 4. Enters the `eframe::run_native` GUI event loop.
 fn main() -> eframe::Result {
+    next_tablet_driver::app::telemetry::setup_panic_hook();
+
     let startup_start = std::time::Instant::now();
     let logger_start = std::time::Instant::now();
 
@@ -203,6 +205,8 @@ fn main() -> eframe::Result {
     let state_start = std::time::Instant::now();
     let shared = SharedStateFactory::create(config.clone(), is_first_run);
     let app_prefs = next_tablet_driver::settings::app_preferences::load_app_preferences();
+
+    next_tablet_driver::app::telemetry::send_pending_crash_reports(&app_prefs);
     next_tablet_driver::i18n::set_locale(app_prefs.language);
     let total_ram_gb = next_tablet_driver::startup::get_memory_info()
         .map(|b| (b as f64 / 1_073_741_824.0).ceil() as u64);
@@ -215,6 +219,10 @@ fn main() -> eframe::Result {
             "language": app_prefs.language.display_name().to_string(),
             "cpu_cores": cpu_cores,
             "total_ram_gb": total_ram_gb,
+            "driver_mode": format!("{:?}", config.mode),
+            "filter_antichatter_enabled": config.antichatter.enabled,
+            "filter_prediction_enabled": config.antichatter.prediction_enabled,
+            "filter_antichatter_strength": config.antichatter.antichatter_strength,
         })),
         &app_prefs,
     );
@@ -264,11 +272,24 @@ fn main() -> eframe::Result {
         }
 
         if shared.is_visible.load(Ordering::Acquire) {
+            let primary_display = display_info::DisplayInfo::all()
+                .unwrap_or_default()
+                .into_iter()
+                .find(|d| d.is_primary);
+            let mut viewport = egui::ViewportBuilder::default()
+                .with_icon(icon_data.clone())
+                .with_inner_size([1000.0, 850.0])
+                .with_title(format!("NextTabletDriver v{}", next_tablet_driver::VERSION))
+                .with_active(true);
+
+            if let Some(d) = primary_display {
+                let x = d.x as f32 + (d.width as f32 - 1000.0) / 2.0;
+                let y = d.y as f32 + (d.height as f32 - 850.0) / 2.0;
+                viewport = viewport.with_position(egui::pos2(x, y));
+            }
+
             let options = eframe::NativeOptions {
-                viewport: egui::ViewportBuilder::default()
-                    .with_icon(icon_data.clone())
-                    .with_inner_size([1000.0, 850.0])
-                    .with_title(format!("NextTabletDriver v{}", next_tablet_driver::VERSION)),
+                viewport,
                 ..Default::default()
             };
 
@@ -284,6 +305,8 @@ fn main() -> eframe::Result {
                 &format!("NextTabletDriver v{}", next_tablet_driver::VERSION),
                 options,
                 Box::new(move |cc| {
+                    cc.egui_ctx.send_viewport_cmd(egui::ViewportCommand::Focus);
+
                     if let Some(gl) = &cc.gl {
                         use eframe::glow::HasContext;
                         // SAFETY: Querying the renderer parameter string from a valid active glow OpenGL context is safe.
