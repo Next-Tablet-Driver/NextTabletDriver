@@ -62,6 +62,14 @@ impl TabletMapperApp {
         }
 
         let meta = load_session_meta();
+        let initial_config = if let Some(ref m) = meta
+            && let Some(ref path) = m.profile_path
+            && let Ok((loaded_cfg, _)) = crate::settings::load_settings_from_file(path)
+        {
+            loaded_cfg
+        } else {
+            config
+        };
 
         Self {
             shared,
@@ -73,7 +81,7 @@ impl TabletMapperApp {
                     .as_ref()
                     .map_or_else(|| "Unsaved Session".to_string(), |m| m.profile_name.clone()),
                 path: meta.and_then(|m| m.profile_path),
-                last_saved: config,
+                last_saved: initial_config,
             },
             active_tab: AppTab::Output,
             tablet_receiver,

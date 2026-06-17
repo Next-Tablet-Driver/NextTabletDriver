@@ -75,14 +75,18 @@ pub fn load_app_preferences() -> AppPreferences {
             }
             Err(e) => {
                 log::error!(target: "Config", "Failed to parse app preferences: {e}");
-                AppPreferences::default()
+                let prefs = AppPreferences::default();
+                save_app_preferences(&prefs);
+                prefs
             }
         },
         Err(e) => {
             if e.kind() != std::io::ErrorKind::NotFound {
                 log::error!(target: "Config", "Failed to read app preferences: {e}");
             }
-            AppPreferences::default()
+            let prefs = AppPreferences::default();
+            save_app_preferences(&prefs);
+            prefs
         }
     }
 }

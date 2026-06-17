@@ -54,7 +54,11 @@ impl StatsServer {
                                 }).to_string();
 
                                 clients.retain_mut(|client: &mut WebSocket<TcpStream>| {
-                                    client.send(Message::Text(json.clone().into())).is_ok()
+                                    match client.send(Message::Text(json.clone().into())) {
+                                        Ok(()) => true,
+                                        Err(tungstenite::Error::Io(ref io_err)) if io_err.kind() == std::io::ErrorKind::WouldBlock => true,
+                                        Err(_) => false,
+                                    }
                                 });
                             }
                         },
@@ -67,14 +71,22 @@ impl StatsServer {
             // Accept loop
             while !shutdown_server.load(Ordering::SeqCst) {
                 match listener.accept() {
-                    Ok((stream, _)) => match accept(stream) {
-                        Ok(ws) => {
-                            let mut clients = clients.lock().unwrap_or_reset("stats_clients");
-                            clients.push(ws);
-                            log::debug!(target: "Stats", "New WebSocket client connected");
+                    Ok((stream, _)) => {
+                        let _ = stream.set_nonblocking(false);
+                        let _ =
+                            stream.set_read_timeout(Some(std::time::Duration::from_millis(100)));
+                        let _ =
+                            stream.set_write_timeout(Some(std::time::Duration::from_millis(100)));
+                        match accept(stream) {
+                            Ok(mut ws) => {
+                                let _ = ws.get_mut().set_nonblocking(true);
+                                let mut clients = clients.lock().unwrap_or_reset("stats_clients");
+                                clients.push(ws);
+                                log::debug!(target: "Stats", "New WebSocket client connected");
+                            }
+                            Err(e) => log::error!(target: "Stats", "WebSocket accept error: {e}"),
                         }
-                        Err(e) => log::error!(target: "Stats", "WebSocket accept error: {e}"),
-                    },
+                    }
                     Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
                         thread::sleep(std::time::Duration::from_millis(100));
                     }
