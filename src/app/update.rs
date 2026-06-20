@@ -80,7 +80,8 @@ impl TabletMapperApp {
             let theme_name = self.theme_downloading_name.take().unwrap_or_default();
             match result {
                 Ok(safe_name) => {
-                    self.app_prefs.theme = crate::core::config::models::ThemePreference::Custom(safe_name.clone());
+                    self.app_prefs.theme =
+                        crate::core::config::models::ThemePreference::Custom(safe_name.clone());
                     crate::ui::theme::apply_theme(ctx, &self.app_prefs.theme);
                     crate::settings::app_preferences::save_app_preferences(&self.app_prefs);
                     log::info!(

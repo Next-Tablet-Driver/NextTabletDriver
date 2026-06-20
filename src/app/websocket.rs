@@ -87,7 +87,8 @@ pub fn websocket_loop(shared: &Arc<SharedState>) {
             last_bind_attempt = None;
         } else if listener.is_none() || current_port != port {
             let is_port_change = current_port != port;
-            let should_bind = is_port_change || last_bind_attempt.is_none_or(|t| t.elapsed() >= Duration::from_secs(5));
+            let should_bind = is_port_change
+                || last_bind_attempt.is_none_or(|t| t.elapsed() >= Duration::from_secs(5));
 
             if should_bind {
                 log::info!(target: "WebSocket", "Starting WebSocket Server on 127.0.0.1:{port}");

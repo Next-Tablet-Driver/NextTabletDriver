@@ -116,7 +116,7 @@ impl TrayService {
         {
             use crate::engine::state::LockRecoveryExt;
             use windows_sys::Win32::UI::WindowsAndMessaging::{
-                DispatchMessageW, PeekMessageW, MSG, TranslateMessage, PM_REMOVE, WM_QUIT,
+                DispatchMessageW, MSG, PM_REMOVE, PeekMessageW, TranslateMessage, WM_QUIT,
             };
             // SAFETY: MSG struct can be zeroed safely
             let mut msg: MSG = unsafe { std::mem::zeroed() };
@@ -125,7 +125,9 @@ impl TrayService {
             loop {
                 // Process all pending messages
                 // SAFETY: msg is valid, hwnd is null, filter min/max are 0, PM_REMOVE removes processed messages
-                while unsafe { PeekMessageW(&raw mut msg, std::ptr::null_mut(), 0, 0, PM_REMOVE) } > 0 {
+                while unsafe { PeekMessageW(&raw mut msg, std::ptr::null_mut(), 0, 0, PM_REMOVE) }
+                    > 0
+                {
                     if msg.message == WM_QUIT {
                         break;
                     }

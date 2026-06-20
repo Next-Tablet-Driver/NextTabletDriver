@@ -109,7 +109,9 @@ pub fn download_and_install(
     // Make the file executable on Linux (or extract if it is a tar.gz archive)
     #[cfg(target_os = "linux")]
     let launch_path = if asset.name.ends_with(".tar.gz") {
-        let updates_dir = temp_path.parent().ok_or("Failed to get parent updates directory")?;
+        let updates_dir = temp_path
+            .parent()
+            .ok_or("Failed to get parent updates directory")?;
         log::info!(target: "Update::Extract", "Extracting tar.gz archive {} to {}", temp_path.display(), updates_dir.display());
 
         let extract_status = Command::new("tar")
