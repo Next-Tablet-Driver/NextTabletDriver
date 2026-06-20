@@ -1,9 +1,3 @@
-<style>
-  .ntd-hero { text-align: center; }
-  .ntd-subtitle { max-width: 760px; margin: 0 auto; }
-  .ntd-grid { width: 100%; }
-</style>
-
 <div class="ntd-hero" align="center">
   <img src="resources/icon.png" alt="NextTabletDriver icon" width="96" height="96">
   <h1>NextTabletDriver</h1>
