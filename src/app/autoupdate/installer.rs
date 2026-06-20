@@ -123,9 +123,9 @@ pub fn download_and_install(
 
         match extract_status {
             Ok(s) if s.success() => {
+                use std::os::unix::fs::PermissionsExt;
                 let _ = fs::remove_file(&temp_path);
                 let extracted_bin = updates_dir.join("next_tablet_driver");
-                use std::os::unix::fs::PermissionsExt;
                 let _ = fs::set_permissions(&extracted_bin, fs::Permissions::from_mode(0o755));
                 extracted_bin
             }

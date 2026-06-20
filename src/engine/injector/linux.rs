@@ -31,9 +31,9 @@ pub struct Injector {
     remainder_x: f32,
     remainder_y: f32,
 
-    /// Bounding box of the virtual desktop: (min_x, min_y, max_x, max_y)
+    /// Bounding box of the virtual desktop: (`min_x`, `min_y`, `max_x`, `max_y`)
     screen_bounds: (f32, f32, f32, f32),
-    /// Timestamp of the last time we updated screen_bounds
+    /// Timestamp of the last time we updated `screen_bounds`
     last_bounds_update: std::time::Instant,
 }
 
@@ -156,7 +156,9 @@ impl Injector {
             remainder_x: 0.0,
             remainder_y: 0.0,
             screen_bounds: (0.0, 0.0, 1920.0, 1080.0),
-            last_bounds_update: now - std::time::Duration::from_secs(10),
+            last_bounds_update: now
+                .checked_sub(std::time::Duration::from_secs(10))
+                .unwrap_or(now),
         }
     }
 
@@ -167,20 +169,20 @@ impl Injector {
         }
         self.last_bounds_update = now;
 
-        if let Ok(displays) = display_info::DisplayInfo::all() {
-            if !displays.is_empty() {
-                let mut mx = i32::MAX;
-                let mut my = i32::MAX;
-                let mut ax = i32::MIN;
-                let mut ay = i32::MIN;
-                for d in &displays {
-                    mx = mx.min(d.x);
-                    my = my.min(d.y);
-                    ax = ax.max(d.x + d.width.cast_signed());
-                    ay = ay.max(d.y + d.height.cast_signed());
-                }
-                self.screen_bounds = (mx as f32, my as f32, ax as f32, ay as f32);
+        if let Ok(displays) = display_info::DisplayInfo::all()
+            && !displays.is_empty()
+        {
+            let mut mx = i32::MAX;
+            let mut my = i32::MAX;
+            let mut ax = i32::MIN;
+            let mut ay = i32::MIN;
+            for d in &displays {
+                mx = mx.min(d.x);
+                my = my.min(d.y);
+                ax = ax.max(d.x + d.width.cast_signed());
+                ay = ay.max(d.y + d.height.cast_signed());
             }
+            self.screen_bounds = (mx as f32, my as f32, ax as f32, ay as f32);
         }
     }
 
