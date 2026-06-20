@@ -96,22 +96,24 @@ fn anonymize_path_impl(
 ) -> String {
     let mut cleaned = message.to_string();
 
-    if let Some(user_profile) = user_profile
-        && let Some(username) = std::path::Path::new(user_profile)
-            .file_name()
-            .and_then(|n| n.to_str())
-        && !username.is_empty()
-    {
-        cleaned = cleaned.replace(username, "<HIDDEN>");
+    if let Some(user_profile) = user_profile {
+        let username = user_profile
+            .split(['/', '\\'])
+            .next_back()
+            .unwrap_or("");
+        if !username.is_empty() {
+            cleaned = cleaned.replace(username, "<HIDDEN>");
+        }
     }
 
-    if let Some(home) = home
-        && let Some(username) = std::path::Path::new(home)
-            .file_name()
-            .and_then(|n| n.to_str())
-        && !username.is_empty()
-    {
-        cleaned = cleaned.replace(username, "<HIDDEN>");
+    if let Some(home) = home {
+        let username = home
+            .split(['/', '\\'])
+            .next_back()
+            .unwrap_or("");
+        if !username.is_empty() {
+            cleaned = cleaned.replace(username, "<HIDDEN>");
+        }
     }
 
     if let Some(user) = user
