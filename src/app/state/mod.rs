@@ -102,6 +102,10 @@ pub struct TabletMapperApp {
     pub theme_store_search: String,
     pub theme_store_filter_mode: Option<bool>,
 
+    // Theme Download State
+    pub theme_download_result: std::sync::Arc<std::sync::Mutex<Option<Result<String, String>>>>,
+    pub theme_downloading_name: Option<String>,
+
     /// Toggle to render the close confirmation dialog modal.
     pub show_close_confirm: bool,
     /// If true, bypasses close confirmation dialog and exits immediately.
@@ -410,30 +414,24 @@ impl TabletMapperApp {
         }
     }
 
-    pub fn download_theme(&mut self, theme: &str) {
-        match crate::settings::themes::download_and_install_theme_sync(theme) {
-            Ok(safe_name) => {
-                self.app_prefs.theme =
-                    crate::core::config::models::ThemePreference::Custom(safe_name.clone());
-                crate::settings::app_preferences::save_app_preferences(&self.app_prefs);
-                log::info!(
-                    target: "ThemeStore",
-                    "{} ({theme})",
-                    t!("settings.theme.download_success")
-                );
-                crate::app::telemetry::capture_event(
-                    "theme_downloaded",
-                    Some(serde_json::json!({ "theme_name": safe_name })),
-                    &self.app_prefs,
-                );
-            }
-            Err(e) => {
-                log::error!(
-                    target: "ThemeStore",
-                    "{} {e}",
-                    t!("settings.theme.download_error")
-                );
-            }
+    pub fn download_theme(&mut self, theme: &str, ctx: &eframe::egui::Context) {
+        if self.theme_downloading_name.is_some() {
+            return; // Only allow one download at a time
         }
+
+        let theme_name = theme.to_string();
+        self.theme_downloading_name = Some(theme_name.clone());
+
+        let result_arc = std::sync::Arc::clone(&self.theme_download_result);
+        let ctx_clone = ctx.clone();
+
+        std::thread::spawn(move || {
+            let result = crate::settings::themes::download_and_install_theme_sync(&theme_name);
+            if let Ok(mut guard) = result_arc.lock() {
+                *guard = Some(result);
+            }
+            // Request UI repaint immediately after download completes
+            ctx_clone.request_repaint();
+        });
     }
 }

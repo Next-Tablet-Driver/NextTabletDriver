@@ -106,13 +106,46 @@ pub fn download_and_install(
 
     log::info!(target: "Update::Download", "Download complete, saved to {}", temp_path.display());
 
-    // Make the file executable on Linux
+    // Make the file executable on Linux (or extract if it is a tar.gz archive)
     #[cfg(target_os = "linux")]
-    {
+    let launch_path = if asset.name.ends_with(".tar.gz") {
+        let updates_dir = temp_path.parent().ok_or("Failed to get parent updates directory")?;
+        log::info!(target: "Update::Extract", "Extracting tar.gz archive {} to {}", temp_path.display(), updates_dir.display());
+
+        let extract_status = Command::new("tar")
+            .arg("-xzf")
+            .arg(&temp_path)
+            .arg("-C")
+            .arg(updates_dir)
+            .status();
+
+        match extract_status {
+            Ok(s) if s.success() => {
+                let _ = fs::remove_file(&temp_path);
+                let extracted_bin = updates_dir.join("next_tablet_driver");
+                use std::os::unix::fs::PermissionsExt;
+                let _ = fs::set_permissions(&extracted_bin, fs::Permissions::from_mode(0o755));
+                extracted_bin
+            }
+            Ok(s) => {
+                let _ = fs::remove_file(&temp_path);
+                return Err(format!("Failed to extract tar.gz archive: exit code {s}").into());
+            }
+            Err(e) => {
+                let _ = fs::remove_file(&temp_path);
+                return Err(format!("Failed to run tar command: {e}").into());
+            }
+        }
+    } else {
         use std::os::unix::fs::PermissionsExt;
         let _ = fs::set_permissions(&temp_path, fs::Permissions::from_mode(0o755));
-    }
+        temp_path.clone()
+    };
 
+    #[cfg(target_os = "linux")]
+    let status = Command::new(&launch_path).spawn();
+
+    #[cfg(not(target_os = "linux"))]
     let status = Command::new(&temp_path).spawn();
 
     match status {
@@ -122,7 +155,11 @@ pub fn download_and_install(
             std::process::exit(0);
         }
         Err(e) => {
+            #[cfg(target_os = "linux")]
+            let _ = fs::remove_file(&launch_path);
+            #[cfg(not(target_os = "linux"))]
             let _ = fs::remove_file(&temp_path);
+
             log::error!(target: "Update::Process", "Failed to launch installer: {e}");
             Err(e.into())
         }

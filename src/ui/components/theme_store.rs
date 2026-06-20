@@ -187,15 +187,25 @@ fn render_theme_store_content(app: &mut TabletMapperApp, ui: &mut egui::Ui) {
                                     ui.add_enabled_ui(false, |ui| {
                                         let _ = ui.button(t!("settings.theme.installed"));
                                     });
+                                } else if Some(&theme.name) == app.theme_downloading_name.as_ref() {
+                                    ui.horizontal(|ui| {
+                                        ui.spinner();
+                                        ui.add_enabled_ui(false, |ui| {
+                                            let _ = ui.button(t!("settings.theme.downloading", default = "Downloading..."));
+                                        });
+                                    });
                                 } else {
-                                    let btn = ui.button(format!(
-                                        "{} {}",
-                                        egui_phosphor::regular::DOWNLOAD_SIMPLE,
-                                        t!("settings.theme.download_btn")
-                                    ));
-                                    if btn.clicked() {
-                                        app.download_theme(&theme.name);
-                                    }
+                                    let is_any_downloading = app.theme_downloading_name.is_some();
+                                    ui.add_enabled_ui(!is_any_downloading, |ui| {
+                                        let btn = ui.button(format!(
+                                            "{} {}",
+                                            egui_phosphor::regular::DOWNLOAD_SIMPLE,
+                                            t!("settings.theme.download_btn")
+                                        ));
+                                        if btn.clicked() {
+                                            app.download_theme(&theme.name, ui.ctx());
+                                        }
+                                    });
                                 }
                             });
                         });

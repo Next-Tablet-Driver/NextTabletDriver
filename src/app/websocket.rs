@@ -52,6 +52,7 @@ pub fn websocket_loop(shared: &Arc<SharedState>) {
     let mut listener: Option<TcpListener> = None;
     let mut clients: HashMap<usize, WebSocket<std::net::TcpStream>> = HashMap::new();
     let mut next_client_id = 0;
+    let mut last_bind_attempt: Option<Instant> = None;
 
     loop {
         if shared.shutdown_requested.load(Ordering::Relaxed) {
@@ -83,24 +84,31 @@ pub fn websocket_loop(shared: &Arc<SharedState>) {
                 clients.clear();
                 listener = None;
             }
+            last_bind_attempt = None;
         } else if listener.is_none() || current_port != port {
-            log::info!(target: "WebSocket", "Starting WebSocket Server on 127.0.0.1:{port}");
-            clients.clear();
+            let is_port_change = current_port != port;
+            let should_bind = is_port_change || last_bind_attempt.is_none_or(|t| t.elapsed() >= Duration::from_secs(5));
 
-            match TcpListener::bind(format!("127.0.0.1:{port}")) {
-                Ok(l) => match l.set_nonblocking(true) {
-                    Ok(()) => {
-                        listener = Some(l);
-                        current_port = port;
-                    }
+            if should_bind {
+                log::info!(target: "WebSocket", "Starting WebSocket Server on 127.0.0.1:{port}");
+                clients.clear();
+                last_bind_attempt = Some(Instant::now());
+                current_port = port;
+
+                match TcpListener::bind(format!("127.0.0.1:{port}")) {
+                    Ok(l) => match l.set_nonblocking(true) {
+                        Ok(()) => {
+                            listener = Some(l);
+                        }
+                        Err(e) => {
+                            log::error!(target: "WebSocket", "Failed to set WebSocket listener to non-blocking: {e}");
+                            listener = None;
+                        }
+                    },
                     Err(e) => {
-                        log::error!(target: "WebSocket", "Failed to set WebSocket listener to non-blocking: {e}");
+                        log::error!(target: "WebSocket", "Failed to bind to port {port}: {e}");
                         listener = None;
                     }
-                },
-                Err(e) => {
-                    log::error!(target: "WebSocket", "Failed to bind to port {port}: {e}");
-                    listener = None;
                 }
             }
         }

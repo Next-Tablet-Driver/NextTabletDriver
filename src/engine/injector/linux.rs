@@ -30,6 +30,11 @@ pub struct Injector {
     /// Sub-pixel remainder accumulators for relative mode
     remainder_x: f32,
     remainder_y: f32,
+
+    /// Bounding box of the virtual desktop: (min_x, min_y, max_x, max_y)
+    screen_bounds: (f32, f32, f32, f32),
+    /// Timestamp of the last time we updated screen_bounds
+    last_bounds_update: std::time::Instant,
 }
 
 impl Default for Injector {
@@ -142,6 +147,7 @@ impl Injector {
 
         log::info!(target: "Injector", "Virtual mouse device created: NextTabletDriver Virtual Mouse");
 
+        let now = std::time::Instant::now();
         Self {
             virtual_tablet,
             virtual_mouse,
@@ -149,6 +155,32 @@ impl Injector {
             last_proximity: None,
             remainder_x: 0.0,
             remainder_y: 0.0,
+            screen_bounds: (0.0, 0.0, 1920.0, 1080.0),
+            last_bounds_update: now - std::time::Duration::from_secs(10),
+        }
+    }
+
+    fn update_screen_bounds(&mut self) {
+        let now = std::time::Instant::now();
+        if now.duration_since(self.last_bounds_update) < std::time::Duration::from_secs(2) {
+            return;
+        }
+        self.last_bounds_update = now;
+
+        if let Ok(displays) = display_info::DisplayInfo::all() {
+            if !displays.is_empty() {
+                let mut mx = i32::MAX;
+                let mut my = i32::MAX;
+                let mut ax = i32::MIN;
+                let mut ay = i32::MIN;
+                for d in &displays {
+                    mx = mx.min(d.x);
+                    my = my.min(d.y);
+                    ax = ax.max(d.x + d.width.cast_signed());
+                    ay = ay.max(d.y + d.height.cast_signed());
+                }
+                self.screen_bounds = (mx as f32, my as f32, ax as f32, ay as f32);
+            }
         }
     }
 
@@ -174,19 +206,18 @@ impl Injector {
     /// Used by `Absolute` driver mode.
     ///
     /// On Linux, we write `ABS_X` and `ABS_Y` events to the uinput virtual tablet.
-    /// The values are normalized to the [0..32767] range. The compositor or X server
-    /// maps this to actual screen coordinates automatically.
+    /// The values are mapped relative to the total screen dimensions across all displays.
     ///
     /// # Arguments
-    /// * `_target_x` / `_target_y` - Screen pixel coordinates (unused on Linux).
+    /// * `target_x` / `target_y` - Screen pixel coordinates.
     /// * `u` / `v` - Normalized UV coordinates in [0.0, 1.0] from the pipeline.
     /// * `pressure` - Normalized pressure.
     /// * `tilt_x` / `tilt_y` - Absolute tilt values.
     #[allow(clippy::too_many_arguments)]
     pub fn move_absolute(
         &mut self,
-        _target_x: f32,
-        _target_y: f32,
+        target_x: f32,
+        target_y: f32,
         u: f32,
         v: f32,
         pressure: i32,
@@ -195,8 +226,24 @@ impl Injector {
     ) {
         self.set_proximity(true);
 
-        let abs_x = (u.clamp(0.0, 1.0) * ABS_MAX as f32) as i32;
-        let abs_y = (v.clamp(0.0, 1.0) * ABS_MAX as f32) as i32;
+        self.update_screen_bounds();
+
+        let (min_x, min_y, max_x, max_y) = self.screen_bounds;
+        let desk_w = max_x - min_x;
+        let desk_h = max_y - min_y;
+
+        let (abs_x, abs_y) = if desk_w > 0.0 && desk_h > 0.0 {
+            (
+                (((target_x - min_x) / desk_w).clamp(0.0, 1.0) * ABS_MAX as f32) as i32,
+                (((target_y - min_y) / desk_h).clamp(0.0, 1.0) * ABS_MAX as f32) as i32,
+            )
+        } else {
+            (
+                (u.clamp(0.0, 1.0) * ABS_MAX as f32) as i32,
+                (v.clamp(0.0, 1.0) * ABS_MAX as f32) as i32,
+            )
+        };
+
         let pressure = pressure.clamp(0, PRESSURE_MAX);
         let tilt_x = tilt_x.clamp(-127, 127);
         let tilt_y = tilt_y.clamp(-127, 127);

@@ -84,6 +84,7 @@ fn load_embedded_recursive(
                             match serde_json::from_str::<TabletConfiguration>(content_str) {
                                 Ok(config) => {
                                     if !names.contains(&config.name) {
+                                        names.insert(config.name.clone());
                                         configs.push(config);
                                     }
                                 }
