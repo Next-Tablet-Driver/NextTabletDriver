@@ -61,7 +61,8 @@ pub fn detect_tablet(api: &HidApi) -> Option<(HidDevice, Box<dyn NextTabletDrive
                 .unwrap_or("")
                 .to_lowercase();
             let p_str = device_info.product_string().unwrap_or("").to_lowercase();
-            let is_tablet_brand = matches!(vid, 0x056a | 0x256c | 0x28bd | 0x5543 | 0x0b57)
+            let is_known_vid_or_pid = INDEXED_CONFIGS.keys().any(|&(v, p)| v == vid || p == pid);
+            let is_tablet_brand = is_known_vid_or_pid
                 || m_str.contains("tablet")
                 || m_str.contains("digitizer")
                 || m_str.contains("xp-pen")
@@ -136,13 +137,13 @@ pub fn detect_tablet(api: &HidApi) -> Option<(HidDevice, Box<dyn NextTabletDrive
                                     Ok(data) => {
                                         log::trace!(target: "Detect", "Sending Feature Report: {data:02x?}");
                                         if let Err(e) = device.send_feature_report(&data) {
-                                            log::error!(target: "Detect", "{} | Init Error (Feature Report): {e}", config.name);
+                                            log::debug!(target: "Detect", "{} | Init Error (Feature Report): {e}", config.name);
                                             init_success = false;
                                             break;
                                         }
                                     }
                                     Err(e) => {
-                                        log::error!(target: "Detect", "{} | Base64 Decode Error (Feature): {e}", config.name);
+                                        log::debug!(target: "Detect", "{} | Base64 Decode Error (Feature): {e}", config.name);
                                         init_success = false;
                                         break;
                                     }
@@ -157,13 +158,13 @@ pub fn detect_tablet(api: &HidApi) -> Option<(HidDevice, Box<dyn NextTabletDrive
                                     Ok(data) => {
                                         log::trace!(target: "Detect", "Sending Output Report: {data:02x?}");
                                         if let Err(e) = device.write(&data) {
-                                            log::error!(target: "Detect", "{} | Init Error (Output Report): {e}", config.name);
+                                            log::debug!(target: "Detect", "{} | Init Error (Output Report): {e}", config.name);
                                             init_success = false;
                                             break;
                                         }
                                     }
                                     Err(e) => {
-                                        log::error!(target: "Detect", "{} | Base64 Decode Error (Output): {e}", config.name);
+                                        log::debug!(target: "Detect", "{} | Base64 Decode Error (Output): {e}", config.name);
                                         init_success = false;
                                         break;
                                     }
@@ -172,7 +173,7 @@ pub fn detect_tablet(api: &HidApi) -> Option<(HidDevice, Box<dyn NextTabletDrive
                         }
 
                         if !init_success {
-                            log::warn!(target: "Detect", "Initialization failed for {}, skipping device", config.name);
+                            log::debug!(target: "Detect", "Initialization failed for {}, skipping device", config.name);
                             continue;
                         }
 

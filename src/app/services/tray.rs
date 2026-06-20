@@ -116,18 +116,26 @@ impl TrayService {
         {
             use crate::engine::state::LockRecoveryExt;
             use windows_sys::Win32::UI::WindowsAndMessaging::{
-                DispatchMessageW, GetMessageW, MSG, TranslateMessage,
+                DispatchMessageW, MSG, PM_REMOVE, PeekMessageW, TranslateMessage, WM_QUIT,
             };
             // SAFETY: MSG struct can be zeroed safely
             let mut msg: MSG = unsafe { std::mem::zeroed() };
             let mut last_device_name = String::new();
 
-            // SAFETY: GetMessageW blocks efficiently until a message arrives. `msg` is valid and initialized.
-            while unsafe { GetMessageW(&raw mut msg, std::ptr::null_mut(), 0, 0) } > 0 {
-                // SAFETY: msg was properly populated by GetMessageW.
-                unsafe { TranslateMessage(&raw const msg) };
-                // SAFETY: msg was properly populated by GetMessageW.
-                unsafe { DispatchMessageW(&raw const msg) };
+            loop {
+                // Process all pending messages
+                // SAFETY: msg is valid, hwnd is null, filter min/max are 0, PM_REMOVE removes processed messages
+                while unsafe { PeekMessageW(&raw mut msg, std::ptr::null_mut(), 0, 0, PM_REMOVE) }
+                    > 0
+                {
+                    if msg.message == WM_QUIT {
+                        break;
+                    }
+                    // SAFETY: msg was properly populated by PeekMessageW
+                    unsafe { TranslateMessage(&raw const msg) };
+                    // SAFETY: msg was properly populated by PeekMessageW
+                    unsafe { DispatchMessageW(&raw const msg) };
+                }
 
                 // Update status text when user interacts with tray
                 let device = shared.device_state.read().unwrap_or_log("device_state");
@@ -168,6 +176,12 @@ impl TrayService {
                         _ => {}
                     }
                 }
+
+                if shared.shutdown_requested.load(Ordering::Relaxed) {
+                    break;
+                }
+
+                std::thread::sleep(std::time::Duration::from_millis(50));
             }
         }
 

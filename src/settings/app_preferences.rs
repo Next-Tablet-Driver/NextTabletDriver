@@ -52,7 +52,7 @@ pub fn save_app_preferences(prefs: &AppPreferences) {
             } else if let Err(e) = fs::rename(&tmp, &path) {
                 log::error!(target: "Config", "Failed to rename temp app preferences: {e}");
             } else {
-                log::info!(target: "Config", "Saved app preferences");
+                log::debug!(target: "Config", "Saved app preferences");
             }
         }
         Err(e) => {
@@ -70,7 +70,7 @@ pub fn load_app_preferences() -> AppPreferences {
     match fs::read_to_string(&path) {
         Ok(content) => match serde_json::from_str(&content) {
             Ok(prefs) => {
-                log::info!(target: "Config", "Loaded app preferences");
+                log::debug!(target: "Config", "Loaded app preferences");
                 prefs
             }
             Err(e) => {
