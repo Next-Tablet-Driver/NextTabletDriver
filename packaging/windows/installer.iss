@@ -12,7 +12,7 @@ DefaultGroupName=Next Tablet Driver
 UninstallDisplayIcon={app}\next_tablet_driver.exe
 Compression=lzma2
 SolidCompression=yes
-OutputDir=user_mode_dist
+OutputDir=..\..\user_mode_dist
 
 PrivilegesRequired=admin
 PrivilegesRequiredOverridesAllowed=dialog
@@ -26,7 +26,7 @@ SetupMutex=NextTabletDriverSetupMutex
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
-Source: "target\release\next_tablet_driver.exe"; DestDir: "{app}"; Flags: ignoreversion restartreplace
+Source: "..\..\target\release\next_tablet_driver.exe"; DestDir: "{app}"; Flags: ignoreversion restartreplace
 
 [Icons]
 Name: "{group}\Next Tablet Driver"; Filename: "{app}\next_tablet_driver.exe"

@@ -72,11 +72,9 @@ pub fn render_stats_settings(
                     .changed()
                     && config.speed_stats.enabled
                 {
-                    let app_prefs = crate::settings::app_preferences::load_app_preferences();
                     crate::app::telemetry::capture_event(
                         "filter_enabled",
                         Some(serde_json::json!({"filter_name": "HandSpeed"})),
-                        &app_prefs,
                     );
                 }
             });

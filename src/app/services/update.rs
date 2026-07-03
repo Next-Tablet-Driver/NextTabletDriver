@@ -32,6 +32,13 @@ impl UpdateService {
             Ok(None) => {}
             Err(e) => {
                 log::error!(target: "Update", "Failed to check for updates: {e}");
+                crate::app::telemetry::capture_event(
+                    "update_failed",
+                    Some(serde_json::json!({
+                        "error_message": e.to_string(),
+                        "context": "Update Check"
+                    })),
+                );
             }
         });
     }

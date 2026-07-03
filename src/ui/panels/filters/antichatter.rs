@@ -20,11 +20,9 @@ pub fn render_antichatter_settings(ui: &mut egui::Ui, config: &mut MappingConfig
                     .changed()
                     && config.antichatter.enabled
                 {
-                    let app_prefs = crate::settings::app_preferences::load_app_preferences();
                     crate::app::telemetry::capture_event(
                         "filter_enabled",
                         Some(serde_json::json!({"filter_name": "Antichatter"})),
-                        &app_prefs,
                     );
                 }
             });

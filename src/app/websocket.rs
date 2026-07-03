@@ -133,12 +133,9 @@ pub fn websocket_loop(shared: &Arc<SharedState>) {
                                     next_client_id += 1;
 
                                     // Track connection
-                                    let prefs =
-                                        crate::settings::app_preferences::load_app_preferences();
                                     crate::app::telemetry::capture_event(
                                         "websocket_client_connected",
                                         None,
-                                        &prefs,
                                     );
                                 }
                             }
