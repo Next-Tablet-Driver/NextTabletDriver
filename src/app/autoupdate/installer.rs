@@ -47,7 +47,7 @@ pub fn download_and_install(
         return Err(format!("Download failed: {}", response.status()).into());
     }
 
-    let total_size = response
+    let _total_size = response
         .header("Content-Length")
         .and_then(|v| v.parse::<u64>().ok())
         .unwrap_or(0);
@@ -59,6 +59,9 @@ pub fn download_and_install(
     let mut downloaded: u64 = 0;
     let mut buffer = [0u8; 8192];
     let mut reader = response.into_reader();
+
+    let mut last_update_time = std::time::Instant::now();
+    let mut last_downloaded: u64 = 0;
 
     {
         let mut file = fs::File::create(&temp_path)?;
@@ -72,11 +75,26 @@ pub fn download_and_install(
             }
             downloaded += bytes_read as u64;
 
-            if total_size > 0 {
-                let progress = downloaded as f32 / total_size as f32;
-                let _ = status_sender.send(UpdateStatus::Downloading(progress));
+            let now = std::time::Instant::now();
+            let elapsed_ms = now.duration_since(last_update_time).as_millis();
+            if elapsed_ms >= 250 {
+                let elapsed_secs = elapsed_ms as f64 / 1000.0;
+                let speed = ((downloaded - last_downloaded) as f64 / elapsed_secs) as u64;
+                last_update_time = now;
+                last_downloaded = downloaded;
+
+                let _ = status_sender.send(UpdateStatus::Downloading(
+                    crate::app::autoupdate::models::DownloadProgress { downloaded, speed },
+                ));
             }
         }
+
+        let _ = status_sender.send(UpdateStatus::Downloading(
+            crate::app::autoupdate::models::DownloadProgress {
+                downloaded,
+                speed: 0,
+            },
+        ));
     }
 
     // Verify SHA256 mandatory - read the file back from disk to prevent TOCTOU attacks
@@ -148,7 +166,16 @@ pub fn download_and_install(
     let status = Command::new(&launch_path).spawn();
 
     #[cfg(not(target_os = "linux"))]
-    let status = Command::new(&temp_path).spawn();
+    let status = Command::new(&temp_path)
+        .args([
+            "/SP-",
+            "/SILENT",
+            "/SUPPRESSMSGBOXES",
+            "/NORESTART",
+            "/CLOSEAPPLICATIONS",
+            "/TASKS=desktopicon",
+        ])
+        .spawn();
 
     match status {
         Ok(_) => {
@@ -163,7 +190,14 @@ pub fn download_and_install(
             let _ = fs::remove_file(&temp_path);
 
             log::error!(target: "Update::Process", "Failed to launch installer: {e}");
-            Err(e.into())
+            crate::app::telemetry::capture_event(
+                "update_failed",
+                Some(serde_json::json!({
+                    "error_message": e.to_string(),
+                    "context": "Launch Installer"
+                })),
+            );
+            Err("Installer launch failed".into())
         }
     }
 }
@@ -171,30 +205,24 @@ pub fn download_and_install(
 /// Finds the appropriate release asset for the current platform.
 fn find_platform_asset(release: &Release) -> Result<&Asset, Box<dyn std::error::Error>> {
     #[cfg(windows)]
-    {
-        release
-            .assets
-            .iter()
-            .find(|a| {
-                std::path::Path::new(&a.name)
-                    .extension()
-                    .is_some_and(|ext| ext.eq_ignore_ascii_case("exe"))
-            })
-            .ok_or_else(|| "No suitable installer (.exe) asset found in release".into())
-    }
+    return release
+        .assets
+        .iter()
+        .find(|a| {
+            std::path::Path::new(&a.name)
+                .extension()
+                .is_some_and(|ext| ext.eq_ignore_ascii_case("exe"))
+        })
+        .ok_or_else(|| "No suitable installer (.exe) asset found in release".into());
 
     #[cfg(target_os = "linux")]
-    {
-        release
-            .assets
-            .iter()
-            .find(|a| a.name.ends_with(".AppImage"))
-            .or_else(|| release.assets.iter().find(|a| a.name.ends_with(".tar.gz")))
-            .ok_or_else(|| "No suitable Linux asset found in release".into())
-    }
+    return release
+        .assets
+        .iter()
+        .find(|a| a.name.ends_with(".AppImage"))
+        .or_else(|| release.assets.iter().find(|a| a.name.ends_with(".tar.gz")))
+        .ok_or_else(|| "No suitable Linux asset found in release".into());
 
     #[cfg(not(any(windows, target_os = "linux")))]
-    {
-        Err("Unsupported platform for auto-update".into())
-    }
+    return Err("Unsupported platform for auto-update".into());
 }

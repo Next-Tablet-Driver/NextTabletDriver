@@ -9,9 +9,12 @@
     <a href="https://github.com/Next-Tablet-Driver/NextTabletDriver/releases">
       <img alt="Releases" src="https://img.shields.io/github/v/release/Next-Tablet-Driver/NextTabletDriver?include_prereleases&label=release">
     </a>
+    <a href="https://github.com/Next-Tablet-Driver/NextTabletDriver/actions/workflows/rust-quality-check.yml">
+      <img alt="CI/CD" src="https://github.com/Next-Tablet-Driver/NextTabletDriver/actions/workflows/rust-quality-check.yml/badge.svg">
+    </a>
     <img alt="Platforms" src="https://img.shields.io/badge/platform-Windows%20%7C%20Linux-blue">
     <img alt="License" src="https://img.shields.io/badge/license-MIT-green">
-    <img alt="Rust" src="https://img.shields.io/badge/rust-1.95%2B-orange">
+    <img alt="Rust" src="https://img.shields.io/badge/rust-1.96.1%2B-orange">
   </p>
 </div>
 
@@ -154,7 +157,8 @@ cargo test
 For packaging changes on Arch Linux, validate with:
 
 ```bash
-makepkg --printsrcinfo
+cd packaging/linux
+makepkg --printsrcinfo > .SRCINFO
 makepkg -si
 ```
 

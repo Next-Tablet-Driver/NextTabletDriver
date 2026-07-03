@@ -206,26 +206,15 @@ fn main() -> eframe::Result {
     let shared = SharedStateFactory::create(config.clone(), is_first_run);
     let app_prefs = next_tablet_driver::settings::app_preferences::load_app_preferences();
 
-    next_tablet_driver::app::telemetry::send_pending_crash_reports(&app_prefs);
+    next_tablet_driver::app::telemetry::TelemetryService::init(
+        app_prefs.telemetry_id.clone(),
+        app_prefs.telemetry_enabled,
+    );
+
+    next_tablet_driver::app::telemetry::send_pending_crash_reports();
     next_tablet_driver::i18n::set_locale(app_prefs.language);
     let total_ram_gb = next_tablet_driver::startup::get_memory_info()
         .map(|b| (b as f64 / 1_073_741_824.0).ceil() as u64);
-    let cpu_cores = std::env::var("NUMBER_OF_PROCESSORS")
-        .ok()
-        .and_then(|s| s.parse::<u32>().ok());
-    next_tablet_driver::app::telemetry::capture_event(
-        "app_started",
-        Some(serde_json::json!({
-            "language": app_prefs.language.display_name().to_string(),
-            "cpu_cores": cpu_cores,
-            "total_ram_gb": total_ram_gb,
-            "driver_mode": format!("{:?}", config.mode),
-            "filter_antichatter_enabled": config.antichatter.enabled,
-            "filter_prediction_enabled": config.antichatter.prediction_enabled,
-            "filter_antichatter_strength": config.antichatter.antichatter_strength,
-        })),
-        &app_prefs,
-    );
     let state_duration = state_start.elapsed();
 
     // 3. Initialize Services and Channels
@@ -260,6 +249,26 @@ fn main() -> eframe::Result {
         services_duration,
         supervisor_duration,
         startup_start.elapsed()
+    );
+
+    let cpu_cores = std::env::var("NUMBER_OF_PROCESSORS")
+        .ok()
+        .and_then(|s| s.parse::<u32>().ok());
+
+    let theme_name = format!("{:?}", app_prefs.theme);
+
+    next_tablet_driver::app::telemetry::capture_event_with_set(
+        "app_started",
+        Some(serde_json::json!({
+            "startup_time_ms": startup_start.elapsed().as_millis(),
+        })),
+        Some(serde_json::json!({
+            "language": app_prefs.language.display_name().to_string(),
+            "cpu_cores": cpu_cores,
+            "total_ram_gb": total_ram_gb,
+            "driver_mode": format!("{:?}", config.mode),
+            "current_theme": theme_name,
+        })),
     );
 
     // 6. Main App Loop
@@ -319,6 +328,21 @@ fn main() -> eframe::Result {
                         log::info!(target: "Tracking", "GPU Renderer: {renderer}");
                         log::info!(target: "Tracking", "GPU Vendor: {vendor}");
                         log::info!(target: "Tracking", "OpenGL Version: {version}");
+
+                        let displays = display_info::DisplayInfo::all().unwrap_or_default();
+                        let max_hz = displays.iter().map(|d| d.frequency).fold(0.0, f32::max);
+
+                        next_tablet_driver::app::telemetry::capture_event_with_set(
+                            "gpu_initialized",
+                            None,
+                            Some(serde_json::json!({
+                                "gpu_renderer": renderer,
+                                "gpu_vendor": vendor,
+                                "opengl_version": version,
+                                "monitors_count": displays.len(),
+                                "max_refresh_rate_hz": max_hz
+                            })),
+                        );
                     }
 
                     Ok(Box::new(TabletMapperApp::new(

@@ -69,14 +69,12 @@ fn manager_thread_iteration(shared_clone: &Arc<SharedState>, sender_clone: &Send
         Err(e) => {
             log::error!(target: "HID", "CRITICAL: Failed to initialise HID API: {e}");
             let error_str = e.to_string();
-            let app_prefs = crate::settings::app_preferences::load_app_preferences();
             crate::app::telemetry::capture_event(
                 "engine_error",
                 Some(serde_json::json!({
                     "error_message": error_str,
                     "context": "HID API Initialization"
                 })),
-                &app_prefs,
             );
             *shared_clone
                 .engine_status
@@ -230,15 +228,18 @@ fn on_device_connected(
     *shared.device_state.write().unwrap_or_reset("device_state") = new_device.clone();
     log::info!(target: "TabletManager", "Tablet metadata populated: {}", new_device.name);
 
-    let app_prefs = crate::settings::app_preferences::load_app_preferences();
-    crate::app::telemetry::capture_event(
+    crate::app::telemetry::capture_event_dedup(
         "tablet_connected",
         Some(serde_json::json!({
             "tablet_model": new_device.name,
             "vendor_id": format!("{:#06X}", new_device.vid),
             "product_id": format!("{:#06X}", new_device.pid),
         })),
-        &app_prefs,
+        Some(serde_json::json!({
+            "tablets_owned": [&new_device.name],
+            "last_tablet_connected": &new_device.name,
+        })),
+        &new_device.name,
     );
 
     let mut is_first = shared.is_first_run.write().unwrap_or_reset("is_first_run");
@@ -439,13 +440,14 @@ fn process_packet(
             stats.hid_read_ms = hr_ms;
             stats.min_hid_read_ms = stats.min_hid_read_ms.min(hr_ms);
             stats.max_hid_read_ms = stats.max_hid_read_ms.max(hr_ms);
-            stats.avg_hid_read_ms += (hr_ms - stats.avg_hid_read_ms) * 0.05;
+            stats.avg_hid_read_ms =
+                (hr_ms - stats.avg_hid_read_ms).mul_add(0.05, stats.avg_hid_read_ms);
 
             let p_ms = parse_duration.as_secs_f32() * 1000.0;
             stats.parser_ms = p_ms;
             stats.min_parser_ms = stats.min_parser_ms.min(p_ms);
             stats.max_parser_ms = stats.max_parser_ms.max(p_ms);
-            stats.avg_parser_ms += (p_ms - stats.avg_parser_ms) * 0.05;
+            stats.avg_parser_ms = (p_ms - stats.avg_parser_ms).mul_add(0.05, stats.avg_parser_ms);
         }
 
         // Only send to the UI channel when the window is visible.

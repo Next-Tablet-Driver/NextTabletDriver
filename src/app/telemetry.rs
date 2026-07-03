@@ -1,77 +1,262 @@
-use serde_json::json;
+use crossbeam_channel::{Receiver, Sender, bounded};
+use serde_json::{Value, json};
+use std::collections::HashSet;
+use std::sync::OnceLock;
 use std::thread;
 use std::time::Duration;
 
-// Use an environment variable at compile time to avoid hardcoding the key in open-source code.
 const POSTHOG_API_KEY: Option<&str> = option_env!("POSTHOG_API_KEY");
-const POSTHOG_URL: &str = "https://eu.i.posthog.com/capture/";
+const POSTHOG_BATCH_URL: &str = "https://eu.i.posthog.com/batch/";
 
-/// Sends an anonymous telemetry event to `PostHog` in the background.
-///
-/// If telemetry is disabled, this function does nothing.
-pub fn capture_event(
+static TELEMETRY_SENDER: OnceLock<Sender<TelemetryMessage>> = OnceLock::new();
+
+#[derive(Debug)]
+enum TelemetryMessage {
+    Event {
+        event_name: String,
+        properties: Option<Value>,
+        set_properties: Option<Value>,
+        dedup_key: Option<String>,
+    },
+}
+
+pub struct TelemetryService;
+
+impl TelemetryService {
+    /// Initializes the global telemetry worker. Should be called once at startup.
+    pub fn init(telemetry_id: String, enabled: bool) {
+        if !enabled {
+            return;
+        }
+
+        let Some(api_key) = POSTHOG_API_KEY else {
+            return; // No API key, no telemetry
+        };
+
+        // Create a bounded channel with a large enough capacity to handle bursts,
+        // but not so large that it consumes too much memory.
+        let (sender, receiver) = bounded(1000);
+
+        if TELEMETRY_SENDER.set(sender).is_ok() {
+            let worker = TelemetryWorker {
+                receiver,
+                api_key: api_key.to_string(),
+                distinct_id: telemetry_id,
+                batch_queue: Vec::new(),
+                sent_dedup_keys: HashSet::new(),
+            };
+
+            if let Err(e) = thread::Builder::new()
+                .name("TelemetryWorker".into())
+                .spawn(move || worker.run())
+            {
+                log::error!(target: "Telemetry", "Failed to spawn TelemetryWorker: {e}");
+            }
+        }
+    }
+}
+
+/// Helper function to send an event to the background worker.
+pub fn capture_event(event_name: &str, properties: Option<Value>) {
+    send_message(TelemetryMessage::Event {
+        event_name: event_name.to_string(),
+        properties,
+        set_properties: None,
+        dedup_key: None,
+    });
+}
+
+/// Capture an event and update user profile ($set) simultaneously.
+pub fn capture_event_with_set(
     event_name: &str,
-    properties: Option<serde_json::Value>,
-    app_prefs: &crate::settings::app_preferences::AppPreferences,
+    properties: Option<Value>,
+    set_properties: Option<Value>,
 ) {
-    let Some(api_key) = POSTHOG_API_KEY else {
-        return; // No telemetry without an API key
-    };
+    send_message(TelemetryMessage::Event {
+        event_name: event_name.to_string(),
+        properties,
+        set_properties,
+        dedup_key: None,
+    });
+}
 
-    if !app_prefs.telemetry_enabled {
-        return;
+/// Capture an event but deduplicate it for the current session using the given key.
+/// Helpful to avoid spamming `tablet_connected` 20 times if there is a USB bug.
+pub fn capture_event_dedup(
+    event_name: &str,
+    properties: Option<Value>,
+    set_properties: Option<Value>,
+    dedup_key: &str,
+) {
+    send_message(TelemetryMessage::Event {
+        event_name: event_name.to_string(),
+        properties,
+        set_properties,
+        dedup_key: Some(dedup_key.to_string()),
+    });
+}
+
+fn send_message(msg: TelemetryMessage) {
+    if let Some(sender) = TELEMETRY_SENDER.get() {
+        // try_send is completely non-blocking. If the queue is full (1000 events backlogged),
+        // we just drop the event to prioritize driver performance over telemetry.
+        if let Err(e) = sender.try_send(msg) {
+            log::trace!(target: "Telemetry", "Dropped telemetry event: {e}");
+        }
+    }
+}
+
+struct TelemetryWorker {
+    receiver: Receiver<TelemetryMessage>,
+    api_key: String,
+    distinct_id: String,
+    batch_queue: Vec<Value>,
+    sent_dedup_keys: HashSet<String>,
+}
+
+impl TelemetryWorker {
+    fn run(mut self) {
+        let batch_size_limit = 50;
+        let batch_timeout = Duration::from_secs(5);
+
+        // Use a single ureq agent to reuse connections
+        let agent = ureq::builder().timeout(Duration::from_secs(10)).build();
+
+        loop {
+            match self.receiver.recv_timeout(batch_timeout) {
+                Ok(TelemetryMessage::Event {
+                    event_name,
+                    properties,
+                    set_properties,
+                    dedup_key,
+                }) => {
+                    if let Some(ref key) = dedup_key {
+                        let full_key = format!("{event_name}_{key}");
+                        if self.sent_dedup_keys.contains(&full_key) {
+                            continue; // Deduplicated, ignore this event
+                        }
+                        self.sent_dedup_keys.insert(full_key);
+                    }
+
+                    let payload = self.build_event_payload(
+                        &event_name,
+                        properties.as_ref(),
+                        set_properties.as_ref(),
+                    );
+                    self.batch_queue.push(payload);
+
+                    if self.batch_queue.len() >= batch_size_limit {
+                        self.flush_batch(&agent);
+                    }
+                }
+                Err(crossbeam_channel::RecvTimeoutError::Timeout) => {
+                    if !self.batch_queue.is_empty() {
+                        self.flush_batch(&agent);
+                    }
+                }
+                Err(crossbeam_channel::RecvTimeoutError::Disconnected) => {
+                    self.flush_batch(&agent);
+                    break;
+                }
+            }
+        }
     }
 
-    let distinct_id = app_prefs.telemetry_id.clone();
-    let event = event_name.to_string();
-    let mut props = properties.unwrap_or_else(|| json!({}));
-
-    // Inject global properties
-    if let Some(obj) = props.as_object_mut() {
-        obj.insert("os".to_string(), json!(std::env::consts::OS));
-        obj.insert("arch".to_string(), json!(std::env::consts::ARCH));
-        obj.insert("version".to_string(), json!(crate::VERSION));
-    }
-
-    let payload = json!({
-        "api_key": api_key,
-        "event": event,
-        "properties": {
-            "distinct_id": distinct_id,
+    fn build_event_payload(
+        &self,
+        event_name: &str,
+        custom_props: Option<&Value>,
+        set_props: Option<&Value>,
+    ) -> Value {
+        let mut props = json!({
+            "distinct_id": self.distinct_id,
+            "os": std::env::consts::OS,
+            "arch": std::env::consts::ARCH,
+            "version": crate::VERSION,
+            "$lib": "ureq_batch",
+            "$lib_version": "2.12.1",
             "$set_once": {
                 "initial_os": std::env::consts::OS,
                 "initial_arch": std::env::consts::ARCH,
             },
-            "$lib": "ureq",
-            "$lib_version": "2.12.1",
-        },
-    });
+        });
 
-    // Merge custom properties into the payload's properties object
-    let mut final_payload = payload;
-    if let Some(payload_props) = final_payload
-        .get_mut("properties")
-        .and_then(|p| p.as_object_mut())
-        && let Some(custom_props) = props.as_object()
-    {
-        for (k, v) in custom_props {
-            payload_props.insert(k.clone(), v.clone());
+        if let Some(payload_props) = props.as_object_mut() {
+            if let Some(custom_obj) = custom_props.and_then(|c| c.as_object()) {
+                for (k, v) in custom_obj {
+                    payload_props.insert(k.clone(), v.clone());
+                }
+            }
+            if let Some(set_p) = set_props {
+                payload_props.insert("$set".to_string(), set_p.clone());
+            }
         }
+
+        json!({
+            "event": event_name,
+            "properties": props,
+            "timestamp": chrono::Utc::now().to_rfc3339(),
+        })
     }
 
-    // Fire and forget on a separate thread to not block the UI
-    thread::spawn(move || {
-        let agent = ureq::builder().timeout(Duration::from_secs(5)).build();
+    fn flush_batch(&mut self, agent: &ureq::Agent) {
+        if self.batch_queue.is_empty() {
+            return;
+        }
+
+        let batch_payload = json!({
+            "api_key": self.api_key,
+            "batch": self.batch_queue,
+        });
 
         let res = agent
-            .post(POSTHOG_URL)
+            .post(POSTHOG_BATCH_URL)
             .set("Content-Type", "application/json")
-            .send_json(final_payload);
+            .send_json(&batch_payload);
 
-        if let Err(e) = res {
-            log::trace!(target: "Telemetry", "Failed to send telemetry event: {e}");
+        match res {
+            Ok(_) => {
+                log::trace!(target: "Telemetry", "Successfully sent batch of {} events", self.batch_queue.len());
+                self.batch_queue.clear();
+            }
+            Err(e) => {
+                log::trace!(target: "Telemetry", "Failed to send telemetry batch: {e}");
+                // Simple offline resilience: if the batch fails, we keep the queue.
+                // To avoid memory leak if offline forever, cap the queue at 500.
+                if self.batch_queue.len() > 500 {
+                    // Drain the oldest items to make room
+                    self.batch_queue.drain(0..(self.batch_queue.len() - 500));
+                }
+            }
         }
-    });
+    }
+}
+
+pub fn setup_panic_hook() {
+    let default_hook = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |panic_info| {
+        let payload = panic_info.to_string();
+        let anonymized = anonymize_path(&payload);
+
+        let crash_file = crate::settings::get_settings_dir().join("crash_report.json");
+        if let Ok(json) = serde_json::to_string(&json!({ "panic_message": anonymized })) {
+            let _ = std::fs::write(crash_file, json);
+        }
+
+        default_hook(panic_info);
+    }));
+}
+
+pub fn send_pending_crash_reports() {
+    let crash_file = crate::settings::get_settings_dir().join("crash_report.json");
+    if crash_file.exists() {
+        if let Ok(content) = std::fs::read_to_string(&crash_file)
+            && let Ok(json) = serde_json::from_str::<Value>(&content)
+        {
+            capture_event("app_panicked", Some(json));
+        }
+        let _ = std::fs::remove_file(crash_file);
+    }
 }
 
 fn anonymize_path(message: &str) -> String {
@@ -117,33 +302,6 @@ fn anonymize_path_impl(
     }
 
     cleaned
-}
-
-pub fn setup_panic_hook() {
-    let default_hook = std::panic::take_hook();
-    std::panic::set_hook(Box::new(move |panic_info| {
-        let payload = panic_info.to_string();
-        let anonymized = anonymize_path(&payload);
-
-        let crash_file = crate::settings::get_settings_dir().join("crash_report.json");
-        if let Ok(json) = serde_json::to_string(&json!({ "panic_message": anonymized })) {
-            let _ = std::fs::write(crash_file, json);
-        }
-
-        default_hook(panic_info);
-    }));
-}
-
-pub fn send_pending_crash_reports(app_prefs: &crate::settings::app_preferences::AppPreferences) {
-    let crash_file = crate::settings::get_settings_dir().join("crash_report.json");
-    if crash_file.exists() {
-        if let Ok(content) = std::fs::read_to_string(&crash_file)
-            && let Ok(json) = serde_json::from_str::<serde_json::Value>(&content)
-        {
-            capture_event("app_panicked", Some(json), app_prefs);
-        }
-        let _ = std::fs::remove_file(crash_file);
-    }
 }
 
 #[cfg(test)]

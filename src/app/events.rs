@@ -47,11 +47,16 @@ impl TabletMapperApp {
         }
 
         // Check for updates
-        if let Ok(status) = self.update_receiver.try_recv() {
+        let mut got_update = false;
+        while let Ok(status) = self.update_receiver.try_recv() {
             if let crate::app::autoupdate::UpdateStatus::Available(release) = &status {
                 log::info!(target: "Update", "Update available: {}", release.tag_name);
             }
             self.update_status = status;
+            got_update = true;
+        }
+        if got_update {
+            ctx.request_repaint();
         }
     }
 

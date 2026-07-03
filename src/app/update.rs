@@ -92,7 +92,6 @@ impl TabletMapperApp {
                     crate::app::telemetry::capture_event(
                         "theme_downloaded",
                         Some(serde_json::json!({ "theme_name": safe_name })),
-                        &self.app_prefs,
                     );
                 }
                 Err(e) => {

@@ -78,8 +78,8 @@ impl Filter for DevocubAntichatter {
             let vx = x - px;
             let vy = y - py;
 
-            out_x += vx * conf.prediction_strength * conf.prediction_sharpness;
-            out_y += vy * conf.prediction_strength * conf.prediction_sharpness;
+            out_x = (vx * conf.prediction_strength).mul_add(conf.prediction_sharpness, out_x);
+            out_y = (vy * conf.prediction_strength).mul_add(conf.prediction_sharpness, out_y);
         }
 
         self.last_x = out_x;

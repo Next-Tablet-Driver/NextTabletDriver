@@ -220,6 +220,10 @@ impl TabletMapperApp {
                         profile_name: self.profile.name.clone(),
                         profile_path: self.profile.path.clone(),
                     });
+                    crate::app::telemetry::capture_event(
+                        "profile_saved_as",
+                        Some(serde_json::json!({ "profile_name": self.profile.name })),
+                    );
                     self.push_toast(t!("toast.settings_saved"), ToastLevel::Info);
                 }
                 Err(e) => {
@@ -295,7 +299,7 @@ impl TabletMapperApp {
                         "OTD settings imported successfully".to_string(),
                         ToastLevel::Info,
                     );
-                    crate::app::telemetry::capture_event("otd_imported", None, &self.app_prefs);
+                    crate::app::telemetry::capture_event("otd_imported", None);
                 }
                 Err(e) => self.push_toast(
                     format!("Failed to import OTD settings: {e}"),
@@ -364,7 +368,9 @@ impl TabletMapperApp {
                     let _ = sender.send(UpdateStatus::Error(e.to_string()));
                 }
             });
-            self.update_status = UpdateStatus::Downloading(0.0);
+            self.update_status = UpdateStatus::Downloading(
+                crate::app::autoupdate::models::DownloadProgress::default(),
+            );
         }
     }
 

@@ -16,6 +16,12 @@ pub struct Asset {
     pub browser_download_url: String,
 }
 
+#[derive(Clone, Default)]
+pub struct DownloadProgress {
+    pub downloaded: u64,
+    pub speed: u64,
+}
+
 /// Represents the current phase/status of the update process.
 /// This enum is passed via channels from the update thread to the main UI thread.
 #[derive(Clone)]
@@ -23,7 +29,7 @@ pub enum UpdateStatus {
     Idle,
     Checking,
     Available(Release),
-    Downloading(f32),
+    Downloading(DownloadProgress),
     ReadyToInstall(PathBuf),
     Error(String),
 }

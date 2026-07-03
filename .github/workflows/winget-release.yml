@@ -1,0 +1,17 @@
+name: Publish to WinGet
+
+on:
+    release:
+        types: [released]
+
+jobs:
+    winget-release:
+        name: Publish to WinGet
+        runs-on: windows-latest
+
+        steps:
+            - uses: vedantmgoyal9/winget-releaser@v2
+              with:
+                  identifier: iSweat.NextTabletDriver
+                  installers-regex: 'Next_Tablet_Driver_Setup_x64\.exe$'
+                  token: ${{ secrets.WINGET_TOKEN }}
