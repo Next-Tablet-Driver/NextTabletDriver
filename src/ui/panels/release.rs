@@ -30,7 +30,7 @@ const RELEASES: &[ReleaseEntry] = &[
         improvements: &[
             "Improve: Decoupled UI from SharedState using the Snapshot pattern for better state management",
             "Improve: Strict separation of domain logic from the presentation layer",
-            "Improve: Migration to Rust 1.95 toolchain for improved stability",
+            "Improve: Migration to Rust 1.96.1 toolchain for improved stability",
             "Improve: Pipeline performance optimizations and Filters UI refinements",
             "Improve: General codebase health through formatting and syntax standardisation",
         ],

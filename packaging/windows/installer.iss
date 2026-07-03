@@ -1,11 +1,28 @@
+#ifndef Arch
+#define Arch "x64"
+#endif
+
+#ifndef BuildDir
+#define BuildDir "..\..\target\release"
+#endif
+
+#ifndef OutputFile
+#define OutputFile "Next_Tablet_Driver_Setup_" + Arch
+#endif
+
 [Setup]
 AppName=Next Tablet Driver
-AppVersion=1.26.1006.01
+AppVersion=1.26.2006.01
 AppPublisher=iSweat
-OutputBaseFilename=Next_Tablet_Driver_Setup_x64
+OutputBaseFilename={#OutputFile}
 
+#if Arch == "arm64"
+ArchitecturesAllowed=arm64
+ArchitecturesInstallIn64BitMode=arm64
+#else
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
+#endif
 
 DefaultDirName={commonpf}\NextTabletDriver
 DefaultGroupName=Next Tablet Driver
@@ -26,7 +43,7 @@ SetupMutex=NextTabletDriverSetupMutex
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
-Source: "..\..\target\release\next_tablet_driver.exe"; DestDir: "{app}"; Flags: ignoreversion restartreplace
+Source: "{#BuildDir}\next_tablet_driver.exe"; DestDir: "{app}"; Flags: ignoreversion restartreplace
 
 [Icons]
 Name: "{group}\Next Tablet Driver"; Filename: "{app}\next_tablet_driver.exe"
