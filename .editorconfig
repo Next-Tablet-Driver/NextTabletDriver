@@ -13,3 +13,18 @@ indent_size = 4
 [*.toml]
 indent_style = space
 indent_size = 2
+
+[*.json]
+indent_style = space
+indent_size = 2
+
+[*.{yml,yaml}]
+indent_style = space
+indent_size = 2
+
+[*.{sh,bash,bat,ps1}]
+indent_style = space
+indent_size = 4
+
+[*.md]
+trim_trailing_whitespace = false
