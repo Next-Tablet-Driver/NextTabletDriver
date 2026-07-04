@@ -95,7 +95,7 @@ More details are available in [`scripts/README-linux.md`](scripts/README-linux.m
 
 ### Requirements
 
-- Rust 1.95 or newer
+- Rust 1.96.1 or newer
 - `pkgconf`
 - `hidapi`
 - Linux only: `gtk3`, `libxkbcommon`, `libglvnd`, `wayland`, and `uinput` support

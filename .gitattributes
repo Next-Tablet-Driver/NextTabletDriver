@@ -1,0 +1,36 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+
+# Force LF for certain files that must be consistent across OS
+*.sh text eol=lf
+*.bash text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.toml text eol=lf
+*.json text eol=lf
+*.rs text eol=lf
+Makefile text eol=lf
+
+# Force CRLF for Windows specific scripts
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+
+# ----------------------------------------------------------------------
+# GitHub Linguist settings for repository statistics
+# ----------------------------------------------------------------------
+
+# Mark dependencies and lock files as generated so they don't count towards repo stats
+Cargo.lock linguist-generated=true
+
+# Mark tablet configurations as generated/data to not skew language stats towards JSON
+tablets/** linguist-generated=true
+
+# Ignore IDE / editor configs
+.editorconfig linguist-generated=true
+
+# Mark documentation files (doesn't count towards code percentage)
+docs/** linguist-documentation=true
+*.md linguist-documentation=true
+
+# Mark resources as vendored/generated
+resources/** linguist-vendored=true

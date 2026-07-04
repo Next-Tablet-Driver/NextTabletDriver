@@ -1,1 +1,2 @@
 excessive-nesting-threshold = 9999
+# excessive-nesting-threshold = 4

@@ -1,0 +1,62 @@
+{
+  "editor.formatOnSave": true,
+  "editor.rulers": [80, 100],
+
+  "[rust]": {
+    "editor.defaultFormatter": "rust-lang.rust-analyzer",
+    "editor.semanticHighlighting.enabled": true
+  },
+  "rust-analyzer.check.command": "clippy",
+  "rust-analyzer.cargo.allFeatures": true,
+  "rust-analyzer.showUnlinkedFileNotification": false,
+  "rust-analyzer.check.extraArgs": [
+    "--",
+    "-D", "clippy::unwrap_used",
+    "-D", "clippy::expect_used",
+    "-D", "clippy::panic",
+    "-D", "clippy::indexing_slicing"
+  ],
+
+  "[json]": {
+    "editor.defaultFormatter": "vscode.json-language-features",
+    "editor.tabSize": 2
+  },
+  "[toml]": {
+    "editor.defaultFormatter": "tamasfe.even-better-toml",
+    "editor.tabSize": 2
+  },
+
+  // Markdown validation rules
+  "markdown.validate.enabled": false,
+  "[markdown]": {
+    "editor.formatOnSave": false,
+    "editor.wordWrap": "on",
+    "editor.quickSuggestions": {
+      "comments": "off",
+      "strings": "off",
+      "other": "off"
+    }
+  },
+
+  // Linter and spellcheck exceptions
+  "markdownlint.config": {
+    "default": true,
+    "MD009": false,
+    "MD013": false,
+    "MD024": false,
+    "MD033": false,
+    "MD041": false
+  },
+  "cSpell.ignorePaths": [
+    "**/*.md",
+    "tablets/**/*.json"
+  ],
+
+  // Exclude target folder from explorer and search
+  "files.exclude": {
+    "**/target": true
+  },
+  "search.exclude": {
+    "**/target": true
+  }
+}

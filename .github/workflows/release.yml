@@ -16,7 +16,7 @@ permissions:
 
 jobs:
     build-windows:
-        name: Build Windows EXE
+        name: Build Windows EXE (x64 & ARM64)
         runs-on: windows-latest
 
         steps:
