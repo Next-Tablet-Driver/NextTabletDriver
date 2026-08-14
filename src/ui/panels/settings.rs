@@ -177,6 +177,14 @@ fn render_theme_selector(app: &mut TabletMapperApp, ui: &mut egui::Ui) {
     if prefs.theme != old_theme {
         crate::ui::theme::apply_theme(ui.ctx(), &prefs.theme);
         crate::settings::app_preferences::save_app_preferences(prefs);
+        crate::app::telemetry::capture_event_with_set(
+            "theme_changed",
+            Some(serde_json::json!({
+                "previous_theme": format!("{old_theme:?}"),
+                "new_theme": format!("{:?}", prefs.theme),
+            })),
+            Some(serde_json::json!({ "current_theme": format!("{:?}", prefs.theme) })),
+        );
     }
 }
 
@@ -251,6 +259,16 @@ fn render_language_settings(app: &mut TabletMapperApp, ui: &mut egui::Ui) {
                     app.app_prefs.language = new_locale;
                     crate::i18n::set_locale(new_locale);
                     crate::settings::app_preferences::save_app_preferences(&app.app_prefs);
+                    crate::app::telemetry::capture_event_with_set(
+                        "language_changed",
+                        Some(serde_json::json!({
+                            "previous_language": current_locale.display_name().to_string(),
+                            "new_language": new_locale.display_name().to_string(),
+                        })),
+                        Some(serde_json::json!({
+                            "language": new_locale.display_name().to_string(),
+                        })),
+                    );
                     app.push_toast(
                         t!(
                             "toast.language_changed",

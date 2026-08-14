@@ -13,10 +13,15 @@ use next_tablet_driver::app::services::{
 };
 use next_tablet_driver::logger;
 use std::sync::Arc;
-use std::sync::atomic::Ordering;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 #[cfg(windows)]
 use windows_sys::Win32::System::LibraryLoader::{GetModuleHandleA, GetProcAddress};
+
+/// Ensures GPU renderer/vendor/version info is only logged and tracked once per
+/// process, even though the main loop re-runs `eframe::run_native` (and its
+/// startup closure) every time the window is restored from the system tray.
+static GPU_INFO_REPORTED: AtomicBool = AtomicBool::new(false);
 
 /// Adjusts the Windows system timer resolution to minimize input latency.
 ///
@@ -277,6 +282,7 @@ fn main() -> eframe::Result {
     loop {
         if shared.shutdown_requested.load(Ordering::Relaxed) {
             log::info!(target: "App", "Shutdown requested, exiting main loop.");
+            next_tablet_driver::app::telemetry::capture_app_closed(&shared);
             break Ok(());
         }
 
@@ -316,7 +322,12 @@ fn main() -> eframe::Result {
                 Box::new(move |cc| {
                     cc.egui_ctx.send_viewport_cmd(egui::ViewportCommand::Focus);
 
-                    if let Some(gl) = &cc.gl {
+                    // The outer loop re-invokes `eframe::run_native` (and thus this closure)
+                    // every time the window is restored from the tray, so GPU info must only
+                    // be logged/tracked once per process to avoid duplicate logs and events.
+                    if let Some(gl) = &cc.gl
+                        && !GPU_INFO_REPORTED.swap(true, Ordering::Relaxed)
+                    {
                         use eframe::glow::HasContext;
                         // SAFETY: Querying the renderer parameter string from a valid active glow OpenGL context is safe.
                         let renderer = unsafe { gl.get_parameter_string(eframe::glow::RENDERER) };

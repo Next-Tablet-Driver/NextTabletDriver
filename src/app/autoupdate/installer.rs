@@ -180,6 +180,15 @@ pub fn download_and_install(
     match status {
         Ok(_) => {
             log::info!(target: "Update::Process", "Installer launched, exiting...");
+            crate::app::telemetry::capture_event(
+                "update_installed",
+                Some(serde_json::json!({ "new_version": release.tag_name })),
+            );
+            // This is a hard process exit: nothing else runs afterwards, so the
+            // telemetry worker must be given a chance to flush before we terminate.
+            crate::app::telemetry::TelemetryService::shutdown(std::time::Duration::from_millis(
+                1500,
+            ));
             #[allow(clippy::exit)]
             std::process::exit(0);
         }

@@ -70,11 +70,13 @@ pub fn render_stats_settings(
                         t!("filters.stats.enable_server"),
                     )
                     .changed()
-                    && config.speed_stats.enabled
                 {
                     crate::app::telemetry::capture_event(
-                        "filter_enabled",
-                        Some(serde_json::json!({"filter_name": "HandSpeed"})),
+                        "filter_toggled",
+                        Some(serde_json::json!({
+                            "filter_name": "HandSpeed",
+                            "enabled": config.speed_stats.enabled,
+                        })),
                     );
                 }
             });
