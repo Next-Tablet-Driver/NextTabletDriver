@@ -3,7 +3,7 @@
 //! This module contains the implementation of the `eframe::App` trait for
 //! `TabletMapperApp`.
 
-use crate::app::state::{TabletMapperApp, UiSnapshot};
+use crate::app::state::{ReleaseNotesStatus, TabletMapperApp, UiSnapshot};
 use crate::engine::state::LockRecoveryExt;
 use eframe::egui;
 use std::sync::atomic::Ordering;
@@ -39,6 +39,7 @@ impl eframe::App for TabletMapperApp {
         // Normal rendering path
 
         self.check_theme_download(ctx);
+        self.check_release_notes();
 
         // Capture snapshot for the entire frame
         let snapshot = UiSnapshot::capture(&self.shared);
@@ -102,6 +103,36 @@ impl TabletMapperApp {
                     );
                 }
             }
+        }
+    }
+
+    fn check_release_notes(&mut self) {
+        let got_result = if let Ok(mut guard) = self.release_notes.pending.try_lock()
+            && guard.is_some()
+        {
+            guard.take()
+        } else {
+            None
+        };
+
+        if let Some(outcome) = got_result {
+            self.release_notes.status = match outcome {
+                crate::app::release_notes::ReleaseNotesOutcome::Fresh(releases) => {
+                    ReleaseNotesStatus::Loaded {
+                        releases,
+                        from_cache: false,
+                    }
+                }
+                crate::app::release_notes::ReleaseNotesOutcome::Cached(releases) => {
+                    ReleaseNotesStatus::Loaded {
+                        releases,
+                        from_cache: true,
+                    }
+                }
+                crate::app::release_notes::ReleaseNotesOutcome::Unavailable => {
+                    ReleaseNotesStatus::Unavailable
+                }
+            };
         }
     }
 

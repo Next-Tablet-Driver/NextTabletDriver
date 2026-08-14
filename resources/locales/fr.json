@@ -120,8 +120,6 @@
   "console.col.group": "Groupe",
   "console.col.message": "Message",
 
-  "release.title": "Historique des versions",
-
   "dialog.unsaved.title": "Modifications non enregistrées",
   "dialog.unsaved.message": "Êtes-vous sûr de vouloir fermer l'application ?",
   "dialog.unsaved.detail": "Le profil actuel contient des modifications non enregistrées.",
@@ -192,5 +190,11 @@
   "performance.pen_status": "État actuel du stylet : {status}",
   "performance.connected_yes": "Connecté : Oui",
   "performance.connected_no": "Connecté : Non",
-  "performance.live_capture": "Capture de paquets en direct (Temps réel)"
+  "performance.live_capture": "Capture de paquets en direct (Temps réel)",
+
+  "release.title": "Historique des versions",
+  "release.loading": "Chargement des notes de version...",
+  "release.cached_notice": "Affichage des notes de version en cache (hors ligne).",
+  "release.unavailable": "Vérifiez votre connexion Internet.",
+  "release.watch_video": "Voir la vidéo"
 }

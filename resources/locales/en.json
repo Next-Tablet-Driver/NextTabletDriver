@@ -121,8 +121,6 @@
   "console.col.group": "Group",
   "console.col.message": "Message",
 
-  "release.title": "Release History",
-
   "dialog.unsaved.title": "Unsaved Changes",
   "dialog.unsaved.message": "Are you sure you want to close the application?",
   "dialog.unsaved.detail": "The current profile has unsaved changes.",
@@ -195,5 +193,11 @@
   "performance.pen_status": "Current Pen Status: {status}",
   "performance.connected_yes": "Connected: Yes",
   "performance.connected_no": "Connected: No",
-  "performance.live_capture": "Live Packet Capture (Real-Time)"
+  "performance.live_capture": "Live Packet Capture (Real-Time)",
+
+  "release.title": "Release History",
+  "release.loading": "Loading release notes...",
+  "release.cached_notice": "Showing cached release notes (offline).",
+  "release.unavailable": "Check your Internet connection.",
+  "release.watch_video": "Watch Video"
 }

@@ -72,6 +72,29 @@ pub struct ThemeStoreState {
     pub downloading_name: Option<String>,
 }
 
+/// Outcome of the last release notes fetch, driving what the Release tab renders.
+pub enum ReleaseNotesStatus {
+    /// No fetch has been requested yet.
+    Idle,
+    /// A background fetch is currently in flight.
+    Loading,
+    /// Releases are available, either fresh from the network or from the local cache.
+    Loaded {
+        releases: Vec<crate::app::autoupdate::Release>,
+        from_cache: bool,
+    },
+    /// The fetch failed and no local cache exists.
+    Unavailable,
+}
+
+/// State for the dynamically-fetched Release Notes tab.
+pub struct ReleaseNotesState {
+    /// Current fetch/render status.
+    pub status: ReleaseNotesStatus,
+    /// Result of the last background fetch, picked up on the next frame.
+    pub pending: std::sync::Arc<std::sync::Mutex<Option<crate::app::release_notes::ReleaseNotesOutcome>>>,
+}
+
 /// The core application state structure used by the `eframe` (egui) integration.
 #[allow(clippy::struct_excessive_bools)]
 pub struct TabletMapperApp {
@@ -88,6 +111,8 @@ pub struct TabletMapperApp {
     pub profile: ProfileState,
     /// The currently selected app tab/view in the UI panel.
     pub active_tab: AppTab,
+    /// The active tab as of the previous frame, used to detect tab-switch edges.
+    pub previous_tab: AppTab,
 
     /// Channel receiver for tablet input packets streamed from the driver thread.
     pub tablet_receiver: Receiver<TabletData>,
@@ -122,6 +147,9 @@ pub struct TabletMapperApp {
 
     /// State for the online theme store and background theme downloads.
     pub theme_store: ThemeStoreState,
+
+    /// State for the dynamically-fetched Release Notes tab.
+    pub release_notes: ReleaseNotesState,
 
     /// Toggle to render the close confirmation dialog modal.
     pub show_close_confirm: bool,
@@ -454,6 +482,24 @@ impl TabletMapperApp {
                 *guard = Some(result);
             }
             // Request UI repaint immediately after download completes
+            ctx_clone.request_repaint();
+        });
+    }
+
+    /// Kicks off a background fetch of the release notes, unless one is already
+    /// in flight. Called once when the user switches into the Release tab.
+    pub fn request_release_notes_fetch(&mut self, ctx: &eframe::egui::Context) {
+        if matches!(self.release_notes.status, ReleaseNotesStatus::Loading) {
+            return;
+        }
+        self.release_notes.status = ReleaseNotesStatus::Loading;
+        let pending = std::sync::Arc::clone(&self.release_notes.pending);
+        let ctx_clone = ctx.clone();
+        std::thread::spawn(move || {
+            let outcome = crate::app::release_notes::get_releases();
+            if let Ok(mut guard) = pending.lock() {
+                *guard = Some(outcome);
+            }
             ctx_clone.request_repaint();
         });
     }

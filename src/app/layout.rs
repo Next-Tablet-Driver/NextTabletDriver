@@ -15,6 +15,11 @@ impl TabletMapperApp {
         config: &mut crate::core::config::models::MappingConfig,
         snapshot: &UiSnapshot,
     ) {
+        if self.active_tab == AppTab::Release && self.previous_tab != AppTab::Release {
+            self.request_release_notes_fetch(ctx);
+        }
+        self.previous_tab = self.active_tab;
+
         let (min_x, min_y, max_x, max_y) = self.calculate_display_bounds();
 
         crate::ui::components::menu_bar::render_menu_bar(self, ctx, snapshot);

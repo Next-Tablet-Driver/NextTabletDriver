@@ -9,7 +9,8 @@ use std::time::Instant;
 
 use crate::app::autoupdate::UpdateStatus;
 use crate::app::state::{
-    AppTab, ConsoleState, Metrics, ProfileState, TabletMapperApp, ThemeStoreState, ToastLevel,
+    AppTab, ConsoleState, Metrics, ProfileState, ReleaseNotesState, ReleaseNotesStatus,
+    TabletMapperApp, ThemeStoreState, ToastLevel,
 };
 use crate::engine::state::SharedState;
 use crate::settings::load_session_meta;
@@ -86,6 +87,7 @@ impl TabletMapperApp {
                 last_saved: initial_config,
             },
             active_tab: AppTab::Output,
+            previous_tab: AppTab::Output,
             tablet_receiver,
             update_receiver,
             update_sender,
@@ -117,6 +119,10 @@ impl TabletMapperApp {
                 filter_mode: None,
                 download_result: std::sync::Arc::new(std::sync::Mutex::new(None)),
                 downloading_name: None,
+            },
+            release_notes: ReleaseNotesState {
+                status: ReleaseNotesStatus::Idle,
+                pending: std::sync::Arc::new(std::sync::Mutex::new(None)),
             },
             show_close_confirm: false,
             force_close: false,
