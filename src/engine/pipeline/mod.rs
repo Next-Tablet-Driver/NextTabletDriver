@@ -116,6 +116,9 @@ impl Pipeline {
                 };
                 let abs_p = (pressure_ratio.clamp(0.0, 1.0) * 8191.0) as i32;
 
+                // Deliberately synchronous on this (TIME_CRITICAL) thread. See the
+                // "Design Decision" note in `engine::injector` for why this isn't
+                // decoupled onto its own thread.
                 injector.move_absolute(
                     sx,
                     sy,

@@ -202,7 +202,7 @@ fn render_theme_external_actions(app: &mut TabletMapperApp, ui: &mut egui::Ui) {
             ))
             .clicked()
         {
-            app.theme_store_open = true;
+            app.theme_store.open = true;
             app.fetch_theme_store_list();
         }
 

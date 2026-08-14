@@ -3,7 +3,7 @@ use crate::t;
 use eframe::egui;
 
 pub fn render_theme_store_viewport(app: &mut TabletMapperApp, ui: &mut egui::Ui) {
-    if !app.theme_store_open {
+    if !app.theme_store.open {
         return;
     }
 
@@ -24,7 +24,7 @@ pub fn render_theme_store_viewport(app: &mut TabletMapperApp, ui: &mut egui::Ui)
                     .insert_temp(egui::Id::new("semantic_colors"), semantic);
             });
             if ctx.input(|i| i.viewport().close_requested()) {
-                app.theme_store_open = false;
+                app.theme_store.open = false;
             }
 
             egui::CentralPanel::default().show(ctx, |ui| {
@@ -51,7 +51,7 @@ fn render_theme_store_content(app: &mut TabletMapperApp, ui: &mut egui::Ui) {
                 .on_hover_text("Refresh")
                 .clicked()
             {
-                if let Ok(mut lock) = app.theme_store_list.lock() {
+                if let Ok(mut lock) = app.theme_store.list.lock() {
                     *lock = None;
                 }
                 app.fetch_theme_store_list();
@@ -65,7 +65,7 @@ fn render_theme_store_content(app: &mut TabletMapperApp, ui: &mut egui::Ui) {
         let search_icon = egui::RichText::new(egui_phosphor::regular::MAGNIFYING_GLASS);
         ui.label(search_icon);
         let _ = ui.add(
-            egui::TextEdit::singleline(&mut app.theme_store_search)
+            egui::TextEdit::singleline(&mut app.theme_store.search)
                 .hint_text(t!(
                     "settings.theme.search_hint",
                     default = "Search themes..."
@@ -76,7 +76,7 @@ fn render_theme_store_content(app: &mut TabletMapperApp, ui: &mut egui::Ui) {
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             ui.add_space(8.0);
             egui::ComboBox::from_id_salt("theme_filter")
-                .selected_text(match app.theme_store_filter_mode {
+                .selected_text(match app.theme_store.filter_mode {
                     None => t!("settings.theme.filter_all", default = "All"),
                     Some(true) => t!("settings.theme.filter_dark", default = "Dark"),
                     Some(false) => t!("settings.theme.filter_light", default = "Light"),
@@ -84,17 +84,17 @@ fn render_theme_store_content(app: &mut TabletMapperApp, ui: &mut egui::Ui) {
                 .width(80.0)
                 .show_ui(ui, |ui| {
                     ui.selectable_value(
-                        &mut app.theme_store_filter_mode,
+                        &mut app.theme_store.filter_mode,
                         None,
                         t!("settings.theme.filter_all", default = "All"),
                     );
                     ui.selectable_value(
-                        &mut app.theme_store_filter_mode,
+                        &mut app.theme_store.filter_mode,
                         Some(true),
                         t!("settings.theme.filter_dark", default = "Dark"),
                     );
                     ui.selectable_value(
-                        &mut app.theme_store_filter_mode,
+                        &mut app.theme_store.filter_mode,
                         Some(false),
                         t!("settings.theme.filter_light", default = "Light"),
                     );
@@ -108,7 +108,7 @@ fn render_theme_store_content(app: &mut TabletMapperApp, ui: &mut egui::Ui) {
     egui::ScrollArea::vertical()
         .auto_shrink([false, false])
         .show(ui, |ui| {
-            let themes_state = if let Ok(lock) = app.theme_store_list.lock() {
+            let themes_state = if let Ok(lock) = app.theme_store.list.lock() {
                 (*lock).clone()
             } else {
                 ui.centered_and_justified(|ui| {
@@ -148,7 +148,7 @@ fn render_theme_store_content(app: &mut TabletMapperApp, ui: &mut egui::Ui) {
                 }
                 Some(Ok(themes)) => {
                     let local_themes = crate::settings::themes::list_custom_themes();
-                    let search_lower = app.theme_store_search.to_lowercase();
+                    let search_lower = app.theme_store.search.to_lowercase();
                     let filtered_themes: Vec<_> = themes.iter().filter(|item| {
                         if !search_lower.is_empty() {
                             let matches_name = item.metadata.name.to_lowercase().contains(&search_lower);
@@ -157,7 +157,7 @@ fn render_theme_store_content(app: &mut TabletMapperApp, ui: &mut egui::Ui) {
                                 return false;
                             }
                         }
-                        if let Some(mode) = app.theme_store_filter_mode && item.dark_mode != mode {
+                        if let Some(mode) = app.theme_store.filter_mode && item.dark_mode != mode {
                             return false;
                         }
                         true
@@ -187,7 +187,7 @@ fn render_theme_store_content(app: &mut TabletMapperApp, ui: &mut egui::Ui) {
                                     ui.add_enabled_ui(false, |ui| {
                                         let _ = ui.button(t!("settings.theme.installed"));
                                     });
-                                } else if Some(&theme.name) == app.theme_downloading_name.as_ref() {
+                                } else if Some(&theme.name) == app.theme_store.downloading_name.as_ref() {
                                     ui.horizontal(|ui| {
                                         ui.spinner();
                                         ui.add_enabled_ui(false, |ui| {
@@ -195,7 +195,7 @@ fn render_theme_store_content(app: &mut TabletMapperApp, ui: &mut egui::Ui) {
                                         });
                                     });
                                 } else {
-                                    let is_any_downloading = app.theme_downloading_name.is_some();
+                                    let is_any_downloading = app.theme_store.downloading_name.is_some();
                                     ui.add_enabled_ui(!is_any_downloading, |ui| {
                                         let btn = ui.button(format!(
                                             "{} {}",

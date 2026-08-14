@@ -14,7 +14,7 @@
     </a>
     <img alt="Platforms" src="https://img.shields.io/badge/platform-Windows%20%7C%20Linux-blue">
     <img alt="License" src="https://img.shields.io/badge/license-MIT-green">
-    <img alt="Rust" src="https://img.shields.io/badge/rust-1.96.1%2B-orange">
+    <img alt="Rust" src="https://img.shields.io/badge/rust-1.97.1%2B-orange">
   </p>
 </div>
 
@@ -84,10 +84,12 @@ NextTabletDriver requires access to HID tablet devices and `/dev/uinput`.
 sudo cp scripts/99-nexttabletdriver.rules /etc/udev/rules.d/
 sudo udevadm control --reload-rules
 sudo udevadm trigger
-sudo usermod -aG input "$USER"
 ```
 
-Log out and back in after adding your user to the `input` group.
+This grants access to the current desktop user instantly, no group membership or
+logout required. If you run the driver from a headless/non-logind session, add
+your user to the `input` group instead and log out and back in:
+`sudo usermod -aG input "$USER"`.
 
 More details are available in [`scripts/README-linux.md`](scripts/README-linux.md).
 
@@ -95,7 +97,7 @@ More details are available in [`scripts/README-linux.md`](scripts/README-linux.m
 
 ### Requirements
 
-- Rust 1.96.1 or newer
+- Rust 1.97.1 or newer
 - `pkgconf`
 - `hidapi`
 - Linux only: `gtk3`, `libxkbcommon`, `libglvnd`, `wayland`, and `uinput` support

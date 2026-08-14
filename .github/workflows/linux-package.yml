@@ -1,435 +1,435 @@
 name: Linux Release Package
 
 on:
-    push:
-        branches: [main, master, dev]
-    workflow_dispatch: {}
+  push:
+    branches: [main, master, dev]
+  workflow_dispatch: {}
 
 jobs:
-    build-package:
-        name: Build Linux Release
-        runs-on: ubuntu-latest
+  build-package:
+    name: Build Linux Release
+    runs-on: ubuntu-latest
 
-        steps:
-            - name: Checkout
-              uses: actions/checkout@v4
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-            - name: Cache cargo
-              uses: actions/cache@v4
-              with:
-                  path: |
-                      ~/.cargo/registry
-                      ~/.cargo/git
-                      target
-                  key: linux-cargo-${{ hashFiles('**/Cargo.lock') }}
-                  restore-keys: |
-                      linux-cargo-
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: linux-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            linux-cargo-
 
-            - name: Setup Rust toolchain
-              uses: dtolnay/rust-toolchain@stable
-              with:
-                  toolchain: "1.96.1"
-                  components: clippy,rustfmt
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.97.1"
+          components: clippy,rustfmt
 
-            - name: Ensure components
-              run: |
-                  rustup component add rustfmt clippy || true
+      - name: Ensure components
+        run: |
+          rustup component add rustfmt clippy || true
 
-            - name: Install build dependencies
-              run: |
-                  sudo apt-get update
-                  sudo apt-get install -y pkg-config libudev-dev musl-tools build-essential \
-                    libgtk-3-dev libglib2.0-dev libgdk-pixbuf2.0-dev libpango1.0-dev libcairo2-dev libatk1.0-dev \
-                    libx11-dev libxrandr-dev libxfixes-dev libxrender-dev libx11-xcb-dev libxkbcommon-dev \
-                    libgl1-mesa-dev libegl1-mesa-dev libgles2-mesa-dev libfuse2 libxdo-dev
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pkg-config libudev-dev musl-tools build-essential \
+            libgtk-3-dev libglib2.0-dev libgdk-pixbuf2.0-dev libpango1.0-dev libcairo2-dev libatk1.0-dev \
+            libx11-dev libxrandr-dev libxfixes-dev libxrender-dev libx11-xcb-dev libxkbcommon-dev \
+            libgl1-mesa-dev libegl1-mesa-dev libgles2-mesa-dev libfuse2 libxdo-dev
 
-            - name: Build release (glibc)
-              run: cargo build --workspace --release --all-features
-              env:
-                  POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
+      - name: Build release (glibc)
+        run: cargo build --workspace --release --all-features
+        env:
+          POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
 
-            - name: Run tests (native)
-              run: cargo test --workspace --all-features --verbose
+      - name: Run tests (native)
+        run: cargo test --workspace --all-features --verbose
 
-            - name: Create package tarball
-              run: |
-                  mkdir -p artifacts
-                  BIN=target/release/next_tablet_driver
-                  if [ -f "$BIN" ]; then
-                    cp "$BIN" artifacts/
-                    chmod +x artifacts/next_tablet_driver
-                  else
-                    echo "Binary not found: $BIN" && exit 1
-                  fi
-                  if [ -d "resources" ]; then
-                    cp -r resources artifacts/resources || true
-                  fi
-                  tar -czf next_tablet_driver-linux-${{ github.sha }}.tar.gz -C artifacts .
+      - name: Create package tarball
+        run: |
+          mkdir -p artifacts
+          BIN=target/release/next_tablet_driver
+          if [ -f "$BIN" ]; then
+            cp "$BIN" artifacts/
+            chmod +x artifacts/next_tablet_driver
+          else
+            echo "Binary not found: $BIN" && exit 1
+          fi
+          if [ -d "resources" ]; then
+            cp -r resources artifacts/resources || true
+          fi
+          tar -czf next_tablet_driver-linux-${{ github.sha }}.tar.gz -C artifacts .
 
-            - name: Upload artifact
-              uses: actions/upload-artifact@v4
-              with:
-                  name: next_tablet_driver-linux-${{ github.sha }}
-                  path: next_tablet_driver-linux-${{ github.sha }}.tar.gz
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: next_tablet_driver-linux-${{ github.sha }}
+          path: next_tablet_driver-linux-${{ github.sha }}.tar.gz
 
-    appimage-deb:
-        name: Package AppImage and .deb
-        needs: build-package
-        runs-on: ubuntu-latest
+  appimage-deb:
+    name: Package AppImage and .deb
+    needs: build-package
+    runs-on: ubuntu-latest
 
-        steps:
-            - name: Checkout
-              uses: actions/checkout@v4
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-            - name: Download build artifact
-              uses: actions/download-artifact@v4
-              with:
-                  name: next_tablet_driver-linux-${{ github.sha }}
-                  path: ./downloaded_artifact
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: next_tablet_driver-linux-${{ github.sha }}
+          path: ./downloaded_artifact
 
-            - name: Prepare AppDir and copy files
-              run: |
-                  mkdir -p AppDir/usr/bin
-                  mkdir -p AppDir/usr/share/applications
-                  mkdir -p AppDir/usr/share/icons/hicolor/256x256/apps
-                  mkdir -p pkg_workdir
-                  if [ -f downloaded_artifact/next_tablet_driver-linux-${{ github.sha }}.tar.gz ]; then
-                    tar -xzf downloaded_artifact/next_tablet_driver-linux-${{ github.sha }}.tar.gz -C ./pkg_workdir || true
-                  fi
-                  if [ -f pkg_workdir/next_tablet_driver ]; then
-                    cp pkg_workdir/next_tablet_driver AppDir/usr/bin/next_tablet_driver
-                  elif [ -f target/release/next_tablet_driver ]; then
-                    cp target/release/next_tablet_driver AppDir/usr/bin/next_tablet_driver
-                  elif [ -f downloaded_artifact/next_tablet_driver ]; then
-                    cp downloaded_artifact/next_tablet_driver AppDir/usr/bin/next_tablet_driver
-                  else
-                    echo "Binary not found, aborting" && exit 1
-                  fi
-                  chmod +x AppDir/usr/bin/next_tablet_driver
+      - name: Prepare AppDir and copy files
+        run: |
+          mkdir -p AppDir/usr/bin
+          mkdir -p AppDir/usr/share/applications
+          mkdir -p AppDir/usr/share/icons/hicolor/256x256/apps
+          mkdir -p pkg_workdir
+          if [ -f downloaded_artifact/next_tablet_driver-linux-${{ github.sha }}.tar.gz ]; then
+            tar -xzf downloaded_artifact/next_tablet_driver-linux-${{ github.sha }}.tar.gz -C ./pkg_workdir || true
+          fi
+          if [ -f pkg_workdir/next_tablet_driver ]; then
+            cp pkg_workdir/next_tablet_driver AppDir/usr/bin/next_tablet_driver
+          elif [ -f target/release/next_tablet_driver ]; then
+            cp target/release/next_tablet_driver AppDir/usr/bin/next_tablet_driver
+          elif [ -f downloaded_artifact/next_tablet_driver ]; then
+            cp downloaded_artifact/next_tablet_driver AppDir/usr/bin/next_tablet_driver
+          else
+            echo "Binary not found, aborting" && exit 1
+          fi
+          chmod +x AppDir/usr/bin/next_tablet_driver
 
-                  # Copy icon if present
-                  if [ -f pkg_workdir/resources/icon.png ]; then
-                    cp pkg_workdir/resources/icon.png AppDir/usr/share/icons/hicolor/256x256/apps/next_tablet_driver.png
-                  elif [ -f resources/icon.png ]; then
-                    cp resources/icon.png AppDir/usr/share/icons/hicolor/256x256/apps/next_tablet_driver.png
-                  else
-                    echo "Warning: icon not found; AppImage may not include an icon"
-                  fi
+          # Copy icon if present
+          if [ -f pkg_workdir/resources/icon.png ]; then
+            cp pkg_workdir/resources/icon.png AppDir/usr/share/icons/hicolor/256x256/apps/next_tablet_driver.png
+          elif [ -f resources/icon.png ]; then
+            cp resources/icon.png AppDir/usr/share/icons/hicolor/256x256/apps/next_tablet_driver.png
+          else
+            echo "Warning: icon not found; AppImage may not include an icon"
+          fi
 
-                  # Create desktop file
-                  printf '%s\n' '[Desktop Entry]' 'Name=NextTabletDriver' 'Exec=next_tablet_driver' 'Icon=next_tablet_driver' 'Type=Application' 'Categories=Utility;Graphics;' > AppDir/usr/share/applications/next_tablet_driver.desktop
+          # Create desktop file
+          printf '%s\n' '[Desktop Entry]' 'Name=NextTabletDriver' 'Exec=next_tablet_driver' 'Icon=next_tablet_driver' 'Type=Application' 'Categories=Utility;Graphics;' > AppDir/usr/share/applications/next_tablet_driver.desktop
 
-            - name: Install runtime dependencies for linuxdeploy
-              run: |
-                  sudo apt-get update
-                  sudo apt-get install -y patchelf libfuse2 wget unzip
+      - name: Install runtime dependencies for linuxdeploy
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y patchelf libfuse2 wget unzip
 
-            - name: Download linuxdeploy and plugin
-              run: |
-                  curl -sL -o linuxdeploy-x86_64.AppImage "https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage"
-                  curl -sL -o linuxdeploy-plugin-appimage-x86_64.AppImage "https://github.com/linuxdeploy/linuxdeploy-plugin-appimage/releases/download/continuous/linuxdeploy-plugin-appimage-x86_64.AppImage"
-                  chmod a+x linuxdeploy-*.AppImage
+      - name: Download linuxdeploy and plugin
+        run: |
+          curl -sL -o linuxdeploy-x86_64.AppImage "https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage"
+          curl -sL -o linuxdeploy-plugin-appimage-x86_64.AppImage "https://github.com/linuxdeploy/linuxdeploy-plugin-appimage/releases/download/continuous/linuxdeploy-plugin-appimage-x86_64.AppImage"
+          chmod a+x linuxdeploy-*.AppImage
 
-            - name: Create AppImage
-              env:
-                  APPIMAGE_EXTRACT_AND_RUN: "1"
-              run: |
-                  ./linuxdeploy-x86_64.AppImage --appdir AppDir -d AppDir/usr/share/applications/next_tablet_driver.desktop -i AppDir/usr/share/icons/hicolor/256x256/apps/next_tablet_driver.png --output appimage || true
-                  # Find the generated AppImage
-                  ls -la
-                  APPIMAGE=$(ls -1 *.AppImage 2>/dev/null | head -n 1 || true)
-                  if [ -z "$APPIMAGE" ]; then
-                    echo "AppImage creation failed or no AppImage generated" && exit 1
-                  fi
-                  echo "Created AppImage: $APPIMAGE"
+      - name: Create AppImage
+        env:
+          APPIMAGE_EXTRACT_AND_RUN: "1"
+        run: |
+          ./linuxdeploy-x86_64.AppImage --appdir AppDir -d AppDir/usr/share/applications/next_tablet_driver.desktop -i AppDir/usr/share/icons/hicolor/256x256/apps/next_tablet_driver.png --output appimage || true
+          # Find the generated AppImage
+          ls -la
+          APPIMAGE=$(ls -1 *.AppImage 2>/dev/null | head -n 1 || true)
+          if [ -z "$APPIMAGE" ]; then
+            echo "AppImage creation failed or no AppImage generated" && exit 1
+          fi
+          echo "Created AppImage: $APPIMAGE"
 
-            - name: Create .deb package (wraps AppImage)
-              run: |
-                  set -e
-                  APPIMAGE=$(ls -1 *.AppImage | head -n 1)
-                  if [ -z "$APPIMAGE" ]; then
-                    echo "AppImage not found, cannot build deb" && exit 1
-                  fi
-                  mkdir -p deb_pkg/DEBIAN
-                  mkdir -p deb_pkg/opt/next_tablet_driver
-                  mkdir -p deb_pkg/usr/bin
+      - name: Create .deb package (wraps AppImage)
+        run: |
+          set -e
+          APPIMAGE=$(ls -1 *.AppImage | head -n 1)
+          if [ -z "$APPIMAGE" ]; then
+            echo "AppImage not found, cannot build deb" && exit 1
+          fi
+          mkdir -p deb_pkg/DEBIAN
+          mkdir -p deb_pkg/opt/next_tablet_driver
+          mkdir -p deb_pkg/usr/bin
 
-                  cp "$APPIMAGE" deb_pkg/opt/next_tablet_driver/next_tablet_driver.AppImage
-                  chmod +x deb_pkg/opt/next_tablet_driver/next_tablet_driver.AppImage
+          cp "$APPIMAGE" deb_pkg/opt/next_tablet_driver/next_tablet_driver.AppImage
+          chmod +x deb_pkg/opt/next_tablet_driver/next_tablet_driver.AppImage
 
-                  cat > deb_pkg/usr/bin/next_tablet_driver << 'WRAPPER'
-                  #!/bin/sh
-                  exec /opt/next_tablet_driver/next_tablet_driver.AppImage "$@"
-                  WRAPPER
-                  chmod +x deb_pkg/usr/bin/next_tablet_driver
+          cat > deb_pkg/usr/bin/next_tablet_driver << 'WRAPPER'
+          #!/bin/sh
+          exec /opt/next_tablet_driver/next_tablet_driver.AppImage "$@"
+          WRAPPER
+          chmod +x deb_pkg/usr/bin/next_tablet_driver
 
-                  VERSION=$(sed -n 's/^version *= *"\(.*\)"/\1/p' Cargo.toml | head -n1 | tr -d '[:space:]')
-                  if [ -z "$VERSION" ]; then
-                    VERSION="${GITHUB_SHA}"
-                  fi
+          VERSION=$(sed -n 's/^version *= *"\(.*\)"/\1/p' Cargo.toml | head -n1 | tr -d '[:space:]')
+          if [ -z "$VERSION" ]; then
+            VERSION="${GITHUB_SHA}"
+          fi
 
-                  cat > deb_pkg/DEBIAN/control << EOF
-                  Package: next-tablet-driver
-                  Version: ${VERSION}
-                  Section: utils
-                  Priority: optional
-                  Architecture: amd64
-                  Maintainer: iSweat <iSweat-exe@users.noreply.github.com>
-                  Description: NextTabletDriver portable Linux AppImage
-                  EOF
+          cat > deb_pkg/DEBIAN/control << EOF
+          Package: next-tablet-driver
+          Version: ${VERSION}
+          Section: utils
+          Priority: optional
+          Architecture: amd64
+          Maintainer: iSweat <iSweat-exe@users.noreply.github.com>
+          Description: NextTabletDriver portable Linux AppImage
+          EOF
 
-                  DEB_NAME="next_tablet_driver_${VERSION}_amd64.deb"
-                  dpkg-deb --build deb_pkg "$DEB_NAME"
+          DEB_NAME="next_tablet_driver_${VERSION}_amd64.deb"
+          dpkg-deb --build deb_pkg "$DEB_NAME"
 
-            - name: Upload AppImage artifact
-              uses: actions/upload-artifact@v4
-              with:
-                  name: next_tablet_driver-linux-appimage-${{ github.sha }}
-                  path: |
-                      *.AppImage
+      - name: Upload AppImage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: next_tablet_driver-linux-appimage-${{ github.sha }}
+          path: |
+            *.AppImage
 
-            - name: Upload .deb artifact
-              uses: actions/upload-artifact@v4
-              with:
-                  name: next_tablet_driver-linux-deb-${{ github.sha }}
-                  path: |
-                      next_tablet_driver_*.deb
+      - name: Upload .deb artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: next_tablet_driver-linux-deb-${{ github.sha }}
+          path: |
+            next_tablet_driver_*.deb
 
-    build-package-arm64:
-        name: Build Linux Release (ARM64)
-        runs-on: ubuntu-24.04-arm
+  build-package-arm64:
+    name: Build Linux Release (ARM64)
+    runs-on: ubuntu-24.04-arm
 
-        steps:
-            - name: Checkout
-              uses: actions/checkout@v4
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-            - name: Cache cargo
-              uses: actions/cache@v4
-              with:
-                  path: |
-                      ~/.cargo/registry
-                      ~/.cargo/git
-                      target
-                  key: linux-arm64-cargo-${{ hashFiles('**/Cargo.lock') }}
-                  restore-keys: |
-                      linux-arm64-cargo-
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: linux-arm64-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            linux-arm64-cargo-
 
-            - name: Setup Rust toolchain
-              uses: dtolnay/rust-toolchain@stable
-              with:
-                  toolchain: "1.96.1"
-                  components: clippy,rustfmt
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.97.1"
+          components: clippy,rustfmt
 
-            - name: Ensure components
-              run: |
-                  rustup component add rustfmt clippy || true
+      - name: Ensure components
+        run: |
+          rustup component add rustfmt clippy || true
 
-            - name: Install build dependencies
-              run: |
-                  sudo apt-get update
-                  sudo apt-get install -y pkg-config libudev-dev build-essential \
-                    libgtk-3-dev libglib2.0-dev libgdk-pixbuf2.0-dev libpango1.0-dev libcairo2-dev libatk1.0-dev \
-                    libx11-dev libxrandr-dev libxfixes-dev libxrender-dev libx11-xcb-dev libxkbcommon-dev \
-                    libgl1-mesa-dev libegl1-mesa-dev libgles2-mesa-dev libfuse2 libxdo-dev
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pkg-config libudev-dev build-essential \
+            libgtk-3-dev libglib2.0-dev libgdk-pixbuf2.0-dev libpango1.0-dev libcairo2-dev libatk1.0-dev \
+            libx11-dev libxrandr-dev libxfixes-dev libxrender-dev libx11-xcb-dev libxkbcommon-dev \
+            libgl1-mesa-dev libegl1-mesa-dev libgles2-mesa-dev libfuse2 libxdo-dev
 
-            - name: Build release (glibc)
-              run: cargo build --workspace --release --all-features
-              env:
-                  POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
+      - name: Build release (glibc)
+        run: cargo build --workspace --release --all-features
+        env:
+          POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
 
-            - name: Run tests (native)
-              run: cargo test --workspace --all-features --verbose
+      - name: Run tests (native)
+        run: cargo test --workspace --all-features --verbose
 
-            - name: Create package tarball
-              run: |
-                  mkdir -p artifacts
-                  BIN=target/release/next_tablet_driver
-                  if [ -f "$BIN" ]; then
-                    cp "$BIN" artifacts/
-                    chmod +x artifacts/next_tablet_driver
-                  else
-                    echo "Binary not found: $BIN" && exit 1
-                  fi
-                  if [ -d "resources" ]; then
-                    cp -r resources artifacts/resources || true
-                  fi
-                  tar -czf next_tablet_driver-linux-arm64-${{ github.sha }}.tar.gz -C artifacts .
+      - name: Create package tarball
+        run: |
+          mkdir -p artifacts
+          BIN=target/release/next_tablet_driver
+          if [ -f "$BIN" ]; then
+            cp "$BIN" artifacts/
+            chmod +x artifacts/next_tablet_driver
+          else
+            echo "Binary not found: $BIN" && exit 1
+          fi
+          if [ -d "resources" ]; then
+            cp -r resources artifacts/resources || true
+          fi
+          tar -czf next_tablet_driver-linux-arm64-${{ github.sha }}.tar.gz -C artifacts .
 
-            - name: Upload artifact
-              uses: actions/upload-artifact@v4
-              with:
-                  name: next_tablet_driver-linux-arm64-${{ github.sha }}
-                  path: next_tablet_driver-linux-arm64-${{ github.sha }}.tar.gz
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: next_tablet_driver-linux-arm64-${{ github.sha }}
+          path: next_tablet_driver-linux-arm64-${{ github.sha }}.tar.gz
 
-    appimage-deb-arm64:
-        name: Package AppImage and .deb (ARM64)
-        needs: build-package-arm64
-        runs-on: ubuntu-24.04-arm
+  appimage-deb-arm64:
+    name: Package AppImage and .deb (ARM64)
+    needs: build-package-arm64
+    runs-on: ubuntu-24.04-arm
 
-        steps:
-            - name: Checkout
-              uses: actions/checkout@v4
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-            - name: Download build artifact
-              uses: actions/download-artifact@v4
-              with:
-                  name: next_tablet_driver-linux-arm64-${{ github.sha }}
-                  path: ./downloaded_artifact
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: next_tablet_driver-linux-arm64-${{ github.sha }}
+          path: ./downloaded_artifact
 
-            - name: Prepare AppDir and copy files
-              run: |
-                  mkdir -p AppDir/usr/bin
-                  mkdir -p AppDir/usr/share/applications
-                  mkdir -p AppDir/usr/share/icons/hicolor/256x256/apps
-                  mkdir -p pkg_workdir
-                  if [ -f downloaded_artifact/next_tablet_driver-linux-arm64-${{ github.sha }}.tar.gz ]; then
-                    tar -xzf downloaded_artifact/next_tablet_driver-linux-arm64-${{ github.sha }}.tar.gz -C ./pkg_workdir || true
-                  fi
-                  if [ -f pkg_workdir/next_tablet_driver ]; then
-                    cp pkg_workdir/next_tablet_driver AppDir/usr/bin/next_tablet_driver
-                  elif [ -f target/release/next_tablet_driver ]; then
-                    cp target/release/next_tablet_driver AppDir/usr/bin/next_tablet_driver
-                  elif [ -f downloaded_artifact/next_tablet_driver ]; then
-                    cp downloaded_artifact/next_tablet_driver AppDir/usr/bin/next_tablet_driver
-                  else
-                    echo "Binary not found, aborting" && exit 1
-                  fi
-                  chmod +x AppDir/usr/bin/next_tablet_driver
+      - name: Prepare AppDir and copy files
+        run: |
+          mkdir -p AppDir/usr/bin
+          mkdir -p AppDir/usr/share/applications
+          mkdir -p AppDir/usr/share/icons/hicolor/256x256/apps
+          mkdir -p pkg_workdir
+          if [ -f downloaded_artifact/next_tablet_driver-linux-arm64-${{ github.sha }}.tar.gz ]; then
+            tar -xzf downloaded_artifact/next_tablet_driver-linux-arm64-${{ github.sha }}.tar.gz -C ./pkg_workdir || true
+          fi
+          if [ -f pkg_workdir/next_tablet_driver ]; then
+            cp pkg_workdir/next_tablet_driver AppDir/usr/bin/next_tablet_driver
+          elif [ -f target/release/next_tablet_driver ]; then
+            cp target/release/next_tablet_driver AppDir/usr/bin/next_tablet_driver
+          elif [ -f downloaded_artifact/next_tablet_driver ]; then
+            cp downloaded_artifact/next_tablet_driver AppDir/usr/bin/next_tablet_driver
+          else
+            echo "Binary not found, aborting" && exit 1
+          fi
+          chmod +x AppDir/usr/bin/next_tablet_driver
 
-                  # Copy icon if present
-                  if [ -f pkg_workdir/resources/icon.png ]; then
-                    cp pkg_workdir/resources/icon.png AppDir/usr/share/icons/hicolor/256x256/apps/next_tablet_driver.png
-                  elif [ -f resources/icon.png ]; then
-                    cp resources/icon.png AppDir/usr/share/icons/hicolor/256x256/apps/next_tablet_driver.png
-                  else
-                    echo "Warning: icon not found; AppImage may not include an icon"
-                  fi
+          # Copy icon if present
+          if [ -f pkg_workdir/resources/icon.png ]; then
+            cp pkg_workdir/resources/icon.png AppDir/usr/share/icons/hicolor/256x256/apps/next_tablet_driver.png
+          elif [ -f resources/icon.png ]; then
+            cp resources/icon.png AppDir/usr/share/icons/hicolor/256x256/apps/next_tablet_driver.png
+          else
+            echo "Warning: icon not found; AppImage may not include an icon"
+          fi
 
-                  # Create desktop file
-                  printf '%s\n' '[Desktop Entry]' 'Name=NextTabletDriver' 'Exec=next_tablet_driver' 'Icon=next_tablet_driver' 'Type=Application' 'Categories=Utility;Graphics;' > AppDir/usr/share/applications/next_tablet_driver.desktop
+          # Create desktop file
+          printf '%s\n' '[Desktop Entry]' 'Name=NextTabletDriver' 'Exec=next_tablet_driver' 'Icon=next_tablet_driver' 'Type=Application' 'Categories=Utility;Graphics;' > AppDir/usr/share/applications/next_tablet_driver.desktop
 
-            - name: Install runtime dependencies for linuxdeploy
-              run: |
-                  sudo apt-get update
-                  sudo apt-get install -y patchelf libfuse2 wget unzip
+      - name: Install runtime dependencies for linuxdeploy
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y patchelf libfuse2 wget unzip
 
-            - name: Download linuxdeploy and plugin
-              run: |
-                  curl -sL -o linuxdeploy-aarch64.AppImage "https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-aarch64.AppImage"
-                  curl -sL -o linuxdeploy-plugin-appimage-aarch64.AppImage "https://github.com/linuxdeploy/linuxdeploy-plugin-appimage/releases/download/continuous/linuxdeploy-plugin-appimage-aarch64.AppImage"
-                  chmod a+x linuxdeploy-*.AppImage
+      - name: Download linuxdeploy and plugin
+        run: |
+          curl -sL -o linuxdeploy-aarch64.AppImage "https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-aarch64.AppImage"
+          curl -sL -o linuxdeploy-plugin-appimage-aarch64.AppImage "https://github.com/linuxdeploy/linuxdeploy-plugin-appimage/releases/download/continuous/linuxdeploy-plugin-appimage-aarch64.AppImage"
+          chmod a+x linuxdeploy-*.AppImage
 
-            - name: Create AppImage
-              env:
-                  APPIMAGE_EXTRACT_AND_RUN: "1"
-              run: |
-                  ./linuxdeploy-aarch64.AppImage --appdir AppDir -d AppDir/usr/share/applications/next_tablet_driver.desktop -i AppDir/usr/share/icons/hicolor/256x256/apps/next_tablet_driver.png --output appimage || true
-                  # Find the generated AppImage
-                  ls -la
-                  APPIMAGE=$(ls -1 *.AppImage 2>/dev/null | head -n 1 || true)
-                  if [ -z "$APPIMAGE" ]; then
-                    echo "AppImage creation failed or no AppImage generated" && exit 1
-                  fi
-                  echo "Created AppImage: $APPIMAGE"
+      - name: Create AppImage
+        env:
+          APPIMAGE_EXTRACT_AND_RUN: "1"
+        run: |
+          ./linuxdeploy-aarch64.AppImage --appdir AppDir -d AppDir/usr/share/applications/next_tablet_driver.desktop -i AppDir/usr/share/icons/hicolor/256x256/apps/next_tablet_driver.png --output appimage || true
+          # Find the generated AppImage
+          ls -la
+          APPIMAGE=$(ls -1 *.AppImage 2>/dev/null | head -n 1 || true)
+          if [ -z "$APPIMAGE" ]; then
+            echo "AppImage creation failed or no AppImage generated" && exit 1
+          fi
+          echo "Created AppImage: $APPIMAGE"
 
-            - name: Create .deb package (wraps AppImage)
-              run: |
-                  set -e
-                  APPIMAGE=$(ls -1 *.AppImage | head -n 1)
-                  if [ -z "$APPIMAGE" ]; then
-                    echo "AppImage not found, cannot build deb" && exit 1
-                  fi
-                  mkdir -p deb_pkg/DEBIAN
-                  mkdir -p deb_pkg/opt/next_tablet_driver
-                  mkdir -p deb_pkg/usr/bin
+      - name: Create .deb package (wraps AppImage)
+        run: |
+          set -e
+          APPIMAGE=$(ls -1 *.AppImage | head -n 1)
+          if [ -z "$APPIMAGE" ]; then
+            echo "AppImage not found, cannot build deb" && exit 1
+          fi
+          mkdir -p deb_pkg/DEBIAN
+          mkdir -p deb_pkg/opt/next_tablet_driver
+          mkdir -p deb_pkg/usr/bin
 
-                  cp "$APPIMAGE" deb_pkg/opt/next_tablet_driver/next_tablet_driver.AppImage
-                  chmod +x deb_pkg/opt/next_tablet_driver/next_tablet_driver.AppImage
+          cp "$APPIMAGE" deb_pkg/opt/next_tablet_driver/next_tablet_driver.AppImage
+          chmod +x deb_pkg/opt/next_tablet_driver/next_tablet_driver.AppImage
 
-                  cat > deb_pkg/usr/bin/next_tablet_driver << 'WRAPPER'
-                  #!/bin/sh
-                  exec /opt/next_tablet_driver/next_tablet_driver.AppImage "$@"
-                  WRAPPER
-                  chmod +x deb_pkg/usr/bin/next_tablet_driver
+          cat > deb_pkg/usr/bin/next_tablet_driver << 'WRAPPER'
+          #!/bin/sh
+          exec /opt/next_tablet_driver/next_tablet_driver.AppImage "$@"
+          WRAPPER
+          chmod +x deb_pkg/usr/bin/next_tablet_driver
 
-                  VERSION=$(sed -n 's/^version *= *"\(.*\)"/\1/p' Cargo.toml | head -n1 | tr -d '[:space:]')
-                  if [ -z "$VERSION" ]; then
-                    VERSION="${GITHUB_SHA}"
-                  fi
+          VERSION=$(sed -n 's/^version *= *"\(.*\)"/\1/p' Cargo.toml | head -n1 | tr -d '[:space:]')
+          if [ -z "$VERSION" ]; then
+            VERSION="${GITHUB_SHA}"
+          fi
 
-                  cat > deb_pkg/DEBIAN/control << EOF
-                  Package: next-tablet-driver
-                  Version: ${VERSION}
-                  Section: utils
-                  Priority: optional
-                  Architecture: arm64
-                  Maintainer: iSweat <iSweat-exe@users.noreply.github.com>
-                  Description: NextTabletDriver portable Linux AppImage
-                  EOF
+          cat > deb_pkg/DEBIAN/control << EOF
+          Package: next-tablet-driver
+          Version: ${VERSION}
+          Section: utils
+          Priority: optional
+          Architecture: arm64
+          Maintainer: iSweat <iSweat-exe@users.noreply.github.com>
+          Description: NextTabletDriver portable Linux AppImage
+          EOF
 
-                  DEB_NAME="next_tablet_driver_${VERSION}_arm64.deb"
-                  dpkg-deb --build deb_pkg "$DEB_NAME"
+          DEB_NAME="next_tablet_driver_${VERSION}_arm64.deb"
+          dpkg-deb --build deb_pkg "$DEB_NAME"
 
-            - name: Upload AppImage artifact
-              uses: actions/upload-artifact@v4
-              with:
-                  name: next_tablet_driver-linux-appimage-arm64-${{ github.sha }}
-                  path: |
-                      *.AppImage
+      - name: Upload AppImage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: next_tablet_driver-linux-appimage-arm64-${{ github.sha }}
+          path: |
+            *.AppImage
 
-            - name: Upload .deb artifact
-              uses: actions/upload-artifact@v4
-              with:
-                  name: next_tablet_driver-linux-deb-arm64-${{ github.sha }}
-                  path: |
-                      next_tablet_driver_*.deb
+      - name: Upload .deb artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: next_tablet_driver-linux-deb-arm64-${{ github.sha }}
+          path: |
+            next_tablet_driver_*.deb
 
-    musl-build:
-        name: Best-effort MUSL static build (optional)
-        runs-on: ubuntu-latest
+  musl-build:
+    name: Best-effort MUSL static build (optional)
+    runs-on: ubuntu-latest
 
-        steps:
-            - name: Checkout
-              uses: actions/checkout@v4
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-            - name: Setup Rust toolchain
-              uses: dtolnay/rust-toolchain@stable
-              with:
-                  toolchain: "1.96.1"
-                  components: clippy,rustfmt
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.97.1"
+          components: clippy,rustfmt
 
-            - name: Ensure components
-              run: |
-                  rustup component add rustfmt clippy || true
+      - name: Ensure components
+        run: |
+          rustup component add rustfmt clippy || true
 
-            - name: Install musl build dependencies
-              run: |
-                  sudo apt-get update
-                  sudo apt-get install -y musl-tools build-essential pkg-config libssl-dev curl libudev-dev
+      - name: Install musl build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y musl-tools build-essential pkg-config libssl-dev curl libudev-dev
 
-            - name: Add MUSL target
-              run: rustup target add x86_64-unknown-linux-musl
+      - name: Add MUSL target
+        run: rustup target add x86_64-unknown-linux-musl
 
-            - name: Attempt MUSL build (best-effort)
-              run: |
-                  set -x
-                  cargo build --target x86_64-unknown-linux-musl --release --workspace --all-features || true
-              env:
-                  POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
+      - name: Attempt MUSL build (best-effort)
+        run: |
+          set -x
+          cargo build --target x86_64-unknown-linux-musl --release --workspace --all-features || true
+        env:
+          POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
 
-            - name: Package MUSL binary if present
-              run: |
-                  BIN=target/x86_64-unknown-linux-musl/release/next_tablet_driver
-                  if [ -f "$BIN" ]; then
-                    mkdir -p musl_artifacts
-                    cp "$BIN" musl_artifacts/next_tablet_driver
-                    chmod +x musl_artifacts/next_tablet_driver
-                    tar -czf next_tablet_driver-linux-musl-${{ github.sha }}.tar.gz -C musl_artifacts .
-                  else
-                    echo "MUSL build not available; skipping artifact upload"
-                  fi
-            - name: Upload MUSL artifact (if created)
-              uses: actions/upload-artifact@v4
-              with:
-                  name: next_tablet_driver-linux-musl-${{ github.sha }}
-                  path: next_tablet_driver-linux-musl-${{ github.sha }}.tar.gz
+      - name: Package MUSL binary if present
+        run: |
+          BIN=target/x86_64-unknown-linux-musl/release/next_tablet_driver
+          if [ -f "$BIN" ]; then
+            mkdir -p musl_artifacts
+            cp "$BIN" musl_artifacts/next_tablet_driver
+            chmod +x musl_artifacts/next_tablet_driver
+            tar -czf next_tablet_driver-linux-musl-${{ github.sha }}.tar.gz -C musl_artifacts .
+          else
+            echo "MUSL build not available; skipping artifact upload"
+          fi
+      - name: Upload MUSL artifact (if created)
+        uses: actions/upload-artifact@v4
+        with:
+          name: next_tablet_driver-linux-musl-${{ github.sha }}
+          path: next_tablet_driver-linux-musl-${{ github.sha }}.tar.gz

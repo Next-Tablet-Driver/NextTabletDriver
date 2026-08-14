@@ -27,6 +27,51 @@ pub struct ThemeStoreItem {
 
 pub type ThemeStoreResult = Result<Vec<ThemeStoreItem>, String>;
 
+/// UI state for the console/log viewer tab: search, level filters, and the
+/// derived filtered-log cache.
+#[allow(clippy::struct_excessive_bools)]
+pub struct ConsoleState {
+    /// Sub-string filter for searching the console logs.
+    pub search: String,
+    /// Show INFO level logs in the console panel.
+    pub show_info: bool,
+    /// Show WARN level logs in the console panel.
+    pub show_warn: bool,
+    /// Show ERROR level logs in the console panel.
+    pub show_error: bool,
+    /// Show DEBUG level logs in the console panel.
+    pub show_debug: bool,
+    /// Automatically scroll to the bottom when a new log arrives.
+    pub autoscroll: bool,
+    /// Monotonically increasing sequence number used to track if new logs have been received
+    /// and if the cache needs to be re-filtered and regenerated.
+    pub cache_log_sequence: u64,
+    /// The search term used to generate the current cache.
+    pub cache_search: String,
+    /// The filter switches used to generate the current cache: `(info, warn, error, debug)`.
+    pub cache_filters: (bool, bool, bool, bool),
+    /// List of pre-filtered log entries currently loaded in the console UI.
+    pub cache_filtered: Vec<crate::logger::LogEntry>,
+}
+
+/// UI state for the online theme store viewport and background theme downloads.
+pub struct ThemeStoreState {
+    /// Toggle to render the theme store viewport.
+    pub open: bool,
+    /// True while the remote theme list is being fetched.
+    pub loading: bool,
+    /// Cached result of the last theme store listing request.
+    pub list: std::sync::Arc<std::sync::Mutex<Option<ThemeStoreResult>>>,
+    /// Sub-string filter for searching the theme store.
+    pub search: String,
+    /// Optional dark/light filter for the theme store (`None` means "all").
+    pub filter_mode: Option<bool>,
+    /// Result of the last background theme download, if any.
+    pub download_result: std::sync::Arc<std::sync::Mutex<Option<Result<String, String>>>>,
+    /// Name of the theme currently being downloaded, if any.
+    pub downloading_name: Option<String>,
+}
+
 /// The core application state structure used by the `eframe` (egui) integration.
 #[allow(clippy::struct_excessive_bools)]
 pub struct TabletMapperApp {
@@ -72,39 +117,11 @@ pub struct TabletMapperApp {
     /// Remembers if the window was minimized in the last update frame.
     pub was_minimized: bool,
 
-    /// Sub-string filter for searching the console logs.
-    pub console_search: String,
-    /// Show INFO level logs in the console panel.
-    pub console_show_info: bool,
-    /// Show WARN level logs in the console panel.
-    pub console_show_warn: bool,
-    /// Show ERROR level logs in the console panel.
-    pub console_show_error: bool,
-    /// Show DEBUG level logs in the console panel.
-    pub console_show_debug: bool,
-    /// Automatically scroll to the bottom when a new log arrives.
-    pub console_autoscroll: bool,
+    /// State for the console/log viewer tab.
+    pub console: ConsoleState,
 
-    /// Monotonically increasing sequence number used to track if new logs have been received
-    /// and if the console cache needs to be re-filtered and regenerated.
-    pub console_cache_log_sequence: u64,
-    /// The search term used to generate the current console cache.
-    pub console_cache_search: String,
-    /// The filter switches used to generate the current console cache: `(info, warn, error, debug)`.
-    pub console_cache_filters: (bool, bool, bool, bool),
-    /// List of pre-filtered log entries currently loaded in the console UI.
-    pub console_cache_filtered: Vec<crate::logger::LogEntry>,
-
-    // Theme Store State
-    pub theme_store_open: bool,
-    pub theme_store_loading: bool,
-    pub theme_store_list: std::sync::Arc<std::sync::Mutex<Option<ThemeStoreResult>>>,
-    pub theme_store_search: String,
-    pub theme_store_filter_mode: Option<bool>,
-
-    // Theme Download State
-    pub theme_download_result: std::sync::Arc<std::sync::Mutex<Option<Result<String, String>>>>,
-    pub theme_downloading_name: Option<String>,
+    /// State for the online theme store and background theme downloads.
+    pub theme_store: ThemeStoreState,
 
     /// Toggle to render the close confirmation dialog modal.
     pub show_close_confirm: bool,
@@ -312,28 +329,28 @@ impl TabletMapperApp {
     pub fn get_filtered_logs(&mut self) -> (usize, &[crate::logger::LogEntry]) {
         let logs = crate::logger::LOG_BUFFER.read().unwrap_or_log("logs");
         let current_filters = (
-            self.console_show_info,
-            self.console_show_warn,
-            self.console_show_error,
-            self.console_show_debug,
+            self.console.show_info,
+            self.console.show_warn,
+            self.console.show_error,
+            self.console.show_debug,
         );
         let current_sequence =
             crate::logger::LOG_SEQUENCE.load(std::sync::atomic::Ordering::Acquire);
-        if self.console_cache_log_sequence == current_sequence
-            && self.console_cache_search == self.console_search
-            && self.console_cache_filters == current_filters
+        if self.console.cache_log_sequence == current_sequence
+            && self.console.cache_search == self.console.search
+            && self.console.cache_filters == current_filters
         {
-            return (logs.len(), &self.console_cache_filtered);
+            return (logs.len(), &self.console.cache_filtered);
         }
-        let search_lower = self.console_search.to_lowercase();
+        let search_lower = self.console.search.to_lowercase();
         let mut filtered: Vec<_> = logs
             .iter()
             .filter(|log| {
                 let level_match = match log.level.as_str() {
-                    "Info" => self.console_show_info,
-                    "Warn" => self.console_show_warn,
-                    "Error" => self.console_show_error,
-                    "Debug" => self.console_show_debug,
+                    "Info" => self.console.show_info,
+                    "Warn" => self.console.show_warn,
+                    "Error" => self.console.show_error,
+                    "Debug" => self.console.show_debug,
                     _ => true,
                 };
                 if !level_match {
@@ -349,12 +366,12 @@ impl TabletMapperApp {
         filtered.reverse();
         let all_count = logs.len();
         drop(logs);
-        self.console_cache_filtered = filtered;
-        self.console_cache_log_sequence = current_sequence;
-        self.console_cache_search = self.console_search.clone();
-        self.console_cache_filters = current_filters;
+        self.console.cache_filtered = filtered;
+        self.console.cache_log_sequence = current_sequence;
+        self.console.cache_search = self.console.search.clone();
+        self.console.cache_filters = current_filters;
 
-        (all_count, &self.console_cache_filtered)
+        (all_count, &self.console.cache_filtered)
     }
 
     pub fn start_update(&mut self) {
@@ -407,10 +424,10 @@ impl TabletMapperApp {
     }
 
     pub fn fetch_theme_store_list(&mut self) {
-        let is_none = self.theme_store_list.lock().map_or(true, |g| g.is_none());
+        let is_none = self.theme_store.list.lock().map_or(true, |g| g.is_none());
         if is_none {
-            self.theme_store_loading = true;
-            let list_arc = std::sync::Arc::clone(&self.theme_store_list);
+            self.theme_store.loading = true;
+            let list_arc = std::sync::Arc::clone(&self.theme_store.list);
             std::thread::spawn(move || {
                 let result = crate::settings::themes::fetch_theme_store_list_sync();
                 if let Ok(mut guard) = list_arc.lock() {
@@ -421,14 +438,14 @@ impl TabletMapperApp {
     }
 
     pub fn download_theme(&mut self, theme: &str, ctx: &eframe::egui::Context) {
-        if self.theme_downloading_name.is_some() {
+        if self.theme_store.downloading_name.is_some() {
             return; // Only allow one download at a time
         }
 
         let theme_name = theme.to_string();
-        self.theme_downloading_name = Some(theme_name.clone());
+        self.theme_store.downloading_name = Some(theme_name.clone());
 
-        let result_arc = std::sync::Arc::clone(&self.theme_download_result);
+        let result_arc = std::sync::Arc::clone(&self.theme_store.download_result);
         let ctx_clone = ctx.clone();
 
         std::thread::spawn(move || {

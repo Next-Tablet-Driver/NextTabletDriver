@@ -135,7 +135,7 @@
   "dialog.udev.detail_2": "and the driver may lack permission to read your tablet.",
   "dialog.udev.how_to_fix": "How to fix this:",
   "dialog.udev.done": "I have installed the rules",
-  "dialog.udev.logout": "You may need to log out and log back in.",
+  "dialog.udev.no_relog": "Access is granted instantly to your current session, no logout required.",
 
   "dialog.update.title": "Update Available",
   "dialog.update.header": "Update Available!",

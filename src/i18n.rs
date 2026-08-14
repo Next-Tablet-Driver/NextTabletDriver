@@ -19,7 +19,7 @@ use std::sync::{LazyLock, RwLock};
 /// Embedded locale directory, compiled into the binary.
 static LOCALES_DIR: Dir = include_dir!("$CARGO_MANIFEST_DIR/resources/locales");
 
-/// Global I18N state — read-heavy, write-rare (only on language change).
+/// Global I18N state, read-heavy and write-rare (only on language change).
 static I18N: LazyLock<RwLock<I18n>> = LazyLock::new(|| RwLock::new(I18n::new(Locale::default())));
 
 /// Supported application locales.

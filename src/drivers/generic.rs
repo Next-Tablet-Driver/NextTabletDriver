@@ -72,14 +72,21 @@ impl NextTabletDriver for GenericNextTabletDriver {
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
         #[cfg(target_os = "linux")]
         {
+            // Matches the fixed-size HID read buffer in `tablet_manager.rs`;
+            // reports are never larger than this in practice.
+            const MAX_REPORT_LEN: usize = 64;
+
             if let Some(ref d) = self.digitizer
                 && let Some(expected_len) = d.input_report_length
                 && data.len() == expected_len
+                && data.len() <= MAX_REPORT_LEN
             {
-                let mut buf = Vec::with_capacity(data.len() + 1);
-                buf.push(0x00);
-                buf.extend_from_slice(data);
-                return self.parser.parse(&buf);
+                // Prefix with a 0x00 report-ID byte on the stack instead of heap-allocating
+                // a Vec for every single HID report.
+                let total_len = data.len() + 1;
+                let mut buf = [0u8; MAX_REPORT_LEN + 1];
+                buf[1..total_len].copy_from_slice(data);
+                return self.parser.parse(&buf[..total_len]);
             }
         }
         self.parser.parse(data)

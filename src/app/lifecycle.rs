@@ -8,7 +8,9 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use crate::app::autoupdate::UpdateStatus;
-use crate::app::state::{AppTab, Metrics, ProfileState, TabletMapperApp, ToastLevel};
+use crate::app::state::{
+    AppTab, ConsoleState, Metrics, ProfileState, TabletMapperApp, ThemeStoreState, ToastLevel,
+};
 use crate::engine::state::SharedState;
 use crate::settings::load_session_meta;
 
@@ -42,13 +44,13 @@ impl TabletMapperApp {
             unsafe { SetPriorityClass(process, HIGH_PRIORITY_CLASS) };
         }
 
-        // 1. Setup UI Appearance
+        // Set up UI appearance
         let mut app_prefs = crate::settings::app_preferences::load_app_preferences();
         crate::settings::app_preferences::validate_theme(&mut app_prefs);
         crate::ui::theme::apply_theme(ctx, &app_prefs.theme);
         Self::setup_fonts(ctx);
 
-        // 2. Build initial state
+        // Build initial state
         let mut initial_toasts = Vec::new();
         if !load_corrections.is_empty() {
             initial_toasts.push(crate::app::state::Toast {
@@ -95,23 +97,27 @@ impl TabletMapperApp {
             show_latency_stats: false,
             metrics: Metrics::default(),
             was_minimized: false,
-            console_search: String::new(),
-            console_show_info: true,
-            console_show_warn: true,
-            console_show_error: true,
-            console_show_debug: false,
-            console_autoscroll: true,
-            console_cache_log_sequence: 0,
-            console_cache_search: String::new(),
-            console_cache_filters: (true, true, true, false),
-            console_cache_filtered: Vec::new(),
-            theme_store_open: false,
-            theme_store_loading: false,
-            theme_store_list: std::sync::Arc::new(std::sync::Mutex::new(None)),
-            theme_store_search: String::new(),
-            theme_store_filter_mode: None,
-            theme_download_result: std::sync::Arc::new(std::sync::Mutex::new(None)),
-            theme_downloading_name: None,
+            console: ConsoleState {
+                search: String::new(),
+                show_info: true,
+                show_warn: true,
+                show_error: true,
+                show_debug: false,
+                autoscroll: true,
+                cache_log_sequence: 0,
+                cache_search: String::new(),
+                cache_filters: (true, true, true, false),
+                cache_filtered: Vec::new(),
+            },
+            theme_store: ThemeStoreState {
+                open: false,
+                loading: false,
+                list: std::sync::Arc::new(std::sync::Mutex::new(None)),
+                search: String::new(),
+                filter_mode: None,
+                download_result: std::sync::Arc::new(std::sync::Mutex::new(None)),
+                downloading_name: None,
+            },
             show_close_confirm: false,
             force_close: false,
             missing_udev_rules: {

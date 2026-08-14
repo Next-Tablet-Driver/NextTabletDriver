@@ -364,9 +364,9 @@ fn run_polling_loop(
 
 /// Parses, processes, and submits a raw USB packet.
 ///
-/// Evaluates parser and filter execution durations and reports performance lag spikes to the logs:
-/// 1. If parsing + processing time exceeds 5.0ms.
-/// 2. If the duration between consecutive active reports exceeds 25.0ms.
+/// Evaluates parser and filter execution durations and reports performance lag spikes to
+/// the logs, when parsing and processing time exceeds 5.0ms, or when the duration between
+/// consecutive active reports exceeds 25.0ms.
 ///
 /// Emits statistics updates and forwards output frames to the GUI thread.
 #[allow(clippy::too_many_arguments)]

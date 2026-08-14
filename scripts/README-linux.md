@@ -16,7 +16,14 @@ sudo udevadm control --reload-rules
 sudo udevadm trigger
 ```
 
-### 2. Add your user to the `input` group
+That's it for a normal desktop session: the rules grant access to `/dev/uinput` and
+the tablet's `hidraw` device to the currently logged-in user instantly, via
+`systemd-logind`'s dynamic ACLs. No group membership or logout is required.
+
+### 2. (Fallback) Add your user to the `input` group
+
+Only needed for headless setups or sessions without `systemd-logind` (some minimal
+window manager or SSH-only setups):
 
 ```bash
 sudo usermod -aG input $USER
@@ -53,7 +60,8 @@ manually copying udev rules:
   # Ensure the uinput kernel module is loaded
   boot.kernelModules = [ "uinput" ];
 
-  # Add your user to the input group
+  # Optional fallback: only needed for headless sessions without systemd-logind.
+  # Interactive desktop sessions get access instantly via the rules' TAG+="uaccess".
   users.users.<your-username>.extraGroups = [ "input" ];
 }
 ```
@@ -72,8 +80,9 @@ sudo nixos-rebuild switch
 
 Make sure:
 1. The udev rules are installed and reloaded
-2. Your user is in the `input` group (`groups $USER` to check)
-3. You have logged out and back in after adding the group
+2. You are in a `systemd-logind` desktop session (`loginctl` should list your session);
+   otherwise fall back to the `input` group and log out and back in after adding it
+   (`groups $USER` to check membership)
 
 ### The uinput module is not loaded
 

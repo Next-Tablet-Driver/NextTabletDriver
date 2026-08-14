@@ -134,7 +134,7 @@
   "dialog.udev.detail_2": "et le pilote pourrait ne pas avoir la permission de lire votre tablette.",
   "dialog.udev.how_to_fix": "Comment résoudre cela :",
   "dialog.udev.done": "J'ai installé les règles",
-  "dialog.udev.logout": "Vous devrez peut-être vous déconnecter puis vous reconnecter.",
+  "dialog.udev.no_relog": "L'accès est accordé instantanément à votre session actuelle, aucune déconnexion n'est nécessaire.",
 
   "dialog.update.title": "Mise à jour disponible",
   "dialog.update.header": "Mise à jour disponible !",

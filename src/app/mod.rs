@@ -6,6 +6,7 @@ pub mod autoupdate;
 pub mod events;
 pub mod layout;
 pub mod lifecycle;
+pub mod overlays;
 pub mod services;
 pub mod state;
 pub mod telemetry;

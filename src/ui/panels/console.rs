@@ -38,24 +38,24 @@ pub fn render_console_panel(app: &mut TabletMapperApp, ui: &mut egui::Ui) {
     ui.horizontal(|ui| {
         ui.label(egui_phosphor::regular::MAGNIFYING_GLASS);
         ui.add(
-            egui::TextEdit::singleline(&mut app.console_search)
+            egui::TextEdit::singleline(&mut app.console.search)
                 .hint_text(t!("console.search"))
                 .desired_width(200.0),
         );
         if ui.button(egui_phosphor::regular::X).clicked() {
-            app.console_search.clear();
+            app.console.search.clear();
         }
 
         ui.add_space(10.0);
         ui.separator();
         ui.add_space(10.0);
 
-        level_button(ui, &mut app.console_show_info, "Info", semantic.info);
-        level_button(ui, &mut app.console_show_warn, "Warn", semantic.warning);
-        level_button(ui, &mut app.console_show_error, "Error", semantic.error);
+        level_button(ui, &mut app.console.show_info, "Info", semantic.info);
+        level_button(ui, &mut app.console.show_warn, "Warn", semantic.warning);
+        level_button(ui, &mut app.console.show_error, "Error", semantic.error);
         // Debug color: use a muted version of the text color (no dedicated semantic slot)
         let debug_color = ui.visuals().weak_text_color();
-        level_button(ui, &mut app.console_show_debug, "Debug", debug_color);
+        level_button(ui, &mut app.console.show_debug, "Debug", debug_color);
     });
 
     ui.add_space(8.0);
@@ -67,7 +67,7 @@ pub fn render_console_panel(app: &mut TabletMapperApp, ui: &mut egui::Ui) {
     let footer_height = 45.0;
     let table_height = ui.available_height() - footer_height;
 
-    // 1. Table Area
+    // Table area
     ui.allocate_ui_with_layout(
         egui::vec2(ui.available_width(), table_height),
         egui::Layout::top_down(egui::Align::LEFT),
@@ -166,7 +166,7 @@ pub fn render_console_panel(app: &mut TabletMapperApp, ui: &mut egui::Ui) {
     ui.separator();
     ui.add_space(5.0);
 
-    // 2. Footer Area
+    // Footer area
     let semantic = crate::ui::theme::semantic_colors(ui.ctx());
     let mut toast_to_push = None;
 
