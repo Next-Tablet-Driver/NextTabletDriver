@@ -107,11 +107,16 @@ pub fn get_profiles_dir() -> PathBuf {
 /// into the `Settings/profiles/` subdirectory.
 ///
 /// Only files that are not system files (e.g. `last_session`, `session_meta`,
-/// `app_preferences`) are moved.
+/// `app_preferences`, `cache_releases`) are moved.
 pub fn migrate_profiles_to_subdir() {
     let root = get_settings_dir();
     let profiles_dir = get_profiles_dir();
-    let system_files = ["last_session", "session_meta", "app_preferences"];
+    let system_files = [
+        "last_session",
+        "session_meta",
+        "app_preferences",
+        "cache_releases",
+    ];
 
     let Ok(entries) = fs::read_dir(&root) else {
         return;
@@ -312,6 +317,7 @@ pub fn list_profiles() -> Vec<(String, PathBuf)> {
             && let Some(stem) = path.file_stem().and_then(|s| s.to_str())
             && stem != "last_session"
             && stem != "session_meta"
+            && stem != "cache_releases"
         {
             profiles.push((stem.to_string(), path));
         }
