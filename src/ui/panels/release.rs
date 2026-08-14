@@ -22,7 +22,8 @@ fn format_date(iso: &str) -> String {
 
 fn find_youtube_url(line: &str) -> Option<String> {
     line.split_whitespace().find_map(|word| {
-        let trimmed = word.trim_matches(|c: char| matches!(c, '(' | ')' | '[' | ']' | ',' | '<' | '>'));
+        let trimmed =
+            word.trim_matches(|c: char| matches!(c, '(' | ')' | '[' | ']' | ',' | '<' | '>'));
         let is_http = trimmed.starts_with("http://") || trimmed.starts_with("https://");
         let is_youtube = trimmed.contains("youtube.com/watch")
             || trimmed.contains("youtu.be/")
@@ -105,7 +106,10 @@ fn parse_release(release: &Release) -> ParsedRelease {
 
     ParsedRelease {
         version: release.tag_name.trim_start_matches('v').to_string(),
-        date: release.published_at.as_deref().map_or_else(String::new, format_date),
+        date: release
+            .published_at
+            .as_deref()
+            .map_or_else(String::new, format_date),
         additions,
         removals,
         fixes,
@@ -141,7 +145,10 @@ pub fn render_release_panel(app: &TabletMapperApp, ui: &mut egui::Ui) {
                 );
             });
         }
-        ReleaseNotesStatus::Loaded { releases, from_cache } => {
+        ReleaseNotesStatus::Loaded {
+            releases,
+            from_cache,
+        } => {
             if *from_cache {
                 ui.vertical_centered(|ui| {
                     ui.label(
@@ -243,7 +250,13 @@ fn render_release_entry(ui: &mut egui::Ui, entry: &ParsedRelease) {
         });
 }
 
-fn render_category(ui: &mut egui::Ui, label: &str, icon: &str, color: egui::Color32, items: &[String]) {
+fn render_category(
+    ui: &mut egui::Ui,
+    label: &str,
+    icon: &str,
+    color: egui::Color32,
+    items: &[String],
+) {
     if items.is_empty() {
         return;
     }

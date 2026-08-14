@@ -102,7 +102,10 @@ pub fn get_releases() -> ReleaseNotesOutcome {
                 target: "ReleaseNotes",
                 "All fetch attempts failed ({e}), falling back to cache"
             );
-            load_cache().map_or(ReleaseNotesOutcome::Unavailable, ReleaseNotesOutcome::Cached)
+            load_cache().map_or(
+                ReleaseNotesOutcome::Unavailable,
+                ReleaseNotesOutcome::Cached,
+            )
         }
     }
 }

@@ -73,8 +73,14 @@ impl Filter for DevocubAntichatter {
         let avg_y = self.sum_y / self.history.len() as f32;
 
         // Apply multiplier and offsets
-        let mut out_x = avg_x.mul_add(conf.antichatter_multiplier, conf.antichatter_offset_x / 100.0);
-        let mut out_y = avg_y.mul_add(conf.antichatter_multiplier, conf.antichatter_offset_y / 100.0);
+        let mut out_x = avg_x.mul_add(
+            conf.antichatter_multiplier,
+            conf.antichatter_offset_x / 100.0,
+        );
+        let mut out_y = avg_y.mul_add(
+            conf.antichatter_multiplier,
+            conf.antichatter_offset_y / 100.0,
+        );
 
         // Prediction (simplified)
         if conf.prediction_enabled

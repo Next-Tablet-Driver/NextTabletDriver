@@ -92,7 +92,8 @@ pub struct ReleaseNotesState {
     /// Current fetch/render status.
     pub status: ReleaseNotesStatus,
     /// Result of the last background fetch, picked up on the next frame.
-    pub pending: std::sync::Arc<std::sync::Mutex<Option<crate::app::release_notes::ReleaseNotesOutcome>>>,
+    pub pending:
+        std::sync::Arc<std::sync::Mutex<Option<crate::app::release_notes::ReleaseNotesOutcome>>>,
 }
 
 /// The core application state structure used by the `eframe` (egui) integration.
