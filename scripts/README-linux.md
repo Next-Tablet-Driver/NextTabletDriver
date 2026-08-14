@@ -41,28 +41,31 @@ sudo usermod -aG input $USER
 
 ## NixOS Configuration
 
-NixOS users can add the following to their `configuration.nix` instead of
-manually copying udev rules:
+NixOS users can use the flake's `nixosModules.default`, which installs the udev
+rules, loads the `uinput` kernel module, and sets up a `systemd --user` service
+to run the driver in the background, all behind a single `enable` flag.
+
+Add the flake as an input and import the module in your `configuration.nix`:
 
 ```nix
-{ pkgs, ... }:
-
 {
-  # Install NextTabletDriver udev rules to grant permissions and prevent double input
-  services.udev.packages = [
-    (pkgs.writeTextFile {
-      name = "nexttabletdriver-udev-rules";
-      text = builtins.readFile ./scripts/99-nexttabletdriver.rules;
-      destination = "/etc/udev/rules.d/99-nexttabletdriver.rules";
-    })
-  ];
+  inputs.nexttabletdriver.url = "github:Next-Tablet-Driver/NextTabletDriver";
 
-  # Ensure the uinput kernel module is loaded
-  boot.kernelModules = [ "uinput" ];
+  outputs = { nixpkgs, nexttabletdriver, ... }: {
+    nixosConfigurations.<your-hostname> = nixpkgs.lib.nixosSystem {
+      modules = [
+        nexttabletdriver.nixosModules.default
+        {
+          services.nexttabletdriver.enable = true;
 
-  # Optional fallback: only needed for headless sessions without systemd-logind.
-  # Interactive desktop sessions get access instantly via the rules' TAG+="uaccess".
-  users.users.<your-username>.extraGroups = [ "input" ];
+          # Optional fallback: only needed for headless sessions without
+          # systemd-logind. Interactive desktop sessions get access
+          # instantly via the udev rules' TAG+="uaccess".
+          services.nexttabletdriver.user = "<your-username>";
+        }
+      ];
+    };
+  };
 }
 ```
 
@@ -71,6 +74,12 @@ Then rebuild:
 ```bash
 sudo nixos-rebuild switch
 ```
+
+Home-manager users who prefer a per-user autostart instead of a system-wide
+service can import `homeManagerModules.default` and set
+`services.nexttabletdriver.enable = true;` instead (udev rules and the
+`uinput` kernel module still need to come from the NixOS module or be
+configured manually, since home-manager cannot install either).
 
 ---
 

@@ -24,6 +24,11 @@ pkgs.rustPlatform.buildRustPackage rec {
     libxkbcommon
   ];
 
+  postInstall = ''
+    install -Dm644 ${../scripts/99-nexttabletdriver.rules} \
+      $out/lib/udev/rules.d/99-nexttabletdriver.rules
+  '';
+
   meta = with pkgs.lib; {
     description = "Tablet Driver for Osu! and Drawing";
     homepage = "https://github.com/Next-Tablet-Driver/NextTabletDriver";
