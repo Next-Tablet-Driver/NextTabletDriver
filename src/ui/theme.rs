@@ -160,7 +160,7 @@ pub fn apply_theme(ctx: &egui::Context, theme: &ThemePreference) {
 
     // Standard NextTabletDriver widget interactive strokes
     style.visuals.widgets.noninteractive.bg_stroke = egui::Stroke::new(
-        0.5,
+        0.5_f32,
         visuals
             .widgets
             .noninteractive
@@ -170,15 +170,15 @@ pub fn apply_theme(ctx: &egui::Context, theme: &ThemePreference) {
     );
     style.visuals.widgets.inactive.bg_stroke = egui::Stroke::NONE;
     style.visuals.widgets.hovered.bg_stroke =
-        egui::Stroke::new(1.0, accent_color.gamma_multiply(0.5));
-    style.visuals.widgets.active.bg_stroke = egui::Stroke::new(1.0, accent_color);
+        egui::Stroke::new(1.0_f32, accent_color.gamma_multiply(0.5));
+    style.visuals.widgets.active.bg_stroke = egui::Stroke::new(1.0_f32, accent_color);
 
     // Only apply the gamma_multiply background hover if the theme isn't explicitly overriding it.
     // Egui's default hovered bg is transparent for inactive widgets, but we want it tinted.
     style.visuals.widgets.hovered.bg_fill = visuals.widgets.hovered.bg_fill.gamma_multiply(0.8);
 
     style.visuals.selection.bg_fill = accent_color;
-    style.visuals.selection.stroke = egui::Stroke::new(1.0, visuals.strong_text_color());
+    style.visuals.selection.stroke = egui::Stroke::new(1.0_f32, visuals.strong_text_color());
 
     ctx.set_style(style);
 
@@ -259,7 +259,7 @@ pub fn ui_labeled_box<R>(
         egui::Frame::new()
             .fill(bg_fill)
             .corner_radius(4.0)
-            .stroke(egui::Stroke::new(1.0, border_color.gamma_multiply(0.6)))
+            .stroke(egui::Stroke::new(1.0_f32, border_color.gamma_multiply(0.6)))
             .inner_margin(egui::Margin::symmetric(10, 5))
             .show(ui, |ui| {
                 ui.set_width(width);
@@ -467,7 +467,7 @@ pub fn ui_setting_row(ui: &mut egui::Ui, label: &str, value: &mut f32, unit: &st
         egui::Frame::new()
             .fill(bg_fill)
             .corner_radius(4.0)
-            .stroke(egui::Stroke::new(1.0, border_color.gamma_multiply(0.6)))
+            .stroke(egui::Stroke::new(1.0_f32, border_color.gamma_multiply(0.6)))
             .inner_margin(egui::Margin::symmetric(14, 8))
             .show(ui, |ui| {
                 ui.set_min_width(220.0);
@@ -530,7 +530,7 @@ pub fn ui_card<R>(
     egui::Frame::new()
         .fill(card_bg)
         .corner_radius(4.0)
-        .stroke(egui::Stroke::new(1.0, border_color))
+        .stroke(egui::Stroke::new(1.0_f32, border_color))
         .inner_margin(egui::Margin::symmetric(20, 15))
         .show(ui, |ui| {
             ui.set_width(ui.available_width());

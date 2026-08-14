@@ -23,7 +23,7 @@ pub fn render_tablet_section(ui: &mut egui::Ui, config: &mut MappingConfig, snap
     egui::Frame::canvas(ui.style())
         .fill(crate::ui::theme::panel_bg(ui.visuals()))
         .stroke(egui::Stroke::new(
-            1.0,
+            1.0_f32,
             crate::ui::theme::panel_border(ui.visuals()),
         ))
         .show(ui, |ui| {
@@ -55,7 +55,7 @@ pub fn render_tablet_section(ui: &mut egui::Ui, config: &mut MappingConfig, snap
             ui.painter().rect_stroke(
                 full_rect,
                 0.0,
-                egui::Stroke::new(1.0, crate::ui::theme::panel_border(ui.visuals())),
+                egui::Stroke::new(1.0_f32, crate::ui::theme::panel_border(ui.visuals())),
                 egui::StrokeKind::Middle,
             );
 
@@ -67,7 +67,7 @@ pub fn render_tablet_section(ui: &mut egui::Ui, config: &mut MappingConfig, snap
             ui.painter().add(egui::Shape::convex_polygon(
                 points.clone(),
                 crate::ui::theme::accent_bg(ui.visuals()),
-                egui::Stroke::new(1.0, stroke_color),
+                egui::Stroke::new(1.0_f32, stroke_color),
             ));
 
             ui.painter().circle_filled(
@@ -86,7 +86,7 @@ pub fn render_tablet_section(ui: &mut egui::Ui, config: &mut MappingConfig, snap
                     semantic
                         .playfield
                         .gamma_multiply(semantic.playfield_opacity),
-                    egui::Stroke::new(1.5, semantic.playfield),
+                    egui::Stroke::new(1.5_f32, semantic.playfield),
                 ));
             }
 

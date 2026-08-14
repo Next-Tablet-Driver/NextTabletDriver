@@ -304,7 +304,7 @@ fn render_websocket_settings(ui: &mut egui::Ui, config: &mut MappingConfig) {
 
                     egui::Frame::new()
                         .fill(color.gamma_multiply(0.1))
-                        .stroke(egui::Stroke::new(1.0, color.gamma_multiply(0.5)))
+                        .stroke(egui::Stroke::new(1.0_f32, color.gamma_multiply(0.5)))
                         .corner_radius(4.0)
                         .inner_margin(egui::Margin::symmetric(8, 2))
                         .show(ui, |ui| {
@@ -366,7 +366,7 @@ fn render_card<R>(
     egui::Frame::new()
         .fill(card_bg)
         .corner_radius(4.0)
-        .stroke(egui::Stroke::new(1.0, border_color))
+        .stroke(egui::Stroke::new(1.0_f32, border_color))
         .inner_margin(egui::Margin::symmetric(20, 15))
         .show(ui, |ui| {
             ui.set_width(ui.available_width());

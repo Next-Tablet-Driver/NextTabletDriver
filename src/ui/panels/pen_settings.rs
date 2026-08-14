@@ -89,7 +89,7 @@ fn render_binding_row(ui: &mut egui::Ui, label: &str, binding: &str, _id: &str) 
             egui::Frame::new()
                 .fill(visuals.widgets.noninteractive.bg_fill)
                 .stroke(egui::Stroke::new(
-                    1.0,
+                    1.0_f32,
                     panel_border(visuals).gamma_multiply(0.5),
                 ))
                 .corner_radius(4.0)

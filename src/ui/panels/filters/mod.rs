@@ -58,7 +58,7 @@ pub fn render_filters_panel(
                 egui::Frame::new()
                     .fill(panel_bg(visuals).gamma_multiply(0.6))
                     .stroke(egui::Stroke::new(
-                        1.0,
+                        1.0_f32,
                         panel_border(visuals).gamma_multiply(0.4),
                     ))
                     .inner_margin(egui::Margin::symmetric(10, 10))
