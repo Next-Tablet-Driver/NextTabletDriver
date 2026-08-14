@@ -4,6 +4,7 @@
 # Force LF for certain files that must be consistent across OS
 *.sh text eol=lf
 *.bash text eol=lf
+.cargo-husky/hooks/* text eol=lf
 *.yml text eol=lf
 *.yaml text eol=lf
 *.toml text eol=lf

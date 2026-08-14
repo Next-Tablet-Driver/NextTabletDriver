@@ -1,0 +1,11 @@
+#!/bin/sh
+# Installed by cargo-husky (user-hooks). Mirrors the fmt/clippy steps from
+# .github/workflows/rust-quality-check.yml so bad formatting or lint errors
+# never leave the local machine.
+set -e
+
+echo '+cargo fmt --all -- --check'
+cargo fmt --all -- --check
+
+echo '+cargo clippy --workspace --all-targets --all-features -- -D warnings'
+cargo clippy --workspace --all-targets --all-features -- -D warnings
