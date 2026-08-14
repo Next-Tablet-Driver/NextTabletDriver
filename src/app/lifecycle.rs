@@ -50,6 +50,7 @@ impl TabletMapperApp {
         crate::settings::app_preferences::validate_theme(&mut app_prefs);
         crate::ui::theme::apply_theme(ctx, &app_prefs.theme);
         Self::setup_fonts(ctx);
+        egui_extras::install_image_loaders(ctx);
 
         // Build initial state
         let mut initial_toasts = Vec::new();

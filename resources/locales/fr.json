@@ -196,5 +196,6 @@
   "release.loading": "Chargement des notes de version...",
   "release.cached_notice": "Affichage des notes de version en cache (hors ligne).",
   "release.unavailable": "Vérifiez votre connexion Internet.",
-  "release.watch_video": "Voir la vidéo"
+  "release.watch_video": "Voir la vidéo",
+  "release.contributors": "Contributeurs :"
 }

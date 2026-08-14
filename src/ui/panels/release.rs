@@ -12,6 +12,7 @@ struct ParsedRelease {
     improvements: Vec<String>,
     notes: Vec<String>,
     videos: Vec<String>,
+    contributors: Vec<String>,
 }
 
 fn format_date(iso: &str) -> String {
@@ -30,6 +31,17 @@ fn find_youtube_url(line: &str) -> Option<String> {
     })
 }
 
+fn mention_username(word: &str) -> Option<&str> {
+    let trimmed = word.trim_end_matches([',', '.', ')', ':', ';', '!', '?']);
+    let name = trimmed.strip_prefix('@')?;
+    let valid = !name.is_empty()
+        && name.len() <= 39
+        && name.chars().all(|c| c.is_ascii_alphanumeric() || c == '-')
+        && !name.starts_with('-')
+        && !name.ends_with('-');
+    valid.then_some(name)
+}
+
 fn strip_category_prefix<'a>(line: &'a str, lower: &str, prefix: &str) -> Option<&'a str> {
     if lower.starts_with(prefix) {
         line.get(prefix.len()..).map(str::trim)
@@ -45,6 +57,7 @@ fn parse_release(release: &Release) -> ParsedRelease {
     let mut improvements = Vec::new();
     let mut notes = Vec::new();
     let mut videos = Vec::new();
+    let mut contributors = Vec::new();
 
     let body = release.body.as_deref().unwrap_or_default();
     for raw_line in body.lines() {
@@ -54,6 +67,16 @@ fn parse_release(release: &Release) -> ParsedRelease {
         }
         let cleaned = trimmed.replace("**", "");
         let line = cleaned.trim();
+
+        for word in line.split_whitespace() {
+            if let Some(user) = mention_username(word)
+                && !contributors
+                    .iter()
+                    .any(|c: &String| c.eq_ignore_ascii_case(user))
+            {
+                contributors.push(user.to_string());
+            }
+        }
 
         if let Some(url) = find_youtube_url(line) {
             videos.push(url);
@@ -89,6 +112,7 @@ fn parse_release(release: &Release) -> ParsedRelease {
         improvements,
         notes,
         videos,
+        contributors,
     }
 }
 
@@ -214,6 +238,7 @@ fn render_release_entry(ui: &mut egui::Ui, entry: &ParsedRelease) {
                 );
 
                 render_videos(ui, &entry.videos);
+                render_contributors(ui, &entry.contributors);
             });
         });
 }
@@ -241,21 +266,64 @@ fn render_category(ui: &mut egui::Ui, label: &str, icon: &str, color: egui::Colo
 
     ui.add_space(4.0);
 
+    let item_color = ui.visuals().text_color().gamma_multiply(0.8);
     for item in items {
-        ui.horizontal(|ui| {
-            ui.add_space(8.0);
-            ui.label(egui_phosphor::regular::CARET_RIGHT);
-            ui.add_space(4.0);
-            ui.label(
-                egui::RichText::new(item.as_str())
-                    .size(12.5)
-                    .color(ui.visuals().text_color().gamma_multiply(0.8)),
-            );
-        });
+        render_bullet_text(ui, item, item_color);
         ui.add_space(2.0);
     }
 
     ui.add_space(10.0);
+}
+
+fn render_bullet_text(ui: &mut egui::Ui, text: &str, color: egui::Color32) {
+    ui.horizontal_wrapped(|ui| {
+        ui.spacing_mut().item_spacing.x = 4.0;
+        ui.add_space(8.0);
+        ui.label(egui::RichText::new(egui_phosphor::regular::CARET_RIGHT).color(color));
+        for word in text.split_whitespace() {
+            if let Some(username) = mention_username(word) {
+                ui.hyperlink_to(
+                    egui::RichText::new(word).size(12.5),
+                    format!("https://github.com/{username}"),
+                );
+            } else {
+                ui.label(egui::RichText::new(word).size(12.5).color(color));
+            }
+        }
+    });
+}
+
+fn render_contributors(ui: &mut egui::Ui, usernames: &[String]) {
+    if usernames.is_empty() {
+        return;
+    }
+
+    ui.add_space(10.0);
+    ui.separator();
+    ui.add_space(8.0);
+
+    ui.horizontal_wrapped(|ui| {
+        ui.spacing_mut().item_spacing = egui::vec2(10.0, 6.0);
+        ui.label(
+            egui::RichText::new(t!("release.contributors"))
+                .weak()
+                .size(11.0),
+        );
+        for username in usernames {
+            ui.horizontal(|ui| {
+                ui.spacing_mut().item_spacing.x = 4.0;
+                ui.add(
+                    egui::Image::from_uri(format!("https://github.com/{username}.png?size=64"))
+                        .fit_to_exact_size(egui::vec2(20.0, 20.0))
+                        .corner_radius(10.0),
+                );
+                ui.hyperlink_to(
+                    egui::RichText::new(format!("@{username}")).size(12.0),
+                    format!("https://github.com/{username}"),
+                );
+            });
+        }
+    });
 }
 
 fn render_videos(ui: &mut egui::Ui, urls: &[String]) {

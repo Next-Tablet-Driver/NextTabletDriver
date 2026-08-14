@@ -199,5 +199,6 @@
   "release.loading": "Loading release notes...",
   "release.cached_notice": "Showing cached release notes (offline).",
   "release.unavailable": "Check your Internet connection.",
-  "release.watch_video": "Watch Video"
+  "release.watch_video": "Watch Video",
+  "release.contributors": "Contributors:"
 }
