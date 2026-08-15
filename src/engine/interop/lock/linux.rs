@@ -1,7 +1,7 @@
 //! Linux implementation of the HID owner lock via `flock(2)` on a file under
 //! `XDG_RUNTIME_DIR`, tried non-blockingly. The kernel releases the lock
-//! automatically when the holding process's file descriptors are closed —
-//! including on crash or `SIGKILL` — so there is never a stale lock file to
+//! automatically when the holding process's file descriptors are closed,
+//! including on crash or `SIGKILL`, so there is never a stale lock file to
 //! clean up manually.
 
 use nix::fcntl::{Flock, FlockArg};

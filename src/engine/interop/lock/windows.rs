@@ -9,7 +9,7 @@ const MUTEX_NAME: &str = "Local\\NextTabletDriver_HidOwner";
 
 /// Wraps the mutex handle. Dropping it releases and closes the handle, which
 /// hands ownership back to the OS and makes the lock available to the next
-/// process that tries — including automatically if this process crashes.
+/// process that tries, including automatically if this process crashes.
 pub struct OwnerHandle(HANDLE);
 
 // SAFETY: the wrapped HANDLE is a plain Win32 kernel object reference with no
@@ -52,7 +52,7 @@ pub fn try_acquire() -> Option<OwnerHandle> {
     // handle for the duration of this call.
     let wait_result = unsafe { WaitForSingleObject(handle, 0) };
 
-    // WAIT_ABANDONED means the previous owner died while holding the mutex —
+    // WAIT_ABANDONED means the previous owner died while holding the mutex;
     // we still get ownership, which is exactly the self-healing promotion
     // behavior this lock is meant to provide.
     if wait_result == WAIT_OBJECT_0 || wait_result == WAIT_ABANDONED {

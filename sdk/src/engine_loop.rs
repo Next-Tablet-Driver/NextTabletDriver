@@ -151,7 +151,7 @@ fn apply_shm_snapshot(
 
 /// Maps a raw [`SdkPublicState::status`] byte back to `TabletStatus`.
 ///
-/// Mirrors `TabletStatus`'s declaration order in `drivers::models` — the
+/// Mirrors `TabletStatus`'s declaration order in `drivers::models`. The
 /// discriminant was produced on the publishing side via a plain `as u8` cast,
 /// so this must stay in sync with that enum's variant order.
 const fn status_from_discriminant(byte: u8) -> TabletStatus {
@@ -352,7 +352,7 @@ fn owner_iteration(shared: &Arc<SharedState>, is_owner: &Arc<AtomicBool>) {
         shared: Arc::clone(shared),
     });
     // Kept alive for the rest of this function; dropping it stops the
-    // listener thread. Only logged on failure — the HID owner lock already
+    // listener thread. Only logged on failure: the HID owner lock already
     // guarantees this is the only owner, so a bind failure here "shouldn't
     // happen in practice" per `CommandListener::spawn`'s doc comment.
     let _command_listener = CommandListener::spawn(command_handler)
@@ -469,7 +469,7 @@ fn on_disconnected(shared: &Arc<SharedState>) {
 
 /// The main packet reading loop, driving the real HID device. Adapted from
 /// the desktop app's `run_polling_loop`: no OS input injection, no UI
-/// channel — every processed frame lands in `shared.processed_frame` and the
+/// channel. Every processed frame lands in `shared.processed_frame` and the
 /// shared segment for `ntd_poll_state`/readers to pick up.
 #[allow(clippy::too_many_arguments)]
 fn run_polling_loop(

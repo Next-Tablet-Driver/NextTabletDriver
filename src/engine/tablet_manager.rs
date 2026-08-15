@@ -85,7 +85,7 @@ fn manager_thread_iteration(shared_clone: &Arc<SharedState>, sender_clone: &Send
 /// desktop instance) is the one actually driving the device.
 ///
 /// Local config writes made through the desktop UI while in reader mode are
-/// intentionally out of scope here — the desktop UI has no notion yet of
+/// intentionally out of scope here. The desktop UI has no notion yet of
 /// "control the remote owner's device" versus "edit my own settings"; that
 /// distinction belongs to a UI-level change, not this wiring.
 fn apply_shm_snapshot(
@@ -152,7 +152,7 @@ fn apply_shm_snapshot(
 
 /// Maps a raw [`SdkPublicState::status`] byte back to [`TabletStatus`].
 ///
-/// Mirrors `TabletStatus`'s declaration order in `drivers::models` — the
+/// Mirrors `TabletStatus`'s declaration order in `drivers::models`. The
 /// discriminant was produced on the publishing side via a plain `as u8` cast,
 /// so this must stay in sync with that enum's variant order.
 const fn status_from_discriminant(byte: u8) -> TabletStatus {
@@ -350,7 +350,7 @@ fn owner_iteration(shared_clone: &Arc<SharedState>, sender_clone: &Sender<Tablet
         shared: Arc::clone(shared_clone),
     });
     // Kept alive for the rest of this function; dropping it stops the
-    // listener thread. Only logged on failure — "shouldn't happen in
+    // listener thread. Only logged on failure: "shouldn't happen in
     // practice" per `CommandListener::spawn`'s doc comment, since the HID
     // owner lock already guarantees this is the only owner.
     let _command_listener = CommandListener::spawn(command_handler)

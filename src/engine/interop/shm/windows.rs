@@ -31,7 +31,7 @@ pub struct Mapping {
 // `ShmSegment`'s own internal synchronization (seqlock) is what guards the
 // memory they point to, not any property of this type.
 unsafe impl Send for Mapping {}
-// SAFETY: see above — safe concurrent access to the pointee is guaranteed by
+// SAFETY: see above. Safe concurrent access to the pointee is guaranteed by
 // the seqlock protocol in `super`, not by this type.
 unsafe impl Sync for Mapping {}
 
@@ -105,7 +105,7 @@ pub fn create_mapping(size: usize) -> Option<Mapping> {
 
 /// Opens the well-known named mapping if it already exists; never creates
 /// it. Used by readers, which should never bring the segment into existence
-/// themselves — only the current HID owner publishes into it.
+/// themselves; only the current HID owner publishes into it.
 pub fn open_mapping(size: usize) -> Option<Mapping> {
     let name = wide_name();
     // SAFETY: `name` is a valid, NUL-terminated UTF-16 buffer kept alive for

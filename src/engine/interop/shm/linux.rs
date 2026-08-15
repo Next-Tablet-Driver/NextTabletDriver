@@ -12,7 +12,7 @@ use std::ptr::NonNull;
 
 const SEGMENT_NAME: &str = "/ntd_state_v1";
 
-/// Read-write for the owning user, read-only for group/other — mirrors the
+/// Read-write for the owning user, read-only for group/other. Mirrors the
 /// permissiveness of the Windows `Local\` mapping, which any local session
 /// process can open.
 fn segment_mode() -> Mode {
@@ -80,7 +80,7 @@ pub fn create_mapping(size: usize) -> Option<Mapping> {
 
 /// Opens the well-known shared memory object if it already exists; never
 /// creates it. Used by readers, which should never bring the segment into
-/// existence themselves — only the current HID owner publishes into it.
+/// existence themselves; only the current HID owner publishes into it.
 pub fn open_mapping(size: usize) -> Option<Mapping> {
     let fd = shm_open(SEGMENT_NAME, OFlag::O_RDWR, segment_mode()).ok()?;
     map_fd(fd, size)

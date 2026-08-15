@@ -140,8 +140,8 @@ pub struct SharedState {
     /// The most recent normalized packet from the tablet (X, Y, Pressure, Pen Buttons).
     pub tablet_data: RwLock<TabletData>,
     /// The most recent output of `Pipeline::process` (UV/screen coordinates, pressure,
-    /// tilt, tip state). Published by whichever loop drives the pipeline — the desktop
-    /// `tablet_manager` or the SDK's embedded engine — and read by consumers (UI,
+    /// tilt, tip state). Published by whichever loop drives the pipeline, the desktop
+    /// `tablet_manager` or the SDK's embedded engine, and read by consumers (UI,
     /// `engine::interop::shm` publisher, SDK FFI) without re-deriving it.
     pub processed_frame: RwLock<ProcessedFrame>,
     /// Cohesive properties of the active device (name, vid, pid, sizes).

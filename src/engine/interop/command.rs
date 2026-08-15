@@ -2,7 +2,7 @@
 //!
 //! Small fixed-size request/response protocol letting a non-owner process
 //! forward config writes ([`Request::SetMode`], [`Request::SetActiveArea`])
-//! to the current HID owner — the only process allowed to mutate the shared
+//! to the current HID owner, the only process allowed to mutate the shared
 //! tablet config, since it's the one actually driving the pipeline. The
 //! owner listens on a well-known local socket ([`CommandListener`]); readers
 //! connect once per command via [`send_command`].
@@ -46,7 +46,7 @@ const RESPONSE_SIZE: usize = 1;
 /// behalf.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Request {
-    /// Liveness check — does nothing but confirms an owner is listening.
+    /// Liveness check: does nothing but confirms an owner is listening.
     Ping,
     SetMode(DriverMode),
     SetActiveArea(ActiveArea),
@@ -190,7 +190,7 @@ pub trait CommandHandler: Send + Sync {
 /// # Errors
 ///
 /// Returns `Err` if no owner is currently listening (e.g. between a
-/// promotion and the new owner starting its listener) — callers should treat
+/// promotion and the new owner starting its listener). Callers should treat
 /// that as "try again shortly," not as a hard failure.
 pub fn send_command(request: Request) -> io::Result<Response> {
     let name = socket_name()?;
@@ -232,7 +232,7 @@ pub struct CommandListener {
 impl CommandListener {
     /// Starts listening on the well-known command socket, dispatching every
     /// incoming request to `handler`. Only the current HID owner should call
-    /// this — readers use [`send_command`] instead.
+    /// this; readers use [`send_command`] instead.
     ///
     /// # Errors
     ///

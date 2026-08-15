@@ -34,7 +34,7 @@ pub const DEVICE_NAME_CAPACITY: usize = 64;
 /// Snapshot of live tablet state and the config it was produced under.
 ///
 /// Published by the HID owner for every reader to consume. Mirrors the
-/// fields the SDK's public `NtdState` FFI struct exposes — this struct *is*
+/// fields the SDK's public `NtdState` FFI struct exposes; this struct *is*
 /// that layout's single source of truth, shared across the process boundary.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -106,7 +106,7 @@ impl Default for SdkPublicState {
 /// `payload` is wrapped in `UnsafeCell` because it is mutated through a
 /// shared reference (every accessor only ever holds `&ShmSegment`, since the
 /// segment is reached through a raw pointer into memory shared across
-/// processes) — the seqlock protocol below, not Rust's aliasing rules, is
+/// processes). The seqlock protocol below, not Rust's aliasing rules, is
 /// what keeps that sound.
 #[repr(C)]
 struct ShmSegment {
@@ -135,7 +135,7 @@ pub struct ShmWriter {
 impl ShmWriter {
     /// Creates (or takes over) the well-known shared segment and marks it
     /// with the current ABI version. Only the HID owner should hold one of
-    /// these at a time — callers are expected to have already acquired
+    /// these at a time; callers are expected to have already acquired
     /// [`super::lock::HidOwnerGuard`].
     #[must_use]
     pub fn create() -> Option<Self> {
@@ -227,7 +227,7 @@ mod tests {
     // one test function rather than being split across two `#[test]`s: they
     // all target the same fixed, well-known segment name (matching the
     // plan's single machine-wide name per platform), and cargo runs tests in
-    // the same binary in parallel by default — two tests independently
+    // the same binary in parallel by default: two tests independently
     // creating/opening that name would race each other's writer state.
     #[test]
     fn write_read_round_trip_and_no_torn_reads_under_concurrency() {

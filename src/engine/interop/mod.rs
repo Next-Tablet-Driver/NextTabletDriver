@@ -9,7 +9,7 @@
 //!
 //! Used by both the desktop app (`engine::tablet_manager`) and the SDK's
 //! embedded engine loop, which is why it lives in the root crate rather than
-//! in `sdk/` — neither side duplicates the lock, the shared-memory layout, or
+//! in `sdk/`. Neither side duplicates the lock, the shared-memory layout, or
 //! the command protocol.
 
 pub mod command;

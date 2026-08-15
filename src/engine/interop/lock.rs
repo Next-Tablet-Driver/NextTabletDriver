@@ -1,14 +1,14 @@
 //! # HID Owner Lock
 //!
 //! Named, machine-wide, non-blocking lock used to elect exactly one process as
-//! the "HID owner" — the one allowed to actually open the tablet's HID device.
+//! the "HID owner": the one allowed to actually open the tablet's HID device.
 //! Holding [`HidOwnerGuard`] means this process is the owner; every other
 //! process (another SDK-embedded game, or the desktop app if it's also
 //! running) fails to acquire it and instead reads the owner's published state.
 //!
 //! The lock is released automatically by the OS if the owning process dies
 //! (crash, kill, normal exit), so a non-owner retrying [`try_acquire_hid_owner`]
-//! is promoted the moment the previous owner disappears — no stale-lock
+//! is promoted the moment the previous owner disappears. No stale-lock
 //! cleanup logic is needed on either platform.
 
 #[cfg(windows)]
@@ -23,7 +23,7 @@ use linux as os;
 
 /// Held by whichever process currently owns the real HID device.
 ///
-/// The wrapped platform handle is never read again after acquisition — it's
+/// The wrapped platform handle is never read again after acquisition; it's
 /// kept purely so that dropping this guard (process exit, or an explicit
 /// `drop`) releases the lock via its `Drop` impl.
 pub struct HidOwnerGuard(#[allow(dead_code)] os::OwnerHandle);

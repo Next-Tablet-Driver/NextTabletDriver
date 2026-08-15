@@ -62,7 +62,7 @@
  * [`next_tablet_driver::engine::interop::shm::DEVICE_NAME_CAPACITY`]
  * directly) so it can be emitted as a `#define` in the generated C header.
  * [`NtdState::device_name`] itself uses the literal `64` rather than this
- * constant, since `csbindgen` — unlike `cbindgen` — can't resolve a named
+ * constant, since `csbindgen`, unlike `cbindgen`, can't resolve a named
  * constant into a fixed-size C# buffer length. The `const _` assertions
  * below keep all three (this constant, the real capacity, and the struct's
  * array literal) from silently drifting apart.
@@ -72,8 +72,8 @@
 /**
  * Live tablet + config snapshot returned by [`ntd_poll_state`].
  *
- * Field-for-field mirror of [`next_tablet_driver::engine::interop::shm::SdkPublicState`]
- * — the two layouts are asserted equal in size below, since both cross an
+ * Field-for-field mirror of [`next_tablet_driver::engine::interop::shm::SdkPublicState`].
+ * The two layouts are asserted equal in size below, since both cross an
  * FFI/ABI boundary (this one to the host process, that one to other
  * processes).
  */
@@ -112,7 +112,7 @@ uint32_t ntd_sdk_abi_version(void);
 /**
  * Starts the embedded engine: becomes the HID owner if no other process
  * currently is one, otherwise starts in reader mode and mirrors the real
- * owner's state. Idempotent — calling this again while already initialised
+ * owner's state. Idempotent: calling this again while already initialised
  * is a no-op that returns [`NTD_OK`].
  */
 int32_t ntd_init(void);

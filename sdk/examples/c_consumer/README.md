@@ -1,7 +1,7 @@
 # c_consumer
 
 Minimal C example: initializes the embedded engine, sets the mode and active
-area once, polls tablet state in a loop, then shuts down. Runs standalone —
+area once, polls tablet state in a loop, then shuts down. Runs standalone,
 no NextTabletDriver desktop app required.
 
 ## Build

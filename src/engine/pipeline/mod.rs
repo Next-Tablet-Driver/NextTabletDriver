@@ -57,7 +57,7 @@ impl Pipeline {
     /// Processes a single hardware packet through the entire stack, returning the
     /// resulting frame. Callers that need to drive OS input injection (the desktop
     /// app) are responsible for feeding the returned frame into `engine::injector`
-    /// themselves — this method never touches the OS, so it's safe to call from
+    /// themselves. This method never touches the OS, so it's safe to call from
     /// contexts (like the SDK's embedded engine) that must never inject input.
     pub fn process(
         &mut self,

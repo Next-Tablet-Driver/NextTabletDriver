@@ -2,7 +2,7 @@
 
 Minimal .NET console example: initializes the embedded engine via
 `NtdClient`, sets the mode and active area once, polls tablet state in a
-loop, then disposes. Runs standalone — no NextTabletDriver desktop app
+loop, then disposes. Runs standalone, no NextTabletDriver desktop app
 required.
 
 ## Build & run
