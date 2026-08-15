@@ -34,6 +34,7 @@
 //! *   **[`startup`]**: Platform-specific autostart registration.
 //! *   **[`ui`]**: Graphical components and theming.
 
+#[cfg(feature = "gui")]
 pub mod app;
 pub mod core;
 pub mod drivers;
@@ -43,6 +44,7 @@ pub mod i18n;
 pub mod logger;
 pub mod settings;
 pub mod startup;
+#[cfg(feature = "gui")]
 pub mod ui;
 
 /// Version.

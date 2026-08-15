@@ -134,6 +134,7 @@ src/
 tablets/      Device JSON definitions
 scripts/      Linux udev helpers and packaging utilities
 resources/    Icons and bundled fonts
+sdk/          Native SDK (ntd_sdk.dll / libntd_sdk.so) for third-party integration
 ```
 
 ## Configuration and Themes
@@ -141,6 +142,10 @@ resources/    Icons and bundled fonts
 Settings are stored as JSON profiles. The UI supports importing and exporting profiles from the File menu.
 
 Custom themes are documented in [`docs/THEMES.md`](docs/THEMES.md). Themes can control the main palette, widget styling, spacing, semantic colors, and the opacity of the osu! playfield overlay.
+
+## Native SDK
+
+Third-party applications (games, Blender/Unity plugins) can embed NextTabletDriver's engine directly, without requiring the desktop app to be installed or running. See [`docs/SDK.md`](docs/SDK.md) for the C and C# APIs, build instructions, and the HID ownership arbitration mechanism.
 
 ## Developer Notes
 

@@ -8,20 +8,33 @@
 //!
 //! ```text
 //! run_manager()
-//!   ├── init_thread_priority()
-//!   ├── init_filter_pipeline()
-//!   └── loop
-//!         ├── on_device_connected()
-//!         ├── run_polling_loop()
-//!         │    ├── process_packet()
-//!         │    └── maybe_reload_config()
-//!         └── on_disconnected()
+//!   └── manager_thread_iteration()
+//!         ├── owner_iteration()      (this process holds the HID owner lock)
+//!         │    ├── init_thread_priority()
+//!         │    ├── init_filter_pipeline()
+//!         │    └── loop
+//!         │          ├── on_device_connected()
+//!         │          ├── run_polling_loop()
+//!         │          │    ├── process_packet()      (publishes shm state)
+//!         │          │    └── maybe_reload_config()
+//!         │          └── on_disconnected()
+//!         └── reader_iteration()     (another process owns the HID device)
+//!              └── loop
+//!                    ├── apply_shm_snapshot()
+//!                    └── try_acquire_hid_owner()      (periodic promotion retry)
 //! ```
+//!
+//! See `engine::interop` for the HID-owner arbitration mechanism: exactly one
+//! process (this desktop app, or an SDK-embedded game) opens the real HID
+//! device at a time, and every other process mirrors its state instead.
 
-use crate::core::config::models::MappingConfig;
-use crate::drivers::{TabletData, detect_tablet};
+use crate::core::config::models::{ActiveArea, DriverMode, MappingConfig};
+use crate::drivers::{TabletData, TabletStatus, detect_tablet};
 use crate::engine::injector::Injector;
-use crate::engine::pipeline::Pipeline;
+use crate::engine::interop::command::{CommandHandler, CommandListener};
+use crate::engine::interop::lock::try_acquire_hid_owner;
+use crate::engine::interop::shm::{DEVICE_NAME_CAPACITY, SdkPublicState, ShmReader, ShmWriter};
+use crate::engine::pipeline::{Pipeline, ProcessedFrame};
 use crate::engine::state::{LockRecoveryExt, SharedState, WriteRecoverExt};
 use crate::filters::FilterPipeline;
 use crossbeam_channel::Sender;
@@ -57,6 +70,240 @@ pub fn run_manager(shared: &Arc<SharedState>, tablet_sender: &Sender<TabletData>
 }
 
 fn manager_thread_iteration(shared_clone: &Arc<SharedState>, sender_clone: &Sender<TabletData>) {
+    // The binding below is held for the entire branch body, which is exactly
+    // as long as this process should keep the real HID device open.
+    if let Some(_hid_owner) = try_acquire_hid_owner() {
+        owner_iteration(shared_clone, sender_clone);
+    } else {
+        reader_iteration(shared_clone, sender_clone);
+    }
+}
+
+/// Applies whatever config/state a remote HID owner published to this
+/// process's own `SharedState`, so the desktop UI reflects live tablet data
+/// even when another process (another SDK-embedded game, or a second
+/// desktop instance) is the one actually driving the device.
+///
+/// Local config writes made through the desktop UI while in reader mode are
+/// intentionally out of scope here — the desktop UI has no notion yet of
+/// "control the remote owner's device" versus "edit my own settings"; that
+/// distinction belongs to a UI-level change, not this wiring.
+fn apply_shm_snapshot(
+    shared: &Arc<SharedState>,
+    snapshot: &SdkPublicState,
+    last_config_version: &mut Option<u32>,
+) {
+    let name_len = (snapshot.device_name_len as usize).min(snapshot.device_name.len());
+    let name = snapshot
+        .device_name
+        .get(..name_len)
+        .and_then(|bytes| std::str::from_utf8(bytes).ok())
+        .filter(|s| !s.is_empty())
+        .unwrap_or("No Tablet Detected");
+
+    let mut device = shared.device_state.write().unwrap_or_reset("device_state");
+    device.name = name.to_string();
+    device.vid = snapshot.vid;
+    device.pid = snapshot.pid;
+    drop(device);
+
+    let mut data = shared.tablet_data.write().unwrap_or_reset("tablet_data");
+    data.is_connected = snapshot.is_connected;
+    data.status = status_from_discriminant(snapshot.status);
+    data.buttons = snapshot.buttons;
+    data.eraser = snapshot.eraser;
+    drop(data);
+
+    *shared
+        .processed_frame
+        .write()
+        .unwrap_or_reset("processed_frame") = ProcessedFrame {
+        u: snapshot.u,
+        v: snapshot.v,
+        screen_x: snapshot.screen_x,
+        screen_y: snapshot.screen_y,
+        is_down: snapshot.is_down,
+        pressure: snapshot.pressure,
+        tilt_x: snapshot.tilt_x,
+        tilt_y: snapshot.tilt_y,
+    };
+
+    if *last_config_version != Some(snapshot.config_version) {
+        *last_config_version = Some(snapshot.config_version);
+        let mut config = shared.config.write().unwrap_or_log("config");
+        config.mode = if snapshot.mode == 1 {
+            DriverMode::Relative
+        } else {
+            DriverMode::Absolute
+        };
+        config.active_area = ActiveArea {
+            x: snapshot.active_area_x,
+            y: snapshot.active_area_y,
+            w: snapshot.active_area_w,
+            h: snapshot.active_area_h,
+            rotation: snapshot.active_area_rotation,
+        };
+        drop(config);
+        shared
+            .config_version
+            .store(snapshot.config_version, Ordering::SeqCst);
+    }
+}
+
+/// Maps a raw [`SdkPublicState::status`] byte back to [`TabletStatus`].
+///
+/// Mirrors `TabletStatus`'s declaration order in `drivers::models` — the
+/// discriminant was produced on the publishing side via a plain `as u8` cast,
+/// so this must stay in sync with that enum's variant order.
+const fn status_from_discriminant(byte: u8) -> TabletStatus {
+    match byte {
+        1 => TabletStatus::OutOfRange,
+        2 => TabletStatus::Hover,
+        3 => TabletStatus::Contact,
+        4 => TabletStatus::Active,
+        5 => TabletStatus::Eraser,
+        6 => TabletStatus::Pen,
+        7 => TabletStatus::Touch,
+        8 => TabletStatus::Aux,
+        9 => TabletStatus::Rotation,
+        10 => TabletStatus::Tool,
+        11 => TabletStatus::Mouse,
+        _ => TabletStatus::Disconnected,
+    }
+}
+
+/// How often a reader retries becoming the HID owner (e.g. the previous
+/// owner exited) and how often it polls the shared segment for fresh state.
+const OWNER_PROMOTION_RETRY_INTERVAL: Duration = Duration::from_secs(3);
+const SHM_READER_POLL_INTERVAL: Duration = Duration::from_millis(10);
+
+/// Runs this process as a non-owner: mirrors the current HID owner's
+/// published state into the local `SharedState` instead of touching a real
+/// device, and periodically retries promotion to owner.
+fn reader_iteration(shared: &Arc<SharedState>, sender: &Sender<TabletData>) {
+    log::info!(target: "TabletManager", "Another process owns the HID device; running in reader mode");
+
+    let mut reader = ShmReader::open();
+    let mut last_config_version = None;
+    let mut last_promotion_attempt = Instant::now();
+
+    loop {
+        if shared.shutdown_requested.load(Ordering::Relaxed) {
+            return;
+        }
+        if shared.reload_requested.swap(false, Ordering::Relaxed) {
+            return;
+        }
+
+        if Instant::now().duration_since(last_promotion_attempt) >= OWNER_PROMOTION_RETRY_INTERVAL {
+            last_promotion_attempt = Instant::now();
+            // Held for the rest of this function's life, same as the
+            // top-level branch in `manager_thread_iteration`.
+            if let Some(_hid_owner) = try_acquire_hid_owner() {
+                log::info!(target: "TabletManager", "Promoted to HID owner, taking over the real device");
+                owner_iteration(shared, sender);
+                return;
+            }
+        }
+
+        if reader.is_none() {
+            reader = ShmReader::open();
+        }
+
+        if let Some(snapshot) = reader.as_ref().and_then(ShmReader::read) {
+            apply_shm_snapshot(shared, &snapshot, &mut last_config_version);
+        }
+
+        thread::sleep(SHM_READER_POLL_INTERVAL);
+    }
+}
+
+/// Applies a reader's [`Request`](crate::engine::interop::command::Request)
+/// to this owner's real `SharedState`, through the exact same
+/// validation/write path a local caller (the desktop UI) would use.
+struct DesktopCommandHandler {
+    shared: Arc<SharedState>,
+}
+
+impl CommandHandler for DesktopCommandHandler {
+    fn set_mode(&self, mode: DriverMode) {
+        let mut config = self.shared.config.write().unwrap_or_log("config");
+        config.mode = mode;
+        drop(config);
+        self.shared.config_version.fetch_add(1, Ordering::SeqCst);
+    }
+
+    fn set_active_area(&self, area: ActiveArea) {
+        let (phys_w, phys_h) = self
+            .shared
+            .device_state
+            .read()
+            .unwrap_or_log("device_state")
+            .physical_size;
+
+        let mut config = self.shared.config.write().unwrap_or_log("config");
+        config.active_area = area;
+        config.active_area.clamp_to_surface(phys_w, phys_h);
+        drop(config);
+        self.shared.config_version.fetch_add(1, Ordering::SeqCst);
+    }
+}
+
+/// Builds an [`SdkPublicState`] snapshot from this iteration's live values
+/// and publishes it, so every reader process sees this owner's tablet data.
+fn publish_shm_state(
+    writer: &ShmWriter,
+    shared: &Arc<SharedState>,
+    data: &TabletData,
+    config: &MappingConfig,
+    frame: &ProcessedFrame,
+) {
+    let device = shared.device_state.read().unwrap_or_log("device_state");
+    let mut device_name = [0u8; DEVICE_NAME_CAPACITY];
+    let name_bytes = device.name.as_bytes();
+    let name_len = name_bytes.len().min(device_name.len());
+    if let (Some(dest), Some(src)) = (device_name.get_mut(..name_len), name_bytes.get(..name_len)) {
+        dest.copy_from_slice(src);
+    }
+    let vid = device.vid;
+    let pid = device.pid;
+    drop(device);
+
+    let state = SdkPublicState {
+        is_connected: data.is_connected,
+        status: data.status as u8,
+        u: frame.u,
+        v: frame.v,
+        screen_x: frame.screen_x,
+        screen_y: frame.screen_y,
+        pressure: frame.pressure,
+        tilt_x: frame.tilt_x,
+        tilt_y: frame.tilt_y,
+        buttons: data.buttons,
+        is_down: frame.is_down,
+        eraser: data.eraser,
+        device_name,
+        device_name_len: name_len as u32,
+        vid,
+        pid,
+        mode: match config.mode {
+            DriverMode::Absolute => 0,
+            DriverMode::Relative => 1,
+        },
+        active_area_x: config.active_area.x,
+        active_area_y: config.active_area.y,
+        active_area_w: config.active_area.w,
+        active_area_h: config.active_area.h,
+        active_area_rotation: config.active_area.rotation,
+        config_version: shared.config_version.load(Ordering::Relaxed),
+    };
+    writer.publish(&state);
+}
+
+/// Runs this process as the HID owner: the pre-existing detect/poll/process
+/// loop, plus publishing live state into the shared segment and listening
+/// for config-write commands from readers.
+fn owner_iteration(shared_clone: &Arc<SharedState>, sender_clone: &Sender<TabletData>) {
     let hid_init_start = Instant::now();
     let hid_api = match hidapi::HidApi::new() {
         Ok(api) => {
@@ -93,6 +340,24 @@ fn manager_thread_iteration(shared_clone: &Arc<SharedState>, sender_clone: &Send
 
     let mut local_config = shared_clone.config.read().unwrap_or_log("config").clone();
     let mut filters = init_filter_pipeline(shared_clone, &local_config);
+
+    let shm_writer = ShmWriter::create();
+    if shm_writer.is_none() {
+        log::warn!(target: "TabletManager", "Failed to create shared state segment; other processes won't see this instance's tablet data");
+    }
+
+    let command_handler: Arc<dyn CommandHandler> = Arc::new(DesktopCommandHandler {
+        shared: Arc::clone(shared_clone),
+    });
+    // Kept alive for the rest of this function; dropping it stops the
+    // listener thread. Only logged on failure — "shouldn't happen in
+    // practice" per `CommandListener::spawn`'s doc comment, since the HID
+    // owner lock already guarantees this is the only owner.
+    let _command_listener = CommandListener::spawn(command_handler)
+        .inspect_err(|e| {
+            log::warn!(target: "TabletManager", "Failed to start command listener: {e}");
+        })
+        .ok();
 
     loop {
         if shared_clone.shutdown_requested.load(Ordering::Relaxed) {
@@ -136,6 +401,7 @@ fn manager_thread_iteration(shared_clone: &Arc<SharedState>, sender_clone: &Send
                 &mut filters,
                 &mut local_config,
                 &mut local_config_version,
+                shm_writer.as_ref(),
             );
 
             if shared_clone.shutdown_requested.load(Ordering::Relaxed) {
@@ -284,6 +550,7 @@ fn run_polling_loop(
     filters: &mut FilterPipeline,
     local_config: &mut MappingConfig,
     local_config_version: &mut u32,
+    shm_writer: Option<&ShmWriter>,
 ) {
     let mut buf = [0u8; 64];
     let mut last_config_check = Instant::now();
@@ -321,6 +588,7 @@ fn run_polling_loop(
                             local_config,
                             &mut last_stats_update,
                             &mut last_packet_time,
+                            shm_writer,
                         );
                     }
                     maybe_reload_config(
@@ -340,7 +608,15 @@ fn run_polling_loop(
                     status: crate::drivers::TabletStatus::OutOfRange,
                     ..Default::default()
                 };
-                pipeline.process(&out, driver, local_config, injector, filters, shared);
+                let frame = pipeline.process(&out, driver, local_config, filters, shared);
+                inject_frame(injector, &out, local_config, &frame);
+                *shared
+                    .processed_frame
+                    .write()
+                    .unwrap_or_reset("processed_frame") = frame;
+                if let Some(writer) = shm_writer {
+                    publish_shm_state(writer, shared, &out, local_config, &frame);
+                }
                 if shared.is_visible.load(Ordering::Relaxed) {
                     let _ = tablet_sender.try_send(out);
                 }
@@ -360,6 +636,56 @@ fn run_polling_loop(
             }
         }
     }
+}
+
+/// Drives OS input injection from a processed frame.
+///
+/// Mirrors the branching that used to live inside `Pipeline::process()` itself:
+/// disconnected pens release the button and drop proximity, non-positional
+/// reports (aux/tool-ID) only drop proximity, and positional reports move the
+/// cursor (absolute or relative, per the active driver mode) before syncing
+/// the button state. Kept here rather than in the pipeline so that `Pipeline`
+/// never touches the OS, which is required for the embedded SDK use case.
+fn inject_frame(
+    injector: &mut Injector,
+    data: &TabletData,
+    config: &MappingConfig,
+    frame: &ProcessedFrame,
+) {
+    if !data.is_connected {
+        injector.set_left_button(false);
+        injector.set_proximity(false);
+        return;
+    }
+
+    if !matches!(
+        data.status,
+        crate::drivers::TabletStatus::Contact
+            | crate::drivers::TabletStatus::Hover
+            | crate::drivers::TabletStatus::Active
+    ) {
+        injector.set_proximity(false);
+        return;
+    }
+
+    match config.mode {
+        DriverMode::Absolute => {
+            injector.move_absolute(
+                frame.screen_x,
+                frame.screen_y,
+                frame.u,
+                frame.v,
+                frame.pressure,
+                frame.tilt_x,
+                frame.tilt_y,
+            );
+        }
+        DriverMode::Relative => {
+            injector.move_relative(frame.screen_x, frame.screen_y);
+        }
+    }
+
+    injector.set_left_button(frame.is_down);
 }
 
 /// Parses, processes, and submits a raw USB packet.
@@ -383,6 +709,7 @@ fn process_packet(
     local_config: &MappingConfig,
     last_stats_update: &mut Instant,
     last_packet_time: &mut Option<(Instant, crate::drivers::TabletStatus)>,
+    shm_writer: Option<&ShmWriter>,
 ) {
     let parse_start = Instant::now();
     if let Some(mut data) = driver.parse(raw) {
@@ -391,7 +718,15 @@ fn process_packet(
         data.parser_time = parse_duration;
 
         let process_start = Instant::now();
-        pipeline.process(&data, driver, local_config, injector, filters, shared);
+        let frame = pipeline.process(&data, driver, local_config, filters, shared);
+        inject_frame(injector, &data, local_config, &frame);
+        *shared
+            .processed_frame
+            .write()
+            .unwrap_or_reset("processed_frame") = frame;
+        if let Some(writer) = shm_writer {
+            publish_shm_state(writer, shared, &data, local_config, &frame);
+        }
         let process_duration = process_start.elapsed();
 
         let total_dur = parse_duration + process_duration;

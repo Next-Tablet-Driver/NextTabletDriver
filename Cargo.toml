@@ -11,35 +11,45 @@ keywords = ["tablet", "driver", "rust", "osu"]
 categories = ["hardware-support", "gui"]
 rust-version = "1.97.1"
 
+[features]
+default = ["gui"]
+gui = ["dep:eframe", "dep:egui_extras", "dep:egui-phosphor", "dep:rfd", "dep:catppuccin-egui", "dep:tray-icon", "dep:display-info", "dep:gtk"]
+
+[[bin]]
+name = "next_tablet_driver"
+path = "src/main.rs"
+required-features = ["gui"]
+
 [dependencies]
 # Windows & Linux
 hidapi = "2.6.3"
-eframe = "0.33.3"
-display-info = "0.5.9"
+eframe = { version = "0.33.3", optional = true }
+display-info = { version = "0.5.9", optional = true }
 enigo = "0.6.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 base64 = "0.22.1"
 directories = "6.0.0"
-rfd = "0.17.2"
-log = "0.4"
+rfd = { version = "0.17.2", optional = true }
+log = { version = "0.4", features = ["std"] }
 chrono = "0.4"
-egui_extras = { version = "0.33.3", features = ["http", "image"] }
-egui-phosphor = "0.11"
+egui_extras = { version = "0.33.3", features = ["http", "image"], optional = true }
+egui-phosphor = { version = "0.11", optional = true }
 crossbeam-channel = "0.5.15"
 include_dir = "0.7"
 tungstenite = { version = "0.29.0", default-features = false, features = ["handshake"] }
 ureq = { version = "2.12.1", features = ["json"] }
-catppuccin-egui = { version = "5.7.0", default-features = false, features = ["egui33"] }
-tray-icon = "0.22.0"
+catppuccin-egui = { version = "5.7.0", default-features = false, features = ["egui33"], optional = true }
+tray-icon = { version = "0.22.0", optional = true }
 sha2 = "0.10"
 hex = "0.4"
 image = { version = "0.25.10", default-features = false, features = ["png"] }
 uuid = { version = "1.23.3", features = ["v4", "serde"] }
+interprocess = "2.2.3"
 
 # Windows
 [target.'cfg(windows)'.dependencies]
-windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_System_Threading", "Win32_Security", "Win32_UI_WindowsAndMessaging", "Win32_UI_Input_KeyboardAndMouse", "Win32_Media", "Win32_System_LibraryLoader", "Win32_System_SystemInformation"] }
+windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_System_Threading", "Win32_System_Memory", "Win32_Security", "Win32_UI_WindowsAndMessaging", "Win32_UI_Input_KeyboardAndMouse", "Win32_Media", "Win32_System_LibraryLoader", "Win32_System_SystemInformation"] }
 
 [target.'cfg(windows)'.build-dependencies]
 winres = "0.1"
@@ -47,9 +57,9 @@ winres = "0.1"
 # Linux
 [target.'cfg(target_os = "linux")'.dependencies]
 evdev = "0.13"
-nix = { version = "0.29", features = ["sched", "fs"] }
+nix = { version = "0.29", features = ["sched", "fs", "mman"] }
 libc = "0.2"
-gtk = { version = "0.18.2", default-features = false }
+gtk = { version = "0.18.2", default-features = false, optional = true }
 
 [dev-dependencies]
 cargo-husky = { version = "1.5.0", default-features = false, features = ["user-hooks"] }

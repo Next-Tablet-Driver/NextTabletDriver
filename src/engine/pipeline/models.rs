@@ -10,4 +10,8 @@ pub struct ProcessedFrame {
     pub screen_x: f32,
     pub screen_y: f32,
     pub is_down: bool,
+    /// Pressure scaled to the injector's 0-8191 range, independent of driver mode.
+    pub pressure: i32,
+    pub tilt_x: i32,
+    pub tilt_y: i32,
 }

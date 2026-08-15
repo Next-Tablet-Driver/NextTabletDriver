@@ -14,6 +14,7 @@ impl SharedStateFactory {
             config: RwLock::new(config),
             config_version: AtomicU32::new(0),
             tablet_data: RwLock::new(TabletData::default()),
+            processed_frame: RwLock::new(crate::engine::pipeline::ProcessedFrame::default()),
             device_state: RwLock::new(crate::engine::state::DeviceState::default()),
             is_first_run: RwLock::new(is_first_run),
             is_visible: std::sync::atomic::AtomicBool::new(true),

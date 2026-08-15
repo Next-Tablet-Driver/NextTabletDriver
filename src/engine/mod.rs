@@ -5,7 +5,10 @@
 //! to transform raw HID data into screen coordinates, and injects the resulting
 //! virtual events into the operating system.
 
+#[cfg(feature = "gui")]
 pub mod injector;
+pub mod interop;
 pub mod pipeline;
 pub mod state;
+#[cfg(feature = "gui")]
 pub mod tablet_manager;

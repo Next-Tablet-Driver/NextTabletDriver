@@ -1,5 +1,6 @@
 pub mod app_preferences;
 pub mod otd_import;
+#[cfg(feature = "gui")]
 pub mod themes;
 
 use crate::core::config::models::MappingConfig;
