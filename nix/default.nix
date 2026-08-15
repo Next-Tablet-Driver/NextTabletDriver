@@ -2,7 +2,7 @@
 
 pkgs.rustPlatform.buildRustPackage rec {
   pname = "next-tablet-driver";
-  version = "1.26.1408.00"; # Version from lib.rs
+  version = "1.26.1508.00"; # Version from lib.rs
 
   src = ../.;
 
