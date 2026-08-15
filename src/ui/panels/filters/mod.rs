@@ -1,4 +1,5 @@
 pub mod antichatter;
+pub mod kalman;
 pub mod stats;
 
 use crate::app::state::{TabletMapperApp, UiSnapshot};
@@ -18,7 +19,7 @@ struct FilterEntry {
     render: fn(&TabletMapperApp, &mut egui::Ui, &mut MappingConfig, &UiSnapshot),
 }
 
-fn filter_registry() -> [FilterEntry; 2] {
+fn filter_registry() -> [FilterEntry; 3] {
     [
         FilterEntry {
             name: "Antichatter",
@@ -27,6 +28,12 @@ fn filter_registry() -> [FilterEntry; 2] {
             render: |_app, ui, config, _snapshot| {
                 antichatter::render_antichatter_settings(ui, config);
             },
+        },
+        FilterEntry {
+            name: "Kalman",
+            icon: egui_phosphor::regular::WAVEFORM,
+            id: "Kalman Smoothing",
+            render: kalman::render_kalman_settings,
         },
         FilterEntry {
             name: "HandSpeed",

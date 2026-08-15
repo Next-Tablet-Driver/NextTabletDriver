@@ -88,8 +88,26 @@ pub fn render_menu_bar(app: &mut TabletMapperApp, ctx: &egui::Context, snapshot:
                         ));
                     }
 
-                    // TODO: Report an issues -> Tablet Report / Others
-                    // Multiple choice like `presets` function
+                    if ui.button(t!("menu.help.sdk")).clicked() {
+                        ui.close();
+                        ui.ctx().open_url(egui::OpenUrl::new_tab(
+                            "https://github.com/Next-Tablet-Driver/NextTabletDriver/blob/master/docs/SDK.md",
+                        ));
+                    }
+
+                    ui.menu_button(t!("menu.help.report"), |ui| {
+                        if ui.button(t!("menu.help.report.bug")).clicked() {
+                            ui.close();
+                            ui.ctx()
+                                .open_url(egui::OpenUrl::new_tab(bug_report_url(&snapshot.tablet_name)));
+                        }
+                        if ui.button(t!("menu.help.report.feature")).clicked() {
+                            ui.close();
+                            ui.ctx().open_url(egui::OpenUrl::new_tab(
+                                "https://github.com/Next-Tablet-Driver/NextTabletDriver/issues/new?template=feature_request.yml",
+                            ));
+                        }
+                    });
 
                     ui.separator();
 
@@ -100,4 +118,35 @@ pub fn render_menu_bar(app: &mut TabletMapperApp, ctx: &egui::Context, snapshot:
                 });
             });
         });
+}
+
+fn bug_report_url(tablet_name: &str) -> String {
+    let mut url = format!(
+        "https://github.com/Next-Tablet-Driver/NextTabletDriver/issues/new?template=bug_report.yml&ntd_version={}",
+        url_encode(crate::VERSION)
+    );
+    if tablet_name != "No Tablet Detected" {
+        url.push_str("&tablet_model=");
+        url.push_str(&url_encode(tablet_name));
+    }
+    url
+}
+
+/// Percent-encodes a string for use in a URL query parameter, keeping only
+/// the RFC 3986 "unreserved" characters unescaped.
+fn url_encode(s: &str) -> String {
+    use std::fmt::Write;
+
+    let mut out = String::with_capacity(s.len());
+    for byte in s.bytes() {
+        match byte {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
+                out.push(byte as char);
+            }
+            _ => {
+                let _ = write!(out, "%{byte:02X}");
+            }
+        }
+    }
+    out
 }

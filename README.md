@@ -40,8 +40,12 @@ NextTabletDriver gives players and artists a focused tablet driver with fast inp
     <td>JSON themes with colors, spacing, semantic colors, and osu! playfield opacity controls.</td>
   </tr>
   <tr>
+    <td><strong>Developer SDK</strong></td>
+    <td>Native <code>.dll</code>/<code>.so</code> for embedding the tablet engine directly in third-party apps, with C/C++ and C#/Unity bindings. See <a href="docs/SDK.md">docs/SDK.md</a>.</td>
+  </tr>
+  <tr>
     <td><strong>Telemetry and filters</strong></td>
-    <td>Built-in console, performance panels, Devocub Antichatter, and HandSpeed WebSocket output.</td>
+    <td>Built-in console, performance panels, Devocub Antichatter, Kalman smoothing, and HandSpeed WebSocket output.</td>
   </tr>
 </table>
 

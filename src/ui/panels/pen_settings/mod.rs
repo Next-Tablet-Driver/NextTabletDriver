@@ -1,3 +1,5 @@
+pub mod curve;
+
 use crate::app::state::{TabletMapperApp, UiSnapshot};
 use crate::core::config::models::MappingConfig;
 use crate::t;
@@ -8,7 +10,7 @@ pub fn render_pen_settings_panel(
     _app: &TabletMapperApp,
     ui: &mut egui::Ui,
     config: &mut MappingConfig,
-    _snapshot: &UiSnapshot,
+    snapshot: &UiSnapshot,
 ) {
     ui.add_space(15.0);
 
@@ -53,6 +55,10 @@ pub fn render_pen_settings_panel(
             );
         });
     });
+
+    ui.add_space(15.0);
+
+    curve::render_pressure_curve_card(ui, config, snapshot);
 
     ui.add_space(15.0);
 

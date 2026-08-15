@@ -101,6 +101,8 @@ impl Pipeline {
         } else {
             0.0
         };
+        let pressure_ratio =
+            crate::core::math::curve::evaluate(pressure_ratio, &config.pressure_curve);
 
         // Stage 4: Projection (UV/MM -> Screen)
         let mut frame = ProcessedFrame {
@@ -222,6 +224,38 @@ mod tests {
         // max_p = 1000.0, so threshold = 500.0
         assert!(pipeline.evaluate_pressure(501, 1000.0, &config));
         assert!(!pipeline.evaluate_pressure(499, 1000.0, &config));
+    }
+
+    #[test]
+    fn test_pipeline_pressure_curve_reshapes_reported_pressure_only() {
+        let mut pipeline = Pipeline::new();
+        let mut config = MappingConfig {
+            tip_threshold: 10,
+            ..Default::default()
+        };
+        config.pressure_curve.curve_type =
+            crate::core::config::models::PressureCurveType::Exponential;
+        config.pressure_curve.exponent = 2.0;
+
+        let shared = Arc::new(SharedState::test_default());
+        let mut filters = FilterPipeline::new();
+        let driver = MockDriver;
+
+        // max_p = 1000.0, so raw 500 -> ratio 0.5 -> curved to 0.25 -> ~2047/8191
+        let data = TabletData {
+            is_connected: true,
+            status: crate::drivers::TabletStatus::Contact,
+            pressure: 500,
+            ..Default::default()
+        };
+
+        let frame = pipeline.process(&data, &driver, &config, &mut filters, &shared);
+        assert!(
+            frame.pressure < 4095,
+            "curved pressure should be reshaped below the linear midpoint"
+        );
+        // Tip-down detection still uses raw pressure, unaffected by the curve.
+        assert!(frame.is_down);
     }
 
     #[test]

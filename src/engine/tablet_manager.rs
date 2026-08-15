@@ -459,6 +459,7 @@ fn init_thread_priority() {
 /// Registers standard pipeline stages such as `DevocubAntichatter` and `SpeedStatsFilter`.
 fn init_filter_pipeline(shared: &Arc<SharedState>, config: &MappingConfig) -> FilterPipeline {
     let mut filters = FilterPipeline::new();
+    filters.add(Box::new(crate::filters::kalman::KalmanFilter::new()));
     filters.add(Box::new(
         crate::filters::antichatter::DevocubAntichatter::new(),
     ));

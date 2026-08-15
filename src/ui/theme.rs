@@ -456,6 +456,18 @@ pub fn ui_input_box_u16(ui: &mut egui::Ui, label: &str, value: &mut u16, unit: &
 /// * `value` - A mutable reference to the `f32` value to edit.
 /// * `unit` - A suffix indicating the unit of measurement.
 pub fn ui_setting_row(ui: &mut egui::Ui, label: &str, value: &mut f32, unit: &str) {
+    ui_setting_row_range(ui, label, value, unit, f32::MIN..=f32::MAX);
+}
+
+/// Same as [`ui_setting_row`], but clamps the drag input to `range` instead of
+/// allowing any value to be dragged/typed in.
+pub fn ui_setting_row_range(
+    ui: &mut egui::Ui,
+    label: &str,
+    value: &mut f32,
+    unit: &str,
+    range: std::ops::RangeInclusive<f32>,
+) {
     let visuals = ui.visuals();
     let bg_fill = panel_bg(visuals);
     let border_color = panel_border(visuals);
@@ -492,14 +504,14 @@ pub fn ui_setting_row(ui: &mut egui::Ui, label: &str, value: &mut f32, unit: &st
                         let response = ui.add(
                             egui::DragValue::new(value)
                                 .speed(0.1)
+                                .range(range)
                                 .max_decimals(2)
                                 .custom_formatter(|val, _| {
                                     format!("{val:.2}")
                                         .trim_end_matches('0')
                                         .trim_end_matches('.')
                                         .replace('.', ",")
-                                })
-                                .clamp_existing_to_range(false),
+                                }),
                         );
                         if response.hovered() {
                             ui.output_mut(|o| o.cursor_icon = egui::CursorIcon::ResizeHorizontal);

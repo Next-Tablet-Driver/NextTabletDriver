@@ -308,6 +308,83 @@ impl Default for SpeedStatsConfig {
     }
 }
 
+/// Determines how normalized pressure input `[0, 1]` is reshaped before being
+/// reported to the OS/game.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub enum PressureCurveType {
+    /// Reported pressure equals input pressure (identity curve).
+    #[default]
+    Linear,
+    /// Reported pressure follows `input.powf(exponent)`.
+    Exponential,
+    /// Reported pressure follows a piecewise-linear interpolation through
+    /// user-defined control points.
+    Custom,
+}
+
+const fn default_curve_exponent() -> f32 {
+    2.0
+}
+fn default_curve_points() -> Vec<(f32, f32)> {
+    vec![(0.0, 0.0), (1.0, 1.0)]
+}
+
+/// Configuration for the pressure response curve.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct PressureCurveConfig {
+    /// Which curve shape to apply.
+    #[serde(default)]
+    pub curve_type: PressureCurveType,
+    /// Exponent used when `curve_type` is [`PressureCurveType::Exponential`].
+    #[serde(default = "default_curve_exponent")]
+    pub exponent: f32,
+    /// Control points used when `curve_type` is [`PressureCurveType::Custom`],
+    /// sorted by `.0` (x), spanning the full `[0, 1]` domain.
+    #[serde(default = "default_curve_points")]
+    pub points: Vec<(f32, f32)>,
+}
+
+impl Default for PressureCurveConfig {
+    fn default() -> Self {
+        Self {
+            curve_type: PressureCurveType::default(),
+            exponent: default_curve_exponent(),
+            points: default_curve_points(),
+        }
+    }
+}
+
+const fn default_kalman_process_noise() -> f32 {
+    0.005
+}
+const fn default_kalman_measurement_noise() -> f32 {
+    0.05
+}
+
+/// Configuration for the Kalman smoothing filter.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+pub struct KalmanConfig {
+    /// Whether the Kalman filter is enabled.
+    #[serde(default = "default_false")]
+    pub enabled: bool,
+    /// Process noise covariance (Q). Higher values trust new measurements more.
+    #[serde(default = "default_kalman_process_noise")]
+    pub process_noise: f32,
+    /// Measurement noise covariance (R). Higher values smooth more aggressively.
+    #[serde(default = "default_kalman_measurement_noise")]
+    pub measurement_noise: f32,
+}
+
+impl Default for KalmanConfig {
+    fn default() -> Self {
+        Self {
+            enabled: default_false(),
+            process_noise: default_kalman_process_noise(),
+            measurement_noise: default_kalman_measurement_noise(),
+        }
+    }
+}
+
 /// The root configuration struct for the application.
 ///
 /// This structure holds all user-adjustable parameters and is the
@@ -371,6 +448,12 @@ pub struct MappingConfig {
     /// Whether to snap the target area to display edges when resizing/moving.
     #[serde(default = "default_true")]
     pub display_snapping: bool,
+    /// Pressure response curve settings.
+    #[serde(default)]
+    pub pressure_curve: PressureCurveConfig,
+    /// Kalman smoothing filter settings.
+    #[serde(default)]
+    pub kalman: KalmanConfig,
 }
 
 impl Default for MappingConfig {
@@ -395,6 +478,8 @@ impl Default for MappingConfig {
             lock_aspect_ratio: false,
             show_osu_playfield: false,
             display_snapping: default_true(),
+            pressure_curve: PressureCurveConfig::default(),
+            kalman: KalmanConfig::default(),
         }
     }
 }
@@ -548,6 +633,61 @@ impl MappingConfig {
             corrections.push("pen_button_bindings was too long, truncated to 32".to_string());
         }
 
+        // Pressure curve
+        if !self.pressure_curve.exponent.is_finite()
+            || !(0.1..=5.0).contains(&self.pressure_curve.exponent)
+        {
+            corrections.push(format!(
+                "pressure_curve.exponent was invalid ({}), reset to {}",
+                self.pressure_curve.exponent, defaults.pressure_curve.exponent
+            ));
+            self.pressure_curve.exponent = if self.pressure_curve.exponent.is_finite() {
+                self.pressure_curve.exponent.clamp(0.1, 5.0)
+            } else {
+                defaults.pressure_curve.exponent
+            };
+        }
+        if self.pressure_curve.points.len() < 2 {
+            corrections.push(
+                "pressure_curve.points had fewer than 2 entries, reset to defaults".to_string(),
+            );
+            self.pressure_curve.points = defaults.pressure_curve.points;
+        } else {
+            if self.pressure_curve.points.len() > 32 {
+                self.pressure_curve.points.truncate(32);
+                corrections.push("pressure_curve.points was too long, truncated to 32".to_string());
+            }
+            for p in &mut self.pressure_curve.points {
+                p.0 = p.0.clamp(0.0, 1.0);
+                p.1 = p.1.clamp(0.0, 1.0);
+            }
+            self.pressure_curve
+                .points
+                .sort_by(|a, b| a.0.total_cmp(&b.0));
+            if let Some(first) = self.pressure_curve.points.first_mut() {
+                first.0 = 0.0;
+            }
+            if let Some(last) = self.pressure_curve.points.last_mut() {
+                last.0 = 1.0;
+            }
+        }
+
+        // Kalman
+        if !(0.0001..=10.0).contains(&self.kalman.process_noise) {
+            corrections.push(format!(
+                "kalman.process_noise was invalid ({}), reset to {}",
+                self.kalman.process_noise, defaults.kalman.process_noise
+            ));
+            self.kalman.process_noise = defaults.kalman.process_noise;
+        }
+        if !(0.0001..=10.0).contains(&self.kalman.measurement_noise) {
+            corrections.push(format!(
+                "kalman.measurement_noise was invalid ({}), reset to {}",
+                self.kalman.measurement_noise, defaults.kalman.measurement_noise
+            ));
+            self.kalman.measurement_noise = defaults.kalman.measurement_noise;
+        }
+
         corrections
     }
 }
@@ -651,5 +791,42 @@ mod tests {
         assert_eq!(config.websocket.port, 8080);
         assert_eq!(config.websocket.polling_rate_hz, 60);
         assert!(!config.pen_button_bindings.is_empty());
+    }
+
+    #[test]
+    fn test_validate_and_repair_pressure_curve_and_kalman() {
+        let mut config = MappingConfig::default();
+
+        config.pressure_curve.exponent = 100.0;
+        config.pressure_curve.points = vec![(0.3, 0.9), (0.1, 0.2), (0.7, 0.1)];
+        config.kalman.process_noise = -1.0;
+        config.kalman.measurement_noise = 50.0;
+
+        let corrections = config.validate_and_repair();
+
+        assert!(!corrections.is_empty());
+        assert!((0.1..=5.0).contains(&config.pressure_curve.exponent));
+        assert_eq!(config.pressure_curve.points.first().unwrap().0, 0.0);
+        assert_eq!(config.pressure_curve.points.last().unwrap().0, 1.0);
+        assert!(
+            config
+                .pressure_curve
+                .points
+                .windows(2)
+                .all(|w| matches!(w, [a, b] if a.0 <= b.0))
+        );
+        assert!((0.0001..=10.0).contains(&config.kalman.process_noise));
+        assert!((0.0001..=10.0).contains(&config.kalman.measurement_noise));
+    }
+
+    #[test]
+    fn test_validate_and_repair_pressure_curve_too_few_points() {
+        let mut config = MappingConfig::default();
+        config.pressure_curve.points = vec![(0.5, 0.5)];
+
+        let corrections = config.validate_and_repair();
+
+        assert!(!corrections.is_empty());
+        assert_eq!(config.pressure_curve.points, vec![(0.0, 0.0), (1.0, 1.0)]);
     }
 }
