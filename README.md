@@ -18,6 +18,8 @@
   </p>
 </div>
 
+> **Attribution notice:** The tablet configuration files in the [`tablets`](tablets) directory are derived from the [OpenTabletDriver](https://github.com/OpenTabletDriver/OpenTabletDriver) project, licensed under the **GNU Lesser General Public License v3.0 (LGPLv3)**. These configs remain governed by OpenTabletDriver's LGPLv3 license, separate from NextTabletDriver's own MIT license. See the [License](#license) section for details.
+
 ## Overview
 
 NextTabletDriver gives players and artists a focused tablet driver with fast input handling, flexible active area mapping, and a clean desktop UI. It is designed to replace vendor-specific drivers when you need consistent behavior across devices and operating systems.
@@ -182,3 +184,9 @@ When adding hardware support, include the device VID/PID, physical dimensions, r
 ## License
 
 NextTabletDriver is distributed under the MIT License. See [`LICENSE`](LICENSE) for details.
+
+### Third-Party Licenses
+
+The tablet configuration files in [`tablets`](tablets) are derived from [OpenTabletDriver](https://github.com/OpenTabletDriver/OpenTabletDriver), which is licensed under the **GNU Lesser General Public License v3.0 (LGPLv3)**. These configs are used as a separate, distinct component under the terms of the LGPLv3 and are not relicensed under NextTabletDriver's MIT license. The full text of the LGPLv3 can be found at [gnu.org/licenses/lgpl-3.0](https://www.gnu.org/licenses/lgpl-3.0.html).
+
+Copyright © OpenTabletDriver contributors.
