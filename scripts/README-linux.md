@@ -119,7 +119,7 @@ sudo libinput debug-events
 
 ## Adding a Custom Tablet
 
-If you add a custom tablet configuration JSON inside the `tablets/` directory, you will need to regenerate the udev rules to ensure it is properly ignored by Wayland/X11.
+If you add a custom tablet configuration JSON to a `tablets/` directory next to the installed binary (not the repository's `tablets/OpenTabletDriver` submodule), you will need to regenerate the udev rules to ensure it is properly ignored by Wayland/X11.
 
 You can regenerate the rules by running the included PowerShell script:
 

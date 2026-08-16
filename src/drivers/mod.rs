@@ -5,8 +5,11 @@
 //! vendor-specific "magic" packets to enable digitizer mode), and parsing (converting raw
 //! byte arrays from various protocols into a unified format).
 //!
-//! The system is designed to be extensible; adding support for a new tablet involves
-//! adding a JSON configuration file to the `tablets/` directory.
+//! Tablet configurations are sourced from the [OpenTabletDriver](https://github.com/OpenTabletDriver/OpenTabletDriver)
+//! project via a git submodule at `tablets/OpenTabletDriver`, kept separate from this
+//! crate's MIT-licensed sources since `OpenTabletDriver` is LGPLv3-licensed. To add support
+//! for a new tablet, contribute the configuration upstream to `OpenTabletDriver`; it will be
+//! picked up here on the next submodule update.
 
 pub mod config;
 pub mod config_loader;

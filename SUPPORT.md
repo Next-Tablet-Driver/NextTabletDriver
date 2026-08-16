@@ -23,8 +23,7 @@ Please include:
 
 ### Requesting a Feature or New Tablet Support
 
-If you want to suggest a new feature or need support for a new tablet model, you can [open a feature request](https://github.com/Next-Tablet-Driver/NextTabletDriver/issues/new) or submit a Pull Request with the JSON configuration in the `tablets/` directory.
-If submitting a tablet configuration, please ensure you include the device VID/PID and physical dimensions as mentioned in the README.
+If you want to suggest a new feature, you can [open a feature request](https://github.com/Next-Tablet-Driver/NextTabletDriver/issues/new). Tablet configurations come from the [OpenTabletDriver](https://github.com/OpenTabletDriver/OpenTabletDriver) submodule, so support for a new tablet model should be contributed there; it will be picked up here on the next submodule update. If the device needs a new report parser, [open a feature request](https://github.com/Next-Tablet-Driver/NextTabletDriver/issues/new) here with the device VID/PID and physical dimensions as mentioned in the README.
 
 ### Community
 

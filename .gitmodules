@@ -1,0 +1,4 @@
+[submodule "tablets/OpenTabletDriver"]
+	path = tablets/OpenTabletDriver
+	url = https://github.com/OpenTabletDriver/OpenTabletDriver.git
+	branch = 0.6.x

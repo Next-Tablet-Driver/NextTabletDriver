@@ -18,7 +18,7 @@
   </p>
 </div>
 
-> **Attribution notice:** The tablet configuration files in the [`tablets`](tablets) directory are derived from the [OpenTabletDriver](https://github.com/OpenTabletDriver/OpenTabletDriver) project, licensed under the **GNU Lesser General Public License v3.0 (LGPLv3)**. These configs remain governed by OpenTabletDriver's LGPLv3 license, separate from NextTabletDriver's own MIT license. See the [License](#license) section for details.
+> **Attribution notice:** The tablet configuration files under [`tablets/OpenTabletDriver`](tablets/OpenTabletDriver) are a git submodule pinned to the [OpenTabletDriver](https://github.com/OpenTabletDriver/OpenTabletDriver) project, licensed under the **GNU Lesser General Public License v3.0 (LGPLv3)**. This submodule keeps OpenTabletDriver's LGPLv3-licensed content separate from NextTabletDriver's own MIT license, it is not copied into the MIT-licensed source tree. See the [License](#license) section for details.
 
 ## Overview
 
@@ -60,7 +60,7 @@ The driver ships with community-maintained JSON configurations for many tablet f
 - XP-Pen and UGEE devices
 - Gaomon, VEIKK, Artisul, Parblo, XenceLabs, UC-Logic, and more
 
-Tablet definitions live in the [`tablets`](tablets) directory. New devices can be added by contributing a configuration JSON and, when needed, a parser implementation.
+Tablet definitions are sourced from the [`tablets/OpenTabletDriver`](tablets/OpenTabletDriver) submodule. To add support for a new device, contribute its configuration JSON to [OpenTabletDriver](https://github.com/OpenTabletDriver/OpenTabletDriver) upstream, it will be picked up here on the next submodule update. A parser implementation in this repository may still be needed for devices using a new report protocol.
 
 ## Installation
 
@@ -137,7 +137,7 @@ src/
   filters/    Optional processing filters and statistics output
   settings/   Profile and theme persistence
   ui/         egui panels, widgets, and theme helpers
-tablets/      Device JSON definitions
+tablets/      Device JSON definitions (OpenTabletDriver submodule)
 scripts/      Linux udev helpers and packaging utilities
 resources/    Icons and bundled fonts
 sdk/          Native SDK (ntd_sdk.dll / libntd_sdk.so) for third-party integration
@@ -187,6 +187,6 @@ NextTabletDriver is distributed under the MIT License. See [`LICENSE`](LICENSE) 
 
 ### Third-Party Licenses
 
-The tablet configuration files in [`tablets`](tablets) are derived from [OpenTabletDriver](https://github.com/OpenTabletDriver/OpenTabletDriver), which is licensed under the **GNU Lesser General Public License v3.0 (LGPLv3)**. These configs are used as a separate, distinct component under the terms of the LGPLv3 and are not relicensed under NextTabletDriver's MIT license. The full text of the LGPLv3 can be found at [gnu.org/licenses/lgpl-3.0](https://www.gnu.org/licenses/lgpl-3.0.html).
+The tablet configuration files under [`tablets/OpenTabletDriver`](tablets/OpenTabletDriver) are a git submodule pinned to [OpenTabletDriver](https://github.com/OpenTabletDriver/OpenTabletDriver), which is licensed under the **GNU Lesser General Public License v3.0 (LGPLv3)**. This submodule is a separate, distinct component under the terms of the LGPLv3 and is not relicensed under NextTabletDriver's MIT license. The full text of the LGPLv3 can be found at [gnu.org/licenses/lgpl-3.0](https://www.gnu.org/licenses/lgpl-3.0.html).
 
 Copyright © OpenTabletDriver contributors.
