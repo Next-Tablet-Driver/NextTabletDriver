@@ -10,6 +10,9 @@ use std::path::PathBuf;
 
 const LOCK_FILE_NAME: &str = "ntd_hid_owner.lock";
 
+// The `Flock` is held only for its `Drop` side effect (releasing the lock
+// when the handle is dropped); it is never read directly.
+#[allow(dead_code)]
 pub struct OwnerHandle(Flock<File>);
 
 fn lock_path() -> PathBuf {
