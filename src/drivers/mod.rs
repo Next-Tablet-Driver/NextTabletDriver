@@ -15,6 +15,8 @@ pub mod config;
 pub mod config_loader;
 pub mod detection;
 pub mod generic;
+#[cfg(windows)]
+pub mod hid_caps;
 pub mod models;
 pub mod parsers;
 
