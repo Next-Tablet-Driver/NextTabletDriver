@@ -26,6 +26,7 @@ pub fn try_acquire() -> Option<OwnerHandle> {
     let path = lock_path();
     let file = OpenOptions::new()
         .create(true)
+        .truncate(false)
         .write(true)
         .open(&path)
         .ok()?;

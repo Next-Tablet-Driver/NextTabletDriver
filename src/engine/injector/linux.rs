@@ -169,7 +169,7 @@ impl Injector {
 
     /// Refreshes `screen_bounds` from the current display layout, at most once
     /// every 2 seconds. `display_info` queries `wl_output` on Wayland and
-    /// RandR on X11; both are cheap but not free, hence the rate limit.
+    /// `RandR` on X11; both are cheap but not free, hence the rate limit.
     ///
     /// If enumeration fails or reports no displays, the previous bounds are
     /// kept (initially the hardcoded 1920x1080 fallback), and a warning is

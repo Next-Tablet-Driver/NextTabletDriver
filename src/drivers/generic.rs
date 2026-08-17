@@ -85,8 +85,12 @@ impl NextTabletDriver for GenericNextTabletDriver {
                 // a Vec for every single HID report.
                 let total_len = data.len() + 1;
                 let mut buf = [0u8; MAX_REPORT_LEN + 1];
-                buf[1..total_len].copy_from_slice(data);
-                return self.parser.parse(&buf[..total_len]);
+                if let Some(dest) = buf.get_mut(1..total_len) {
+                    dest.copy_from_slice(data);
+                    if let Some(report) = buf.get(..total_len) {
+                        return self.parser.parse(report);
+                    }
+                }
             }
         }
         self.parser.parse(data)
