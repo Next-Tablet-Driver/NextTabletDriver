@@ -81,6 +81,7 @@ pub struct DeviceState {
     pub pid: u16,
     pub physical_size: (f32, f32),
     pub hardware_size: (f32, f32),
+    pub max_pressure: f32,
 }
 
 impl Default for DeviceState {
@@ -91,6 +92,7 @@ impl Default for DeviceState {
             pid: 0,
             physical_size: (160.0, 100.0),
             hardware_size: (32767.0, 32767.0),
+            max_pressure: 8192.0,
         }
     }
 }

@@ -200,7 +200,7 @@ fn on_device_connected(
     local_config: &mut MappingConfig,
 ) {
     let size = driver.get_physical_specs();
-    let (mw, mh, _) = driver.get_specs();
+    let (mw, mh, mp) = driver.get_specs();
 
     let new_device = crate::engine::state::DeviceState {
         name: driver.get_name().to_string(),
@@ -208,6 +208,7 @@ fn on_device_connected(
         pid,
         physical_size: size,
         hardware_size: (mw, mh),
+        max_pressure: mp,
     };
 
     *shared.device_state.write().unwrap_or_reset("device_state") = new_device.clone();

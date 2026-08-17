@@ -6,7 +6,11 @@ pub fn render_debugger_panel(snapshot: &UiSnapshot, displayed_hz: f32, ui: &mut 
     let tablet_data = &snapshot.tablet_data;
     let is_detected = snapshot.tablet_name != "No Tablet Detected";
 
-    let (max_x, max_y, max_p) = (snapshot.hardware_size.0, snapshot.hardware_size.1, 8192.0);
+    let (max_x, max_y, max_p) = (
+        snapshot.hardware_size.0,
+        snapshot.hardware_size.1,
+        snapshot.max_pressure,
+    );
 
     ui.add_space(10.0);
 
