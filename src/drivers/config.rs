@@ -6,6 +6,7 @@
 //! hundreds of known tablet models.
 
 use serde::Deserialize;
+use std::collections::HashMap;
 
 /// The root structure representing a parsed tablet configuration file.
 #[derive(Debug, Deserialize, Clone)]
@@ -66,6 +67,11 @@ pub struct DigitizerIdentifier {
     /// Expected byte length of incoming HID packets.
     pub input_report_length: Option<usize>,
     pub output_report_length: Option<usize>,
+    /// Regex patterns keyed by HID string-descriptor index (e.g. `201` for
+    /// the firmware-version string), used to disambiguate configs that
+    /// share the same `VendorID`/`ProductID`/`InputReportLength` — mirrors
+    /// `OpenTabletDriver`'s `Driver.DeviceMatchesStrings` in `Driver.cs`.
+    pub device_strings: Option<HashMap<u8, String>>,
     /// The fully qualified C# class name from `OpenTabletDriver` format mapping to our Rust parsers.
     pub report_parser: String,
     /// Base64 encoded byte array(s) to send via `Device::write` to wake up the tablet.
@@ -171,6 +177,48 @@ mod tests {
                 .as_ref()
                 .ok_or("Missing feature_init_report")?[0],
             "AgI="
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn test_deserialize_device_strings() -> Result<(), Box<dyn std::error::Error>> {
+        let json = r#"{
+  "Name": "Gaomon S620",
+  "Specifications": {
+    "Digitizer": {
+      "Width": 165.1,
+      "Height": 101.6,
+      "MaxX": 33020,
+      "MaxY": 20320
+    },
+    "Pen": {
+      "MaxPressure": 8191,
+      "ButtonCount": 2
+    }
+  },
+  "DigitizerIdentifiers": [
+    {
+      "VendorID": 9580,
+      "ProductID": 111,
+      "InputReportLength": 12,
+      "ReportParser": "OpenTabletDriver.Configurations.Parsers.UCLogic.UCLogicReportParser",
+      "DeviceStrings": {
+        "201": "OEM02_T18e_\\d{6}$"
+      }
+    }
+  ],
+  "Attributes": {}
+}"#;
+
+        let config: TabletConfiguration = serde_json::from_str(json)?;
+        let device_strings = config.digitizer_identifiers[0]
+            .device_strings
+            .as_ref()
+            .ok_or("Missing device_strings")?;
+        assert_eq!(
+            device_strings.get(&201).map(String::as_str),
+            Some("OEM02_T18e_\\d{6}$")
         );
         Ok(())
     }

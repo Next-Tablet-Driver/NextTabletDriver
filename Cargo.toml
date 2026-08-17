@@ -46,6 +46,7 @@ hex = "0.4"
 image = { version = "0.25.10", default-features = false, features = ["png"] }
 uuid = { version = "1.23.3", features = ["v4", "serde"] }
 interprocess = "2.2.3"
+regex = "1.13.1"
 
 # Windows
 [target.'cfg(windows)'.dependencies]

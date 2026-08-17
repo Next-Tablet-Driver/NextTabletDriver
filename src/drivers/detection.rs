@@ -3,6 +3,7 @@ use crate::drivers::config::{DigitizerIdentifier, TabletConfiguration};
 use crate::drivers::config_loader::INDEXED_CONFIGS;
 use crate::drivers::generic::GenericNextTabletDriver;
 use hidapi::{HidApi, HidDevice};
+use std::collections::HashMap;
 use std::ffi::CStr;
 use std::time::{Duration, Instant};
 
@@ -85,6 +86,67 @@ fn confirm_report_length(
         "{config_name} | Live sample: {result:?} (expected {expected_wire_len} bytes)"
     );
     matches!(result, Ok(n) if n == expected_wire_len)
+}
+
+/// Confirms a candidate's declared `DeviceStrings` regex patterns against
+/// the real device's USB string descriptors.
+///
+/// Some tablet firmware revisions share the exact same `VendorID`,
+/// `ProductID`, and `InputReportLength` (e.g. Gaomon S620 vs. Gaomon M106K
+/// Pro, both `256c:006f` with `InputReportLength: 12`), so
+/// `confirm_report_length` alone cannot tell them apart. Their configs
+/// instead each declare a `DeviceStrings` regex (typically matched against
+/// the firmware-version string at index `201`/`0xC9`) that only one
+/// candidate's actual hardware satisfies. Mirrors `OpenTabletDriver`'s
+/// `Driver.DeviceMatchesStrings` in `Driver.cs`.
+///
+/// `get_indexed_string` issues a plain `GET_DESCRIPTOR` control transfer, so
+/// unlike the report-length live-sample fallback, it works immediately and
+/// does not require the pen to be in proximity.
+fn confirm_device_strings(
+    device: &HidDevice,
+    device_strings: &HashMap<u8, String>,
+    config_name: &str,
+) -> bool {
+    for (&index, pattern) in device_strings {
+        let value = match device.get_indexed_string(i32::from(index)) {
+            Ok(Some(s)) => s,
+            Ok(None) => {
+                log::debug!(
+                    target: "Detect",
+                    "{config_name} | String index {index} not present on device"
+                );
+                return false;
+            }
+            Err(e) => {
+                log::debug!(
+                    target: "Detect",
+                    "{config_name} | Failed to read string index {index}: {e}"
+                );
+                return false;
+            }
+        };
+
+        let regex = match regex::Regex::new(pattern) {
+            Ok(r) => r,
+            Err(e) => {
+                log::warn!(
+                    target: "Detect",
+                    "{config_name} | Invalid DeviceStrings pattern {pattern:?} for index {index}: {e}"
+                );
+                return false;
+            }
+        };
+
+        if !regex.is_match(&value) {
+            log::debug!(
+                target: "Detect",
+                "{config_name} | String index {index} = {value:?} did not match pattern {pattern:?}"
+            );
+            return false;
+        }
+    }
+    true
 }
 
 /// Sends a candidate's feature/output init reports to wake it into the
@@ -208,13 +270,15 @@ pub fn detect_tablet(api: &HidApi) -> Option<(HidDevice, Box<dyn NextTabletDrive
         }
 
         if let Some(matches) = index.get(&(vid, pid)) {
-            // Several tablet firmware revisions share the same VID:PID but
-            // declare different InputReportLength values (e.g. XP-Pen Star
-            // G640 vs. Star G640 (Variant 2)). When more than one candidate
-            // is in play, a successfully-initialized candidate is only
-            // accepted once its declared report length is confirmed against
-            // an actual sample read, mirroring OpenTabletDriver's
-            // `device.InputReportLength` match filter in `Driver.cs`.
+            // Several tablet firmware revisions share the same VID:PID, and
+            // some (e.g. Gaomon S620 vs. M106K Pro) even share the same
+            // declared InputReportLength. When more than one candidate is in
+            // play, a successfully-initialized candidate is only accepted
+            // once its declared DeviceStrings regexes (if any) match the
+            // device's USB string descriptors and its report length (if
+            // declared) is confirmed against an actual sample read,
+            // mirroring OpenTabletDriver's `Driver.DeviceMatchesStrings` and
+            // `device.InputReportLength` match filters in `Driver.cs`.
             let disambiguate = matches.len() > 1;
             let mut fallback: Option<(&TabletConfiguration, &DigitizerIdentifier)> = None;
 
@@ -250,16 +314,24 @@ pub fn detect_tablet(api: &HidApi) -> Option<(HidDevice, Box<dyn NextTabletDrive
                             continue;
                         }
 
-                        if disambiguate && let Some(expected_len) = digitizer.input_report_length {
-                            let confirmed =
-                                confirm_report_length(&device, path, expected_len, &config.name);
+                        if disambiguate {
+                            let strings_confirmed = digitizer
+                                .device_strings
+                                .as_ref()
+                                .is_none_or(|ds| confirm_device_strings(&device, ds, &config.name));
 
-                            if !confirmed {
+                            let length_confirmed = strings_confirmed
+                                && digitizer.input_report_length.is_none_or(|expected_len| {
+                                    confirm_report_length(&device, path, expected_len, &config.name)
+                                });
+
+                            if !strings_confirmed || !length_confirmed {
                                 log::debug!(
                                     target: "Detect",
-                                    "{} | Report length not confirmed (declared InputReportLength {}), trying next candidate",
+                                    "{} | Candidate not confirmed (DeviceStrings: {}, InputReportLength: {}), trying next candidate",
                                     config.name,
-                                    expected_len
+                                    strings_confirmed,
+                                    length_confirmed
                                 );
                                 if fallback.is_none() {
                                     fallback = Some((config, digitizer));
