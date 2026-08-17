@@ -212,17 +212,27 @@ pub fn download_and_install(
 }
 
 /// Finds the appropriate release asset for the current platform.
+///
+/// On Windows, releases publish both an x64 and an arm64 installer with the
+/// architecture encoded in the filename (see `packaging/windows/installer.iss`);
+/// matching on `.exe` alone picks whichever one happens to sort first in the
+/// release's asset list, so the target architecture must be checked too.
 fn find_platform_asset(release: &Release) -> Result<&Asset, Box<dyn std::error::Error>> {
     #[cfg(windows)]
-    return release
-        .assets
-        .iter()
-        .find(|a| {
-            std::path::Path::new(&a.name)
-                .extension()
-                .is_some_and(|ext| ext.eq_ignore_ascii_case("exe"))
-        })
-        .ok_or_else(|| "No suitable installer (.exe) asset found in release".into());
+    return {
+        let is_arm64 = cfg!(target_arch = "aarch64");
+        release
+            .assets
+            .iter()
+            .find(|a| {
+                let is_exe = std::path::Path::new(&a.name)
+                    .extension()
+                    .is_some_and(|ext| ext.eq_ignore_ascii_case("exe"));
+                let name_lower = a.name.to_lowercase();
+                is_exe && name_lower.contains("arm64") == is_arm64
+            })
+            .ok_or_else(|| "No suitable installer (.exe) asset found in release".into())
+    };
 
     #[cfg(target_os = "linux")]
     return release
