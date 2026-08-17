@@ -18,9 +18,15 @@
         };
       in
       {
-        packages.default = import ./nix/default.nix { inherit pkgs; };
+        # Only Windows and Linux are supported targets; systemd (libudev) and
+        # the X11 tooling this package depends on aren't available on Darwin.
+        packages = pkgs.lib.optionalAttrs pkgs.stdenv.isLinux {
+          default = import ./nix/default.nix { inherit pkgs; };
+        };
 
-        devShells.default = import ./nix/shell.nix { inherit pkgs; };
+        devShells = pkgs.lib.optionalAttrs pkgs.stdenv.isLinux {
+          default = import ./nix/shell.nix { inherit pkgs; };
+        };
 
         # Exercise the NixOS/home-manager modules against a throwaway package
         # (pkgs.hello, already in the binary cache) instead of the real driver
