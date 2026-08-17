@@ -12,7 +12,7 @@ pkgs.rustPlatform.buildRustPackage rec {
 
   nativeBuildInputs = with pkgs; [
     pkg-config
-    wrapGAppsHook
+    wrapGAppsHook3
   ];
 
   buildInputs = with pkgs; [
