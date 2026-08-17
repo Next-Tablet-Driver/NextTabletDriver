@@ -1,59 +1,61 @@
 name: Rust Quality Check
 
 on:
-    push:
-        branches: [main, master, dev]
-    pull_request:
-        branches: [main, master, dev]
+  push:
+    branches: [main, master, dev]
+  pull_request:
+    branches: [main, master, dev]
 
 jobs:
-    quality:
-        name: Rust Quality Check (${{ matrix.os }})
-        runs-on: ${{ matrix.os }}
-        strategy:
-            matrix:
-                os: [ubuntu-latest, windows-latest]
-                rust: [1.96.1]
+  quality:
+    name: Rust Quality Check (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        rust: [1.97.1]
 
-        steps:
-            - name: Checkout
-              uses: actions/checkout@v4
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
-            - name: Cache cargo
-              uses: actions/cache@v4
-              with:
-                  path: |
-                      ~/.cargo/registry
-                      ~/.cargo/git
-                      target
-                  key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-                  restore-keys: |
-                      ${{ runner.os }}-cargo-
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
 
-            - name: Setup Rust toolchain
-              uses: dtolnay/rust-toolchain@stable
-              with:
-                  toolchain: ${{ matrix.rust }}
-                  components: clippy,rustfmt
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ matrix.rust }}
+          components: clippy,rustfmt
 
-            - name: Ensure components
-              run: |
-                  rustup component add rustfmt clippy || true
+      - name: Ensure components
+        run: |
+          rustup component add rustfmt clippy || true
 
-            - name: Install system dependencies (Linux)
-              if: matrix.os == 'ubuntu-latest'
-              run: |
-                  sudo apt-get update
-                  sudo apt-get install -y pkg-config libudev-dev libgtk-3-dev libglib2.0-dev libgdk-pixbuf2.0-dev libpango1.0-dev libcairo2-dev libatk1.0-dev libx11-dev libxrandr-dev libxfixes-dev libxrender-dev libx11-xcb-dev libxkbcommon-dev libgl1-mesa-dev libegl1-mesa-dev libgles2-mesa-dev libfuse2 libxdo-dev
+      - name: Install system dependencies (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pkg-config libudev-dev libgtk-3-dev libglib2.0-dev libgdk-pixbuf2.0-dev libpango1.0-dev libcairo2-dev libatk1.0-dev libx11-dev libxrandr-dev libxfixes-dev libxrender-dev libx11-xcb-dev libxkbcommon-dev libgl1-mesa-dev libegl1-mesa-dev libgles2-mesa-dev libfuse2 libxdo-dev
 
-            - name: Rustfmt check
-              run: cargo fmt --all -- --check
+      - name: Rustfmt check
+        run: cargo fmt --all -- --check
 
-            - name: Cargo check
-              run: cargo check --workspace --all-targets --all-features
+      - name: Cargo check
+        run: cargo check --workspace --all-targets --all-features
 
-            - name: Clippy
-              run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
 
-            - name: Run tests
-              run: cargo test --workspace --all-features --verbose
+      - name: Run tests
+        run: cargo test --workspace --all-features --verbose

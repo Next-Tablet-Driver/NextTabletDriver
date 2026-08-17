@@ -38,11 +38,11 @@ struct WsPayload {
 /// Runs the embedded WebSocket server in a dedicated background thread.
 ///
 /// # Behavior
-/// 1. Reads the current configuration (`WebSocketConfig`) from `SharedState`.
-/// 2. Manages the lifecycle of a `TcpListener` based on the user-configured port.
-/// 3. Accepts incoming WebSocket handshakes and stores active connections.
-/// 4. Reads the most recent `TabletData` and broadcasts it to all connected clients
-///    at the user-defined polling rate (Hz).
+/// Reads the current configuration (`WebSocketConfig`) from `SharedState`, manages the
+/// lifecycle of a `TcpListener` based on the user-configured port, accepts incoming
+/// WebSocket handshakes and stores active connections, then reads the most recent
+/// `TabletData` and broadcasts it to all connected clients at the user-defined polling
+/// rate (Hz).
 ///
 /// # Networking
 /// - Binds to `127.0.0.1` (localhost only) for security.

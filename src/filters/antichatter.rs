@@ -13,6 +13,11 @@ use std::collections::VecDeque;
 pub struct DevocubAntichatter {
     /// A limited-length ring buffer of past coordinates.
     history: VecDeque<(f32, f32)>,
+    /// Running sum of `history`, kept in sync incrementally on push/pop so the
+    /// average can be computed in O(1) instead of resumming the whole window
+    /// on every packet.
+    sum_x: f32,
+    sum_y: f32,
     last_x: f32,
     last_y: f32,
 }
@@ -22,6 +27,8 @@ impl DevocubAntichatter {
     pub const fn new() -> Self {
         Self {
             history: VecDeque::new(),
+            sum_x: 0.0,
+            sum_y: 0.0,
             last_x: 0.0,
             last_y: 0.0,
         }
@@ -45,32 +52,37 @@ impl Filter for DevocubAntichatter {
             return (x, y);
         }
 
-        // 1. Latency buffering
+        // Latency buffering
         // We assume 1000Hz (1ms per sample) as per frequency setting
         // Window size = latency (ms) / (1000 / frequency)
         let window_size = (conf.latency * (conf.frequency / 1000.0)) as usize;
         let window_size = window_size.max(1);
 
         self.history.push_back((x, y));
+        self.sum_x += x;
+        self.sum_y += y;
         while self.history.len() > window_size {
-            self.history.pop_front();
+            if let Some((ox, oy)) = self.history.pop_front() {
+                self.sum_x -= ox;
+                self.sum_y -= oy;
+            }
         }
 
-        // 2. Simple averaging (Basic Antichatter)
-        let mut avg_x = 0.0;
-        let mut avg_y = 0.0;
-        for (hx, hy) in &self.history {
-            avg_x += hx;
-            avg_y += hy;
-        }
-        avg_x /= self.history.len() as f32;
-        avg_y /= self.history.len() as f32;
+        // Simple averaging (basic antichatter)
+        let avg_x = self.sum_x / self.history.len() as f32;
+        let avg_y = self.sum_y / self.history.len() as f32;
 
-        // 3. Apply Multiplier and Offsets
-        let mut out_x = avg_x * conf.antichatter_multiplier + conf.antichatter_offset_x / 100.0;
-        let mut out_y = avg_y * conf.antichatter_multiplier + conf.antichatter_offset_y / 100.0;
+        // Apply multiplier and offsets
+        let mut out_x = avg_x.mul_add(
+            conf.antichatter_multiplier,
+            conf.antichatter_offset_x / 100.0,
+        );
+        let mut out_y = avg_y.mul_add(
+            conf.antichatter_multiplier,
+            conf.antichatter_offset_y / 100.0,
+        );
 
-        // 4. Prediction (Simplified)
+        // Prediction (simplified)
         if conf.prediction_enabled
             && self.history.len() >= 2
             && let Some(&(px, py)) = self.history.iter().rev().nth(1)
@@ -90,6 +102,8 @@ impl Filter for DevocubAntichatter {
 
     fn reset(&mut self) {
         self.history.clear();
+        self.sum_x = 0.0;
+        self.sum_y = 0.0;
     }
 }
 

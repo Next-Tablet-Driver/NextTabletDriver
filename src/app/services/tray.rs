@@ -167,6 +167,7 @@ impl TrayService {
                     match menu_event.id().0.as_str() {
                         "quit" => {
                             log::info!(target: "Tray", "Quit requested from tray menu");
+                            crate::app::telemetry::capture_app_closed(shared);
                             std::process::exit(0);
                         }
                         "reload" => {

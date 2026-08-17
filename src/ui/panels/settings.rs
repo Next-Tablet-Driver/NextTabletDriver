@@ -177,6 +177,14 @@ fn render_theme_selector(app: &mut TabletMapperApp, ui: &mut egui::Ui) {
     if prefs.theme != old_theme {
         crate::ui::theme::apply_theme(ui.ctx(), &prefs.theme);
         crate::settings::app_preferences::save_app_preferences(prefs);
+        crate::app::telemetry::capture_event_with_set(
+            "theme_changed",
+            Some(serde_json::json!({
+                "previous_theme": format!("{old_theme:?}"),
+                "new_theme": format!("{:?}", prefs.theme),
+            })),
+            Some(serde_json::json!({ "current_theme": format!("{:?}", prefs.theme) })),
+        );
     }
 }
 
@@ -194,7 +202,7 @@ fn render_theme_external_actions(app: &mut TabletMapperApp, ui: &mut egui::Ui) {
             ))
             .clicked()
         {
-            app.theme_store_open = true;
+            app.theme_store.open = true;
             app.fetch_theme_store_list();
         }
 
@@ -251,6 +259,16 @@ fn render_language_settings(app: &mut TabletMapperApp, ui: &mut egui::Ui) {
                     app.app_prefs.language = new_locale;
                     crate::i18n::set_locale(new_locale);
                     crate::settings::app_preferences::save_app_preferences(&app.app_prefs);
+                    crate::app::telemetry::capture_event_with_set(
+                        "language_changed",
+                        Some(serde_json::json!({
+                            "previous_language": current_locale.display_name().to_string(),
+                            "new_language": new_locale.display_name().to_string(),
+                        })),
+                        Some(serde_json::json!({
+                            "language": new_locale.display_name().to_string(),
+                        })),
+                    );
                     app.push_toast(
                         t!(
                             "toast.language_changed",
@@ -286,7 +304,7 @@ fn render_websocket_settings(ui: &mut egui::Ui, config: &mut MappingConfig) {
 
                     egui::Frame::new()
                         .fill(color.gamma_multiply(0.1))
-                        .stroke(egui::Stroke::new(1.0, color.gamma_multiply(0.5)))
+                        .stroke(egui::Stroke::new(1.0_f32, color.gamma_multiply(0.5)))
                         .corner_radius(4.0)
                         .inner_margin(egui::Margin::symmetric(8, 2))
                         .show(ui, |ui| {
@@ -348,7 +366,7 @@ fn render_card<R>(
     egui::Frame::new()
         .fill(card_bg)
         .corner_radius(4.0)
-        .stroke(egui::Stroke::new(1.0, border_color))
+        .stroke(egui::Stroke::new(1.0_f32, border_color))
         .inner_margin(egui::Margin::symmetric(20, 15))
         .show(ui, |ui| {
             ui.set_width(ui.available_width());

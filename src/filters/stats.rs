@@ -9,7 +9,13 @@ use crate::engine::state::SharedState;
 use crate::filters::Filter;
 use crate::filters::stats_server::StatsServer;
 use std::sync::Arc;
-use std::time::Instant;
+use std::time::{Duration, Instant};
+
+/// Minimum interval between `shared.stats` writes, matching the ~60Hz cadence
+/// already used for HID/parser stats in `tablet_manager.rs`. Avoids taking a
+/// write lock on every packet (up to several hundred Hz) for a value that is
+/// only ever displayed to the user or broadcast at UI-refresh rates.
+const FLUSH_INTERVAL: Duration = Duration::from_millis(16);
 
 /// Analyzes coordinate deltas over time to calculate physical hand speed.
 pub struct SpeedStatsFilter {
@@ -18,16 +24,38 @@ pub struct SpeedStatsFilter {
     server: Option<StatsServer>,
     current_config: Option<(String, u16)>,
     shared: Arc<SharedState>,
+    /// Distance accumulated since the last flush to `shared.stats`.
+    pending_distance_mm: f32,
+    last_flush: Instant,
 }
 
 impl SpeedStatsFilter {
     pub fn new(shared: Arc<SharedState>) -> Self {
+        let now = Instant::now();
         Self {
             last_pos: None,
-            last_time: Instant::now(),
+            last_time: now,
             server: None,
             current_config: None,
             shared,
+            pending_distance_mm: 0.0,
+            // Far enough in the past that the first real sample always flushes immediately.
+            last_flush: now.checked_sub(Duration::from_secs(1)).unwrap_or(now),
+        }
+    }
+
+    /// Writes accumulated distance/speed to `shared.stats` and notifies the
+    /// WebSocket server, if any. Called at most once per `FLUSH_INTERVAL`.
+    fn flush(&mut self, speed: f32) {
+        let current_total_dist = self.shared.stats.write().map_or(0.0, |mut stats| {
+            stats.handspeed = speed;
+            stats.total_distance_mm += self.pending_distance_mm;
+            stats.total_distance_mm
+        });
+        self.pending_distance_mm = 0.0;
+
+        if let Some(server) = &self.server {
+            server.send_stats(speed, current_total_dist);
         }
     }
 
@@ -96,14 +124,11 @@ impl Filter for SpeedStatsFilter {
                 SpeedUnit::MilesPerHour => (speed / 1000.0) * 2.23694,
             };
 
-            let current_total_dist = self.shared.stats.write().map_or(0.0, |mut stats| {
-                stats.handspeed = speed;
-                stats.total_distance_mm += distance_mm;
-                stats.total_distance_mm
-            });
+            self.pending_distance_mm += distance_mm;
 
-            if let Some(server) = &self.server {
-                server.send_stats(speed, current_total_dist);
+            if now.duration_since(self.last_flush) >= FLUSH_INTERVAL {
+                self.last_flush = now;
+                self.flush(speed);
             }
         }
 
@@ -119,6 +144,11 @@ impl Filter for SpeedStatsFilter {
     }
 
     fn reset(&mut self) {
+        // Don't drop unflushed distance accumulated just before disconnect/reconnect.
+        if self.pending_distance_mm > 0.0 {
+            let handspeed = self.shared.stats.read().map_or(0.0, |s| s.handspeed);
+            self.flush(handspeed);
+        }
         self.last_pos = None;
         self.last_time = Instant::now();
     }

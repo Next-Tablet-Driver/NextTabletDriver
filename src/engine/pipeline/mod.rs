@@ -54,21 +54,22 @@ impl Pipeline {
         self.projector.reset();
     }
 
-    /// Processes a single hardware packet through the entire stack.
+    /// Processes a single hardware packet through the entire stack, returning the
+    /// resulting frame. Callers that need to drive OS input injection (the desktop
+    /// app) are responsible for feeding the returned frame into `engine::injector`
+    /// themselves. This method never touches the OS, so it's safe to call from
+    /// contexts (like the SDK's embedded engine) that must never inject input.
     pub fn process(
         &mut self,
         data: &TabletData,
         driver: &dyn crate::drivers::NextTabletDriver,
         config: &MappingConfig,
-        injector: &mut crate::engine::injector::Injector,
         filters: &mut crate::filters::FilterPipeline,
         shared: &Arc<crate::engine::state::SharedState>,
-    ) {
+    ) -> ProcessedFrame {
         if !data.is_connected {
-            injector.set_left_button(false);
-            injector.set_proximity(false);
             filters.reset();
-            return;
+            return ProcessedFrame::default();
         }
 
         // Skip non-positional reports (aux, tool ID, out-of-range)
@@ -78,8 +79,7 @@ impl Pipeline {
                 | crate::drivers::TabletStatus::Hover
                 | crate::drivers::TabletStatus::Active
         ) {
-            injector.set_proximity(false);
-            return;
+            return ProcessedFrame::default();
         }
 
         let (max_w, max_h, max_p) = driver.get_specs();
@@ -96,10 +96,21 @@ impl Pipeline {
         // Stage 3: Filtering (UV -> UV)
         let (u, v) = filters.process(u, v, config);
 
-        // Stage 4: Projection & Injection (UV/MM -> Screen/Events)
+        let pressure_ratio = if max_p > 0.0 {
+            f32::from(data.pressure) / max_p
+        } else {
+            0.0
+        };
+        let pressure_ratio =
+            crate::core::math::curve::evaluate(pressure_ratio, &config.pressure_curve);
+
+        // Stage 4: Projection (UV/MM -> Screen)
         let mut frame = ProcessedFrame {
             u,
             v,
+            pressure: (pressure_ratio.clamp(0.0, 1.0) * 8191.0) as i32,
+            tilt_x: i32::from(data.tilt_x),
+            tilt_y: i32::from(data.tilt_y),
             ..Default::default()
         };
 
@@ -108,33 +119,16 @@ impl Pipeline {
                 let (sx, sy) = self.projector.project_absolute(u, v, config, shared);
                 frame.screen_x = sx;
                 frame.screen_y = sy;
-
-                let pressure_ratio = if max_p > 0.0 {
-                    f32::from(data.pressure) / max_p
-                } else {
-                    0.0
-                };
-                let abs_p = (pressure_ratio.clamp(0.0, 1.0) * 8191.0) as i32;
-
-                injector.move_absolute(
-                    sx,
-                    sy,
-                    u,
-                    v,
-                    abs_p,
-                    i32::from(data.tilt_x),
-                    i32::from(data.tilt_y),
-                );
             }
             DriverMode::Relative => {
                 let (dx, dy) = self.projector.project_relative(x_mm, y_mm, config);
-                injector.move_relative(dx, dy);
+                frame.screen_x = dx;
+                frame.screen_y = dy;
             }
         }
 
-        // Pressure & Injection
         frame.is_down = self.evaluate_pressure(data.pressure, max_p, config);
-        injector.set_left_button(frame.is_down);
+        frame
     }
 
     pub fn evaluate_pressure(
@@ -171,7 +165,6 @@ mod tests {
     use super::*;
     use crate::core::config::models::MappingConfig;
     use crate::drivers::TabletData;
-    use crate::engine::injector::Injector;
     use crate::engine::state::SharedState;
     use crate::filters::FilterPipeline;
 
@@ -196,11 +189,6 @@ mod tests {
 
     #[test]
     fn test_pipeline_absolute_normalization() {
-        use std::fs::OpenOptions;
-        if OpenOptions::new().write(true).open("/dev/uinput").is_err() {
-            return;
-        }
-
         let mut pipeline = Pipeline::new();
         let mut config = MappingConfig::default();
         config.active_area.x = 50.0;
@@ -209,7 +197,6 @@ mod tests {
         config.active_area.h = 100.0;
 
         let shared = Arc::new(SharedState::test_default());
-        let mut injector = Injector::new();
         let mut filters = FilterPipeline::new();
         let driver = MockDriver;
 
@@ -221,14 +208,9 @@ mod tests {
             ..Default::default()
         };
 
-        pipeline.process(
-            &data,
-            &driver,
-            &config,
-            &mut injector,
-            &mut filters,
-            &shared,
-        );
+        let frame = pipeline.process(&data, &driver, &config, &mut filters, &shared);
+        assert!((frame.u - 0.5).abs() < f32::EPSILON);
+        assert!((frame.v - 0.5).abs() < f32::EPSILON);
     }
 
     #[test]
@@ -242,6 +224,38 @@ mod tests {
         // max_p = 1000.0, so threshold = 500.0
         assert!(pipeline.evaluate_pressure(501, 1000.0, &config));
         assert!(!pipeline.evaluate_pressure(499, 1000.0, &config));
+    }
+
+    #[test]
+    fn test_pipeline_pressure_curve_reshapes_reported_pressure_only() {
+        let mut pipeline = Pipeline::new();
+        let mut config = MappingConfig {
+            tip_threshold: 10,
+            ..Default::default()
+        };
+        config.pressure_curve.curve_type =
+            crate::core::config::models::PressureCurveType::Exponential;
+        config.pressure_curve.exponent = 2.0;
+
+        let shared = Arc::new(SharedState::test_default());
+        let mut filters = FilterPipeline::new();
+        let driver = MockDriver;
+
+        // max_p = 1000.0, so raw 500 -> ratio 0.5 -> curved to 0.25 -> ~2047/8191
+        let data = TabletData {
+            is_connected: true,
+            status: crate::drivers::TabletStatus::Contact,
+            pressure: 500,
+            ..Default::default()
+        };
+
+        let frame = pipeline.process(&data, &driver, &config, &mut filters, &shared);
+        assert!(
+            frame.pressure < 4095,
+            "curved pressure should be reshaped below the linear midpoint"
+        );
+        // Tip-down detection still uses raw pressure, unaffected by the curve.
+        assert!(frame.is_down);
     }
 
     #[test]

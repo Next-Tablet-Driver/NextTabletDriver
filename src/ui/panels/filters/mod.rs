@@ -1,4 +1,5 @@
 pub mod antichatter;
+pub mod kalman;
 pub mod stats;
 
 use crate::app::state::{TabletMapperApp, UiSnapshot};
@@ -7,12 +8,50 @@ use crate::t;
 use crate::ui::theme::{panel_bg, panel_border};
 use eframe::egui;
 
+/// A single entry in the filter registry: how it appears in the sidebar,
+/// the id used to track selection, and how to render its settings.
+///
+/// Adding a new filter means adding one entry here, nothing else.
+struct FilterEntry {
+    name: &'static str,
+    icon: &'static str,
+    id: &'static str,
+    render: fn(&TabletMapperApp, &mut egui::Ui, &mut MappingConfig, &UiSnapshot),
+}
+
+fn filter_registry() -> [FilterEntry; 3] {
+    [
+        FilterEntry {
+            name: "Antichatter",
+            icon: egui_phosphor::regular::WAVE_SINE,
+            id: "Devocub Antichatter",
+            render: |_app, ui, config, _snapshot| {
+                antichatter::render_antichatter_settings(ui, config);
+            },
+        },
+        FilterEntry {
+            name: "Kalman",
+            icon: egui_phosphor::regular::WAVEFORM,
+            id: "Kalman Smoothing",
+            render: kalman::render_kalman_settings,
+        },
+        FilterEntry {
+            name: "HandSpeed",
+            icon: egui_phosphor::regular::GAUGE,
+            id: "HandSpeed WebSocket",
+            render: stats::render_stats_settings,
+        },
+    ]
+}
+
 pub fn render_filters_panel(
     app: &mut TabletMapperApp,
     ui: &mut egui::Ui,
     config: &mut MappingConfig,
     snapshot: &UiSnapshot,
 ) {
+    let registry = filter_registry();
+
     ui.add_space(5.0);
     ui.horizontal(|ui| {
         let sidebar_width = 150.0;
@@ -26,7 +65,7 @@ pub fn render_filters_panel(
                 egui::Frame::new()
                     .fill(panel_bg(visuals).gamma_multiply(0.6))
                     .stroke(egui::Stroke::new(
-                        1.0,
+                        1.0_f32,
                         panel_border(visuals).gamma_multiply(0.4),
                     ))
                     .inner_margin(egui::Margin::symmetric(10, 10))
@@ -42,21 +81,18 @@ pub fn render_filters_panel(
                         );
                         ui.add_space(8.0);
 
-                        render_sidebar_item(
-                            ui,
-                            "Antichatter",
-                            egui_phosphor::regular::WAVE_SINE,
-                            "Devocub Antichatter",
-                            &mut app.selected_filter,
-                        );
-                        ui.add_space(4.0);
-                        render_sidebar_item(
-                            ui,
-                            "HandSpeed",
-                            egui_phosphor::regular::GAUGE,
-                            "HandSpeed WebSocket",
-                            &mut app.selected_filter,
-                        );
+                        for (i, entry) in registry.iter().enumerate() {
+                            if i > 0 {
+                                ui.add_space(4.0);
+                            }
+                            render_sidebar_item(
+                                ui,
+                                entry.name,
+                                entry.icon,
+                                entry.id,
+                                &mut app.selected_filter,
+                            );
+                        }
                     });
             },
         );
@@ -65,10 +101,12 @@ pub fn render_filters_panel(
 
         ui.vertical(|ui| {
             ui.add_space(5.0);
-            match app.selected_filter.as_str() {
-                "Devocub Antichatter" => antichatter::render_antichatter_settings(ui, config),
-                "HandSpeed WebSocket" => stats::render_stats_settings(app, ui, config, snapshot),
-                _ => {
+            match registry
+                .iter()
+                .find(|entry| entry.id == app.selected_filter)
+            {
+                Some(entry) => (entry.render)(app, ui, config, snapshot),
+                None => {
                     ui.centered_and_justified(|ui| {
                         ui.label(t!("filters.select"));
                     });

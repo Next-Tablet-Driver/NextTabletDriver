@@ -5,7 +5,9 @@ use std::fs;
 use std::path::Path;
 use std::time::Instant;
 
-pub static TABLET_CONFIGS_DIR: Dir = include_dir!("$CARGO_MANIFEST_DIR/tablets");
+pub static TABLET_CONFIGS_DIR: Dir = include_dir!(
+    "$CARGO_MANIFEST_DIR/tablets/OpenTabletDriver/OpenTabletDriver.Configurations/Configurations"
+);
 
 type ConfigIndex = HashMap<(u16, u16), Vec<(TabletConfiguration, DigitizerIdentifier)>>;
 

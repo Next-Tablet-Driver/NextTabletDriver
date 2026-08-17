@@ -18,11 +18,13 @@ pub fn render_antichatter_settings(ui: &mut egui::Ui, config: &mut MappingConfig
                         t!("filters.antichatter.enable"),
                     )
                     .changed()
-                    && config.antichatter.enabled
                 {
                     crate::app::telemetry::capture_event(
-                        "filter_enabled",
-                        Some(serde_json::json!({"filter_name": "Antichatter"})),
+                        "filter_toggled",
+                        Some(serde_json::json!({
+                            "filter_name": "Antichatter",
+                            "enabled": config.antichatter.enabled,
+                        })),
                     );
                 }
             });
@@ -85,10 +87,21 @@ pub fn render_antichatter_settings(ui: &mut egui::Ui, config: &mut MappingConfig
         egui_phosphor::regular::CHART_LINE_UP,
         |ui| {
             ui.horizontal(|ui| {
-                ui.checkbox(
-                    &mut config.antichatter.prediction_enabled,
-                    t!("filters.prediction.enable"),
-                );
+                if ui
+                    .checkbox(
+                        &mut config.antichatter.prediction_enabled,
+                        t!("filters.prediction.enable"),
+                    )
+                    .changed()
+                {
+                    crate::app::telemetry::capture_event(
+                        "filter_toggled",
+                        Some(serde_json::json!({
+                            "filter_name": "Prediction",
+                            "enabled": config.antichatter.prediction_enabled,
+                        })),
+                    );
+                }
             });
             ui.add_space(10.0);
 

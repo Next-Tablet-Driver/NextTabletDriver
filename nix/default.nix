@@ -2,7 +2,7 @@
 
 pkgs.rustPlatform.buildRustPackage rec {
   pname = "next-tablet-driver";
-  version = "1.26.0407.00"; # Version from lib.rs
+  version = "1.26.1708.00"; # Version from lib.rs
 
   src = ../.;
 
@@ -12,7 +12,7 @@ pkgs.rustPlatform.buildRustPackage rec {
 
   nativeBuildInputs = with pkgs; [
     pkg-config
-    wrapGAppsHook
+    wrapGAppsHook3
   ];
 
   buildInputs = with pkgs; [
@@ -23,6 +23,11 @@ pkgs.rustPlatform.buildRustPackage rec {
     libusb1
     libxkbcommon
   ];
+
+  postInstall = ''
+    install -Dm644 ${../scripts/99-nexttabletdriver.rules} \
+      $out/lib/udev/rules.d/99-nexttabletdriver.rules
+  '';
 
   meta = with pkgs.lib; {
     description = "Tablet Driver for Osu! and Drawing";

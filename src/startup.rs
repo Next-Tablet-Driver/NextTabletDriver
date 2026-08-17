@@ -48,11 +48,9 @@ mod platform {
     ///
     /// # Technical Details
     /// Windows `.lnk` files are a proprietary binary format. To avoid complex binary encoding,
-    /// this function:
-    /// 1. Generates a temporary **`VBScript`** file.
-    /// 2. Uses the `WScript.Shell` COM object to create the shortcut.
-    /// 3. Executes the script via `wscript.exe`.
-    /// 4. Deletes the temporary script file.
+    /// this function generates a temporary `VBScript` file, uses the `WScript.Shell` COM
+    /// object to create the shortcut, executes the script via `wscript.exe`, then deletes
+    /// the temporary script file.
     ///
     /// # Errors
     /// Returns an error if the shortcut path cannot be determined, environment variable access fails,

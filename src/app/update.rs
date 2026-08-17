@@ -3,7 +3,7 @@
 //! This module contains the implementation of the `eframe::App` trait for
 //! `TabletMapperApp`.
 
-use crate::app::state::{TabletMapperApp, UiSnapshot};
+use crate::app::state::{ReleaseNotesStatus, TabletMapperApp, UiSnapshot};
 use crate::engine::state::LockRecoveryExt;
 use eframe::egui;
 use std::sync::atomic::Ordering;
@@ -12,7 +12,7 @@ use std::time::Duration;
 impl eframe::App for TabletMapperApp {
     /// The main application loop called by egui.
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        // 0. Handle graceful shutdown signal
+        // Handle graceful shutdown signal
         if ctx.input(|i| i.viewport().close_requested())
             && !self.force_close
             && self.shared.is_visible.load(Ordering::Acquire)
@@ -36,39 +36,40 @@ impl eframe::App for TabletMapperApp {
             return;
         }
 
-        // ── Normal Rendering Path ─────────────────────────────────────────
+        // Normal rendering path
 
         self.check_theme_download(ctx);
+        self.check_release_notes();
 
-        // 1. Capture snapshot for the entire frame
+        // Capture snapshot for the entire frame
         let snapshot = UiSnapshot::capture(&self.shared);
 
-        // 2. Process Input/IO Events
+        // Process input/IO events
         self.process_io_events(ctx, &snapshot);
 
-        // 3. Handle Lifecycle (tray, close guard, etc)
+        // Handle lifecycle (tray, close guard, etc)
         self.handle_lifecycle(ctx, &snapshot.config);
 
-        // 4. Render Layout & Panels
+        // Render layout and panels
         let mut config = snapshot.config.clone();
         let initial_config = config.clone();
 
         self.render_main_layout(ctx, &mut config, &snapshot);
 
-        // 5. Render Overlays (Dialogs, Toasts, Viewports)
+        // Render overlays (dialogs, toasts, viewports)
         self.render_overlays(ctx, &snapshot);
 
-        // 6. State Persistence (Sync config back if changed)
+        // Sync config back to persist state if changed
         self.sync_config(ctx, config, &initial_config);
 
-        // 7. Repaint Strategy
+        // Repaint strategy
         ctx.request_repaint_after(Duration::from_secs(1));
     }
 }
 
 impl TabletMapperApp {
     fn check_theme_download(&mut self, ctx: &egui::Context) {
-        let got_result = if let Ok(mut guard) = self.theme_download_result.try_lock()
+        let got_result = if let Ok(mut guard) = self.theme_store.download_result.try_lock()
             && guard.is_some()
         {
             guard.take()
@@ -77,7 +78,7 @@ impl TabletMapperApp {
         };
 
         if let Some(result) = got_result {
-            let theme_name = self.theme_downloading_name.take().unwrap_or_default();
+            let theme_name = self.theme_store.downloading_name.take().unwrap_or_default();
             match result {
                 Ok(safe_name) => {
                     self.app_prefs.theme =
@@ -102,6 +103,36 @@ impl TabletMapperApp {
                     );
                 }
             }
+        }
+    }
+
+    fn check_release_notes(&mut self) {
+        let got_result = if let Ok(mut guard) = self.release_notes.pending.try_lock()
+            && guard.is_some()
+        {
+            guard.take()
+        } else {
+            None
+        };
+
+        if let Some(outcome) = got_result {
+            self.release_notes.status = match outcome {
+                crate::app::release_notes::ReleaseNotesOutcome::Fresh(releases) => {
+                    ReleaseNotesStatus::Loaded {
+                        releases,
+                        from_cache: false,
+                    }
+                }
+                crate::app::release_notes::ReleaseNotesOutcome::Cached(releases) => {
+                    ReleaseNotesStatus::Loaded {
+                        releases,
+                        from_cache: true,
+                    }
+                }
+                crate::app::release_notes::ReleaseNotesOutcome::Unavailable => {
+                    ReleaseNotesStatus::Unavailable
+                }
+            };
         }
     }
 

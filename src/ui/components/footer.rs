@@ -41,6 +41,14 @@ pub fn render_footer(
                     });
 
                 if current_mode != config.mode {
+                    crate::app::telemetry::capture_event_with_set(
+                        "driver_mode_changed",
+                        Some(serde_json::json!({
+                            "previous_mode": format!("{:?}", config.mode),
+                            "new_mode": format!("{current_mode:?}"),
+                        })),
+                        Some(serde_json::json!({ "driver_mode": format!("{current_mode:?}") })),
+                    );
                     config.mode = current_mode;
                     app.shared.config_version.fetch_add(1, Ordering::SeqCst);
                 }

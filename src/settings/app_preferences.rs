@@ -92,6 +92,7 @@ pub fn load_app_preferences() -> AppPreferences {
 }
 
 /// Validates that the selected theme still exists on disk, reverting to System if not.
+#[cfg(feature = "gui")]
 pub fn validate_theme(prefs: &mut AppPreferences) {
     if let ThemePreference::Custom(name) = &prefs.theme {
         let available = crate::settings::themes::list_custom_themes();

@@ -1,16 +1,19 @@
 # NextTabletDriver udev rules
-# Allows non-root users in the "input" group to access /dev/uinput
-# and prevents double input by telling libinput to ignore the original tablets.
+# Grants access to /dev/uinput and the tablet's hidraw device, and prevents
+# double input by telling libinput to ignore the original tablets.
 #
 # Installation:
 #   sudo cp 99-nexttabletdriver.rules /etc/udev/rules.d/
 #   sudo udevadm control --reload-rules
 #   sudo udevadm trigger
 #
-# Then add your user to the input group:
-#   sudo usermod -aG input $USER
+# The TAG+="uaccess" rules below grant the logged-in desktop user access
+# instantly via systemd-logind, no group membership or re-login required.
 #
-# You will need to log out and back in for group changes to take effect.
+# The GROUP="input" rules are kept as a fallback for headless/non-logind
+# sessions. If you rely on that fallback, add your user to the group and
+# log out and back in for it to take effect:
+#   sudo usermod -aG input $USER
 
 # Grant read/write access to /dev/uinput for the "input" group
 KERNEL=="uinput", SUBSYSTEM=="misc", MODE="0660", GROUP="input", TAG+="uaccess"
@@ -20,22 +23,22 @@ KERNEL=="js[0-9]*", SUBSYSTEM=="input", ATTRS{name}=="NextTabletDriver Virtual P
 KERNEL=="js[0-9]*", SUBSYSTEM=="input", ATTRS{name}=="NextTabletDriver Virtual Mouse", RUN+="/usr/bin/env rm %E{DEVNAME}"
 
 # Grant read access to tablet HID devices via hidraw
-SUBSYSTEM=="hidraw", ATTRS{idVendor}=="056a", MODE="0660", GROUP="input"
-SUBSYSTEM=="hidraw", ATTRS{idVendor}=="6161", MODE="0660", GROUP="input"
-SUBSYSTEM=="hidraw", ATTRS{idVendor}=="2feb", MODE="0660", GROUP="input"
-SUBSYSTEM=="hidraw", ATTRS{idVendor}=="0543", MODE="0660", GROUP="input"
-SUBSYSTEM=="hidraw", ATTRS{idVendor}=="172f", MODE="0660", GROUP="input"
-SUBSYSTEM=="hidraw", ATTRS{idVendor}=="256c", MODE="0660", GROUP="input"
-SUBSYSTEM=="hidraw", ATTRS{idVendor}=="08ca", MODE="0660", GROUP="input"
-SUBSYSTEM=="hidraw", ATTRS{idVendor}=="5543", MODE="0660", GROUP="input"
-SUBSYSTEM=="hidraw", ATTRS{idVendor}=="0b57", MODE="0660", GROUP="input"
-SUBSYSTEM=="hidraw", ATTRS{idVendor}=="28bd", MODE="0660", GROUP="input"
-SUBSYSTEM=="hidraw", ATTRS{idVendor}=="0458", MODE="0660", GROUP="input"
-SUBSYSTEM=="hidraw", ATTRS{idVendor}=="2d80", MODE="0660", GROUP="input"
-SUBSYSTEM=="hidraw", ATTRS{idVendor}=="0ed1", MODE="0660", GROUP="input"
-SUBSYSTEM=="hidraw", ATTRS{idVendor}=="0a12", MODE="0660", GROUP="input"
-SUBSYSTEM=="hidraw", ATTRS{idVendor}=="0483", MODE="0660", GROUP="input"
-SUBSYSTEM=="hidraw", ATTRS{idVendor}=="0531", MODE="0660", GROUP="input"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="056a", MODE="0660", GROUP="input", TAG+="uaccess"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="6161", MODE="0660", GROUP="input", TAG+="uaccess"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="2feb", MODE="0660", GROUP="input", TAG+="uaccess"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="0543", MODE="0660", GROUP="input", TAG+="uaccess"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="172f", MODE="0660", GROUP="input", TAG+="uaccess"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="256c", MODE="0660", GROUP="input", TAG+="uaccess"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="08ca", MODE="0660", GROUP="input", TAG+="uaccess"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="5543", MODE="0660", GROUP="input", TAG+="uaccess"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="0b57", MODE="0660", GROUP="input", TAG+="uaccess"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="28bd", MODE="0660", GROUP="input", TAG+="uaccess"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="0458", MODE="0660", GROUP="input", TAG+="uaccess"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="2d80", MODE="0660", GROUP="input", TAG+="uaccess"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="0ed1", MODE="0660", GROUP="input", TAG+="uaccess"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="0a12", MODE="0660", GROUP="input", TAG+="uaccess"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="0483", MODE="0660", GROUP="input", TAG+="uaccess"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="0531", MODE="0660", GROUP="input", TAG+="uaccess"
 
 # Prevent double input by ignoring the raw devices in libinput/Wayland/X11
 # Adesso Cybertablet K8

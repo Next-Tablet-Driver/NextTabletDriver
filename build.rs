@@ -28,7 +28,7 @@ fn main() {
 
     // Metadata visible in File Properties -> Details
     res.set("ProductName", "NextTabletDriver");
-    res.set("FileDescription", "Next Tablet Driver");
+    res.set("FileDescription", "NextTabletDriver");
     res.set("CompanyName", "iSweat");
 
     // Compiles the resource. Fails if the Windows SDK tools are missing.

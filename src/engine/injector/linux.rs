@@ -35,6 +35,12 @@ pub struct Injector {
     screen_bounds: (f32, f32, f32, f32),
     /// Timestamp of the last time we updated `screen_bounds`
     last_bounds_update: std::time::Instant,
+    /// Set once a display enumeration failure has been logged, so the warning
+    /// is not repeated on every retry while the fallback bounds are in use.
+    bounds_query_failed: bool,
+    /// Number of displays seen on the last successful enumeration, used to
+    /// decide when a bounds change is worth logging (e.g. monitor hot-plug).
+    last_known_display_count: Option<usize>,
 }
 
 impl Default for Injector {
@@ -71,14 +77,11 @@ fn create_uinput_device_builder() -> evdev::uinput::VirtualDeviceBuilder<'static
 }
 
 impl Injector {
-    /// Creates both virtual devices via `/dev/uinput`:
-    ///
-    /// 1. **Virtual Tablet** - Reports `EV_ABS` with `ABS_X`, `ABS_Y`, `ABS_PRESSURE`,
-    ///    `ABS_TILT_X`, `ABS_TILT_Y`, and key events for `BTN_TOUCH`, `BTN_TOOL_PEN`,
-    ///    `BTN_STYLUS`, `BTN_STYLUS2`.
-    ///
-    /// 2. **Virtual Mouse** - Reports `EV_REL` with `REL_X`, `REL_Y`, and
-    ///    `BTN_LEFT` for relative mode operation.
+    /// Creates both virtual devices via `/dev/uinput`: a virtual tablet reporting
+    /// `EV_ABS` with `ABS_X`, `ABS_Y`, `ABS_PRESSURE`, `ABS_TILT_X`, `ABS_TILT_Y`, and key
+    /// events for `BTN_TOUCH`, `BTN_TOOL_PEN`, `BTN_STYLUS`, `BTN_STYLUS2`; and a virtual
+    /// mouse reporting `EV_REL` with `REL_X`, `REL_Y`, and `BTN_LEFT` for relative mode
+    /// operation.
     ///
     /// # Panics
     /// Panics if `/dev/uinput` cannot be opened (missing permissions or kernel module).
@@ -159,9 +162,18 @@ impl Injector {
             last_bounds_update: now
                 .checked_sub(std::time::Duration::from_secs(10))
                 .unwrap_or(now),
+            bounds_query_failed: false,
+            last_known_display_count: None,
         }
     }
 
+    /// Refreshes `screen_bounds` from the current display layout, at most once
+    /// every 2 seconds. `display_info` queries `wl_output` on Wayland and
+    /// `RandR` on X11; both are cheap but not free, hence the rate limit.
+    ///
+    /// If enumeration fails or reports no displays, the previous bounds are
+    /// kept (initially the hardcoded 1920x1080 fallback), and a warning is
+    /// logged once so the AREA mismatch is diagnosable instead of silent.
     fn update_screen_bounds(&mut self) {
         let now = std::time::Instant::now();
         if now.duration_since(self.last_bounds_update) < std::time::Duration::from_secs(2) {
@@ -169,21 +181,58 @@ impl Injector {
         }
         self.last_bounds_update = now;
 
-        if let Ok(displays) = display_info::DisplayInfo::all()
-            && !displays.is_empty()
-        {
-            let mut mx = i32::MAX;
-            let mut my = i32::MAX;
-            let mut ax = i32::MIN;
-            let mut ay = i32::MIN;
-            for d in &displays {
-                mx = mx.min(d.x);
-                my = my.min(d.y);
-                ax = ax.max(d.x + d.width.cast_signed());
-                ay = ay.max(d.y + d.height.cast_signed());
+        match display_info::DisplayInfo::all() {
+            Ok(displays) if !displays.is_empty() => {
+                let mut mx = i32::MAX;
+                let mut my = i32::MAX;
+                let mut ax = i32::MIN;
+                let mut ay = i32::MIN;
+                for d in &displays {
+                    mx = mx.min(d.x);
+                    my = my.min(d.y);
+                    ax = ax.max(d.x + d.width.cast_signed());
+                    ay = ay.max(d.y + d.height.cast_signed());
+                }
+                self.screen_bounds = (mx as f32, my as f32, ax as f32, ay as f32);
+
+                let display_count = displays.len();
+                if self.bounds_query_failed || self.last_known_display_count != Some(display_count)
+                {
+                    log::info!(
+                        target: "Injector",
+                        "Screen bounds resolved from {display_count} display(s): desktop spans ({mx}, {my}) to ({ax}, {ay})"
+                    );
+                }
+
+                self.bounds_query_failed = false;
+                self.last_known_display_count = Some(display_count);
             }
-            self.screen_bounds = (mx as f32, my as f32, ax as f32, ay as f32);
+            Ok(_) => {
+                self.warn_bounds_fallback("Display enumeration returned zero displays");
+            }
+            Err(e) => {
+                let reason = format!("Failed to enumerate displays: {e}");
+                self.warn_bounds_fallback(&reason);
+            }
         }
+    }
+
+    /// Logs a one-time warning explaining that AREA mapping is running on the
+    /// hardcoded fallback bounds because display geometry could not be read.
+    /// Rearmed automatically once a later enumeration succeeds.
+    fn warn_bounds_fallback(&mut self, reason: &str) {
+        if self.bounds_query_failed {
+            return;
+        }
+        self.bounds_query_failed = true;
+
+        let (min_x, min_y, max_x, max_y) = self.screen_bounds;
+        log::warn!(
+            target: "Injector",
+            "{reason}. AREA mapping will use the hardcoded fallback area ({min_x}, {min_y}) to ({max_x}, {max_y}) \
+            until display geometry becomes available. On Wayland this commonly happens when the compositor \
+            does not expose output geometry through the standard wl_output protocol."
+        );
     }
 
     pub fn set_proximity(&mut self, in_proximity: bool) {

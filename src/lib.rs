@@ -6,18 +6,14 @@
 //!
 //! ## Architecture Overview
 //!
-//! The driver operates as a pipeline with the following stages:
-//!
-//! 1.  **HID Detection & Polling** ([`drivers`]): Scans the USB bus for supported devices
-//!     using `hidapi` and initiates a high-frequency polling loop.
-//! 2.  **Packet Parsing** ([`drivers::parsers`]): Decodes vendor-specific byte arrays
-//!     into a standardized [`drivers::TabletData`] structure.
-//! 3.  **Filter Pipeline** ([`filters`]): Applies optional processing such as
-//!     antichatter (smoothing) or telemetry collection.
-//! 4.  **Coordinate Transformation** ([`core::math`]): Maps physical tablet coordinates
-//!     into normalized space, then projects them onto the target screen pixels.
-//! 5.  **Event Injection** ([`engine::injector`]): Injects the final coordinates and
-//!     button states into the operating system (uinput on Linux, `SendInput` on Windows).
+//! The driver operates as a pipeline with the following stages: [`drivers`] scans the USB
+//! bus for supported devices using `hidapi` and runs a high-frequency polling loop,
+//! [`drivers::parsers`] decodes the vendor-specific byte arrays into a standardized
+//! [`drivers::TabletData`] structure, [`filters`] applies optional processing such as
+//! antichatter (smoothing) or telemetry collection, [`core::math`] maps physical tablet
+//! coordinates into normalized space and projects them onto the target screen pixels, and
+//! [`engine::injector`] injects the final coordinates and button states into the operating
+//! system (uinput on Linux, `SendInput` on Windows).
 //!
 //! ## Threading Model
 //!
@@ -38,6 +34,7 @@
 //! *   **[`startup`]**: Platform-specific autostart registration.
 //! *   **[`ui`]**: Graphical components and theming.
 
+#[cfg(feature = "gui")]
 pub mod app;
 pub mod core;
 pub mod drivers;
@@ -47,7 +44,8 @@ pub mod i18n;
 pub mod logger;
 pub mod settings;
 pub mod startup;
+#[cfg(feature = "gui")]
 pub mod ui;
 
 /// Version.
-pub const VERSION: &str = "1.26.0407.00";
+pub const VERSION: &str = "1.26.1708.00";

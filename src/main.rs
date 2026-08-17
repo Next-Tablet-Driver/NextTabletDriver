@@ -13,10 +13,15 @@ use next_tablet_driver::app::services::{
 };
 use next_tablet_driver::logger;
 use std::sync::Arc;
-use std::sync::atomic::Ordering;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 #[cfg(windows)]
 use windows_sys::Win32::System::LibraryLoader::{GetModuleHandleA, GetProcAddress};
+
+/// Ensures GPU renderer/vendor/version info is only logged and tracked once per
+/// process, even though the main loop re-runs `eframe::run_native` (and its
+/// startup closure) every time the window is restored from the system tray.
+static GPU_INFO_REPORTED: AtomicBool = AtomicBool::new(false);
 
 /// Adjusts the Windows system timer resolution to minimize input latency.
 ///
@@ -96,10 +101,9 @@ fn set_fast_timer(enable: u8) {
 /// - **Linux**: Uses a file lock in `$XDG_RUNTIME_DIR` (or `/tmp`) for single-instance enforcement.
 ///
 /// # Execution Flow
-/// 1. Verifies no other instance is running.
-/// 2. Initializes the application logger.
-/// 3. Configures the GUI window options (icon, dimensions, title).
-/// 4. Enters the `eframe::run_native` GUI event loop.
+/// Verifies no other instance is running, initializes the application logger,
+/// configures the GUI window options (icon, dimensions, title), and enters
+/// the `eframe::run_native` GUI event loop.
 fn main() -> eframe::Result {
     next_tablet_driver::app::telemetry::setup_panic_hook();
 
@@ -189,10 +193,10 @@ fn main() -> eframe::Result {
             egui::IconData::default()
         });
 
-    // 0. Migrate profiles if necessary
+    // Migrate profiles if necessary
     next_tablet_driver::settings::migrate_profiles_to_subdir();
 
-    // 1. Load Configuration
+    // Load configuration
     let config_start = std::time::Instant::now();
     let config_service = ConfigService::load();
     let config = config_service.config.clone();
@@ -201,7 +205,7 @@ fn main() -> eframe::Result {
         load_corrections.is_empty() && !next_tablet_driver::settings::get_settings_dir().exists();
     let config_duration = config_start.elapsed();
 
-    // 2. Initialize Shared State & I18N
+    // Initialize shared state and I18N
     let state_start = std::time::Instant::now();
     let shared = SharedStateFactory::create(config.clone(), is_first_run);
     let app_prefs = next_tablet_driver::settings::app_preferences::load_app_preferences();
@@ -217,7 +221,7 @@ fn main() -> eframe::Result {
         .map(|b| (b as f64 / 1_073_741_824.0).ceil() as u64);
     let state_duration = state_start.elapsed();
 
-    // 3. Initialize Services and Channels
+    // Initialize services and channels
     let services_start = std::time::Instant::now();
     let (tablet_sender, tablet_receiver) = crossbeam_channel::bounded(60);
     let update_service = UpdateService::new();
@@ -227,7 +231,7 @@ fn main() -> eframe::Result {
     let _tray_service = TrayService::new(&shared);
     let services_duration = services_start.elapsed();
 
-    // 4. Spawn Background Threads via Supervisor
+    // Spawn background threads via the supervisor
     let supervisor_start = std::time::Instant::now();
     ThreadSupervisor::spawn_engine(Arc::clone(&shared), tablet_sender);
     ThreadSupervisor::spawn_websocket(Arc::clone(&shared));
@@ -271,12 +275,13 @@ fn main() -> eframe::Result {
         })),
     );
 
-    // 6. Main App Loop
+    // Main app loop
     // eframe blocks until the window is closed. When minimized to tray, the window closes
     // and eframe returns. We sleep until the tray restores the window, then restart eframe.
     loop {
         if shared.shutdown_requested.load(Ordering::Relaxed) {
             log::info!(target: "App", "Shutdown requested, exiting main loop.");
+            next_tablet_driver::app::telemetry::capture_app_closed(&shared);
             break Ok(());
         }
 
@@ -316,7 +321,12 @@ fn main() -> eframe::Result {
                 Box::new(move |cc| {
                     cc.egui_ctx.send_viewport_cmd(egui::ViewportCommand::Focus);
 
-                    if let Some(gl) = &cc.gl {
+                    // The outer loop re-invokes `eframe::run_native` (and thus this closure)
+                    // every time the window is restored from the tray, so GPU info must only
+                    // be logged/tracked once per process to avoid duplicate logs and events.
+                    if let Some(gl) = &cc.gl
+                        && !GPU_INFO_REPORTED.swap(true, Ordering::Relaxed)
+                    {
                         use eframe::glow::HasContext;
                         // SAFETY: Querying the renderer parameter string from a valid active glow OpenGL context is safe.
                         let renderer = unsafe { gl.get_parameter_string(eframe::glow::RENDERER) };

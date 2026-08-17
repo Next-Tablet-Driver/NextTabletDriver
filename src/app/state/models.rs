@@ -124,7 +124,7 @@ impl Metrics {
         if elapsed >= std::time::Duration::from_millis(200) {
             let delta = current_packets.saturating_sub(self.last_packet_count);
             let hz = delta as f32 / elapsed.as_secs_f32();
-            self.displayed_hz = hz.mul_add(0.3, self.displayed_hz);
+            self.displayed_hz = (hz - self.displayed_hz).mul_add(0.3, self.displayed_hz);
             self.last_packet_count = current_packets;
             self.last_hz_update = Instant::now();
         }

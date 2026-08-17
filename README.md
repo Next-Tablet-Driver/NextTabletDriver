@@ -14,9 +14,11 @@
     </a>
     <img alt="Platforms" src="https://img.shields.io/badge/platform-Windows%20%7C%20Linux-blue">
     <img alt="License" src="https://img.shields.io/badge/license-MIT-green">
-    <img alt="Rust" src="https://img.shields.io/badge/rust-1.96.1%2B-orange">
+    <img alt="Rust" src="https://img.shields.io/badge/rust-1.97.1%2B-orange">
   </p>
 </div>
+
+> **Attribution notice:** The tablet configuration files under [`tablets/OpenTabletDriver`](tablets/OpenTabletDriver) are a git submodule pinned to the [OpenTabletDriver](https://github.com/OpenTabletDriver/OpenTabletDriver) project, licensed under the **GNU Lesser General Public License v3.0 (LGPLv3)**. This submodule keeps OpenTabletDriver's LGPLv3-licensed content separate from NextTabletDriver's own MIT license, it is not copied into the MIT-licensed source tree. See the [License](#license) section for details.
 
 ## Overview
 
@@ -40,8 +42,12 @@ NextTabletDriver gives players and artists a focused tablet driver with fast inp
     <td>JSON themes with colors, spacing, semantic colors, and osu! playfield opacity controls.</td>
   </tr>
   <tr>
+    <td><strong>Developer SDK</strong></td>
+    <td>Native <code>.dll</code>/<code>.so</code> for embedding the tablet engine directly in third-party apps, with C/C++ and C#/Unity bindings. See <a href="docs/SDK.md">docs/SDK.md</a>.</td>
+  </tr>
+  <tr>
     <td><strong>Telemetry and filters</strong></td>
-    <td>Built-in console, performance panels, Devocub Antichatter, and HandSpeed WebSocket output.</td>
+    <td>Built-in console, performance panels, Devocub Antichatter, Kalman smoothing, and HandSpeed WebSocket output.</td>
   </tr>
 </table>
 
@@ -54,7 +60,7 @@ The driver ships with community-maintained JSON configurations for many tablet f
 - XP-Pen and UGEE devices
 - Gaomon, VEIKK, Artisul, Parblo, XenceLabs, UC-Logic, and more
 
-Tablet definitions live in the [`tablets`](tablets) directory. New devices can be added by contributing a configuration JSON and, when needed, a parser implementation.
+Tablet definitions are sourced from the [`tablets/OpenTabletDriver`](tablets/OpenTabletDriver) submodule. To add support for a new device, contribute its configuration JSON to [OpenTabletDriver](https://github.com/OpenTabletDriver/OpenTabletDriver) upstream, it will be picked up here on the next submodule update. A parser implementation in this repository may still be needed for devices using a new report protocol.
 
 ## Installation
 
@@ -84,10 +90,12 @@ NextTabletDriver requires access to HID tablet devices and `/dev/uinput`.
 sudo cp scripts/99-nexttabletdriver.rules /etc/udev/rules.d/
 sudo udevadm control --reload-rules
 sudo udevadm trigger
-sudo usermod -aG input "$USER"
 ```
 
-Log out and back in after adding your user to the `input` group.
+This grants access to the current desktop user instantly, no group membership or
+logout required. If you run the driver from a headless/non-logind session, add
+your user to the `input` group instead and log out and back in:
+`sudo usermod -aG input "$USER"`.
 
 More details are available in [`scripts/README-linux.md`](scripts/README-linux.md).
 
@@ -95,7 +103,7 @@ More details are available in [`scripts/README-linux.md`](scripts/README-linux.m
 
 ### Requirements
 
-- Rust 1.96.1 or newer
+- Rust 1.97.1 or newer
 - `pkgconf`
 - `hidapi`
 - Linux only: `gtk3`, `libxkbcommon`, `libglvnd`, `wayland`, and `uinput` support
@@ -129,9 +137,10 @@ src/
   filters/    Optional processing filters and statistics output
   settings/   Profile and theme persistence
   ui/         egui panels, widgets, and theme helpers
-tablets/      Device JSON definitions
+tablets/      Device JSON definitions (OpenTabletDriver submodule)
 scripts/      Linux udev helpers and packaging utilities
 resources/    Icons and bundled fonts
+sdk/          Native SDK (ntd_sdk.dll / libntd_sdk.so) for third-party integration
 ```
 
 ## Configuration and Themes
@@ -139,6 +148,10 @@ resources/    Icons and bundled fonts
 Settings are stored as JSON profiles. The UI supports importing and exporting profiles from the File menu.
 
 Custom themes are documented in [`docs/THEMES.md`](docs/THEMES.md). Themes can control the main palette, widget styling, spacing, semantic colors, and the opacity of the osu! playfield overlay.
+
+## Native SDK
+
+Third-party applications (games, Blender/Unity plugins) can embed NextTabletDriver's engine directly, without requiring the desktop app to be installed or running. See [`docs/SDK.md`](docs/SDK.md) for the C and C# APIs, build instructions, and the HID ownership arbitration mechanism.
 
 ## Developer Notes
 
@@ -171,3 +184,9 @@ When adding hardware support, include the device VID/PID, physical dimensions, r
 ## License
 
 NextTabletDriver is distributed under the MIT License. See [`LICENSE`](LICENSE) for details.
+
+### Third-Party Licenses
+
+The tablet configuration files under [`tablets/OpenTabletDriver`](tablets/OpenTabletDriver) are a git submodule pinned to [OpenTabletDriver](https://github.com/OpenTabletDriver/OpenTabletDriver), which is licensed under the **GNU Lesser General Public License v3.0 (LGPLv3)**. This submodule is a separate, distinct component under the terms of the LGPLv3 and is not relicensed under NextTabletDriver's MIT license. The full text of the LGPLv3 can be found at [gnu.org/licenses/lgpl-3.0](https://www.gnu.org/licenses/lgpl-3.0.html).
+
+Copyright © OpenTabletDriver contributors.

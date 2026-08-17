@@ -27,6 +27,13 @@ impl UpdateService {
         log::info!(target: "App", "Spawning Auto-Updater thread");
         std::thread::spawn(move || match autoupdate::check_for_updates() {
             Ok(Some(release)) => {
+                crate::app::telemetry::capture_event(
+                    "update_available",
+                    Some(serde_json::json!({
+                        "current_version": crate::VERSION,
+                        "latest_version": release.tag_name,
+                    })),
+                );
                 let _ = sender.send(UpdateStatus::Available(release));
             }
             Ok(None) => {}

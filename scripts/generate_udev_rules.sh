@@ -14,18 +14,21 @@ fi
 # Write base header and core rules
 cat << 'EOF' > "$OUTPUT_FILE"
 # NextTabletDriver udev rules
-# Allows non-root users in the "input" group to access /dev/uinput
-# and prevents double input by telling libinput to ignore the original tablets.
+# Grants access to /dev/uinput and the tablet's hidraw device, and prevents
+# double input by telling libinput to ignore the original tablets.
 #
 # Installation:
 #   sudo cp 99-nexttabletdriver.rules /etc/udev/rules.d/
 #   sudo udevadm control --reload-rules
 #   sudo udevadm trigger
 #
-# Then add your user to the input group:
-#   sudo usermod -aG input $USER
+# The TAG+="uaccess" rules below grant the logged-in desktop user access
+# instantly via systemd-logind, no group membership or re-login required.
 #
-# You will need to log out and back in for group changes to take effect.
+# The GROUP="input" rules are kept as a fallback for headless/non-logind
+# sessions. If you rely on that fallback, add your user to the group and
+# log out and back in for it to take effect:
+#   sudo usermod -aG input $USER
 
 # Grant read/write access to /dev/uinput for the "input" group
 KERNEL=="uinput", SUBSYSTEM=="misc", MODE="0660", GROUP="input", TAG+="uaccess"
@@ -76,7 +79,7 @@ done < <(find "$TABLETS_DIR" -type f -name "*.json" -print0 2>/dev/null)
 # Append HIDraw section
 echo "# Grant read access to tablet HID devices via hidraw" >> "$OUTPUT_FILE"
 for vid in "${!vids[@]}"; do
-    echo "SUBSYSTEM==\"hidraw\", ATTRS{idVendor}==\"$vid\", MODE=\"0660\", GROUP=\"input\"" >> "$OUTPUT_FILE"
+    echo "SUBSYSTEM==\"hidraw\", ATTRS{idVendor}==\"$vid\", MODE=\"0660\", GROUP=\"input\", TAG+=\"uaccess\"" >> "$OUTPUT_FILE"
 done
 
 echo "" >> "$OUTPUT_FILE"

@@ -20,6 +20,10 @@
   "menu.tablet.input_lag": "Analyse de la latence",
   "menu.help": "Aide",
   "menu.help.github": "Dépôt Github",
+  "menu.help.sdk": "SDK Développeur",
+  "menu.help.report": "Signaler un bug / Suggérer une fonctionnalité",
+  "menu.help.report.bug": "Signaler un bug",
+  "menu.help.report.feature": "Suggérer une fonctionnalité",
   "menu.help.update": "Vérifier les mises à jour",
 
   "footer.profile": "Profil :",
@@ -84,6 +88,16 @@
   "pen.button_actions": "Actions des boutons",
   "pen.pen_button": "Bouton du stylet {index}",
 
+  "pen.pressure_curve.title": "Courbe de pression",
+  "pen.pressure_curve.linear": "Linéaire",
+  "pen.pressure_curve.exponential": "Exponentielle",
+  "pen.pressure_curve.custom": "Personnalisée",
+  "pen.pressure_curve.exponent": "Exposant",
+  "pen.pressure_curve.reset": "Réinitialiser la courbe",
+  "pen.pressure_curve.canvas_help": "Faites glisser les points pour reformer la courbe. Double-cliquez pour ajouter un point, clic droit sur un point pour le supprimer.",
+  "pen.pressure_curve.meter_raw": "Brute",
+  "pen.pressure_curve.meter_curved": "Courbe",
+
   "filters.available": "FILTRES DISPONIBLES",
   "filters.select": "Sélectionnez un filtre à configurer",
   "filters.antichatter.title": "Lissage et anti-vibration",
@@ -96,6 +110,10 @@
   "filters.prediction.enable": "Activer la prédiction",
   "filters.prediction.strength": "Force",
   "filters.prediction.sharpness": "Netteté",
+  "filters.kalman.title": "Lissage Kalman",
+  "filters.kalman.enable": "Activer le filtre de Kalman",
+  "filters.kalman.process_noise": "Bruit de processus",
+  "filters.kalman.measurement_noise": "Bruit de mesure",
   "filters.stats.live": "Statistiques en direct",
   "filters.stats.handspeed": "Vitesse de la main",
   "filters.stats.total_distance": "Distance totale",
@@ -120,8 +138,6 @@
   "console.col.group": "Groupe",
   "console.col.message": "Message",
 
-  "release.title": "Historique des versions",
-
   "dialog.unsaved.title": "Modifications non enregistrées",
   "dialog.unsaved.message": "Êtes-vous sûr de vouloir fermer l'application ?",
   "dialog.unsaved.detail": "Le profil actuel contient des modifications non enregistrées.",
@@ -134,7 +150,7 @@
   "dialog.udev.detail_2": "et le pilote pourrait ne pas avoir la permission de lire votre tablette.",
   "dialog.udev.how_to_fix": "Comment résoudre cela :",
   "dialog.udev.done": "J'ai installé les règles",
-  "dialog.udev.logout": "Vous devrez peut-être vous déconnecter puis vous reconnecter.",
+  "dialog.udev.no_relog": "L'accès est accordé instantanément à votre session actuelle, aucune déconnexion n'est nécessaire.",
 
   "dialog.update.title": "Mise à jour disponible",
   "dialog.update.header": "Mise à jour disponible !",
@@ -192,5 +208,12 @@
   "performance.pen_status": "État actuel du stylet : {status}",
   "performance.connected_yes": "Connecté : Oui",
   "performance.connected_no": "Connecté : Non",
-  "performance.live_capture": "Capture de paquets en direct (Temps réel)"
+  "performance.live_capture": "Capture de paquets en direct (Temps réel)",
+
+  "release.title": "Historique des versions",
+  "release.loading": "Chargement des notes de version...",
+  "release.cached_notice": "Affichage des notes de version en cache (hors ligne).",
+  "release.unavailable": "Vérifiez votre connexion Internet.",
+  "release.watch_video": "Voir la vidéo",
+  "release.contributors": "Contributeurs :"
 }

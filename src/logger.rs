@@ -137,7 +137,7 @@ pub fn init() -> Result<(), String> {
                     entry.time, entry.level, entry.group, entry.message
                 );
 
-                // 1. Unbounded File Output
+                // Write to the unbounded file output
                 if let Some(file) = &mut session_file {
                     use std::io::Write;
                     let _ = writeln!(file, "{log_line}");
@@ -147,7 +147,7 @@ pub fn init() -> Result<(), String> {
                     println!("{log_line}");
                 }
 
-                // 2. Update UI Buffer
+                // Update the UI buffer
                 if let Ok(mut entries) = LOG_BUFFER.write() {
                     if entries.len() >= MAX_LOGS {
                         entries.pop_front();

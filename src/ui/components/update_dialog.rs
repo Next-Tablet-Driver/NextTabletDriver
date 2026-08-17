@@ -96,7 +96,7 @@ pub fn render_update_dialog(app: &mut TabletMapperApp, ctx: &egui::Context) {
                 .fill(dialog_bg)
                 .corner_radius(12.0)
                 .inner_margin(0.0)
-                .stroke(egui::Stroke::new(1.0, border_color)),
+                .stroke(egui::Stroke::new(1.0_f32, border_color)),
         )
         .show(ctx, |ui| {
             ui.vertical(|ui| {
@@ -222,7 +222,7 @@ pub fn render_update_dialog(app: &mut TabletMapperApp, ctx: &egui::Context) {
                                         .color(text_color),
                                 )
                                 .fill(egui::Color32::TRANSPARENT)
-                                .stroke(egui::Stroke::new(1.0, border_color))
+                                .stroke(egui::Stroke::new(1.0_f32, border_color))
                                 .corner_radius(6.0)
                                 .min_size(egui::vec2(130.0, 40.0));
 

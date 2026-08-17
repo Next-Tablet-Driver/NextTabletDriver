@@ -18,7 +18,7 @@ pub fn render_display_section(
     egui::Frame::canvas(ui.style())
         .fill(crate::ui::theme::panel_bg(ui.visuals()))
         .stroke(egui::Stroke::new(
-            1.0,
+            1.0_f32,
             crate::ui::theme::panel_border(ui.visuals()),
         ))
         .show(ui, |ui| {
@@ -49,7 +49,7 @@ pub fn render_display_section(
                     ui.painter().rect_stroke(
                         s_rect,
                         0.0,
-                        egui::Stroke::new(1.0, crate::ui::theme::panel_border(ui.visuals())),
+                        egui::Stroke::new(1.0_f32, crate::ui::theme::panel_border(ui.visuals())),
                         egui::StrokeKind::Middle,
                     );
                     ui.painter().text(
@@ -75,7 +75,7 @@ pub fn render_display_section(
                 ui.painter().rect_stroke(
                     t_rect,
                     0.0,
-                    egui::Stroke::new(1.0, stroke_color),
+                    egui::Stroke::new(1.0_f32, stroke_color),
                     egui::StrokeKind::Middle,
                 );
 

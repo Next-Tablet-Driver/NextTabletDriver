@@ -1,0 +1,62 @@
+name: Nix
+
+on:
+  push:
+    branches: [main, master, dev]
+    paths:
+      - "flake.nix"
+      - "flake.lock"
+      - "nix/**"
+      - "scripts/99-nexttabletdriver.rules"
+      - ".github/workflows/nix.yml"
+  pull_request:
+    branches: [main, master, dev]
+    paths:
+      - "flake.nix"
+      - "flake.lock"
+      - "nix/**"
+      - "scripts/99-nexttabletdriver.rules"
+      - ".github/workflows/nix.yml"
+  workflow_dispatch: {}
+
+jobs:
+  flake-check:
+    name: Flake check (modules + devShell)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v27
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+
+      - name: nix flake check
+        run: nix flake check --all-systems -L
+
+  build-package:
+    name: Build package (nix build .#default)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v27
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+
+      - name: nix build .#default
+        run: nix build .#default -L
+
+      - name: Verify udev rules were installed into the package
+        run: test -f result/lib/udev/rules.d/99-nexttabletdriver.rules

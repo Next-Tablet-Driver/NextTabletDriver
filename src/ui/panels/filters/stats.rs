@@ -70,11 +70,13 @@ pub fn render_stats_settings(
                         t!("filters.stats.enable_server"),
                     )
                     .changed()
-                    && config.speed_stats.enabled
                 {
                     crate::app::telemetry::capture_event(
-                        "filter_enabled",
-                        Some(serde_json::json!({"filter_name": "HandSpeed"})),
+                        "filter_toggled",
+                        Some(serde_json::json!({
+                            "filter_name": "HandSpeed",
+                            "enabled": config.speed_stats.enabled,
+                        })),
                     );
                 }
             });
@@ -165,7 +167,7 @@ pub fn render_stats_settings(
 
             egui::Frame::new()
             .fill(ui.visuals().widgets.noninteractive.bg_fill)
-            .stroke(egui::Stroke::new(1.0, panel_border(ui.visuals()).gamma_multiply(0.5)))
+            .stroke(egui::Stroke::new(1.0_f32, panel_border(ui.visuals()).gamma_multiply(0.5)))
             .corner_radius(4.0)
             .inner_margin(8.0)
             .show(ui, |ui| {
@@ -185,7 +187,7 @@ fn render_stat_badge(ui: &mut egui::Ui, label: &str, value: &str, unit: &str) {
 
         egui::Frame::new()
             .fill(accent.gamma_multiply(0.1))
-            .stroke(egui::Stroke::new(1.0, accent.gamma_multiply(0.3)))
+            .stroke(egui::Stroke::new(1.0_f32, accent.gamma_multiply(0.3)))
             .corner_radius(4.0)
             .inner_margin(egui::Margin::symmetric(10, 5))
             .show(ui, |ui| {

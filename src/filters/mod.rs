@@ -6,6 +6,7 @@
 //! latency prediction, and telemetry extraction.
 
 pub mod antichatter;
+pub mod kalman;
 pub mod stats;
 pub mod stats_server;
 

@@ -1,0 +1,6 @@
+/target
+**/bin/
+**/obj/
+*.exe
+*.dll
+*.pdb

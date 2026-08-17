@@ -5,6 +5,7 @@
 
 use crate::core::config::models::MappingConfig;
 use crate::drivers::TabletData;
+use crate::engine::pipeline::ProcessedFrame;
 use std::sync::atomic::{AtomicBool, AtomicU32};
 use std::sync::{LockResult, RwLock};
 
@@ -80,6 +81,7 @@ pub struct DeviceState {
     pub pid: u16,
     pub physical_size: (f32, f32),
     pub hardware_size: (f32, f32),
+    pub max_pressure: f32,
 }
 
 impl Default for DeviceState {
@@ -90,6 +92,7 @@ impl Default for DeviceState {
             pid: 0,
             physical_size: (160.0, 100.0),
             hardware_size: (32767.0, 32767.0),
+            max_pressure: 8192.0,
         }
     }
 }
@@ -107,6 +110,7 @@ impl SharedState {
             config: RwLock::new(MappingConfig::default()),
             config_version: AtomicU32::new(0),
             tablet_data: RwLock::new(TabletData::default()),
+            processed_frame: RwLock::new(ProcessedFrame::default()),
             device_state: RwLock::new(DeviceState::default()),
             is_first_run: RwLock::new(false),
             packet_count: AtomicU32::new(0),
@@ -137,6 +141,11 @@ pub struct SharedState {
     pub config_version: AtomicU32,
     /// The most recent normalized packet from the tablet (X, Y, Pressure, Pen Buttons).
     pub tablet_data: RwLock<TabletData>,
+    /// The most recent output of `Pipeline::process` (UV/screen coordinates, pressure,
+    /// tilt, tip state). Published by whichever loop drives the pipeline, the desktop
+    /// `tablet_manager` or the SDK's embedded engine, and read by consumers (UI,
+    /// `engine::interop::shm` publisher, SDK FFI) without re-deriving it.
+    pub processed_frame: RwLock<ProcessedFrame>,
     /// Cohesive properties of the active device (name, vid, pid, sizes).
     pub device_state: RwLock<DeviceState>,
     /// Flag indicating if the user has never launched the application before (triggers welcome modal).
