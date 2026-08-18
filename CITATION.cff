@@ -1,0 +1,16 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "NextTabletDriver"
+abstract: "Tablet Driver for Osu! and Drawing"
+type: software
+authors:
+  - name: "iSweat"
+    website: "https://github.com/iSweat-exe"
+repository-code: "https://github.com/Next-Tablet-Driver/NextTabletDriver"
+license: MIT
+version: 1.1.0
+keywords:
+  - tablet
+  - driver
+  - rust
+  - osu
