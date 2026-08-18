@@ -99,6 +99,30 @@ pub fn render_performance_panel(
                 ui.label(egui::RichText::new(format!("{:.3}ms", stats.max_parser_ms)).weak());
                 ui.end_row();
 
+                ui.label(t!("performance.inject"));
+                ui.label(
+                    egui::RichText::new(format!("{:.3}ms", stats.inject_ms))
+                        .color(semantic.success),
+                );
+                ui.label(
+                    egui::RichText::new(format!("{:.3}ms", stats.avg_inject_ms))
+                        .color(semantic.success)
+                        .weak(),
+                );
+                ui.label(
+                    egui::RichText::new(format!(
+                        "{:.3}ms",
+                        if (stats.min_inject_ms - f32::MAX).abs() < f32::EPSILON {
+                            0.0
+                        } else {
+                            stats.min_inject_ms
+                        }
+                    ))
+                    .weak(),
+                );
+                ui.label(egui::RichText::new(format!("{:.3}ms", stats.max_inject_ms)).weak());
+                ui.end_row();
+
                 ui.label(t!("performance.ui_sync"));
                 ui.label(egui::RichText::new(format!("{ui_latency:.3}ms")).color(semantic.warning));
                 ui.label(
@@ -127,7 +151,8 @@ pub fn render_performance_panel(
                 ui.separator();
                 ui.end_row();
 
-                let total_current = stats.hid_read_ms + stats.parser_ms + ui_latency;
+                let total_current =
+                    stats.hid_read_ms + stats.parser_ms + stats.inject_ms + ui_latency;
                 ui.label(egui::RichText::new(t!("performance.total_lag")).strong());
                 ui.label(
                     egui::RichText::new(format!("{total_current:.3}ms"))

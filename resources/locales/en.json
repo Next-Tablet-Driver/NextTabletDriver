@@ -198,6 +198,7 @@
   "performance.max": "Max",
   "performance.hid_read": "HID Read:",
   "performance.parser": "Parser:",
+  "performance.inject": "OS Inject:",
   "performance.ui_sync": "UI Sync:",
   "performance.total_lag": "Total Software Lag:",
   "performance.total_lag_note": "Total Software Lag: USB Arrival -> UI Paint. Excludes OS/Monitor lag.",

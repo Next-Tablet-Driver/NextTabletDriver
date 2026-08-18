@@ -195,6 +195,7 @@
   "performance.max": "Max",
   "performance.hid_read": "HID Read :",
   "performance.parser": "Parser :",
+  "performance.inject": "Injection OS :",
   "performance.ui_sync": "UI Sync :",
   "performance.total_lag": "Latence logicielle totale :",
   "performance.total_lag_note": "Latence logicielle totale : arrivée USB → affichage UI. Exclut la latence OS/moniteur.",

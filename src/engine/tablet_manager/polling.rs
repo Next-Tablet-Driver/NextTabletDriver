@@ -197,7 +197,11 @@ fn process_packet(
 
         let process_start = Instant::now();
         let frame = pipeline.process(&data, driver, local_config, filters, shared);
+
+        let inject_start = Instant::now();
         inject_frame(injector, &data, local_config, &frame);
+        let inject_duration = inject_start.elapsed();
+
         *shared
             .processed_frame
             .write()
@@ -211,7 +215,7 @@ fn process_packet(
         if total_dur > Duration::from_millis(5) {
             log::warn!(
                 target: "PerfSpike",
-                "LAG SPIKE: Packet parsing & processing took {total_dur:.2?} (parsing: {parse_duration:.2?}, processing: {process_duration:.2?}, HID read: {read_duration:.2?})"
+                "LAG SPIKE: Packet parsing & processing took {total_dur:.2?} (parsing: {parse_duration:.2?}, processing: {process_duration:.2?}, inject: {inject_duration:.2?}, HID read: {read_duration:.2?})"
             );
         }
 
@@ -259,6 +263,12 @@ fn process_packet(
             stats.min_parser_ms = stats.min_parser_ms.min(p_ms);
             stats.max_parser_ms = stats.max_parser_ms.max(p_ms);
             stats.avg_parser_ms = (p_ms - stats.avg_parser_ms).mul_add(0.05, stats.avg_parser_ms);
+
+            let i_ms = inject_duration.as_secs_f32() * 1000.0;
+            stats.inject_ms = i_ms;
+            stats.min_inject_ms = stats.min_inject_ms.min(i_ms);
+            stats.max_inject_ms = stats.max_inject_ms.max(i_ms);
+            stats.avg_inject_ms = (i_ms - stats.avg_inject_ms).mul_add(0.05, stats.avg_inject_ms);
         }
 
         // Only send to the UI channel when the window is visible.

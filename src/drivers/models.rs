@@ -120,6 +120,11 @@ pub struct DriverStats {
     pub min_parser_ms: f32,
     pub max_parser_ms: f32,
     pub avg_parser_ms: f32,
+    /// Last recorded time to inject the processed frame into the OS (ms).
+    pub inject_ms: f32,
+    pub min_inject_ms: f32,
+    pub max_inject_ms: f32,
+    pub avg_inject_ms: f32,
     /// Total number of packets processed since start.
     pub total_packets: u64,
 }
@@ -138,6 +143,9 @@ impl DriverStats {
         self.min_parser_ms = f32::MAX;
         self.max_parser_ms = 0.0;
         self.avg_parser_ms = 0.0;
+        self.min_inject_ms = f32::MAX;
+        self.max_inject_ms = 0.0;
+        self.avg_inject_ms = 0.0;
     }
 
     /// Resets the accumulated distance.
@@ -172,6 +180,10 @@ impl Default for DriverStats {
             min_parser_ms: f32::MAX,
             max_parser_ms: 0.0,
             avg_parser_ms: 0.0,
+            inject_ms: 0.0,
+            min_inject_ms: f32::MAX,
+            max_inject_ms: 0.0,
+            avg_inject_ms: 0.0,
             total_packets: 0,
         }
     }

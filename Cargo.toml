@@ -25,7 +25,6 @@ required-features = ["gui"]
 hidapi = "2.6.3"
 eframe = { version = "0.33.3", optional = true }
 display-info = { version = "0.5.9", optional = true }
-enigo = "0.6.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 base64 = "0.22.1"
