@@ -38,12 +38,12 @@ pub(super) fn run_polling_loop(
     let mut last_packet_time: Option<(Instant, TabletStatus)> = None;
 
     loop {
-        if shared.shutdown_requested.load(Ordering::Relaxed) {
+        if shared.lifecycle.shutdown_requested.load(Ordering::Relaxed) {
             log::debug!(target: "TabletManager", "Shutdown requested, exiting polling loop");
             break;
         }
 
-        if shared.reload_requested.load(Ordering::Relaxed) {
+        if shared.config.reload_requested.load(Ordering::Relaxed) {
             log::debug!(target: "TabletManager", "Reload requested, exiting polling loop");
             break;
         }
@@ -91,13 +91,14 @@ pub(super) fn run_polling_loop(
                 let frame = pipeline.process(&out, driver, local_config, filters, shared);
                 inject_frame(injector, &out, local_config, &frame);
                 *shared
+                    .pipeline
                     .processed_frame
                     .write()
                     .unwrap_or_reset("processed_frame") = frame;
                 if let Some(writer) = shm_writer {
                     publish_shm_state(writer, shared, &out, local_config, &frame);
                 }
-                if shared.is_visible.load(Ordering::Relaxed) {
+                if shared.lifecycle.is_visible.load(Ordering::Relaxed) {
                     let _ = tablet_sender.try_send(out);
                 }
 
@@ -203,6 +204,7 @@ fn process_packet(
         let inject_duration = inject_start.elapsed();
 
         *shared
+            .pipeline
             .processed_frame
             .write()
             .unwrap_or_reset("processed_frame") = frame;
@@ -241,15 +243,15 @@ fn process_packet(
         }
         *last_packet_time = Some((now, data.status));
 
-        shared.packet_count.fetch_add(1, Ordering::Relaxed);
+        shared.pipeline.packet_count.fetch_add(1, Ordering::Relaxed);
 
         // Update statistics (throttled to ~60Hz)
         let now = Instant::now();
         if now.duration_since(*last_stats_update) > Duration::from_millis(16)
-            && let Ok(mut stats) = shared.stats.write()
+            && let Ok(mut stats) = shared.pipeline.stats.write()
         {
             *last_stats_update = now;
-            stats.total_packets = u64::from(shared.packet_count.load(Ordering::Relaxed));
+            stats.total_packets = u64::from(shared.pipeline.packet_count.load(Ordering::Relaxed));
 
             let hr_ms = read_duration.as_secs_f32() * 1000.0;
             stats.hid_read_ms = hr_ms;
@@ -274,7 +276,7 @@ fn process_packet(
         // Only send to the UI channel when the window is visible.
         // When hidden in the system tray, the UI thread is idle and
         // nobody consumes the channel - skipping prevents unbounded growth.
-        if shared.is_visible.load(Ordering::Relaxed) {
+        if shared.lifecycle.is_visible.load(Ordering::Relaxed) {
             let _ = tablet_sender.try_send(data);
         }
     }
@@ -293,9 +295,9 @@ fn maybe_reload_config(
     }
     *last_check = Instant::now();
 
-    let cv = shared.config_version.load(Ordering::Relaxed);
+    let cv = shared.config.version.load(Ordering::Relaxed);
     if cv != *local_config_version {
-        let config = shared.config.read().unwrap_or_log("config");
+        let config = shared.config.mapping.read().unwrap_or_log("config");
         *local_config = config.clone();
         drop(config);
         *local_config_version = cv;

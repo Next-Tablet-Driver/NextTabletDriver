@@ -32,6 +32,7 @@ impl TabletMapperApp {
             {
                 let mut shared_data = self
                     .shared
+                    .pipeline
                     .tablet_data
                     .write()
                     .unwrap_or_reset("tablet_data");
@@ -81,7 +82,10 @@ impl TabletMapperApp {
             if is_minimized && !self.was_minimized {
                 log::info!(target: "Tray", "Window minimized, closing eframe to sit in system tray...");
                 ctx.send_viewport_cmd(egui::ViewportCommand::Close);
-                self.shared.is_visible.store(false, Ordering::Release);
+                self.shared
+                    .lifecycle
+                    .is_visible
+                    .store(false, Ordering::Release);
                 self.force_close = true;
                 ctx.request_repaint();
             }

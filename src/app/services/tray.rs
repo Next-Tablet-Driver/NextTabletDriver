@@ -138,7 +138,7 @@ impl TrayService {
                 }
 
                 // Update status text when user interacts with tray
-                let device = shared.device_state.read().unwrap_or_log("device_state");
+                let device = shared.device.read().unwrap_or_log("device");
                 let current_name = device.name.clone();
                 drop(device);
 
@@ -156,7 +156,7 @@ impl TrayService {
                     if Self::is_restore_event(&event) {
                         log::info!(target: "Tray", "Received Tray Event: {event:?}");
                         log::info!(target: "Tray", "Restoring UI from tray...");
-                        shared.is_visible.store(true, Ordering::Release);
+                        shared.lifecycle.is_visible.store(true, Ordering::Release);
                     } else {
                         log::trace!(target: "Tray", "Tray Event: {event:?}");
                     }
@@ -172,13 +172,16 @@ impl TrayService {
                         }
                         "reload" => {
                             log::info!(target: "Tray", "Engine reload requested from tray menu");
-                            shared.reload_requested.store(true, Ordering::Release);
+                            shared
+                                .config
+                                .reload_requested
+                                .store(true, Ordering::Release);
                         }
                         _ => {}
                     }
                 }
 
-                if shared.shutdown_requested.load(Ordering::Relaxed) {
+                if shared.lifecycle.shutdown_requested.load(Ordering::Relaxed) {
                     break;
                 }
 
@@ -192,7 +195,7 @@ impl TrayService {
             let mut last_device_name = String::new();
             loop {
                 // Update status text
-                let device = shared.device_state.read().unwrap_or_log("device_state");
+                let device = shared.device.read().unwrap_or_log("device");
                 let current_name = device.name.clone();
                 drop(device);
 
@@ -219,7 +222,7 @@ impl TrayService {
                             if Self::is_restore_event(&event) {
                                 log::info!(target: "Tray", "Received Tray Event: {event:?}");
                                 log::info!(target: "Tray", "Restoring UI from tray...");
-                                shared.is_visible.store(true, Ordering::Release);
+                                shared.lifecycle.is_visible.store(true, Ordering::Release);
                             } else {
                                 log::trace!(target: "Tray", "Tray Event: {event:?}");
                             }
@@ -243,7 +246,10 @@ impl TrayService {
                                 }
                                 "reload" => {
                                     log::info!(target: "Tray", "Engine reload requested from tray menu");
-                                    shared.reload_requested.store(true, Ordering::Release);
+                                    shared
+                                        .config
+                                        .reload_requested
+                                        .store(true, Ordering::Release);
                                 }
                                 _ => {}
                             }

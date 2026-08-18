@@ -48,7 +48,7 @@ pub fn render_stats_settings(
                     .button(egui_phosphor::regular::ARROWS_COUNTER_CLOCKWISE)
                     .on_hover_text(t!("filters.stats.reset_distance"))
                     .clicked()
-                    && let Ok(mut stats) = app.shared.stats.write()
+                    && let Ok(mut stats) = app.shared.pipeline.stats.write()
                 {
                     stats.reset_distance();
                 }

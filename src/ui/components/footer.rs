@@ -50,7 +50,7 @@ pub fn render_footer(
                         Some(serde_json::json!({ "driver_mode": format!("{current_mode:?}") })),
                     );
                     config.mode = current_mode;
-                    app.shared.config_version.fetch_add(1, Ordering::SeqCst);
+                    app.shared.config.version.fetch_add(1, Ordering::SeqCst);
                 }
 
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {

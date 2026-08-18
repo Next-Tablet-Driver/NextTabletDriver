@@ -33,13 +33,17 @@ pub(super) fn apply_shm_snapshot(
         .filter(|s| !s.is_empty())
         .unwrap_or("No Tablet Detected");
 
-    let mut device = shared.device_state.write().unwrap_or_reset("device_state");
+    let mut device = shared.device.write().unwrap_or_reset("device");
     device.name = name.to_string();
     device.vid = snapshot.vid;
     device.pid = snapshot.pid;
     drop(device);
 
-    let mut data = shared.tablet_data.write().unwrap_or_reset("tablet_data");
+    let mut data = shared
+        .pipeline
+        .tablet_data
+        .write()
+        .unwrap_or_reset("tablet_data");
     data.is_connected = snapshot.is_connected;
     data.status = status_from_discriminant(snapshot.status);
     data.buttons = snapshot.buttons;
@@ -47,6 +51,7 @@ pub(super) fn apply_shm_snapshot(
     drop(data);
 
     *shared
+        .pipeline
         .processed_frame
         .write()
         .unwrap_or_reset("processed_frame") = ProcessedFrame {
@@ -62,7 +67,7 @@ pub(super) fn apply_shm_snapshot(
 
     if *last_config_version != Some(snapshot.config_version) {
         *last_config_version = Some(snapshot.config_version);
-        let mut config = shared.config.write().unwrap_or_log("config");
+        let mut config = shared.config.mapping.write().unwrap_or_log("config");
         config.mode = if snapshot.mode == 1 {
             DriverMode::Relative
         } else {
@@ -77,7 +82,8 @@ pub(super) fn apply_shm_snapshot(
         };
         drop(config);
         shared
-            .config_version
+            .config
+            .version
             .store(snapshot.config_version, Ordering::SeqCst);
     }
 }
@@ -113,25 +119,25 @@ pub(super) struct DesktopCommandHandler {
 
 impl CommandHandler for DesktopCommandHandler {
     fn set_mode(&self, mode: DriverMode) {
-        let mut config = self.shared.config.write().unwrap_or_log("config");
+        let mut config = self.shared.config.mapping.write().unwrap_or_log("config");
         config.mode = mode;
         drop(config);
-        self.shared.config_version.fetch_add(1, Ordering::SeqCst);
+        self.shared.config.version.fetch_add(1, Ordering::SeqCst);
     }
 
     fn set_active_area(&self, area: ActiveArea) {
         let (phys_w, phys_h) = self
             .shared
-            .device_state
+            .device
             .read()
-            .unwrap_or_log("device_state")
+            .unwrap_or_log("device")
             .physical_size;
 
-        let mut config = self.shared.config.write().unwrap_or_log("config");
+        let mut config = self.shared.config.mapping.write().unwrap_or_log("config");
         config.active_area = area;
         config.active_area.clamp_to_surface(phys_w, phys_h);
         drop(config);
-        self.shared.config_version.fetch_add(1, Ordering::SeqCst);
+        self.shared.config.version.fetch_add(1, Ordering::SeqCst);
     }
 }
 
@@ -144,7 +150,7 @@ pub(super) fn publish_shm_state(
     config: &MappingConfig,
     frame: &ProcessedFrame,
 ) {
-    let device = shared.device_state.read().unwrap_or_log("device_state");
+    let device = shared.device.read().unwrap_or_log("device");
     let mut device_name = [0u8; DEVICE_NAME_CAPACITY];
     let name_bytes = device.name.as_bytes();
     let name_len = name_bytes.len().min(device_name.len());
@@ -181,7 +187,7 @@ pub(super) fn publish_shm_state(
         active_area_w: config.active_area.w,
         active_area_h: config.active_area.h,
         active_area_rotation: config.active_area.rotation,
-        config_version: shared.config_version.load(Ordering::Relaxed),
+        config_version: shared.config.version.load(Ordering::Relaxed),
     };
     writer.publish(&state);
 }

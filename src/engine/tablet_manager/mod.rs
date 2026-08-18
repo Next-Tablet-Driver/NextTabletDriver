@@ -64,7 +64,7 @@ pub fn run_manager(shared: &Arc<SharedState>, tablet_sender: &Sender<TabletData>
             log::error!(target: "TabletManager", "THREAD CRASHED: {err:?}");
         }
 
-        if shared.shutdown_requested.load(Ordering::Relaxed) {
+        if shared.lifecycle.shutdown_requested.load(Ordering::Relaxed) {
             break;
         }
 

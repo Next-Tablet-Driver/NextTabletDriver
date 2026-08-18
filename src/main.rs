@@ -279,13 +279,13 @@ fn main() -> eframe::Result {
     // eframe blocks until the window is closed. When minimized to tray, the window closes
     // and eframe returns. We sleep until the tray restores the window, then restart eframe.
     loop {
-        if shared.shutdown_requested.load(Ordering::Relaxed) {
+        if shared.lifecycle.shutdown_requested.load(Ordering::Relaxed) {
             log::info!(target: "App", "Shutdown requested, exiting main loop.");
             next_tablet_driver::app::telemetry::capture_app_closed(&shared);
             break Ok(());
         }
 
-        if shared.is_visible.load(Ordering::Acquire) {
+        if shared.lifecycle.is_visible.load(Ordering::Acquire) {
             let primary_display = display_info::DisplayInfo::all()
                 .unwrap_or_default()
                 .into_iter()
@@ -373,7 +373,7 @@ fn main() -> eframe::Result {
                 return Err(e);
             }
 
-            if !shared.is_visible.load(Ordering::Acquire) {
+            if !shared.lifecycle.is_visible.load(Ordering::Acquire) {
                 log::info!(target: "App", "eframe exited, entering tray idle mode.");
             }
         } else {

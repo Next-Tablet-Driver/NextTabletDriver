@@ -55,7 +55,7 @@ pub fn websocket_loop(shared: &Arc<SharedState>) {
     let mut last_bind_attempt: Option<Instant> = None;
 
     loop {
-        if shared.shutdown_requested.load(Ordering::Relaxed) {
+        if shared.lifecycle.shutdown_requested.load(Ordering::Relaxed) {
             log::info!(target: "WebSocket", "Shutdown requested, exiting WebSocket loop");
             break;
         }
@@ -63,7 +63,7 @@ pub fn websocket_loop(shared: &Arc<SharedState>) {
         let frame_start = Instant::now();
 
         let (enabled, port, hz, send_coords, send_pressure, _send_tilt, send_status) = {
-            let config = shared.config.read().unwrap_or_log("config");
+            let config = shared.config.mapping.read().unwrap_or_log("config");
             let ws = &config.websocket;
             let res = (
                 ws.enabled,
@@ -153,6 +153,7 @@ pub fn websocket_loop(shared: &Arc<SharedState>) {
 
             if !clients.is_empty() {
                 let data = shared
+                    .pipeline
                     .tablet_data
                     .read()
                     .map(|d| d.clone())

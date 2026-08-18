@@ -24,29 +24,31 @@ impl UiSnapshot {
     pub fn capture(shared: &SharedState) -> Self {
         use std::sync::atomic::Ordering;
 
-        let device = shared
-            .device_state
-            .read()
-            .unwrap_or_log("device_state")
-            .clone();
+        let device = shared.device.read().unwrap_or_log("device").clone();
 
         Self {
             tablet_name: device.name,
             tablet_vid: device.vid,
             tablet_pid: device.pid,
             tablet_data: shared
+                .pipeline
                 .tablet_data
                 .read()
                 .unwrap_or_log("tablet_data")
                 .clone(),
-            config: shared.config.read().unwrap_or_log("config").clone(),
+            config: shared.config.mapping.read().unwrap_or_log("config").clone(),
             physical_size: device.physical_size,
             hardware_size: device.hardware_size,
             max_pressure: device.max_pressure,
-            stats: *shared.stats.read().unwrap_or_log("stats"),
-            packet_count: shared.packet_count.load(Ordering::Relaxed),
-            is_first_run: *shared.is_first_run.read().unwrap_or_log("is_first_run"),
+            stats: *shared.pipeline.stats.read().unwrap_or_log("stats"),
+            packet_count: shared.pipeline.packet_count.load(Ordering::Relaxed),
+            is_first_run: *shared
+                .lifecycle
+                .is_first_run
+                .read()
+                .unwrap_or_log("is_first_run"),
             engine_status: shared
+                .lifecycle
                 .engine_status
                 .read()
                 .unwrap_or_log("engine_status")
