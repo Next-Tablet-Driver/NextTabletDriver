@@ -97,6 +97,99 @@ impl Default for DeviceState {
     }
 }
 
+/// The active mapping configuration and its hot-reload bookkeeping.
+pub struct ConfigState {
+    /// The currently active settings (mapping area, filters, network, etc).
+    pub mapping: RwLock<MappingConfig>,
+    /// An atomic counter incremented by the UI whenever `mapping` is modified.
+    /// The background thread checks this to avoid acquiring read-locks continuously.
+    pub version: AtomicU32,
+    /// Flag indicating that the user requested a full HID engine reload from the tray menu.
+    pub reload_requested: AtomicBool,
+}
+
+impl Default for ConfigState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl ConfigState {
+    #[must_use]
+    pub fn new() -> Self {
+        Self {
+            mapping: RwLock::new(MappingConfig::default()),
+            version: AtomicU32::new(0),
+            reload_requested: AtomicBool::new(false),
+        }
+    }
+}
+
+/// Live output of the polling/pipeline loop, published for consumers (UI,
+/// `engine::interop::shm`, SDK FFI) to read without re-deriving it.
+pub struct PipelineState {
+    /// The most recent normalized packet from the tablet (X, Y, Pressure, Pen Buttons).
+    pub tablet_data: RwLock<TabletData>,
+    /// The most recent output of `Pipeline::process` (UV/screen coordinates, pressure,
+    /// tilt, tip state). Published by whichever loop drives the pipeline, the desktop
+    /// `tablet_manager` or the SDK's embedded engine.
+    pub processed_frame: RwLock<ProcessedFrame>,
+    /// A rapidly incrementing counter of USB packets received, used by the UI to calculate real-time Hz.
+    pub packet_count: AtomicU32,
+    /// Tracking statistics for developer debugging (e.g., dropped packets, parse errors).
+    pub stats: RwLock<crate::drivers::DriverStats>,
+}
+
+impl Default for PipelineState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl PipelineState {
+    #[must_use]
+    pub fn new() -> Self {
+        Self {
+            tablet_data: RwLock::new(TabletData::default()),
+            processed_frame: RwLock::new(ProcessedFrame::default()),
+            packet_count: AtomicU32::new(0),
+            stats: RwLock::new(crate::drivers::DriverStats::default()),
+        }
+    }
+}
+
+/// Application/engine lifecycle flags, independent of tablet data or configuration.
+pub struct LifecycleState {
+    /// Flag indicating if the user has never launched the application before (triggers welcome modal).
+    pub is_first_run: RwLock<bool>,
+    /// Status of the background polling engine (e.g. HID API initialization failure).
+    pub engine_status: RwLock<EngineStatus>,
+    /// Flag indicating that the application is shutting down and threads should terminate.
+    pub shutdown_requested: AtomicBool,
+    /// Flag indicating whether the GUI window is currently visible.
+    /// When `false` (minimized to tray), background threads skip UI-only
+    /// work (channel sends, snapshot captures) to minimize idle CPU usage.
+    pub is_visible: AtomicBool,
+}
+
+impl Default for LifecycleState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl LifecycleState {
+    #[must_use]
+    pub fn new() -> Self {
+        Self {
+            is_first_run: RwLock::new(false),
+            engine_status: RwLock::new(EngineStatus::default()),
+            shutdown_requested: AtomicBool::new(false),
+            is_visible: AtomicBool::new(true),
+        }
+    }
+}
+
 impl Default for SharedState {
     fn default() -> Self {
         Self::new()
@@ -107,18 +200,10 @@ impl SharedState {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            config: RwLock::new(MappingConfig::default()),
-            config_version: AtomicU32::new(0),
-            tablet_data: RwLock::new(TabletData::default()),
-            processed_frame: RwLock::new(ProcessedFrame::default()),
-            device_state: RwLock::new(DeviceState::default()),
-            is_first_run: RwLock::new(false),
-            packet_count: AtomicU32::new(0),
-            stats: RwLock::new(crate::drivers::DriverStats::default()),
-            engine_status: RwLock::new(EngineStatus::default()),
-            shutdown_requested: AtomicBool::new(false),
-            is_visible: AtomicBool::new(true),
-            reload_requested: AtomicBool::new(false),
+            config: ConfigState::new(),
+            pipeline: PipelineState::new(),
+            device: RwLock::new(DeviceState::default()),
+            lifecycle: LifecycleState::new(),
         }
     }
 
@@ -133,37 +218,20 @@ impl SharedState {
 /// Due to the disparate update rates of the background processing engine (often 100-1000Hz)
 /// and the user interface (locked to vsync/60Hz), all shared data is wrapped in `RwLock`
 /// or atomic types to ensure memory safety without creating massive mutex contention.
+///
+/// Grouped by responsibility rather than left as a flat field list: [`ConfigState`] for
+/// mapping settings, [`PipelineState`] for polling/pipeline output, [`DeviceState`] for the
+/// active hardware, and [`LifecycleState`] for app/engine lifecycle flags. Each group can be
+/// reasoned about, locked, and tested independently of the others.
 pub struct SharedState {
-    /// The currently active settings (mapping area, filters, network, etc).
-    pub config: RwLock<MappingConfig>,
-    /// An atomic counter incremented by the UI whenever `config` is modified.
-    /// The background thread checks this to avoid acquiring read-locks continuously.
-    pub config_version: AtomicU32,
-    /// The most recent normalized packet from the tablet (X, Y, Pressure, Pen Buttons).
-    pub tablet_data: RwLock<TabletData>,
-    /// The most recent output of `Pipeline::process` (UV/screen coordinates, pressure,
-    /// tilt, tip state). Published by whichever loop drives the pipeline, the desktop
-    /// `tablet_manager` or the SDK's embedded engine, and read by consumers (UI,
-    /// `engine::interop::shm` publisher, SDK FFI) without re-deriving it.
-    pub processed_frame: RwLock<ProcessedFrame>,
+    /// Active mapping configuration and its hot-reload bookkeeping.
+    pub config: ConfigState,
+    /// Live output of the polling/pipeline loop.
+    pub pipeline: PipelineState,
     /// Cohesive properties of the active device (name, vid, pid, sizes).
-    pub device_state: RwLock<DeviceState>,
-    /// Flag indicating if the user has never launched the application before (triggers welcome modal).
-    pub is_first_run: RwLock<bool>,
-    /// A rapidly incrementing counter of USB packets received, used by the UI to calculate real-time Hz.
-    pub packet_count: AtomicU32,
-    /// Tracking statistics for developer debugging (e.g., dropped packets, parse errors).
-    pub stats: RwLock<crate::drivers::DriverStats>,
-    /// Status of the background polling engine (e.g. HID API initialization failure).
-    pub engine_status: RwLock<EngineStatus>,
-    /// Flag indicating that the application is shutting down and threads should terminate.
-    pub shutdown_requested: AtomicBool,
-    /// Flag indicating whether the GUI window is currently visible.
-    /// When `false` (minimized to tray), background threads skip UI-only
-    /// work (channel sends, snapshot captures) to minimize idle CPU usage.
-    pub is_visible: AtomicBool,
-    /// Flag indicating that the user requested a full HID engine reload from the tray menu.
-    pub reload_requested: AtomicBool,
+    pub device: RwLock<DeviceState>,
+    /// Application/engine lifecycle flags.
+    pub lifecycle: LifecycleState,
 }
 
 #[cfg(test)]

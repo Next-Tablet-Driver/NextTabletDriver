@@ -106,12 +106,13 @@ impl TabletMapperApp {
 
     pub fn reset_to_default(&mut self) {
         {
-            let mut shared_config = self.shared.config.write().unwrap_or_log("config");
+            let mut shared_config = self.shared.config.mapping.write().unwrap_or_log("config");
             let run_at_startup = shared_config.run_at_startup;
             *shared_config = MappingConfig::default();
             shared_config.run_at_startup = run_at_startup;
             self.shared
-                .config_version
+                .config
+                .version
                 .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
             drop(shared_config);
         }
@@ -182,10 +183,11 @@ impl TabletMapperApp {
 
     fn apply_config(&self, cfg: MappingConfig) {
         {
-            let mut shared_config = self.shared.config.write().unwrap_or_log("config");
+            let mut shared_config = self.shared.config.mapping.write().unwrap_or_log("config");
             *shared_config = cfg.clone();
             self.shared
-                .config_version
+                .config
+                .version
                 .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
             drop(shared_config);
         }

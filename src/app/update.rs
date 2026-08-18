@@ -15,13 +15,16 @@ impl eframe::App for TabletMapperApp {
         // Handle graceful shutdown signal
         if ctx.input(|i| i.viewport().close_requested())
             && !self.force_close
-            && self.shared.is_visible.load(Ordering::Acquire)
+            && self.shared.lifecycle.is_visible.load(Ordering::Acquire)
         {
             log::info!(target: "App", "Shutdown requested via window close");
-            self.shared.shutdown_requested.store(true, Ordering::SeqCst);
+            self.shared
+                .lifecycle
+                .shutdown_requested
+                .store(true, Ordering::SeqCst);
         }
 
-        if !self.shared.is_visible.load(Ordering::Acquire) {
+        if !self.shared.lifecycle.is_visible.load(Ordering::Acquire) {
             // Drain the tablet channel to prevent unbounded memory growth.
             // The engine thread already avoids sending when invisible (see
             // `tablet_manager.rs`), but we drain defensively in case of a
@@ -148,9 +151,9 @@ impl TabletMapperApp {
                 log::info!(target: "Config", "Configuration changed via UI");
             }
             {
-                let mut shared_config = self.shared.config.write().unwrap_or_log("config");
+                let mut shared_config = self.shared.config.mapping.write().unwrap_or_log("config");
                 *shared_config = config.clone();
-                self.shared.config_version.fetch_add(1, Ordering::SeqCst);
+                self.shared.config.version.fetch_add(1, Ordering::SeqCst);
                 drop(shared_config);
             }
             let _ = self.save_sender.try_send(config);

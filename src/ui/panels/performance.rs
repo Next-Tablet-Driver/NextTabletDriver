@@ -32,7 +32,7 @@ pub fn render_performance_panel(
             );
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 if ui.button(t!("performance.reset_stats")).clicked() {
-                    if let Ok(mut s) = shared.stats.write() {
+                    if let Ok(mut s) = shared.pipeline.stats.write() {
                         s.reset_latency();
                     }
                     reset_requested = true;

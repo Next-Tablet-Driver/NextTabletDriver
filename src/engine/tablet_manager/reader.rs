@@ -29,10 +29,14 @@ pub(super) fn reader_iteration(shared: &Arc<SharedState>, sender: &Sender<Tablet
     let mut last_promotion_attempt = Instant::now();
 
     loop {
-        if shared.shutdown_requested.load(Ordering::Relaxed) {
+        if shared.lifecycle.shutdown_requested.load(Ordering::Relaxed) {
             return;
         }
-        if shared.reload_requested.swap(false, Ordering::Relaxed) {
+        if shared
+            .config
+            .reload_requested
+            .swap(false, Ordering::Relaxed)
+        {
             return;
         }
 

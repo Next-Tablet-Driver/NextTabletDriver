@@ -47,7 +47,7 @@ impl SpeedStatsFilter {
     /// Writes accumulated distance/speed to `shared.stats` and notifies the
     /// WebSocket server, if any. Called at most once per `FLUSH_INTERVAL`.
     fn flush(&mut self, speed: f32) {
-        let current_total_dist = self.shared.stats.write().map_or(0.0, |mut stats| {
+        let current_total_dist = self.shared.pipeline.stats.write().map_or(0.0, |mut stats| {
             stats.handspeed = speed;
             stats.total_distance_mm += self.pending_distance_mm;
             stats.total_distance_mm
@@ -146,7 +146,12 @@ impl Filter for SpeedStatsFilter {
     fn reset(&mut self) {
         // Don't drop unflushed distance accumulated just before disconnect/reconnect.
         if self.pending_distance_mm > 0.0 {
-            let handspeed = self.shared.stats.read().map_or(0.0, |s| s.handspeed);
+            let handspeed = self
+                .shared
+                .pipeline
+                .stats
+                .read()
+                .map_or(0.0, |s| s.handspeed);
             self.flush(handspeed);
         }
         self.last_pos = None;
@@ -186,7 +191,7 @@ mod tests {
             .unwrap();
         filter.process(0.1, 0.0, &config);
 
-        let speed = shared.stats.read().unwrap().handspeed;
+        let speed = shared.pipeline.stats.read().unwrap().handspeed;
         // Allow some float tolerance
         assert!((speed - 100.0).abs() < 1.0);
     }
@@ -207,7 +212,7 @@ mod tests {
         filter.last_time = Instant::now().checked_sub(Duration::from_secs(1)).unwrap();
         filter.process(1.0, 0.0, &config);
 
-        let speed = shared.stats.read().unwrap().handspeed;
+        let speed = shared.pipeline.stats.read().unwrap().handspeed;
         assert!((speed - 1.0).abs() < 0.1);
     }
 }

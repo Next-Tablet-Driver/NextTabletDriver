@@ -26,6 +26,7 @@ pub(super) fn owner_iteration(shared_clone: &Arc<SharedState>, sender_clone: &Se
     let hid_api = match hidapi::HidApi::new() {
         Ok(api) => {
             *shared_clone
+                .lifecycle
                 .engine_status
                 .write()
                 .unwrap_or_reset("engine_status") = crate::engine::state::EngineStatus::Running;
@@ -42,6 +43,7 @@ pub(super) fn owner_iteration(shared_clone: &Arc<SharedState>, sender_clone: &Se
                 })),
             );
             *shared_clone
+                .lifecycle
                 .engine_status
                 .write()
                 .unwrap_or_reset("engine_status") =
@@ -56,7 +58,12 @@ pub(super) fn owner_iteration(shared_clone: &Arc<SharedState>, sender_clone: &Se
 
     init_thread_priority();
 
-    let mut local_config = shared_clone.config.read().unwrap_or_log("config").clone();
+    let mut local_config = shared_clone
+        .config
+        .mapping
+        .read()
+        .unwrap_or_log("config")
+        .clone();
     let mut filters = init_filter_pipeline(shared_clone, &local_config);
 
     let shm_writer = ShmWriter::create();
@@ -78,12 +85,20 @@ pub(super) fn owner_iteration(shared_clone: &Arc<SharedState>, sender_clone: &Se
         .ok();
 
     loop {
-        if shared_clone.shutdown_requested.load(Ordering::Relaxed) {
+        if shared_clone
+            .lifecycle
+            .shutdown_requested
+            .load(Ordering::Relaxed)
+        {
             log::info!(target: "TabletManager", "Shutdown requested, exiting manager loop");
             break;
         }
 
-        if shared_clone.reload_requested.swap(false, Ordering::Relaxed) {
+        if shared_clone
+            .config
+            .reload_requested
+            .swap(false, Ordering::Relaxed)
+        {
             log::warn!(target: "TabletManager", "Engine reload requested, tearing down context...");
             break;
         }
@@ -91,14 +106,17 @@ pub(super) fn owner_iteration(shared_clone: &Arc<SharedState>, sender_clone: &Se
         if let Some((device, driver, vid, pid)) = detect_tablet(&hid_api) {
             log::info!(target: "HID", "Device connected: {vid:04x}:{pid:04x}");
             on_device_connected(shared_clone, driver.as_ref(), vid, pid, &mut local_config);
-            let mut local_config_version = shared_clone.config_version.load(Ordering::Relaxed);
+            let mut local_config_version = shared_clone.config.version.load(Ordering::Relaxed);
 
             // Drain stale packets left by init sequence to prevent cursor teleport
             let mut drain_buf = [0u8; 64];
             let drain_deadline = Instant::now() + Duration::from_millis(100);
             while Instant::now() < drain_deadline {
-                if shared_clone.shutdown_requested.load(Ordering::Relaxed)
-                    || shared_clone.reload_requested.load(Ordering::Relaxed)
+                if shared_clone
+                    .lifecycle
+                    .shutdown_requested
+                    .load(Ordering::Relaxed)
+                    || shared_clone.config.reload_requested.load(Ordering::Relaxed)
                 {
                     break;
                 }
@@ -122,11 +140,15 @@ pub(super) fn owner_iteration(shared_clone: &Arc<SharedState>, sender_clone: &Se
                 shm_writer.as_ref(),
             );
 
-            if shared_clone.shutdown_requested.load(Ordering::Relaxed) {
+            if shared_clone
+                .lifecycle
+                .shutdown_requested
+                .load(Ordering::Relaxed)
+            {
                 log::info!(target: "TabletManager", "Shutdown requested, exiting manager loop after polling");
                 break;
             }
-            if shared_clone.reload_requested.load(Ordering::Relaxed) {
+            if shared_clone.config.reload_requested.load(Ordering::Relaxed) {
                 log::warn!(target: "TabletManager", "Reload requested, breaking out to restart context...");
                 break;
             }
@@ -211,7 +233,7 @@ fn on_device_connected(
         max_pressure: mp,
     };
 
-    *shared.device_state.write().unwrap_or_reset("device_state") = new_device.clone();
+    *shared.device.write().unwrap_or_reset("device") = new_device.clone();
     log::info!(target: "TabletManager", "Tablet metadata populated: {}", new_device.name);
 
     crate::app::telemetry::capture_event_dedup(
@@ -228,9 +250,13 @@ fn on_device_connected(
         &new_device.name,
     );
 
-    let mut is_first = shared.is_first_run.write().unwrap_or_reset("is_first_run");
+    let mut is_first = shared
+        .lifecycle
+        .is_first_run
+        .write()
+        .unwrap_or_reset("is_first_run");
     if *is_first {
-        let mut config = shared.config.write().unwrap_or_log("config");
+        let mut config = shared.config.mapping.write().unwrap_or_log("config");
         config.active_area.w = size.0;
         config.active_area.h = size.1;
         config.active_area.x = size.0 / 2.0;
@@ -239,7 +265,7 @@ fn on_device_connected(
         drop(is_first);
         *local_config = config.clone();
         drop(config);
-        shared.config_version.fetch_add(1, Ordering::SeqCst);
+        shared.config.version.fetch_add(1, Ordering::SeqCst);
     }
 }
 
@@ -249,8 +275,10 @@ fn on_device_connected(
 /// coordinate parameters to prevent incorrect pointer inputs.
 fn on_disconnected(shared: &Arc<SharedState>) {
     log::info!(target: "HID", "Device disconnected, resetting shared state");
-    *shared.device_state.write().unwrap_or_reset("device_state") =
-        crate::engine::state::DeviceState::default();
-    *shared.tablet_data.write().unwrap_or_reset("tablet_data") =
-        crate::drivers::TabletData::default();
+    *shared.device.write().unwrap_or_reset("device") = crate::engine::state::DeviceState::default();
+    *shared
+        .pipeline
+        .tablet_data
+        .write()
+        .unwrap_or_reset("tablet_data") = crate::drivers::TabletData::default();
 }

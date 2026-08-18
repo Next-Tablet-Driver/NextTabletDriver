@@ -173,7 +173,7 @@ impl TabletMapperApp {
 
                 egui::CentralPanel::default().show(ctx, |ui| {
                     self.metrics
-                        .update_hz(self.shared.packet_count.load(Ordering::Relaxed));
+                        .update_hz(self.shared.pipeline.packet_count.load(Ordering::Relaxed));
 
                     ui.vertical_centered(|ui| {
                         ui.add_space(5.0);
@@ -217,7 +217,7 @@ impl TabletMapperApp {
 
                 egui::CentralPanel::default().show(ctx, |ui| {
                     self.metrics
-                        .update_hz(self.shared.packet_count.load(Ordering::Relaxed));
+                        .update_hz(self.shared.pipeline.packet_count.load(Ordering::Relaxed));
 
                     ui.vertical_centered(|ui| {
                         ui.add_space(5.0);
