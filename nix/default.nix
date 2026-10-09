@@ -1,6 +1,8 @@
-{ pkgs ? import <nixpkgs> {} }:
+{ pkgs ? import <nixpkgs> {}
+, rustPlatform ? pkgs.rustPlatform
+}:
 
-pkgs.rustPlatform.buildRustPackage {
+rustPlatform.buildRustPackage {
   pname = "next-tablet-driver";
   version = "2.0.0";
 
