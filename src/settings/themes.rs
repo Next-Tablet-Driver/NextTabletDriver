@@ -1,6 +1,6 @@
 //! User theme files (`Settings/Themes/*.json`).
 //!
-//! A theme is a data file (see `docs/THEMES.md`), validated in depth by the frontend before it
+//! A theme is a data file, validated in depth by the frontend before it
 //! is applied. This module only deals with the files: listing, importing and deleting them,
 //! with limits on size and count, and without ever using a path supplied by the webview.
 
