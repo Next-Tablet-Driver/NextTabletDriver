@@ -114,4 +114,76 @@ mod tests {
             "panic at /home/johndoe/Projects/NextTabletDriver/src/main.rs"
         );
     }
+
+    mod more {
+        #![allow(clippy::indexing_slicing)]
+
+        use super::*;
+
+        use crate::settings::set_test_settings_dir;
+
+        fn temp_settings(name: &str) -> std::path::PathBuf {
+            let nanos = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_nanos();
+            let path = std::env::temp_dir().join(format!("ntd_crash_{name}_{nanos}"));
+            std::fs::create_dir_all(&path).unwrap();
+            set_test_settings_dir(path.clone());
+            path
+        }
+
+        #[test]
+        fn a_pending_report_is_consumed_once_it_is_sent() {
+            let dir = temp_settings("pending");
+            let file = dir.join("crash_report.json");
+            std::fs::write(&file, r#"{ "panic_message": "boom" }"#).unwrap();
+            send_pending_crash_reports();
+            assert!(!file.exists());
+            let _ = std::fs::remove_dir_all(dir);
+        }
+
+        #[test]
+        fn an_unreadable_report_is_discarded_rather_than_retried_forever() {
+            let dir = temp_settings("garbage");
+            let file = dir.join("crash_report.json");
+            std::fs::write(&file, "not json at all").unwrap();
+            send_pending_crash_reports();
+            assert!(!file.exists());
+            let _ = std::fs::remove_dir_all(dir);
+        }
+
+        #[test]
+        fn nothing_happens_without_a_pending_report() {
+            let dir = temp_settings("none");
+            send_pending_crash_reports();
+            assert!(!dir.join("crash_report.json").exists());
+            let _ = std::fs::remove_dir_all(dir);
+        }
+
+        #[test]
+        fn anonymizing_hides_every_known_user_name() {
+            let message = r"panic at C:\Users\alice\src\main.rs and /home/bob/x (carol)";
+            let cleaned = anonymize_path_impl(
+                message,
+                Some(r"C:\Users\alice"),
+                Some("/home/bob"),
+                Some("carol"),
+            );
+            assert!(!cleaned.contains("alice"));
+            assert!(!cleaned.contains("bob"));
+            assert!(!cleaned.contains("carol"));
+            assert_eq!(cleaned.matches("<HIDDEN>").count(), 3);
+        }
+
+        #[test]
+        fn anonymizing_leaves_messages_alone_without_user_information() {
+            let message = "index out of bounds";
+            assert_eq!(anonymize_path_impl(message, None, None, None), message);
+            assert_eq!(
+                anonymize_path_impl(message, Some(""), Some("/"), Some("")),
+                message
+            );
+        }
+    }
 }

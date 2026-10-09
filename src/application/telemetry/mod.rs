@@ -111,3 +111,58 @@ fn send_message(msg: TelemetryMessage) {
         }
     }
 }
+
+#[cfg(test)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::float_cmp,
+    clippy::indexing_slicing
+)]
+mod tests {
+    use super::*;
+    use crate::engine::state::SharedState;
+
+    // The tests run without a worker: no API key is embedded in test builds and `init` is
+    // only called with telemetry disabled, so nothing can leave the machine.
+
+    #[test]
+    fn capturing_without_a_worker_is_a_no_op() {
+        capture_event("started", None);
+        capture_event("started", Some(serde_json::json!({ "a": 1 })));
+        capture_event_with_set("started", None, Some(serde_json::json!({ "plan": "free" })));
+        capture_event_dedup("tablet_connected", None, None, "wacom");
+        send_message(TelemetryMessage::Event {
+            event_name: "x".into(),
+            properties: None,
+            set_properties: None,
+            dedup_key: Some("k".into()),
+        });
+    }
+
+    #[test]
+    fn disabled_telemetry_starts_no_worker() {
+        TelemetryService::init("install".to_string(), false);
+        assert!(TELEMETRY_SENDER.get().is_none());
+        // Shutting down without a worker returns immediately.
+        TelemetryService::shutdown(Duration::from_millis(10));
+    }
+
+    #[test]
+    fn the_app_closed_summary_reads_the_shared_state_without_a_worker() {
+        let shared = SharedState::new();
+        shared
+            .pipeline
+            .packet_count
+            .store(5, std::sync::atomic::Ordering::Relaxed);
+        capture_app_closed(&shared);
+    }
+
+    #[test]
+    fn the_session_id_is_stable_within_a_run() {
+        let first = SESSION_ID.clone();
+        assert_eq!(first, *SESSION_ID);
+        assert!(uuid::Uuid::parse_str(&SESSION_ID).is_ok());
+    }
+}
