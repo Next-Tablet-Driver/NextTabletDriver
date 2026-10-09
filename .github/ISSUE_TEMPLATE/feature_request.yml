@@ -1,12 +1,12 @@
-name: "✨ Feature Request"
+name: "Feature Request"
 description: "Propose a new feature, enhancement, or idea"
 title: "[Feature] "
-labels: ["✨ Feature", "⏳ Todo"]
+labels: ["feature", "todo"]
 body:
   - type: markdown
     attributes:
       value: |
-        ## Suggest a new feature! ✨
+        ## Suggest a new feature!
         We love new ideas. Please fill out the template below to explain your proposal.
   - type: checkboxes
     id: checks

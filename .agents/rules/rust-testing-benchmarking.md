@@ -24,7 +24,7 @@ Integration Testing:
 - Each file is a separate crate
 - Test public API only
 - Use common setup code in tests/common/mod.rs
-- Run specific tests with cargo test --test name
+- Run specific tests with cargo nextest run --test name
 
 Mocking:
 - Use mockall crate for mocking traits and structs

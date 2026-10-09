@@ -1,0 +1,18 @@
+# cargo-nextest configuration: https://nexte.st/docs/configuration/
+nextest-version = "0.9.100"
+
+[profile.default]
+# Flag tests that run suspiciously long while developing.
+slow-timeout = { period = "30s" }
+
+# Used by the CI: `cargo nextest run --profile ci`.
+[profile.ci]
+# Report every failing test of a run, not only the first one.
+fail-fast = false
+# A hung test is killed after 5 x 60s instead of blocking the job until the global timeout.
+slow-timeout = { period = "60s", terminate-after = 5 }
+failure-output = "immediate-final"
+
+[profile.ci.junit]
+# Written to target/nextest/ci/junit.xml and uploaded as an artifact by the CI.
+path = "junit.xml"

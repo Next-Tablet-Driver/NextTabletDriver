@@ -1,12 +1,12 @@
-name: "🐛 Bug Report"
+name: "Bug Report"
 description: "Report a crash, malfunction, or unexpected behavior"
 title: "[Bug] "
-labels: ["🐛 Bug", "🚨 Needs Triage"]
+labels: ["Bug", "Needs Triage"]
 body:
   - type: markdown
     attributes:
       value: |
-        ## Thank you for reporting a bug! 🐛
+        ## Thank you for reporting a bug!
         Please provide as much detail as possible to help us reproduce and fix the issue quickly.
   - type: checkboxes
     id: checks
