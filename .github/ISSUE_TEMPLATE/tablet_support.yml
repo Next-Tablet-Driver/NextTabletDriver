@@ -1,12 +1,12 @@
-name: "✍️ Tablet Support Request"
+name: "Tablet Support Request"
 description: "Request support for a new tablet model that isn't working yet"
 title: "[Tablet Support] "
-labels: ["✍️ Tablet Support"]
+labels: ["Tablet Support"]
 body:
   - type: markdown
     attributes:
       value: |
-        ## Request Support for a New Tablet ✍️
+        ## Request Support for a New Tablet
         To add support for a new tablet, we need the USB descriptors and HID reports.
   - type: input
     id: tablet_model

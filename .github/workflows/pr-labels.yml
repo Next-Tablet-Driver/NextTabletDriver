@@ -28,19 +28,19 @@ jobs:
         with:
           script: |
             const typeLabels = {
-              feat: '✨ Feature',
-              fix: '🐛 Bug',
-              perf: '⚡ Perf',
-              refactor: '⚙️ Refac',
-              docs: '📝 Documentation',
-              test: '🧪 Test',
-              build: '📦 Build',
-              ci: '🤖 CI',
-              chore: '🧹 Chore',
-              style: '🧹 Chore',
-              revert: '⏪ Revert',
+              feat: 'feature',
+              fix: 'bug',
+              perf: 'perf',
+              refactor: 'refac',
+              docs: 'documentation',
+              test: 'test',
+              build: 'build',
+              ci: 'ci',
+              chore: 'chore',
+              style: 'chore',
+              revert: 'revert',
             };
-            const breaking = '💥 Breaking';
+            const breaking = 'breaking';
             const managed = new Set([...Object.values(typeLabels), breaking]);
 
             const pr = context.payload.pull_request;
