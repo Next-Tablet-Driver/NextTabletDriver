@@ -573,4 +573,145 @@ mod tests {
         run(&mut last_stats_update);
         assert_eq!(shared.pipeline.stats.read().unwrap().total_packets, 4);
     }
+
+    mod more {
+        #![allow(clippy::indexing_slicing)]
+
+        use super::*;
+
+        const REPORT: [u8; 8] = [0x02, 0x01, 0x50, 0x00, 0x60, 0x00, 0x80, 0x00];
+
+        #[test]
+        fn the_bench_entry_runs_the_real_per_packet_code() {
+            let shared = Arc::new(SharedState::new());
+            shared.lifecycle.is_visible.store(false, Ordering::Relaxed);
+            let (tx, _rx) = crossbeam_channel::bounded(4);
+            let mut pipeline = Pipeline::new();
+            let mut sink = RecordingSink::default();
+            let mut filters = FilterPipeline::new();
+            let mut state = PacketLoopState::default();
+            let config = MappingConfig::default();
+
+            for _ in 0..3 {
+                process_packet_for_bench(
+                    &REPORT,
+                    &MockDriver,
+                    &shared,
+                    &tx,
+                    &mut pipeline,
+                    &mut sink,
+                    &mut filters,
+                    &config,
+                    &mut state,
+                );
+            }
+
+            assert_eq!(shared.pipeline.packet_count.load(Ordering::Relaxed), 3);
+            let data = shared.pipeline.tablet_data.read().unwrap().clone();
+            assert_eq!((data.x, data.y, data.pressure), (80, 96, 128));
+            assert!(sink.moves >= 3);
+        }
+
+        #[test]
+        fn unparsable_reports_change_nothing() {
+            let shared = Arc::new(SharedState::new());
+            let (tx, rx) = crossbeam_channel::bounded(4);
+            let mut pipeline = Pipeline::new();
+            let mut sink = RecordingSink::default();
+            let mut filters = FilterPipeline::new();
+            let mut state = PacketLoopState::new();
+
+            process_packet_for_bench(
+                &[0x02],
+                &MockDriver,
+                &shared,
+                &tx,
+                &mut pipeline,
+                &mut sink,
+                &mut filters,
+                &MappingConfig::default(),
+                &mut state,
+            );
+
+            assert_eq!(shared.pipeline.packet_count.load(Ordering::Relaxed), 0);
+            assert_eq!(sink.moves, 0);
+            assert!(rx.try_recv().is_err());
+        }
+
+        fn long_ago() -> Instant {
+            Instant::now()
+                .checked_sub(Duration::from_secs(1))
+                .expect("an instant one second in the past")
+        }
+
+        #[test]
+        fn a_new_config_version_is_picked_up_by_the_polling_loop() {
+            let shared = Arc::new(SharedState::new());
+            shared.config.mapping.write().unwrap().active_area.w = 33.0;
+            shared.config.version.store(7, Ordering::Relaxed);
+
+            let mut filters = FilterPipeline::new();
+            let mut local = MappingConfig::default();
+            let mut version = 0;
+            let mut last_check = long_ago();
+
+            maybe_reload_config(
+                &shared,
+                &mut filters,
+                &mut local,
+                &mut version,
+                &mut last_check,
+            );
+
+            assert_eq!(version, 7);
+            assert_eq!(local.active_area.w, 33.0);
+            assert!(last_check.elapsed() < Duration::from_millis(500));
+        }
+
+        #[test]
+        fn the_config_is_only_checked_every_50_ms() {
+            let shared = Arc::new(SharedState::new());
+            shared.config.mapping.write().unwrap().active_area.w = 33.0;
+            shared.config.version.store(7, Ordering::Relaxed);
+
+            let mut filters = FilterPipeline::new();
+            let mut local = MappingConfig::default();
+            let original_width = local.active_area.w;
+            let mut version = 0;
+            let mut last_check = Instant::now();
+
+            maybe_reload_config(
+                &shared,
+                &mut filters,
+                &mut local,
+                &mut version,
+                &mut last_check,
+            );
+
+            assert_eq!(version, 0);
+            assert_eq!(local.active_area.w, original_width);
+        }
+
+        #[test]
+        fn an_unchanged_config_version_does_not_reload() {
+            let shared = Arc::new(SharedState::new());
+            shared.config.mapping.write().unwrap().active_area.w = 33.0;
+
+            let mut filters = FilterPipeline::new();
+            let mut local = MappingConfig::default();
+            let original_width = local.active_area.w;
+            let mut version = shared.config.version.load(Ordering::Relaxed);
+            let mut last_check = long_ago();
+
+            maybe_reload_config(
+                &shared,
+                &mut filters,
+                &mut local,
+                &mut version,
+                &mut last_check,
+            );
+
+            assert_eq!(local.active_area.w, original_width);
+        }
+    }
 }

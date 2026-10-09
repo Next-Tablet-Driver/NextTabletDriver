@@ -75,3 +75,21 @@ fn query_caps(handle: HANDLE) -> Option<usize> {
 
     (status == HIDP_STATUS_SUCCESS).then_some(caps.InputReportByteLength as usize)
 }
+
+#[cfg(test)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::float_cmp,
+    clippy::indexing_slicing
+)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_path_that_cannot_be_opened_has_no_report_length() {
+        let path = c"\\\\.\\ntd-no-such-hid-device";
+        assert_eq!(query_input_report_byte_length(path), None);
+    }
+}

@@ -198,3 +198,104 @@ pub fn init() -> Result<(), String> {
         .map(|()| log::set_max_level(LevelFilter::Debug))
         .map_err(|e| format!("Logger initialization failed: {e}"))
 }
+
+#[cfg(test)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::float_cmp,
+    clippy::indexing_slicing
+)]
+mod tests {
+    use super::*;
+    use crossbeam_channel::{Receiver, bounded};
+    use log::Level;
+
+    fn logger(capacity: usize) -> (GlobalLogger, Receiver<LogEntry>) {
+        let (sender, receiver) = bounded(capacity);
+        (GlobalLogger { sender }, receiver)
+    }
+
+    fn emit(logger: &GlobalLogger, target: &str, level: Level, message: &str) {
+        logger.log(
+            &Record::builder()
+                .target(target)
+                .level(level)
+                .args(format_args!("{message}"))
+                .build(),
+        );
+    }
+
+    #[test]
+    fn an_allowed_record_becomes_a_structured_entry() {
+        let (logger, receiver) = logger(8);
+        emit(&logger, "HID", Level::Warn, "Tablet Found");
+        let entry = receiver.try_recv().unwrap();
+        assert_eq!(entry.level, "Warn");
+        assert_eq!(entry.group, "HID");
+        assert_eq!(entry.message, "Tablet Found");
+        assert_eq!(entry.search_text, "hid tablet found");
+        // HH:MM:SS
+        assert_eq!(entry.time.len(), 8);
+        assert_eq!(entry.time.matches(':').count(), 2);
+    }
+
+    #[test]
+    fn every_level_is_named_after_the_log_level() {
+        let (logger, receiver) = logger(8);
+        for (level, name) in [
+            (Level::Error, "Error"),
+            (Level::Info, "Info"),
+            (Level::Debug, "Debug"),
+        ] {
+            emit(&logger, "App", level, "x");
+            assert_eq!(receiver.try_recv().unwrap().level, name);
+        }
+    }
+
+    #[test]
+    fn only_whitelisted_targets_reach_the_console() {
+        let (logger, receiver) = logger(16);
+        for target in ["hyper::client", "HIDx", "ureq", "other"] {
+            emit(&logger, target, Level::Info, "noise");
+        }
+        assert!(receiver.try_recv().is_err());
+
+        for target in [
+            "Plugins",
+            "HID::reader",
+            "NextTabletDriver::engine",
+            "NextTabletDriver",
+        ] {
+            emit(&logger, target, Level::Info, "kept");
+            assert_eq!(receiver.try_recv().unwrap().group, target);
+        }
+    }
+
+    #[test]
+    fn a_full_queue_drops_new_records_instead_of_blocking() {
+        let (logger, receiver) = logger(1);
+        emit(&logger, "App", Level::Info, "first");
+        emit(&logger, "App", Level::Info, "second");
+        assert_eq!(receiver.try_recv().unwrap().message, "first");
+        assert!(receiver.try_recv().is_err());
+    }
+
+    #[test]
+    fn the_logger_accepts_every_level_and_flushing_is_a_no_op() {
+        let (logger, _receiver) = logger(1);
+        assert!(logger.enabled(&Metadata::builder().level(Level::Trace).target("x").build()));
+        logger.flush();
+    }
+
+    #[test]
+    fn entries_serialize_for_the_frontend() {
+        let (logger, receiver) = logger(1);
+        emit(&logger, "Config", Level::Info, "Saved");
+        let value = serde_json::to_value(receiver.try_recv().unwrap()).unwrap();
+        assert_eq!(value["group"], "Config");
+        assert_eq!(value["message"], "Saved");
+        assert_eq!(value["search_text"], "config saved");
+    }
+}

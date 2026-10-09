@@ -257,4 +257,137 @@ mod tests {
         assert!(!has_valid_official_signature(&lib) || OFFICIAL_PUBKEY.is_some());
         let _ = fs::remove_dir_all(dir);
     }
+
+    mod more {
+        #![allow(clippy::indexing_slicing)]
+
+        use super::*;
+
+        const HASH: &str = "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad";
+
+        #[test]
+        fn trusting_a_library_persists_across_loads() {
+            let dir = temp_dir("persist");
+            let path = dir.join("trusted_plugins.json");
+            let mut store = TrustStore::load(path.clone());
+            assert!(!store.is_trusted(HASH));
+            store.trust(HASH, "filter.dll").unwrap();
+            assert!(store.is_trusted(HASH));
+            assert!(TrustStore::load(path).is_trusted(HASH));
+        }
+
+        #[test]
+        fn revoking_forgets_the_library_and_survives_a_reload() {
+            let dir = temp_dir("revoke");
+            let path = dir.join("trusted_plugins.json");
+            let mut store = TrustStore::load(path.clone());
+            store.trust(HASH, "filter.dll").unwrap();
+            store.revoke(HASH).unwrap();
+            assert!(!store.is_trusted(HASH));
+            assert!(!TrustStore::load(path).is_trusted(HASH));
+        }
+
+        #[test]
+        fn revoking_an_unknown_hash_writes_nothing() {
+            let dir = temp_dir("revoke_unknown");
+            let path = dir.join("trusted_plugins.json");
+            let mut store = TrustStore::load(path.clone());
+            store.revoke(HASH).unwrap();
+            assert!(!path.exists());
+        }
+
+        #[test]
+        fn an_unreadable_store_trusts_nothing() {
+            let dir = temp_dir("garbage");
+            let path = dir.join("trusted_plugins.json");
+            fs::write(&path, "{ not json").unwrap();
+            assert!(!TrustStore::load(path).is_trusted(HASH));
+        }
+
+        #[test]
+        fn an_approval_that_cannot_be_saved_is_not_kept() {
+            let dir = temp_dir("unsaveable");
+            // The store's folder is a regular file, so it can never be created.
+            let blocker = dir.join("blocker");
+            fs::write(&blocker, "file").unwrap();
+            let mut store = TrustStore::load(blocker.join("trusted_plugins.json"));
+            assert!(store.trust(HASH, "filter.dll").is_err());
+            assert!(!store.is_trusted(HASH));
+        }
+
+        #[test]
+        fn a_failed_re_approval_restores_the_previous_file_name() {
+            let dir = temp_dir("restore");
+            let blocker = dir.join("blocker");
+            fs::write(&blocker, "file").unwrap();
+            let mut store = TrustStore {
+                path: blocker.join("trusted_plugins.json"),
+                entries: BTreeMap::from([(HASH.to_string(), "old.dll".to_string())]),
+            };
+            assert!(store.trust(HASH, "new.dll").is_err());
+            assert_eq!(store.entries.get(HASH).map(String::as_str), Some("old.dll"));
+        }
+
+        #[test]
+        fn a_store_path_that_cannot_be_replaced_reports_the_error_and_cleans_up() {
+            let dir = temp_dir("rename_fail");
+            // The store path is an existing directory: the final rename cannot succeed.
+            let path = dir.join("store");
+            fs::create_dir_all(path.join("child")).unwrap();
+            let mut store = TrustStore::load(path.clone());
+            assert!(store.trust(HASH, "filter.dll").is_err());
+            assert!(!path.with_extension("json.tmp").exists());
+        }
+
+        #[test]
+        fn sha256_of_a_missing_file_is_an_error() {
+            let dir = temp_dir("sha_missing");
+            assert!(sha256_file(&dir.join("nope.bin")).is_err());
+        }
+
+        #[test]
+        fn sha256_streams_files_larger_than_one_buffer() {
+            let dir = temp_dir("sha_big");
+            let file = dir.join("big.bin");
+            fs::write(&file, vec![b'a'; 200_000]).unwrap();
+            let streamed = sha256_file(&file).unwrap();
+            let mut hasher = Sha256::new();
+            hasher.update(vec![b'a'; 200_000]);
+            let expected: String = hasher.finalize().iter().fold(String::new(), |mut acc, b| {
+                let _ = write!(acc, "{b:02x}");
+                acc
+            });
+            assert_eq!(streamed, expected);
+        }
+
+        #[test]
+        fn an_unsigned_or_wrongly_signed_library_is_never_official() {
+            let dir = temp_dir("signature");
+            let library = dir.join("filter.dll");
+            fs::write(&library, b"test").unwrap();
+            // Any key works to exercise the failure paths below.
+            let key = "RWQf6LRCGA9i53mlYecO4IzT51TGPpvWucNSCh1CBM0QTaLn73Y7GFO3";
+
+            // No signature file.
+            assert!(!verify_signature(&library, key));
+            // A signature file that is not a signature.
+            fs::write(dir.join("filter.dll.minisig"), "garbage").unwrap();
+            assert!(!verify_signature(&library, key));
+            // A key that is not a key.
+            assert!(!verify_signature(&library, "not base64 !"));
+            // A missing library.
+            assert!(!verify_signature(&dir.join("absent.dll"), key));
+        }
+
+        #[test]
+        fn without_an_embedded_key_nothing_is_official() {
+            // Local builds have no NTD_PLUGIN_PUBKEY: the check must fail closed.
+            if OFFICIAL_PUBKEY.is_none() {
+                let dir = temp_dir("no_key");
+                let library = dir.join("filter.dll");
+                fs::write(&library, b"test").unwrap();
+                assert!(!has_valid_official_signature(&library));
+            }
+        }
+    }
 }
