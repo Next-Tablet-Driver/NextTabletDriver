@@ -30,7 +30,6 @@ tablets/** linguist-generated=true
 .editorconfig linguist-generated=true
 
 # Mark documentation files (doesn't count towards code percentage)
-docs/** linguist-documentation=true
 *.md linguist-documentation=true
 
 # Mark resources as vendored/generated

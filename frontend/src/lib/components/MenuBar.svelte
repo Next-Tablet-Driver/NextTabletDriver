@@ -29,7 +29,7 @@
   import DropdownSeparator from "./ui/DropdownSeparator.svelte";
 
   // Lucide Icons
-  import { Folder, Smartphone, Info, FileUp, FileDown, RotateCcw, Save, List, BugPlay, Bug, ChartNoAxesCombined, CodeXml, Link, RefreshCcw} from "lucide-svelte";
+  import { Folder, Smartphone, Info, FileUp, FileDown, RotateCcw, Save, List, BugPlay, Bug, ChartNoAxesCombined, Link, RefreshCcw} from "lucide-svelte";
 
   let presets = $state<{name: string, path: string}[]>([]);
   let openSubmenu = $state<string | null>(null);
@@ -267,7 +267,6 @@
     {#if openMenu === "help"}
       <DropdownMenu>
         <DropdownItem onclick={() => { void os.openUrl("https://github.com/Next-Tablet-Driver/NextTabletDriver"); closeMenu(); }}><Link size={16}/>Github Repository</DropdownItem>
-        <DropdownItem onclick={() => { void os.openUrl("https://github.com/Next-Tablet-Driver/NextTabletDriver/blob/master/docs/SDK.md"); closeMenu(); }}><CodeXml size={16}/>Developer SDK</DropdownItem>
         <DropdownItem hasSubmenu
              onmouseenter={() => { handleSubmenuEnter("bug"); }}
              onmouseleave={handleSubmenuLeave}>

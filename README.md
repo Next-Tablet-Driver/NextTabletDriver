@@ -88,15 +88,13 @@ More details are available in [`scripts/README-linux.md`](scripts/README-linux.m
 
 Your settings are saved as profiles, so you can switch between setups (e.g. one for osu!, one for drawing) from the File menu, which also lets you import and export profiles to share or back them up.
 
-Want to change how the app looks? Pick a built-in theme in **Settings > Themes**; see [`docs/THEMES.md`](docs/THEMES.md) for how theming works and how to contribute a new one.
+Want to change how the app looks? Pick a built-in theme in **Settings > Themes**.
 
 ## Contributing
 
-NextTabletDriver is open source and welcomes contributions, good first contributions include adding a new tablet, fixing a parser bug, Linux packaging improvements, theme examples, and UI polish. Building from source, the codebase layout, and the coding standards we follow are documented in [`CONTRIBUTING.md`](CONTRIBUTING.md).
+NextTabletDriver is open source and welcomes contributions, good first contributions include adding a new tablet, fixing a parser bug, Linux packaging improvements, theme examples, and UI polish. Building from source, the codebase layout, and the coding standards we follow are documented in [`CONTRIBUTING.md`](.github/CONTRIBUTING.md).
 
 When adding support for a new tablet, please include its device VID/PID, physical dimensions, and any other details the driver needs to recognize it correctly.
-
-If you're building a game, plugin, or other application that wants to talk to NextTabletDriver directly, a native SDK (C/C++ and C#/Unity bindings) is available, see [`docs/SDK.md`](docs/SDK.md).
 
 ## License
 

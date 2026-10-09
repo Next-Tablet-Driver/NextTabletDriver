@@ -2,11 +2,7 @@
 
 Thank you for your interest in contributing to **NextTabletDriver**! We welcome bug fixes, documentation improvements, new tablet profiles, and feature contributions.
 
-To ensure the driver remains fast, clean, and stable, please read our detailed guides before you start:
-
-* 🛠️ **[Developer Guide](file:///c:/Users/iswea/Documents/Developpement/Projects/osu/NextTabletDriver/.dev/docs/development.md):** Learn how to set up the Rust toolchain, compile locally (Windows/Linux), test changes, and how our automated release pipeline works. [Soon]
-* 📏 **[Coding Standards & Best Practices](file:///c:/Users/iswea/Documents/Developpement/Projects/osu/NextTabletDriver/.dev/docs/best_practices.md):** Rules for avoiding panics/crashes, lock safety, documentation structure, and commit message formats. [Soon]
-* 📋 **[Project TODO List](file:///c:/Users/iswea/Documents/Developpement/Projects/osu/NextTabletDriver/.dev/docs/todo.md):** Review our active backlog of bug fixes and upcoming feature enhancements. [Soon]
+To keep the driver fast, clean, and stable, please follow the steps below.
 
 ---
 
@@ -23,17 +19,18 @@ git checkout -b my-contribution-branch
 ### 2. Make Your Changes
 Write your code, adding documentation and tests where necessary. Ensure your changes follow our coding standards (no `unwrap`, safe lock handling, etc.).
 
-### 3. Run Pre-Commit Checks
-Before pushing, verify that your changes pass all local linting and formatting gates using the validation script:
+### 3. Run the Checks
+Before pushing, make sure your changes pass the same checks as the CI:
 
-* **Windows:**
-  ```powershell
-  .dev/tools/validate.ps1
-  ```
-* **Linux/macOS:**
-  ```bash
-  bash .dev/tools/validate.sh
-  ```
+```bash
+cargo fmt --all -- --check
+cargo clippy --workspace --all-targets --all-features -- -D warnings
+cargo test --workspace --all-features
+npm --prefix frontend ci
+npm --prefix frontend run lint
+npm --prefix frontend run check
+npm --prefix frontend run test -- --run
+```
 
 ### 4. Commit and Push
 Push your branch to your fork:
