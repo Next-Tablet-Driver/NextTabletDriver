@@ -30,22 +30,18 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Cache cargo
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-
-
       - name: Setup Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: ${{ matrix.rust }}
           components: clippy,rustfmt
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.os }}
+          # Only main writes the cache, pull requests just read it.
+          save-if: ${{ github.ref == 'refs/heads/main' }}
 
       - name: Install system dependencies (Linux)
         if: matrix.os == 'ubuntu-latest'
@@ -61,6 +57,13 @@ jobs:
 
       - name: Clippy
         run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+
+      - name: Documentation
+        if: matrix.os == 'ubuntu-latest'
+        env:
+          # A few public docs link to private modules; everything else must be warning-free.
+          RUSTDOCFLAGS: -D warnings -A rustdoc::private_intra_doc_links
+        run: cargo doc --workspace --no-deps --all-features
 
       - name: Install cargo-nextest
         uses: taiki-e/install-action@v2
@@ -104,6 +107,19 @@ jobs:
           toolchain: 1.99.0
           components: clippy,rustfmt
 
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            sdk/plugin_api
+            sdk
+            plugins/devocub_antichatter
+            plugins/hand_speed
+            plugins/hawku_smoothing
+            plugins/kalman_smoothing
+            plugins/radial_follow
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+
       - name: Install cargo-nextest
         uses: taiki-e/install-action@v2
         with:
@@ -117,6 +133,58 @@ jobs:
             cargo fmt --manifest-path "$manifest" -- --check
             cargo clippy --manifest-path "$manifest" --all-targets -- -D warnings
             cargo nextest run --manifest-path "$manifest" --no-tests=pass
+            echo "::endgroup::"
+          done
+
+  frontend:
+    name: Frontend (lint, types, tests, build)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --prefix frontend
+
+      - name: Lint
+        run: npm --prefix frontend run lint
+
+      - name: Type-check
+        run: npm --prefix frontend run check
+
+      - name: Tests
+        run: npm --prefix frontend run test -- --run
+
+      - name: Build
+        run: npm --prefix frontend run build
+
+  # Deterministic checks on the lockfiles (bans, licenses, sources). Security advisories are
+  # checked by security.yml: a new advisory must not fail unrelated pull requests.
+  deny:
+    name: Dependency policy (cargo-deny)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install cargo-deny
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-deny
+
+      - name: Check every crate
+        run: |
+          set -e
+          for manifest in Cargo.toml src-tauri/Cargo.toml sdk/Cargo.toml sdk/plugin_api/Cargo.toml plugins/*/Cargo.toml; do
+            echo "::group::$manifest"
+            cargo deny --manifest-path "$manifest" check bans licenses sources
             echo "::endgroup::"
           done
 
@@ -153,6 +221,7 @@ jobs:
         uses: swatinem/rust-cache@v2
         with:
           workspaces: "src-tauri -> target"
+          save-if: ${{ github.ref == 'refs/heads/main' }}
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -163,12 +232,6 @@ jobs:
 
       - name: Install frontend dependencies
         run: npm ci --prefix frontend
-
-      - name: Frontend lint, type-check and tests
-        run: |
-          npm --prefix frontend run lint
-          npm --prefix frontend run check
-          npm --prefix frontend run test -- --run
 
       - name: Clippy (Tauri crate)
         if: startsWith(matrix.os, 'ubuntu')
@@ -191,7 +254,7 @@ jobs:
   ci-success:
     name: CI success
     if: always()
-    needs: [rust, plugins, tauri]
+    needs: [rust, plugins, frontend, deny, tauri]
     runs-on: ubuntu-latest
     steps:
       - name: Require every job to have succeeded

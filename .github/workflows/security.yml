@@ -1,41 +1,49 @@
-name: Security Audit
+name: Security
+
+# Advisories are checked here and not in ci.yml: a newly published advisory must not fail
+# unrelated pull requests. Runs weekly, on demand and when a lockfile or the policy changes.
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 6 * * 1'
+    - cron: "0 6 * * 1"
   push:
+    branches: [main]
     paths:
-      - '**/Cargo.lock'
-      - 'deny.toml'
+      - "**/Cargo.lock"
+      - "deny.toml"
   pull_request:
+    branches: [main]
     paths:
-      - '**/Cargo.lock'
-      - '**/Cargo.toml'
-      - 'deny.toml'
+      - "**/Cargo.lock"
+      - "**/Cargo.toml"
+      - "deny.toml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  audit:
+  advisories:
+    name: Security advisories (cargo-deny)
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      security-events: write
-      checks: write
-      issues: write
     steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: recursive
-      - uses: rustsec/audit-check@v2
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Checkout
+        uses: actions/checkout@v4
 
-  deny:
-    name: Dependency policy (cargo-deny)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+      - name: Install cargo-deny
+        uses: taiki-e/install-action@v2
         with:
-          submodules: recursive
-      - uses: EmbarkStudios/cargo-deny-action@v2
-        with:
-          command: check advisories bans sources
+          tool: cargo-deny
+
+      # The root crate is not a Cargo workspace: audit the lockfile of every crate.
+      - name: Check every crate
+        run: |
+          set -e
+          for manifest in Cargo.toml src-tauri/Cargo.toml sdk/Cargo.toml sdk/plugin_api/Cargo.toml plugins/*/Cargo.toml; do
+            echo "::group::$manifest"
+            cargo deny --manifest-path "$manifest" check advisories
+            echo "::endgroup::"
+          done

@@ -1,6 +1,7 @@
 [package]
 name = "hand_speed"
 version = "1.0.0"
+publish = false
 edition = "2024"
 authors = ["nzbasic <https://github.com/nzbasic>"]
 description = "Hand Speed & Travel Distance Tracker with WebSocket Broadcast"
