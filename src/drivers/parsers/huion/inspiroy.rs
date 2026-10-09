@@ -130,4 +130,90 @@ mod tests {
         assert_eq!(report.y, 66052);
         Ok(())
     }
+
+    mod more {
+        #![allow(clippy::indexing_slicing)]
+
+        use super::*;
+        use crate::drivers::TabletStatus;
+
+        /// `[id, b1, x(2), y(2), pressure(2), b8, b9, tilt_x, tilt_y]`.
+        fn pen(b1: u8, pressure: u16) -> [u8; 12] {
+            let p = pressure.to_le_bytes();
+            [0x08, b1, 0x34, 0x12, 0x78, 0x56, p[0], p[1], 0, 0, 0, 0]
+        }
+
+        #[test]
+        fn contact_decodes_position_pressure_buttons_and_eraser() {
+            let parsed = InspiroyParser.parse(&pen(0x15, 0x0100)).unwrap();
+            assert_eq!(parsed.status, TabletStatus::Contact);
+            assert_eq!(
+                (parsed.x, parsed.y, parsed.pressure),
+                (0x1234, 0x5678, 0x0100)
+            );
+            assert_eq!(parsed.buttons, 0b010);
+            assert!(parsed.eraser);
+            assert!(parsed.is_connected);
+        }
+
+        #[test]
+        fn the_in_range_bit_distinguishes_hover_from_out_of_range() {
+            assert_eq!(
+                InspiroyParser.parse(&pen(0x01, 0)).unwrap().status,
+                TabletStatus::Hover
+            );
+            assert_eq!(
+                InspiroyParser.parse(&pen(0x02, 0)).unwrap().status,
+                TabletStatus::OutOfRange
+            );
+        }
+
+        #[test]
+        fn the_17th_bit_of_each_axis_comes_from_bytes_8_and_9() {
+            let mut data = pen(0x01, 1);
+            data[8] = 0x01;
+            data[9] = 0x01;
+            let parsed = InspiroyParser.parse(&data).unwrap();
+            assert_eq!((parsed.x, parsed.y), (0x0001_1234, 0x0001_5678));
+        }
+
+        #[test]
+        fn tilt_is_inverted() {
+            let mut data = pen(0x01, 1);
+            data[10] = 0x05;
+            data[11] = 0xFE;
+            let parsed = InspiroyParser.parse(&data).unwrap();
+            assert_eq!((parsed.tilt_x, parsed.tilt_y), (-5, 2));
+        }
+
+        #[test]
+        fn optional_trailing_bytes_default_to_zero() {
+            let full = pen(0x01, 1);
+            for len in 8..=11 {
+                let parsed = InspiroyParser.parse(&full[..len]).unwrap();
+                assert_eq!((parsed.x, parsed.y), (0x1234, 0x5678), "len {len}");
+                assert_eq!((parsed.tilt_x, parsed.tilt_y), (0, 0), "len {len}");
+            }
+        }
+
+        #[test]
+        fn aux_and_wheel_reports() {
+            for id in [0xE0, 0xE3] {
+                let parsed = InspiroyParser.parse(&[0x08, id, 0, 0, 0x0F]).unwrap();
+                assert_eq!((parsed.status, parsed.buttons), (TabletStatus::Aux, 15));
+            }
+            for id in [0xF0, 0xF1] {
+                let parsed = InspiroyParser.parse(&[0x08, id, 0, 0, 0x0F]).unwrap();
+                assert_eq!((parsed.status, parsed.buttons), (TabletStatus::Aux, 0));
+            }
+        }
+
+        #[test]
+        fn proximity_out_and_truncated_reports_are_rejected() {
+            assert!(InspiroyParser.parse(&pen(0x00, 0)).is_none());
+            assert!(InspiroyParser.parse(&pen(0x01, 1)[..7]).is_none());
+            assert!(InspiroyParser.parse(&[]).is_none());
+            assert!(InspiroyParser.parse(&[0x08]).is_none());
+        }
+    }
 }

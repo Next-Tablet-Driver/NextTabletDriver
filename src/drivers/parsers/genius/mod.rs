@@ -186,4 +186,72 @@ mod tests {
         assert_eq!(report.x, 258);
         Ok(())
     }
+
+    mod more {
+        #![allow(clippy::indexing_slicing)]
+
+        use super::*;
+        use crate::drivers::TabletStatus;
+
+        #[test]
+        fn v1_tablet_report_decodes_position_pressure_and_buttons() {
+            let data = [0x10, 0x34, 0x12, 0x78, 0x56, 0x04 | 0x08 | 0x10, 0x00, 0x01];
+            let parsed = GeniusParserV1.parse(&data).unwrap();
+            assert_eq!(parsed.status, TabletStatus::Contact);
+            assert_eq!(
+                (parsed.x, parsed.y, parsed.pressure),
+                (0x1234, 0x5678, 0x0100)
+            );
+            assert_eq!(parsed.buttons, 0b11);
+        }
+
+        #[test]
+        fn v1_pressure_needs_the_tip_flag() {
+            let parsed = GeniusParserV1
+                .parse(&[0x10, 1, 0, 1, 0, 0x00, 0xFF, 0xFF])
+                .unwrap();
+            assert_eq!(parsed.status, TabletStatus::Hover);
+            assert_eq!(parsed.pressure, 0);
+        }
+
+        #[test]
+        fn v1_mouse_report_has_three_buttons() {
+            let parsed = GeniusParserV1
+                .parse(&[0x11, 0x07, 0x00, 0x10, 0x00, 0x20, 0x00])
+                .unwrap();
+            assert_eq!(parsed.status, TabletStatus::Mouse);
+            assert_eq!((parsed.x, parsed.y), (16, 32));
+            assert_eq!(parsed.buttons, 0b111);
+        }
+
+        #[test]
+        fn v2_tablet_report_uses_the_same_layout_with_id_2() {
+            let data = [0x02, 0x34, 0x12, 0x78, 0x56, 0x04 | 0x10, 0x05, 0x00];
+            let parsed = GeniusParserV2.parse(&data).unwrap();
+            assert_eq!(parsed.status, TabletStatus::Contact);
+            assert_eq!((parsed.x, parsed.y, parsed.pressure), (0x1234, 0x5678, 5));
+            assert_eq!(parsed.buttons, 0b10);
+        }
+
+        #[test]
+        fn v2_aux_report_selects_one_of_eight_keys() {
+            let key = |byte| GeniusParserV2.parse(&[0x05, 0x00, 0x00, byte]).unwrap();
+            assert_eq!(key(0).status, TabletStatus::Aux);
+            assert_eq!(key(0).buttons, 0);
+            assert_eq!(key(1).buttons, 0b0000_0001);
+            assert_eq!(key(3).buttons, 0b0000_0010);
+            assert_eq!(key(15).buttons, 0b1000_0000);
+            // Beyond the eighth key nothing is reported.
+            assert_eq!(key(17).buttons, 0);
+        }
+
+        #[test]
+        fn empty_unknown_and_truncated_reports_are_rejected() {
+            for parser in [&GeniusParserV1 as &dyn ReportParser, &GeniusParserV2] {
+                assert!(parser.parse(&[]).is_none());
+                assert!(parser.parse(&[0x99, 1, 2, 3, 4, 5, 6, 7]).is_none());
+                assert!(parser.parse(&[0x10, 1, 2]).is_none());
+            }
+        }
+    }
 }
