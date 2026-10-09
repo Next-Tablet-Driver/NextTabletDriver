@@ -1,15 +1,38 @@
 version: 2
 updates:
+  # Rust: version updates are disabled (the `ignore` rule below); Dependabot only opens
+  # security updates. One entry per lockfile, the root crate is not a Cargo workspace.
   - package-ecosystem: "cargo"
     directory: "/"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5
-    # Version updates are disabled; Dependabot only opens security updates.
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-major", "version-update:semver-minor", "version-update:semver-patch"]
     # Titles must pass the Conventional Commits check on PR titles.
+    commit-message:
+      prefix: "chore(deps)"
+
+  - package-ecosystem: "cargo"
+    directory: "/src-tauri"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major", "version-update:semver-minor", "version-update:semver-patch"]
+    commit-message:
+      prefix: "chore(deps)"
+
+  - package-ecosystem: "npm"
+    directory: "/frontend"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      frontend-minor-and-patch:
+        update-types: ["minor", "patch"]
     commit-message:
       prefix: "chore(deps)"
 
