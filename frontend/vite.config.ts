@@ -66,7 +66,7 @@ export default defineConfig({
       provider: 'v8',
       include: ['src/**/*.{ts,svelte}'],
       // Dev-only tooling, type declarations, test files and the entry point.
-      exclude: ['src/dev/**', 'src/**/__tests__/**', 'src/**/*.test.ts', 'src/**/*.d.ts', 'src/main.ts', 'src/setupTests.ts'],
+      exclude: ['src/dev/**', 'src/**/__tests__/**', 'src/**/test-support/**', 'src/**/*.test.ts', 'src/**/*.d.ts', 'src/main.ts', 'src/setupTests.ts'],
       reporter: ['text-summary', 'json-summary', 'lcov'],
     },
   }

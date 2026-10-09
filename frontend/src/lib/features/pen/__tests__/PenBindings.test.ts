@@ -1,31 +1,29 @@
-import { describe, it, expect, vi, type Mock } from "vitest";
+import { describe, it, expect } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/svelte";
-import type { MappingState } from "../../mapping/mapping-state.svelte";
+import { fakeMapping } from "../../../test-support/fakeMapping";
 import BindingCard from "../BindingCard.svelte";
 import ButtonActions from "../ButtonActions.svelte";
 
-function fakeMapping(config: Record<string, unknown> | null): { mapping: MappingState; markDirty: Mock } {
-    const markDirty = vi.fn();
-    return { mapping: { config, markDirty } as unknown as MappingState, markDirty };
-}
-
 describe("BindingCard", () => {
     it("edits the tip binding", async () => {
-        const { mapping, markDirty } = fakeMapping({ tip_binding: "Left Click", eraser_binding: "None" });
+        const { mapping, markDirty, config } = fakeMapping({ tip_binding: "Left Click", eraser_binding: "None" });
         render(BindingCard, { props: { mapping, type: "tip" } });
         expect(screen.getByText("Tip Binding")).toBeInTheDocument();
-        const input = screen.getByDisplayValue("Left Click");
-        await fireEvent.input(input, { target: { value: "Right Click" } });
-        expect(markDirty).toHaveBeenCalled();
-        expect(input).toHaveValue("Right Click");
+        await fireEvent.input(screen.getByDisplayValue("Left Click"), { target: { value: "Right Click" } });
+        expect(config?.tip_binding).toBe("Right Click");
+        expect(config?.eraser_binding).toBe("None");
+        expect(markDirty).toHaveBeenCalledOnce();
     });
 
-    it("edits the eraser binding", () => {
-        const { mapping } = fakeMapping({ tip_binding: "Left Click", eraser_binding: "Middle Click" });
+    it("edits the eraser binding", async () => {
+        const { mapping, markDirty, config } = fakeMapping({ tip_binding: "Left Click", eraser_binding: "Middle Click" });
         render(BindingCard, { props: { mapping, type: "eraser" } });
         expect(screen.getByText("Eraser Binding")).toBeInTheDocument();
-        expect(screen.getByDisplayValue("Middle Click")).toBeInTheDocument();
         expect(screen.queryByDisplayValue("Left Click")).toBeNull();
+        await fireEvent.input(screen.getByDisplayValue("Middle Click"), { target: { value: "None" } });
+        expect(config?.eraser_binding).toBe("None");
+        expect(config?.tip_binding).toBe("Left Click");
+        expect(markDirty).toHaveBeenCalledOnce();
     });
 
     it("offers an edit button labelled with the binding kind", () => {
@@ -50,11 +48,12 @@ describe("ButtonActions", () => {
         expect(screen.getByLabelText("Pen Button 3")).toHaveValue("None");
     });
 
-    it("marks the profile dirty when a binding changes", async () => {
-        const { mapping, markDirty } = fakeMapping({ pen_button_bindings: ["Right Click"] });
+    it("writes the new binding and marks the profile dirty", async () => {
+        const { mapping, markDirty, config } = fakeMapping({ pen_button_bindings: ["Right Click", "Middle Click"] });
         render(ButtonActions, { props: { mapping } });
         await fireEvent.input(screen.getByLabelText("Pen Button 1"), { target: { value: "Back" } });
-        expect(markDirty).toHaveBeenCalled();
+        expect(config?.pen_button_bindings).toEqual(["Back", "Middle Click"]);
+        expect(markDirty).toHaveBeenCalledOnce();
     });
 
     it("shows only the header while the config is not loaded", () => {

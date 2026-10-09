@@ -1,13 +1,8 @@
-import { describe, it, expect, vi, type Mock } from "vitest";
+import { describe, it, expect } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/svelte";
-import type { MappingState } from "../../mapping/mapping-state.svelte";
+import { fakeMapping } from "../../../test-support/fakeMapping";
 import GeneralSettings from "../GeneralSettings.svelte";
 import LanguageSettings from "../LanguageSettings.svelte";
-
-function fakeMapping(config: Record<string, unknown> | null): { mapping: MappingState; markDirty: Mock } {
-    const markDirty = vi.fn();
-    return { mapping: { config, markDirty } as unknown as MappingState, markDirty };
-}
 
 describe("GeneralSettings", () => {
     const config = { run_at_startup: true, system_tray_on_minimize: false, force_high_resolution_timer: true };
@@ -21,11 +16,12 @@ describe("GeneralSettings", () => {
         expect(screen.getByLabelText("Force High Resolution Timer (0.5ms)")).toBeChecked();
     });
 
-    it("marks the profile dirty when an option changes", async () => {
-        const { mapping, markDirty } = fakeMapping({ ...config });
+    it("writes the changed option and marks the profile dirty", async () => {
+        const { mapping, markDirty, config: written } = fakeMapping({ ...config });
         render(GeneralSettings, { props: { mapping } });
         await fireEvent.click(screen.getByLabelText("System Tray when Minimize"));
-        expect(markDirty).toHaveBeenCalled();
+        expect(written).toEqual({ ...config, system_tray_on_minimize: true });
+        expect(markDirty).toHaveBeenCalledOnce();
     });
 
     it("lists the anonymous statistics option, enabled by default", () => {

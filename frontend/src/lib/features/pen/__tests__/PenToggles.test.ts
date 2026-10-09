@@ -1,13 +1,8 @@
-import { describe, it, expect, vi, type Mock } from "vitest";
+import { describe, it, expect } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/svelte";
-import type { MappingState } from "../../mapping/mapping-state.svelte";
+import { fakeMapping } from "../../../test-support/fakeMapping";
 import HardwareToggles from "../HardwareToggles.svelte";
 import Thresholds from "../Thresholds.svelte";
-
-function fakeMapping(config: Record<string, unknown> | null): { mapping: MappingState; markDirty: Mock } {
-    const markDirty = vi.fn();
-    return { mapping: { config, markDirty } as unknown as MappingState, markDirty };
-}
 
 describe("HardwareToggles", () => {
     it("reflects the current pressure and tilt switches", () => {
@@ -17,11 +12,12 @@ describe("HardwareToggles", () => {
         expect(screen.getByLabelText("Disable Tilt")).not.toBeChecked();
     });
 
-    it("marks the profile dirty when a switch is flipped", async () => {
-        const { mapping, markDirty } = fakeMapping({ disable_pressure: false, disable_tilt: false });
+    it("writes the flipped switch and marks the profile dirty", async () => {
+        const { mapping, markDirty, config } = fakeMapping({ disable_pressure: false, disable_tilt: false });
         render(HardwareToggles, { props: { mapping } });
         await fireEvent.click(screen.getByLabelText("Disable Tilt"));
-        expect(markDirty).toHaveBeenCalled();
+        expect(config).toEqual({ disable_pressure: false, disable_tilt: true });
+        expect(markDirty).toHaveBeenCalledOnce();
     });
 
     it("shows no switch until the config is loaded", () => {
@@ -40,11 +36,12 @@ describe("Thresholds", () => {
         expect(screen.getByDisplayValue("30")).toBeInTheDocument();
     });
 
-    it("marks the profile dirty when a threshold is edited", async () => {
-        const { mapping, markDirty } = fakeMapping({ tip_threshold: 12, eraser_threshold: 30 });
+    it("writes the edited threshold and marks the profile dirty", async () => {
+        const { mapping, markDirty, config } = fakeMapping({ tip_threshold: 12, eraser_threshold: 30 });
         render(Thresholds, { props: { mapping } });
         await fireEvent.input(screen.getByDisplayValue("12"), { target: { value: "20" } });
-        expect(markDirty).toHaveBeenCalled();
+        expect(config).toEqual({ tip_threshold: 20, eraser_threshold: 30 });
+        expect(markDirty).toHaveBeenCalledOnce();
     });
 
     it("shows no field until the config is loaded", () => {
