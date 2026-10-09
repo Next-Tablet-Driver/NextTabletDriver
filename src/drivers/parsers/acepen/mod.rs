@@ -99,12 +99,7 @@ impl ReportParser for AcepenParser {
 }
 
 #[cfg(test)]
-#[allow(
-    clippy::unwrap_used,
-    clippy::expect_used,
-    clippy::panic,
-    clippy::float_cmp
-)]
+#[allow(clippy::float_cmp)]
 mod tests {
     use super::*;
 
@@ -135,5 +130,55 @@ mod tests {
         assert_eq!(report.status, crate::drivers::TabletStatus::Aux);
         assert_eq!(report.buttons, 4);
         Ok(())
+    }
+
+    use crate::drivers::TabletStatus;
+
+    fn pen(b2: u8, pressure: u16) -> [u8; 11] {
+        let p = pressure.to_le_bytes();
+        [0, 0x41, b2, 0x02, 0x01, 0x04, 0x03, p[0], p[1], 0xFE, 0x05]
+    }
+
+    #[test]
+    fn a_pen_without_pressure_hovers_and_reports_both_barrel_buttons() {
+        let parsed = AcepenParser::default().parse(&pen(0xA6, 0)).unwrap();
+        assert_eq!(parsed.status, TabletStatus::Hover);
+        assert_eq!(parsed.buttons, 0b11);
+        assert_eq!((parsed.tilt_x, parsed.tilt_y), (-2, 5));
+    }
+
+    #[test]
+    fn the_barrel_button_bit_alone_is_the_second_button() {
+        assert_eq!(
+            AcepenParser::new().parse(&pen(0xA4, 1)).unwrap().buttons,
+            0b10
+        );
+    }
+
+    #[test]
+    fn aux_keys_are_latched_until_they_are_released() {
+        let parser = AcepenParser::new();
+        let key = |down: u8, mask: u8| [0, 0x42, 0, down, mask, 0, 0, 0, 0, 0, 0];
+        assert_eq!(parser.parse(&key(1, 0x01)).unwrap().buttons, 0b001);
+        assert_eq!(parser.parse(&key(1, 0x04)).unwrap().buttons, 0b101);
+        // Releasing a key clears only its own bit.
+        assert_eq!(parser.parse(&key(0, 0x01)).unwrap().buttons, 0b100);
+        assert_eq!(parser.parse(&key(0, 0x04)).unwrap().buttons, 0);
+    }
+
+    #[test]
+    fn an_aux_report_without_a_mask_addresses_the_first_key() {
+        let parser = AcepenParser::new();
+        let parsed = parser.parse(&[0, 0x42, 0, 1, 0]).unwrap();
+        assert_eq!(parsed.buttons, 1);
+    }
+
+    #[test]
+    fn other_report_kinds_are_ignored() {
+        let parser = AcepenParser::new();
+        assert!(parser.parse(&[0, 0x99, 0, 0, 0]).is_none());
+        assert!(parser.parse(&[]).is_none());
+        // A pen report whose mode nibble is not 0xA is not a pen report.
+        assert!(parser.parse(&pen(0x12, 5)).is_none());
     }
 }

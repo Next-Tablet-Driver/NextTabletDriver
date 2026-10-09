@@ -85,10 +85,16 @@ impl I18n {
 
     /// Loads a locale file from the embedded directory and deserializes it into a flat `HashMap`.
     fn load_locale(locale: Locale) -> HashMap<String, String> {
+        let content = LOCALES_DIR
+            .get_file(locale.filename())
+            .and_then(|f| f.contents_utf8());
+        Self::parse_locale(locale, content)
+    }
+
+    /// Deserializes the content of a locale file; a missing or invalid file gives no translation.
+    fn parse_locale(locale: Locale, content: Option<&str>) -> HashMap<String, String> {
         let filename = locale.filename();
-        LOCALES_DIR
-            .get_file(filename)
-            .and_then(|f| f.contents_utf8())
+        content
             .and_then(|content| serde_json::from_str::<HashMap<String, String>>(content).ok())
             .map_or_else(|| {
                 log::error!(target: "I18N", "Failed to load locale file: {filename}");
@@ -174,7 +180,6 @@ macro_rules! t {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 mod tests {
     use super::*;
 
@@ -218,5 +223,79 @@ mod tests {
 
         let macro_interpolated = t!("toast.profile_loaded", name = "TestProfile");
         assert_eq!(macro_interpolated, "Loaded profile: TestProfile");
+    }
+
+    #[test]
+    fn every_locale_has_a_file_and_a_native_name() {
+        assert_eq!(Locale::all(), &[Locale::English, Locale::French]);
+        assert_eq!(Locale::English.filename(), "en.json");
+        assert_eq!(Locale::French.filename(), "fr.json");
+        assert_eq!(Locale::English.display_name(), "English");
+        assert_eq!(Locale::French.display_name(), "Français");
+    }
+
+    #[test]
+    fn a_missing_or_invalid_locale_file_gives_no_translation() {
+        crate::test_support::evaluate_log_arguments();
+        assert!(I18n::parse_locale(Locale::French, None).is_empty());
+        assert!(I18n::parse_locale(Locale::French, Some("{ not json")).is_empty());
+        assert!(I18n::parse_locale(Locale::French, Some("[1, 2]")).is_empty());
+        let parsed = I18n::parse_locale(Locale::French, Some(r#"{ "a": "b" }"#));
+        assert_eq!(parsed.get("a").map(String::as_str), Some("b"));
+    }
+
+    #[test]
+    fn the_embedded_locales_are_complete_enough_to_translate() {
+        let english = I18n::load_locale(Locale::English);
+        let french = I18n::load_locale(Locale::French);
+        assert!(!english.is_empty());
+        assert!(!french.is_empty());
+        assert_eq!(I18n::new(Locale::English).locale, Locale::English);
+        let fr = I18n::new(Locale::French);
+        assert_eq!(fr.locale, Locale::French);
+        assert_eq!(fr.get("tabs.output"), "Sortie");
+    }
+
+    #[test]
+    fn a_key_missing_from_the_active_language_falls_back_to_english_then_to_the_key() {
+        crate::test_support::evaluate_log_arguments();
+        let i18n = I18n {
+            locale: Locale::French,
+            translations: HashMap::new(),
+            fallback: HashMap::from([("only.in.english".to_string(), "English text".to_string())]),
+        };
+        assert_eq!(i18n.get("only.in.english"), "English text");
+        assert_eq!(i18n.get("nowhere"), "nowhere");
+    }
+
+    #[test]
+    fn selecting_the_current_language_again_changes_nothing() {
+        let _guard = TEST_MUTEX.lock().unwrap();
+        crate::test_support::evaluate_log_arguments();
+        set_locale(Locale::French);
+        assert_eq!(current_locale(), Locale::French);
+        set_locale(Locale::French);
+        assert_eq!(current_locale(), Locale::French);
+        set_locale(Locale::English);
+        assert_eq!(current_locale(), Locale::English);
+    }
+
+    // Poisons the process-wide translator, so this relies on every test running in its own
+    // process (cargo nextest).
+    #[test]
+    fn a_poisoned_translator_still_answers_with_the_key_and_the_default_locale() {
+        let _guard = TEST_MUTEX
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let _ = std::thread::spawn(|| {
+            let _held = I18N.write().unwrap();
+            panic!("poison the translator");
+        })
+        .join();
+        assert_eq!(translate("tabs.output"), "tabs.output");
+        assert_eq!(current_locale(), Locale::default());
+        // Changing the language of a poisoned translator is a no-op.
+        set_locale(Locale::French);
+        assert_eq!(translate_with("a.{name}", &[("name", "b")]), "a.b");
     }
 }

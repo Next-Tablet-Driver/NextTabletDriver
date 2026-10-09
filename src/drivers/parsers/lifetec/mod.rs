@@ -45,12 +45,7 @@ impl ReportParser for LifetecParser {
 }
 
 #[cfg(test)]
-#[allow(
-    clippy::unwrap_used,
-    clippy::expect_used,
-    clippy::panic,
-    clippy::float_cmp
-)]
+#[allow(clippy::float_cmp)]
 mod tests {
     use super::*;
 
@@ -74,5 +69,34 @@ mod tests {
         let parser = LifetecParser;
         let data: [u8; 8] = [0x03, 0x02, 0x01, 0x04, 0x03, 0x08, 0x01, 0x00];
         assert!(parser.parse(&data).is_none());
+    }
+
+    use crate::drivers::TabletStatus;
+
+    fn report(b5: u8, pressure: u16) -> [u8; 8] {
+        let p = pressure.to_le_bytes();
+        [0x02, 0x34, 0x12, 0x78, 0x56, b5, p[0], p[1]]
+    }
+
+    #[test]
+    fn both_buttons_and_hover_without_pressure() {
+        let parsed = LifetecParser.parse(&report(0x18, 0)).unwrap();
+        assert_eq!(parsed.status, TabletStatus::Hover);
+        assert_eq!(parsed.buttons, 0b11);
+        assert_eq!((parsed.x, parsed.y), (0x1234, 0x5678));
+    }
+
+    #[test]
+    fn each_button_bit_maps_to_its_own_button() {
+        assert_eq!(LifetecParser.parse(&report(0x08, 1)).unwrap().buttons, 0b01);
+        assert_eq!(LifetecParser.parse(&report(0x10, 1)).unwrap().buttons, 0b10);
+    }
+
+    #[test]
+    fn other_ids_and_short_reports_are_rejected() {
+        let mut data = report(0x00, 1);
+        data[0] = 0x03;
+        assert!(LifetecParser.parse(&data).is_none());
+        assert!(LifetecParser.parse(&report(0x00, 1)[..7]).is_none());
     }
 }

@@ -190,7 +190,7 @@ impl Default for DriverStats {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used, clippy::float_cmp)]
+#[allow(clippy::float_cmp)]
 mod tests {
     use super::*;
 
@@ -289,5 +289,44 @@ mod tests {
         assert_eq!(TabletStatus::Hover.as_str(), "Hover");
         assert_eq!(TabletStatus::OutOfRange.as_str(), "Out of Range");
         assert_eq!(format!("{}", TabletStatus::Contact), "Contact");
+    }
+
+    #[test]
+    fn every_status_has_a_display_name() {
+        use TabletStatus::*;
+        for (status, name) in [
+            (Disconnected, "Disconnected"),
+            (OutOfRange, "Out of Range"),
+            (Hover, "Hover"),
+            (Contact, "Contact"),
+            (Active, "Active"),
+            (Eraser, "Eraser"),
+            (Pen, "Pen"),
+            (Touch, "Touch"),
+            (Aux, "Aux"),
+            (Rotation, "Rotation"),
+            (Tool, "Tool"),
+            (Mouse, "Mouse"),
+        ] {
+            assert_eq!(status.as_str(), name);
+        }
+    }
+
+    #[test]
+    fn resetting_the_statistics_restores_every_default() {
+        let mut stats = DriverStats {
+            handspeed: 3.0,
+            total_distance_mm: 99.0,
+            total_packets: 5,
+            max_hid_read_ms: 7.0,
+            min_parser_ms: 0.1,
+            ..DriverStats::default()
+        };
+        stats.reset();
+        assert_eq!(stats.total_packets, 0);
+        assert_eq!(stats.handspeed, 0.0);
+        assert_eq!(stats.total_distance_mm, 0.0);
+        assert_eq!(stats.max_hid_read_ms, 0.0);
+        assert_eq!(stats.min_parser_ms, f32::MAX);
     }
 }

@@ -19,12 +19,6 @@ pub use session::{SessionMeta, load_session_meta, save_session_meta};
 pub use paths::set_test_settings_dir;
 
 #[cfg(test)]
-#[allow(
-    clippy::unwrap_used,
-    clippy::expect_used,
-    clippy::panic,
-    clippy::indexing_slicing
-)]
 mod tests {
     use super::*;
     use crate::core::config::models::MappingConfig;

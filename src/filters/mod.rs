@@ -137,13 +137,7 @@ impl FilterPipeline {
 }
 
 #[cfg(test)]
-#[allow(
-    clippy::unwrap_used,
-    clippy::expect_used,
-    clippy::float_cmp,
-    clippy::indexing_slicing,
-    clippy::undocumented_unsafe_blocks
-)]
+#[allow(clippy::float_cmp, clippy::undocumented_unsafe_blocks)]
 mod tests {
     use super::*;
     use crate::core::config::models::{DynamicPluginSettings, MappingConfig};
@@ -343,5 +337,17 @@ mod tests {
         // Calling reset should not panic and should reset all instances
         pipeline.reset();
         assert_eq!(pipeline.entries.len(), 2);
+    }
+
+    #[test]
+    fn a_default_pipeline_is_empty() {
+        assert!(FilterPipeline::default().entries.is_empty());
+    }
+
+    #[test]
+    fn a_manager_without_plugins_gives_an_empty_pipeline() {
+        let manager = PluginManager::new();
+        let pipeline = FilterPipeline::from_manager(&manager, &MappingConfig::default());
+        assert!(pipeline.entries.is_empty());
     }
 }

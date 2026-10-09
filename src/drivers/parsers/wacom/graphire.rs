@@ -101,3 +101,87 @@ impl ReportParser for GraphireParser {
         }
     }
 }
+
+#[cfg(test)]
+#[allow(clippy::float_cmp)]
+mod tests {
+    use super::*;
+    use crate::drivers::TabletStatus;
+
+    /// `[id, b1, x, y, p_lo, p_hi_aux]` with 16-bit little-endian coordinates.
+    fn report(b1: u8, x: u16, y: u16, p_lo: u8, p_hi_aux: u8) -> [u8; 8] {
+        let (x, y) = (x.to_le_bytes(), y.to_le_bytes());
+        [0x02, b1, x[0], x[1], y[0], y[1], p_lo, p_hi_aux]
+    }
+
+    #[test]
+    fn pen_contact_decodes_position_and_ten_bit_pressure() {
+        let data = report(0x81, 0x1234, 0x0567, 0x55, 0x02);
+        let parsed = GraphireParser.parse(&data).unwrap();
+        assert_eq!(parsed.status, TabletStatus::Contact);
+        assert_eq!((parsed.x, parsed.y), (0x1234, 0x0567));
+        assert_eq!(parsed.pressure, 0x255);
+        assert_eq!(parsed.buttons, 0);
+        assert!(!parsed.eraser);
+        assert!(parsed.is_connected);
+        assert_eq!(parsed.raw_len, 8);
+    }
+
+    #[test]
+    fn pressure_is_ignored_while_the_tip_flag_is_clear() {
+        let data = report(0x80, 100, 200, 0xFF, 0x03);
+        let parsed = GraphireParser.parse(&data).unwrap();
+        assert_eq!(parsed.status, TabletStatus::Hover);
+        assert_eq!(parsed.pressure, 0);
+    }
+
+    #[test]
+    fn eraser_flag_and_all_four_buttons() {
+        // b1: in range + tip + eraser + both barrel buttons; aux bits add buttons 2 and 3.
+        let data = report(0x80 | 0x20 | 0x01 | 0x02 | 0x04, 1, 1, 1, 0xC0);
+        let parsed = GraphireParser.parse(&data).unwrap();
+        assert!(parsed.eraser);
+        assert_eq!(parsed.buttons, 0b1111);
+    }
+
+    #[test]
+    fn mouse_reports_carry_two_buttons_and_no_pressure() {
+        let parsed = GraphireParser
+            .parse(&report(0xC0, 10, 20, 0, 0x40))
+            .unwrap();
+        assert_eq!(parsed.status, TabletStatus::Mouse);
+        assert_eq!((parsed.x, parsed.y, parsed.pressure), (10, 20, 0));
+        assert_eq!(parsed.buttons, 0b01);
+
+        let parsed = GraphireParser
+            .parse(&report(0xC0, 10, 20, 0, 0xC0))
+            .unwrap();
+        assert_eq!(parsed.buttons, 0b11);
+    }
+
+    #[test]
+    fn empty_position_means_an_aux_report() {
+        let parsed = GraphireParser.parse(&report(0x00, 0, 0, 0, 0x80)).unwrap();
+        assert_eq!(parsed.status, TabletStatus::Aux);
+        assert_eq!(parsed.buttons, 0b10);
+        assert_eq!((parsed.x, parsed.y), (0, 0));
+    }
+
+    #[test]
+    fn rejects_other_report_ids_and_short_reports() {
+        let mut data = report(0x81, 1, 1, 1, 0);
+        data[0] = 0x03;
+        assert!(GraphireParser.parse(&data).is_none());
+        assert!(GraphireParser.parse(&data[..7]).is_none());
+        assert!(GraphireParser.parse(&[]).is_none());
+    }
+
+    #[test]
+    fn the_first_aux_key_is_reported_alone() {
+        let parsed = GraphireParser
+            .parse(&[0x02, 0x00, 0, 0, 0, 0, 0, 0x40])
+            .unwrap();
+        assert_eq!(parsed.status, TabletStatus::Aux);
+        assert_eq!(parsed.buttons, 0b01);
+    }
+}

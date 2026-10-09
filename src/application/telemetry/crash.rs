@@ -19,12 +19,18 @@ pub fn setup_panic_hook() {
 }
 
 pub fn send_pending_crash_reports() {
+    send_pending_crash_reports_with(&|name, properties| capture_event(name, Some(properties)));
+}
+
+/// Replays the report left by the previous run through `send`, then deletes it; a report that
+/// cannot be read is deleted without being sent so it is not retried forever.
+fn send_pending_crash_reports_with(send: &dyn Fn(&str, Value)) {
     let crash_file = crate::settings::get_settings_dir().join("crash_report.json");
     if crash_file.exists() {
         if let Ok(content) = std::fs::read_to_string(&crash_file)
             && let Ok(json) = serde_json::from_str::<Value>(&content)
         {
-            capture_event("app_panicked", Some(json));
+            send("app_panicked", json);
         }
         let _ = std::fs::remove_file(crash_file);
     }
@@ -76,12 +82,6 @@ fn anonymize_path_impl(
 }
 
 #[cfg(test)]
-#[allow(
-    clippy::unwrap_used,
-    clippy::expect_used,
-    clippy::panic,
-    clippy::indexing_slicing
-)]
 mod tests {
     use super::*;
 
@@ -113,5 +113,133 @@ mod tests {
             cleaned,
             "panic at /home/johndoe/Projects/NextTabletDriver/src/main.rs"
         );
+    }
+
+    use crate::settings::set_test_settings_dir;
+
+    fn temp_settings(name: &str) -> std::path::PathBuf {
+        let nanos = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_nanos();
+        let path = std::env::temp_dir().join(format!("ntd_crash_{name}_{nanos}"));
+        std::fs::create_dir_all(&path).unwrap();
+        set_test_settings_dir(path.clone());
+        path
+    }
+
+    /// Collects what a replay would hand to the telemetry worker.
+    fn replay() -> Vec<(String, Value)> {
+        let sent = std::cell::RefCell::new(Vec::new());
+        send_pending_crash_reports_with(&|name, properties| {
+            sent.borrow_mut().push((name.to_string(), properties));
+        });
+        sent.into_inner()
+    }
+
+    #[test]
+    fn a_pending_report_is_sent_once_and_then_deleted() {
+        let dir = temp_settings("pending");
+        let file = dir.join("crash_report.json");
+        std::fs::write(&file, r#"{ "panic_message": "boom" }"#).unwrap();
+
+        let sent = replay();
+        assert_eq!(
+            sent,
+            [(
+                "app_panicked".to_string(),
+                json!({ "panic_message": "boom" })
+            )]
+        );
+        assert!(!file.exists());
+        assert!(replay().is_empty(), "the report must not be sent twice");
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn an_unreadable_report_is_discarded_rather_than_retried_forever() {
+        let dir = temp_settings("garbage");
+        let file = dir.join("crash_report.json");
+        std::fs::write(&file, "not json at all").unwrap();
+        assert!(replay().is_empty(), "nothing readable, nothing sent");
+        assert!(!file.exists());
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn smoke_the_public_replay_does_not_fail_without_a_worker() {
+        // Smoke test: with no telemetry worker the event is dropped, the file is still removed.
+        let dir = temp_settings("public");
+        let file = dir.join("crash_report.json");
+        std::fs::write(&file, r#"{ "panic_message": "boom" }"#).unwrap();
+        send_pending_crash_reports();
+        assert!(!file.exists());
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn nothing_happens_without_a_pending_report() {
+        let dir = temp_settings("none");
+        assert!(replay().is_empty());
+        assert!(!dir.join("crash_report.json").exists());
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn anonymizing_hides_every_known_user_name() {
+        let message = r"panic at C:\Users\alice\src\main.rs and /home/bob/x (carol)";
+        let cleaned = anonymize_path_impl(
+            message,
+            Some(r"C:\Users\alice"),
+            Some("/home/bob"),
+            Some("carol"),
+        );
+        assert!(!cleaned.contains("alice"));
+        assert!(!cleaned.contains("bob"));
+        assert!(!cleaned.contains("carol"));
+        assert_eq!(cleaned.matches("<HIDDEN>").count(), 3);
+    }
+
+    #[test]
+    fn anonymizing_leaves_messages_alone_without_user_information() {
+        let message = "index out of bounds";
+        assert_eq!(anonymize_path_impl(message, None, None, None), message);
+        assert_eq!(
+            anonymize_path_impl(message, Some(""), Some("/"), Some("")),
+            message
+        );
+    }
+
+    #[test]
+    fn anonymizing_with_the_real_environment_hides_the_current_user() {
+        for variable in ["USERNAME", "USER"] {
+            if let Ok(user) = std::env::var(variable)
+                && user.len() >= 3
+            {
+                let cleaned = anonymize_path(&format!("panic in /home/{user}/src/main.rs"));
+                assert!(!cleaned.contains(&user), "{cleaned}");
+            }
+        }
+        // Without any user information the message is returned as it was.
+        assert_eq!(anonymize_path("index out of bounds"), "index out of bounds");
+    }
+
+    #[test]
+    fn the_panic_hook_writes_an_anonymized_report_for_the_next_launch() {
+        let dir = temp_settings("hook");
+        // Process-global state: installs a panic hook and restores the default one afterwards.
+        // Safe under nextest (one process per test); see `.github/CONTRIBUTING.md`.
+        setup_panic_hook();
+        let result = std::panic::catch_unwind(|| {
+            panic!("boom in C:\\Users\\Nobody\\src");
+        });
+        // Put the default hook back for whatever runs next in this process.
+        let _ = std::panic::take_hook();
+        assert!(result.is_err());
+
+        let report = std::fs::read_to_string(dir.join("crash_report.json")).unwrap();
+        let json: serde_json::Value = serde_json::from_str(&report).unwrap();
+        assert!(json["panic_message"].as_str().unwrap().contains("boom"));
+        let _ = std::fs::remove_dir_all(dir);
     }
 }

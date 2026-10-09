@@ -35,10 +35,11 @@ impl Drop for OwnerHandle {
 /// Tries to become the HID owner by creating (or opening) the named mutex and
 /// attempting to acquire it with a zero-millisecond wait.
 pub fn try_acquire() -> Option<OwnerHandle> {
-    let wide_name: Vec<u16> = MUTEX_NAME
-        .encode_utf16()
-        .chain(std::iter::once(0))
-        .collect();
+    try_acquire_named(MUTEX_NAME)
+}
+
+fn try_acquire_named(name: &str) -> Option<OwnerHandle> {
+    let wide_name: Vec<u16> = name.encode_utf16().chain(std::iter::once(0)).collect();
 
     // SAFETY: `wide_name` is a valid, NUL-terminated UTF-16 buffer kept alive
     // for the duration of the call; no security attributes or initial-owner
@@ -64,5 +65,32 @@ pub fn try_acquire() -> Option<OwnerHandle> {
             CloseHandle(handle);
         }
         None
+    }
+}
+
+#[cfg(test)]
+#[allow(clippy::float_cmp)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_name_the_os_refuses_gives_no_lock() {
+        // Kernel object names cannot contain a backslash after the namespace prefix.
+        assert!(try_acquire_named("Local\\ntd\\not\\valid").is_none());
+    }
+
+    #[test]
+    fn the_lock_is_exclusive_across_threads_and_released_on_drop() {
+        let name = format!("Local\\NtdTest_{}", std::process::id());
+        let first = try_acquire_named(&name).expect("first acquisition");
+        let contender = {
+            let name = name.clone();
+            std::thread::spawn(move || try_acquire_named(&name).is_some())
+        };
+        assert!(!contender.join().unwrap());
+        drop(first);
+
+        let again = std::thread::spawn(move || try_acquire_named(&name).is_some());
+        assert!(again.join().unwrap());
     }
 }

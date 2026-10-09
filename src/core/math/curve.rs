@@ -131,4 +131,35 @@ mod tests {
         assert!((evaluate(-0.5, &config) - 0.0).abs() < f32::EPSILON);
         assert!((evaluate(1.5, &config) - 1.0).abs() < f32::EPSILON);
     }
+
+    #[test]
+    fn a_nan_input_falls_through_every_segment() {
+        let points = [(0.0, 0.0), (0.5, 0.2), (1.0, 1.0)];
+        assert!(evaluate_custom(f32::NAN, &points).is_nan());
+    }
+
+    #[test]
+    fn the_right_segment_is_found_among_several() {
+        let points = [(0.0, 0.0), (0.5, 0.2), (1.0, 1.0)];
+        assert!((evaluate_custom(0.75, &points) - 0.6).abs() < 1e-6);
+    }
+
+    #[test]
+    fn a_zero_width_segment_returns_its_end_value() {
+        // The two middle points are one ulp apart: the segment has no usable span.
+        let near = f32::from_bits(0.5f32.to_bits() + 1);
+        let points = [(0.0, 0.0), (0.5, 0.0), (near, 1.0), (1.0, 1.0)];
+        assert_eq!(evaluate_custom(near, &points), 1.0);
+    }
+
+    #[test]
+    fn the_custom_curve_type_uses_its_control_points() {
+        let config = PressureCurveConfig {
+            curve_type: PressureCurveType::Custom,
+            points: vec![(0.0, 0.0), (1.0, 0.5)],
+            ..PressureCurveConfig::default()
+        };
+        assert!((evaluate(0.5, &config) - 0.25).abs() < 1e-6);
+        assert!((evaluate(2.0, &config) - 0.5).abs() < 1e-6);
+    }
 }

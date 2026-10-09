@@ -61,6 +61,13 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
-    setupFiles: ['./src/setupTests.ts']
+    setupFiles: ['./src/setupTests.ts'],
+    coverage: {
+      provider: 'v8',
+      include: ['src/**/*.{ts,svelte}'],
+      // Dev-only tooling, type declarations, test files and the entry point.
+      exclude: ['src/dev/**', 'src/**/__tests__/**', 'src/**/test-support/**', 'src/**/*.test.ts', 'src/**/*.d.ts', 'src/main.ts', 'src/setupTests.ts'],
+      reporter: ['text-summary', 'json-summary', 'lcov'],
+    },
   }
 })

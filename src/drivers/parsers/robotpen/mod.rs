@@ -42,12 +42,7 @@ impl ReportParser for RobotPenParser {
 }
 
 #[cfg(test)]
-#[allow(
-    clippy::unwrap_used,
-    clippy::expect_used,
-    clippy::panic,
-    clippy::float_cmp
-)]
+#[allow(clippy::float_cmp)]
 mod tests {
     use super::*;
 
@@ -66,5 +61,36 @@ mod tests {
         assert_eq!(report.pressure, 513); // 2 | 1<<8
         assert_eq!(report.buttons, 1); // data[11] & 2 = 2 => btn0 set
         Ok(())
+    }
+
+    use crate::drivers::TabletStatus;
+
+    fn report(pressure: u16) -> [u8; 12] {
+        let p = pressure.to_le_bytes();
+        [0, 0x42, 0, 0, 0, 0, 0x34, 0x12, 0x78, 0x56, p[0], p[1]]
+    }
+
+    #[test]
+    fn a_pen_without_pressure_hovers() {
+        let parsed = RobotPenParser.parse(&report(0)).unwrap();
+        assert_eq!(parsed.status, TabletStatus::Hover);
+        assert_eq!((parsed.x, parsed.y), (0x1234, 0x5678));
+        assert_eq!(parsed.buttons, 0);
+    }
+
+    #[test]
+    fn the_button_is_flagged_in_the_pressure_high_byte() {
+        let parsed = RobotPenParser.parse(&report(0x0200)).unwrap();
+        assert_eq!(parsed.status, TabletStatus::Contact);
+        assert_eq!(parsed.buttons, 1);
+    }
+
+    #[test]
+    fn other_report_kinds_and_short_reports_are_rejected() {
+        let mut data = report(1);
+        data[1] = 0x41;
+        assert!(RobotPenParser.parse(&data).is_none());
+        assert!(RobotPenParser.parse(&report(1)[..11]).is_none());
+        assert!(RobotPenParser.parse(&[]).is_none());
     }
 }

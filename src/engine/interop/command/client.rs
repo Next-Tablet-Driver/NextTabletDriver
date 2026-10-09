@@ -22,3 +22,62 @@ pub fn send_command(request: Request) -> io::Result<Response> {
     Response::decode(buf)
         .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "malformed command response"))
 }
+
+#[cfg(test)]
+#[allow(clippy::float_cmp)]
+mod tests {
+    use super::super::REQUEST_SIZE;
+    use super::*;
+    use interprocess::local_socket::ListenerOptions;
+
+    /// Binds the command socket like an owner would and answers one request with `reply`
+    /// (or hangs up without answering).
+    fn fake_owner(reply: Option<&'static [u8]>) -> std::thread::JoinHandle<()> {
+        let listener = ListenerOptions::new()
+            .name(socket_name().unwrap())
+            .create_sync()
+            .unwrap();
+        std::thread::spawn(move || {
+            let mut stream = listener.accept().unwrap();
+            let mut request = [0u8; REQUEST_SIZE];
+            stream.read_exact(&mut request).unwrap();
+            if let Some(bytes) = reply {
+                stream.write_all(bytes).unwrap();
+            }
+        })
+    }
+
+    #[test]
+    fn without_an_owner_the_command_cannot_be_sent() {
+        assert!(send_command(Request::Ping).is_err());
+    }
+
+    #[test]
+    fn an_answer_that_is_not_a_response_is_malformed() {
+        let owner = fake_owner(Some(&[7]));
+        let error = send_command(Request::Ping).unwrap_err();
+        assert_eq!(error.kind(), io::ErrorKind::InvalidData);
+        owner.join().unwrap();
+    }
+
+    #[test]
+    fn an_owner_that_hangs_up_without_answering_is_an_error() {
+        let owner = fake_owner(None);
+        assert!(send_command(Request::Ping).is_err());
+        owner.join().unwrap();
+    }
+
+    #[test]
+    fn an_ok_answer_is_decoded() {
+        let owner = fake_owner(Some(&[0]));
+        assert_eq!(send_command(Request::Ping).unwrap(), Response::Ok);
+        owner.join().unwrap();
+    }
+
+    #[test]
+    fn a_rejection_is_decoded() {
+        let owner = fake_owner(Some(&[1]));
+        assert_eq!(send_command(Request::Ping).unwrap(), Response::Rejected);
+        owner.join().unwrap();
+    }
+}

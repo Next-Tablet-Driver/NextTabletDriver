@@ -34,24 +34,28 @@ fn quarantine_corrupt_file(path: &Path) {
 /// Returns an error string if serialization fails, the temporary file cannot be written,
 /// or the final rename operation fails.
 pub fn save_to_path(path: &Path, config: &MappingConfig) -> Result<(), String> {
+    write_json_atomically(path, serde_json::to_string_pretty(config))
+}
+
+/// Writes serialized JSON to `path` through a temporary file; `json` carries the outcome of the
+/// serialization so that a failure is reported together with the file it was meant for.
+fn write_json_atomically(path: &Path, json: serde_json::Result<String>) -> Result<(), String> {
     if let Some(parent) = path.parent()
         && !parent.exists()
     {
         let _ = fs::create_dir_all(parent);
     }
 
-    let json = serde_json::to_string_pretty(config).map_err(|e| {
+    let json = json.map_err(|e| {
         log::error!(target: "Config", "Failed to serialize config for {}: {e}", path.display());
         e.to_string()
     })?;
 
     let tmp_path = path.with_extension("json.tmp");
     // fsync before the rename so a power loss cannot leave an empty/partial file in place.
-    let write_result = fs::File::create(&tmp_path).and_then(|mut file| {
-        use std::io::Write;
-        file.write_all(json.as_bytes())?;
-        file.sync_all()
-    });
+    let write_result = fs::write(&tmp_path, &json)
+        .and_then(|()| fs::OpenOptions::new().write(true).open(&tmp_path))
+        .and_then(|file| file.sync_all());
     write_result.map_err(|e| {
         log::error!(target: "Config", "Failed to write temp file {}: {e}", tmp_path.display());
         let _ = fs::remove_file(&tmp_path);
@@ -222,4 +226,216 @@ pub fn list_profiles() -> Vec<(String, PathBuf)> {
 
     profiles.sort_by_key(|a| a.0.to_lowercase());
     profiles
+}
+
+#[cfg(test)]
+#[allow(clippy::float_cmp)]
+mod tests {
+    use super::*;
+    use crate::settings::set_test_settings_dir;
+
+    /// A throw-away settings directory, removed on drop.
+    struct TempSettings(PathBuf);
+
+    impl TempSettings {
+        fn new(name: &str) -> Self {
+            let nanos = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_nanos();
+            let path = std::env::temp_dir().join(format!("ntd_profile_{name}_{nanos}"));
+            fs::create_dir_all(&path).unwrap();
+            crate::test_support::evaluate_log_arguments();
+            set_test_settings_dir(path.clone());
+            Self(path)
+        }
+    }
+
+    impl Drop for TempSettings {
+        fn drop(&mut self) {
+            let _ = fs::remove_dir_all(&self.0);
+        }
+    }
+
+    fn invalid_config() -> MappingConfig {
+        let mut config = MappingConfig::default();
+        config.active_area.w = -5.0;
+        config
+    }
+
+    #[test]
+    fn sanitizing_removes_reserved_characters_and_traversal() {
+        assert_eq!(sanitize_profile_name("osu!"), "osu!");
+        assert_eq!(sanitize_profile_name("a/b\\c:d*e?f\"g<h>i|j"), "abcdefghij");
+        assert_eq!(sanitize_profile_name("../../etc/passwd"), "etcpasswd");
+        assert_eq!(sanitize_profile_name(".hidden"), "hidden");
+        assert_eq!(sanitize_profile_name(""), "unnamed_profile");
+        assert_eq!(sanitize_profile_name("..."), "unnamed_profile");
+        assert_eq!(sanitize_profile_name("///"), "unnamed_profile");
+    }
+
+    #[test]
+    fn save_to_path_creates_missing_folders_and_leaves_no_temporary_file() {
+        let dir = TempSettings::new("save_path");
+        let path = dir.0.join("deep").join("er").join("config.json");
+        save_to_path(&path, &MappingConfig::default()).unwrap();
+        assert!(path.exists());
+        assert!(!path.with_extension("json.tmp").exists());
+        let (loaded, corrections) = load_settings_from_file(&path).unwrap();
+        assert!(corrections.is_empty());
+        assert_eq!(loaded, MappingConfig::default());
+    }
+
+    #[test]
+    fn save_to_path_reports_a_failure_to_write() {
+        let dir = TempSettings::new("save_fail");
+        // The target is an existing directory: the final rename cannot succeed.
+        let target = dir.0.join("is_a_folder.json");
+        fs::create_dir_all(target.join("child")).unwrap();
+        assert!(save_to_path(&target, &MappingConfig::default()).is_err());
+        assert!(!target.with_extension("json.tmp").exists());
+    }
+
+    #[test]
+    fn named_presets_get_a_json_extension_once() {
+        let dir = TempSettings::new("presets");
+        save_settings("osu!", &MappingConfig::default()).unwrap();
+        save_settings("Drawing.json", &MappingConfig::default()).unwrap();
+        let names: Vec<_> = list_profiles().into_iter().map(|(name, _)| name).collect();
+        assert_eq!(names, ["Drawing", "osu!"]);
+        assert!(get_profiles_dir().join("osu!.json").exists());
+        assert!(get_profiles_dir().join("Drawing.json").exists());
+        drop(dir);
+    }
+
+    #[test]
+    fn profiles_are_listed_case_insensitively_and_junk_is_skipped() {
+        let _dir = TempSettings::new("listing");
+        for name in ["beta", "Alpha", "gamma"] {
+            save_settings(name, &MappingConfig::default()).unwrap();
+        }
+        fs::write(get_profiles_dir().join("notes.txt"), "not a profile").unwrap();
+        let listed = list_profiles();
+        let names: Vec<_> = listed.iter().map(|(name, _)| name.as_str()).collect();
+        assert_eq!(names, ["Alpha", "beta", "gamma"]);
+        assert!(listed.iter().all(|(_, path)| path.exists()));
+    }
+
+    #[test]
+    fn listing_a_missing_folder_gives_no_profile() {
+        let dir = TempSettings::new("no_dir");
+        let _ = fs::remove_dir_all(get_profiles_dir());
+        assert!(list_profiles().is_empty());
+        drop(dir);
+    }
+
+    #[test]
+    fn there_is_no_last_session_until_one_is_saved() {
+        let _dir = TempSettings::new("session");
+        assert!(load_last_session().is_none());
+        save_last_session(&MappingConfig::default()).unwrap();
+        let (config, corrections) = load_last_session().unwrap();
+        assert_eq!(config, MappingConfig::default());
+        assert!(corrections.is_empty());
+    }
+
+    #[test]
+    fn an_invalid_last_session_is_repaired_and_saved_back() {
+        let dir = TempSettings::new("repair_session");
+        save_last_session(&invalid_config()).unwrap();
+        let (config, corrections) = load_last_session().unwrap();
+        assert!(!corrections.is_empty());
+        assert!(config.active_area.w > 0.0);
+        // The repaired state replaced the broken file: the next load needs no repair.
+        assert!(load_last_session().unwrap().1.is_empty());
+        drop(dir);
+    }
+
+    #[test]
+    fn an_unreadable_last_session_is_quarantined_not_overwritten() {
+        let dir = TempSettings::new("corrupt_session");
+        let file = dir.0.join("last_session.json");
+        fs::write(&file, "{ definitely not json").unwrap();
+        assert!(load_last_session().is_none());
+        assert!(!file.exists());
+        let backup = dir.0.join("last_session.json.corrupt.bak");
+        assert_eq!(fs::read_to_string(backup).unwrap(), "{ definitely not json");
+    }
+
+    #[test]
+    fn loading_a_settings_file_reports_unreadable_and_invalid_files() {
+        let dir = TempSettings::new("load_errors");
+        assert!(load_settings_from_file(&dir.0.join("missing.json")).is_err());
+        let broken = dir.0.join("broken.json");
+        fs::write(&broken, "[1, 2").unwrap();
+        assert!(load_settings_from_file(&broken).is_err());
+    }
+
+    #[test]
+    fn loading_a_settings_file_repairs_and_rewrites_it() {
+        let dir = TempSettings::new("load_repair");
+        let path = dir.0.join("profile.json");
+        save_to_path(&path, &invalid_config()).unwrap();
+        let (config, corrections) = load_settings_from_file(&path).unwrap();
+        assert_eq!(corrections.len(), 1);
+        assert!(config.active_area.w > 0.0);
+        assert!(load_settings_from_file(&path).unwrap().1.is_empty());
+    }
+
+    #[test]
+    fn a_value_that_cannot_be_serialized_is_reported_and_nothing_is_written() {
+        let dir = TempSettings::new("serialize_fail");
+        let path = dir.0.join("never.json");
+        let error = write_json_atomically(&path, Err(serde_json::from_str::<u8>("x").unwrap_err()))
+            .unwrap_err();
+        assert!(error.contains("line 1"), "{error}");
+        assert!(!path.exists());
+    }
+
+    #[test]
+    fn a_temporary_file_that_cannot_be_created_is_reported() {
+        let dir = TempSettings::new("tmp_blocked");
+        let path = dir.0.join("profile.json");
+        // The temporary name is taken by a directory.
+        fs::create_dir_all(path.with_extension("json.tmp")).unwrap();
+        assert!(save_to_path(&path, &MappingConfig::default()).is_err());
+        assert!(!path.exists());
+    }
+
+    #[test]
+    fn quarantining_a_file_that_is_already_gone_only_logs() {
+        let dir = TempSettings::new("quarantine_missing");
+        quarantine_corrupt_file(&dir.0.join("not_there.json"));
+        assert!(!dir.0.join("not_there.json.corrupt.bak").exists());
+    }
+
+    #[test]
+    fn a_last_session_that_cannot_be_read_is_ignored() {
+        let dir = TempSettings::new("session_is_a_folder");
+        fs::create_dir_all(dir.0.join("last_session.json")).unwrap();
+        assert!(load_last_session().is_none());
+    }
+
+    #[test]
+    fn a_profiles_folder_that_cannot_be_listed_gives_no_profile() {
+        let dir = TempSettings::new("profiles_is_a_file");
+        fs::write(dir.0.join("profiles"), "not a folder").unwrap();
+        assert!(list_profiles().is_empty());
+    }
+
+    #[test]
+    fn a_preset_that_cannot_be_saved_is_reported() {
+        let dir = TempSettings::new("preset_unsaveable");
+        // `profiles` is a file, so nothing can be written inside it.
+        fs::write(dir.0.join("profiles"), "not a folder").unwrap();
+        assert!(save_settings("osu!", &MappingConfig::default()).is_err());
+    }
+
+    #[test]
+    fn a_session_that_cannot_be_saved_is_reported() {
+        let dir = TempSettings::new("session_unsaveable");
+        // The session path is a non-empty directory, so the final rename cannot replace it.
+        fs::create_dir_all(dir.0.join("last_session.json").join("child")).unwrap();
+        assert!(save_last_session(&MappingConfig::default()).is_err());
+    }
 }

@@ -176,12 +176,7 @@ impl ReportParser for WacomDriverIntuosV2Parser {
 }
 
 #[cfg(test)]
-#[allow(
-    clippy::unwrap_used,
-    clippy::expect_used,
-    clippy::panic,
-    clippy::float_cmp
-)]
+#[allow(clippy::float_cmp)]
 mod tests {
     use super::*;
 
@@ -201,5 +196,98 @@ mod tests {
         assert_eq!(result.x, 0x0012_0034);
         assert_eq!(result.buttons, 1 << 0);
         assert_eq!(result.pressure, 1023);
+    }
+
+    use crate::drivers::TabletStatus;
+
+    #[test]
+    fn tablet_report_decodes_the_split_coordinates() {
+        let mut data = [0u8; 17];
+        data[0] = 0x10;
+        data[1] = 0x02 | 0x04 | 0x10;
+        data[2] = 0x34; // x_lo
+        data[4] = 0x01; // x_hi
+        data[5] = 0x78; // y_lo
+        data[7] = 0x02; // y_hi
+        data[9] = 0x02; // pressure high byte
+        data[10] = 0xFE; // tilt x
+        data[11] = 0x03; // tilt y
+        data[16] = 7; // hover distance
+        let parsed = IntuosV2Parser::new().parse(&data).unwrap();
+        assert_eq!(parsed.status, TabletStatus::Contact);
+        assert_eq!((parsed.x, parsed.y), (0x0001_0034, 0x0002_0078));
+        assert_eq!(parsed.pressure, 0x200);
+        assert_eq!((parsed.tilt_x, parsed.tilt_y), (-2, 3));
+        assert_eq!(parsed.buttons, 0b11);
+        assert!(parsed.eraser);
+        assert_eq!(parsed.hover_distance, 7);
+    }
+
+    #[test]
+    fn no_pressure_is_hover() {
+        let mut data = [0u8; 17];
+        data[0] = 0x10;
+        let parsed = IntuosV2Parser::new().parse(&data).unwrap();
+        assert_eq!(parsed.status, TabletStatus::Hover);
+        assert!(!parsed.eraser);
+    }
+
+    #[test]
+    fn extended_report_has_three_buttons_and_reuses_tilt_x_as_hover_distance() {
+        let data = [
+            0x1E, 0x0E, 0x00, 0x10, 0x00, 0x01, 0x20, 0x00, 0x02, 0x05, 0x00, 0x09, 0xFF,
+        ];
+        let parsed = IntuosV2Parser::new().parse(&data).unwrap();
+        assert_eq!(parsed.status, TabletStatus::Contact);
+        assert_eq!((parsed.x, parsed.y), (0x0001_0010, 0x0002_0020));
+        assert_eq!(parsed.pressure, 5);
+        assert_eq!((parsed.tilt_x, parsed.tilt_y), (9, -1));
+        assert_eq!(parsed.buttons, 0b111);
+        assert!(!parsed.eraser);
+        assert_eq!(parsed.hover_distance, 9);
+    }
+
+    #[test]
+    fn id_0x11_is_the_aux_report() {
+        let parsed = IntuosV2Parser::new().parse(&[0x11, 0x0B]).unwrap();
+        assert_eq!(parsed.status, TabletStatus::Aux);
+        assert_eq!(parsed.buttons, 0x0B);
+    }
+
+    #[test]
+    fn unknown_and_truncated_reports_are_rejected() {
+        let parser = IntuosV2Parser::new();
+        assert!(parser.parse(&[]).is_none());
+        assert!(parser.parse(&[0x10, 1, 2, 3]).is_none());
+        assert!(parser.parse(&[0x1E, 1, 2]).is_none());
+        assert!(parser.parse(&[0x55, 1, 2, 3]).is_none());
+        assert!(parser.parse(&[0x11]).is_none());
+    }
+
+    #[test]
+    fn the_driver_variant_skips_the_leading_byte() {
+        let parsed = WacomDriverIntuosV2Parser::new()
+            .parse(&[0xFF, 0x11, 0x05])
+            .unwrap();
+        assert_eq!((parsed.status, parsed.buttons), (TabletStatus::Aux, 5));
+        assert!(WacomDriverIntuosV2Parser::new().parse(&[]).is_none());
+    }
+
+    #[test]
+    #[allow(clippy::default_constructed_unit_structs)]
+    fn the_default_parsers_behave_like_the_new_ones() {
+        let plain = IntuosV2Parser::default();
+        assert!(plain.parse(&[0x11, 0x01]).is_some());
+        let driver = WacomDriverIntuosV2Parser::default();
+        assert!(driver.parse(&[0xFF, 0x11, 0x01]).is_some());
+    }
+
+    #[test]
+    fn the_extended_report_without_pressure_hovers() {
+        let mut data = [0u8; 13];
+        data[0] = 0x1E;
+        let parsed = IntuosV2Parser::new().parse(&data).unwrap();
+        assert_eq!(parsed.status, TabletStatus::Hover);
+        assert_eq!(parsed.pressure, 0);
     }
 }

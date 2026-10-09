@@ -150,3 +150,82 @@ impl TelemetryWorker {
         }
     }
 }
+
+#[cfg(test)]
+#[allow(clippy::float_cmp)]
+mod tests {
+    use super::*;
+    use crossbeam_channel::bounded;
+
+    fn worker() -> (crossbeam_channel::Sender<TelemetryMessage>, TelemetryWorker) {
+        let (sender, receiver) = bounded(8);
+        (
+            sender,
+            TelemetryWorker::new(receiver, "test-key".into(), "install-1".into()),
+        )
+    }
+
+    #[test]
+    fn events_carry_the_install_and_platform_properties() {
+        let (_tx, worker) = worker();
+        let payload = worker.build_event_payload("tablet_connected", None, None);
+        assert_eq!(payload["event"], "tablet_connected");
+        let props = &payload["properties"];
+        assert_eq!(props["distinct_id"], "install-1");
+        assert_eq!(props["os"], std::env::consts::OS);
+        assert_eq!(props["arch"], std::env::consts::ARCH);
+        assert_eq!(props["version"], crate::VERSION);
+        assert_eq!(props["$set_once"]["initial_os"], std::env::consts::OS);
+        assert!(props.get("$set").is_none());
+        assert!(!props["session_id"].as_str().unwrap().is_empty());
+    }
+
+    #[test]
+    fn the_timestamp_is_rfc3339() {
+        let (_tx, worker) = worker();
+        let payload = worker.build_event_payload("x", None, None);
+        let stamp = payload["timestamp"].as_str().unwrap();
+        assert!(
+            chrono::DateTime::parse_from_rfc3339(stamp).is_ok(),
+            "{stamp}"
+        );
+    }
+
+    #[test]
+    fn custom_properties_are_merged_and_set_properties_are_nested() {
+        let (_tx, worker) = worker();
+        let custom = json!({ "tablet": "CTL-472", "packets": 12 });
+        let set = json!({ "plan": "free" });
+        let payload = worker.build_event_payload("e", Some(&custom), Some(&set));
+        let props = &payload["properties"];
+        assert_eq!(props["tablet"], "CTL-472");
+        assert_eq!(props["packets"], 12);
+        assert_eq!(props["$set"]["plan"], "free");
+        assert_eq!(props["distinct_id"], "install-1");
+    }
+
+    #[test]
+    fn custom_properties_that_are_not_an_object_are_ignored() {
+        let (_tx, worker) = worker();
+        let payload = worker.build_event_payload("e", Some(&json!([1, 2, 3])), None);
+        assert_eq!(payload["properties"]["distinct_id"], "install-1");
+        assert!(payload["properties"].get("0").is_none());
+    }
+
+    #[test]
+    fn the_worker_acknowledges_a_shutdown_and_stops() {
+        let (tx, worker) = worker();
+        let (ack_tx, ack_rx) = bounded(1);
+        tx.send(TelemetryMessage::Shutdown { ack: ack_tx }).unwrap();
+        // Nothing is queued, so nothing is sent over the network.
+        worker.run();
+        assert!(ack_rx.try_recv().is_ok());
+    }
+
+    #[test]
+    fn the_worker_stops_when_every_sender_is_gone() {
+        let (tx, worker) = worker();
+        drop(tx);
+        worker.run();
+    }
+}

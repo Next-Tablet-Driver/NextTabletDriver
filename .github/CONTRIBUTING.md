@@ -33,6 +33,8 @@ npm --prefix frontend run check
 npm --prefix frontend run test -- --run
 ```
 
+> **Why nextest rather than `cargo test`?** A few Rust tests touch state that belongs to the whole process: the panic hook installed by `setup_panic_hook`, the `log` level, and the telemetry sender. `cargo nextest` runs every test in its own process, so they cannot affect each other; under `cargo test` (threads in one process) they may interfere. Tests that depend on this say so in a comment. Tests whose only purpose is to check that a call does not panic are named `smoke_*`.
+
 ### 4. Commit and Push
 Push your branch to your fork:
 ```bash

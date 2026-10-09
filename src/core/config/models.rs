@@ -613,12 +613,7 @@ impl MappingConfig {
 }
 
 #[cfg(test)]
-#[allow(
-    clippy::unwrap_used,
-    clippy::expect_used,
-    clippy::panic,
-    clippy::float_cmp
-)]
+#[allow(clippy::float_cmp)]
 mod tests {
     use super::*;
 
@@ -803,5 +798,103 @@ mod tests {
 
         assert!(!corrections.is_empty());
         assert_eq!(config.pressure_curve.points, vec![(0.0, 0.0), (1.0, 1.0)]);
+    }
+
+    #[test]
+    fn the_height_is_derived_from_the_width_or_the_other_way_round() {
+        let mut area = ActiveArea {
+            x: 50.0,
+            y: 50.0,
+            w: 40.0,
+            h: 30.0,
+            rotation: 0.0,
+        };
+        area.apply_aspect_ratio(2.0, true, 100.0, 100.0);
+        assert_eq!((area.w, area.h), (40.0, 20.0));
+        area.apply_aspect_ratio(2.0, false, 100.0, 100.0);
+        assert_eq!((area.w, area.h), (40.0, 20.0));
+        area.h = 30.0;
+        area.apply_aspect_ratio(2.0, false, 100.0, 100.0);
+        assert_eq!((area.w, area.h), (60.0, 30.0));
+    }
+
+    #[test]
+    fn repair_resets_each_invalid_numeric_setting_to_its_default() {
+        let defaults = MappingConfig::default();
+        let mut config = MappingConfig::default();
+        config.target_area.h = -1.0;
+        config.relative_config.x_sensitivity = 5000.0;
+        config.relative_config.y_sensitivity = 0.0;
+
+        let corrections = config.validate_and_repair();
+
+        assert_eq!(corrections.len(), 3, "{corrections:?}");
+        assert_eq!(config.target_area.h, defaults.target_area.h);
+        assert_eq!(
+            config.relative_config.x_sensitivity,
+            defaults.relative_config.x_sensitivity
+        );
+        assert_eq!(
+            config.relative_config.y_sensitivity,
+            defaults.relative_config.y_sensitivity
+        );
+    }
+
+    #[test]
+    fn repair_keeps_pen_button_bindings_within_bounds() {
+        let defaults = MappingConfig::default();
+        let mut config = MappingConfig {
+            pen_button_bindings: vec!["Left Click".to_string(); 40],
+            ..MappingConfig::default()
+        };
+        assert_eq!(config.validate_and_repair().len(), 1);
+        assert_eq!(config.pen_button_bindings.len(), 32);
+
+        config.pen_button_bindings.clear();
+        assert_eq!(config.validate_and_repair().len(), 1);
+        assert_eq!(config.pen_button_bindings, defaults.pen_button_bindings);
+    }
+
+    #[test]
+    fn repair_brings_the_pressure_exponent_back_into_range() {
+        let defaults = MappingConfig::default();
+        let mut config = MappingConfig::default();
+
+        config.pressure_curve.exponent = f32::NAN;
+        assert_eq!(config.validate_and_repair().len(), 1);
+        assert_eq!(
+            config.pressure_curve.exponent,
+            defaults.pressure_curve.exponent
+        );
+
+        config.pressure_curve.exponent = 10.0;
+        config.validate_and_repair();
+        assert_eq!(config.pressure_curve.exponent, 5.0);
+
+        config.pressure_curve.exponent = 0.0;
+        config.validate_and_repair();
+        assert_eq!(config.pressure_curve.exponent, 0.1);
+    }
+
+    #[test]
+    fn repair_normalizes_the_curve_control_points() {
+        let defaults = MappingConfig::default();
+        let mut config = MappingConfig::default();
+
+        config.pressure_curve.points = vec![(0.0, 0.5); 40];
+        assert_eq!(config.validate_and_repair().len(), 1);
+        assert_eq!(config.pressure_curve.points.len(), 32);
+
+        config.pressure_curve.points = vec![(0.5, 0.5)];
+        assert_eq!(config.validate_and_repair().len(), 1);
+        assert_eq!(config.pressure_curve.points, defaults.pressure_curve.points);
+
+        // Unsorted and out-of-range points are clamped, sorted and pinned to the unit square.
+        config.pressure_curve.points = vec![(0.7, 2.0), (0.2, -1.0), (0.9, 0.5)];
+        assert!(config.validate_and_repair().is_empty());
+        assert_eq!(
+            config.pressure_curve.points,
+            vec![(0.0, 0.0), (0.7, 1.0), (1.0, 0.5)]
+        );
     }
 }

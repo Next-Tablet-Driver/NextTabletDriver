@@ -33,7 +33,11 @@ const REQUEST_SIZE: usize = 24;
 const RESPONSE_SIZE: usize = 1;
 
 fn socket_name() -> io::Result<Name<'static>> {
-    if GenericNamespaced::is_supported() {
+    socket_name_for(GenericNamespaced::is_supported())
+}
+
+fn socket_name_for(namespaced: bool) -> io::Result<Name<'static>> {
+    if namespaced {
         SOCKET_NAME.to_ns_name::<GenericNamespaced>()
     } else {
         runtime_socket_path().to_fs_name::<GenericFilePath>()
@@ -48,7 +52,6 @@ fn runtime_socket_path() -> std::path::PathBuf {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 mod tests {
     use super::*;
     use crate::core::config::models::{ActiveArea, DriverMode};
@@ -120,5 +123,51 @@ mod tests {
         );
 
         drop(listener);
+    }
+
+    use interprocess::local_socket::Stream;
+    use std::io::{Read, Write};
+
+    fn exchange(bytes: &[u8]) -> Option<u8> {
+        let mut stream = Stream::connect(socket_name().unwrap()).ok()?;
+        stream.write_all(bytes).ok()?;
+        let mut reply = [0u8; RESPONSE_SIZE];
+        stream.read_exact(&mut reply).ok()?;
+        Some(reply[0])
+    }
+
+    #[test]
+    fn the_filesystem_fallback_lives_in_the_runtime_directory() {
+        let path = runtime_socket_path();
+        assert_eq!(path.file_name().unwrap(), "ntd_cmd_v1.sock");
+    }
+
+    #[test]
+    fn the_namespaced_flavour_is_always_available_and_the_file_one_only_on_unix() {
+        assert!(socket_name_for(true).is_ok());
+        // Windows has no filesystem sockets: the fallback is refused there.
+        assert_eq!(socket_name_for(false).is_ok(), cfg!(unix));
+    }
+
+    #[test]
+    fn the_listener_survives_truncated_and_undecodable_requests() {
+        let handler = Arc::new(RecordingHandler::default());
+        let _listener = CommandListener::spawn(Arc::clone(&handler) as Arc<dyn CommandHandler>)
+            .expect("listener should bind the command socket");
+
+        // A client that hangs up halfway through a request gets no answer and breaks nothing.
+        {
+            let mut stream = Stream::connect(socket_name().unwrap()).unwrap();
+            stream.write_all(&[1, 2, 3]).unwrap();
+        }
+        assert_eq!(send_command(Request::Ping).unwrap(), Response::Ok);
+
+        // A full-size request that is not a command is answered with a rejection.
+        let mut garbage = [0u8; REQUEST_SIZE];
+        garbage[0] = 9;
+        assert_eq!(exchange(&garbage), Some(Response::Rejected.encode()[0]));
+
+        assert!(handler.modes.lock().unwrap().is_empty());
+        assert!(handler.areas.lock().unwrap().is_empty());
     }
 }

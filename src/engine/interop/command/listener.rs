@@ -58,9 +58,7 @@ impl CommandListener {
             while !shutdown_for_thread.load(Ordering::Relaxed) {
                 match listener.accept() {
                     Ok(stream) => handle_connection(stream, &handler),
-                    Err(e) if e.kind() == io::ErrorKind::WouldBlock => {
-                        std::thread::sleep(ACCEPT_POLL_INTERVAL);
-                    }
+                    // Nothing to accept yet (non-blocking) or a transient error: look again soon.
                     Err(_) => std::thread::sleep(ACCEPT_POLL_INTERVAL),
                 }
             }

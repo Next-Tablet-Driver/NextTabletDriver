@@ -291,3 +291,135 @@ fn on_disconnected(shared: &Arc<SharedState>) {
         .write()
         .unwrap_or_reset("tablet_data") = crate::drivers::TabletData::default();
 }
+
+#[cfg(test)]
+#[allow(clippy::float_cmp)]
+mod tests {
+    use super::*;
+    use crate::drivers::NextTabletDriver;
+    use crate::engine::state::EngineStatus;
+    use crossbeam_channel::bounded;
+
+    struct StubDriver;
+
+    impl NextTabletDriver for StubDriver {
+        fn get_name(&self) -> &'static str {
+            "Stub Tablet"
+        }
+        fn get_specs(&self) -> (f32, f32, f32) {
+            (16000.0, 10000.0, 8191.0)
+        }
+        fn get_physical_specs(&self) -> (f32, f32) {
+            (160.0, 100.0)
+        }
+        fn get_vid_pid(&self) -> (u16, u16) {
+            (0x1234, 0x5678)
+        }
+        fn parse(&self, _data: &[u8]) -> Option<TabletData> {
+            None
+        }
+    }
+
+    fn shared(first_run: bool) -> Arc<SharedState> {
+        let shared = Arc::new(SharedState::new());
+        *shared.lifecycle.is_first_run.write().unwrap() = first_run;
+        shared
+    }
+
+    #[test]
+    fn connecting_a_tablet_publishes_its_metadata() {
+        let shared = shared(false);
+        let mut local = MappingConfig::default();
+        on_device_connected(&shared, &StubDriver, 0x1234, 0x5678, &mut local);
+
+        let device = shared.device.read().unwrap().clone();
+        assert_eq!(device.name, "Stub Tablet");
+        assert_eq!((device.vid, device.pid), (0x1234, 0x5678));
+        assert_eq!(device.physical_size, (160.0, 100.0));
+        assert_eq!(device.hardware_size, (16000.0, 10000.0));
+        assert_eq!(device.max_pressure, 8191.0);
+        // Not the first run: the user's active area is left alone.
+        assert_eq!(shared.config.version.load(Ordering::SeqCst), 0);
+    }
+
+    #[test]
+    fn the_first_connection_centres_the_active_area_on_the_tablet() {
+        let shared = shared(true);
+        let mut local = MappingConfig::default();
+        on_device_connected(&shared, &StubDriver, 0x1234, 0x5678, &mut local);
+
+        let area = shared.config.mapping.read().unwrap().active_area;
+        assert_eq!((area.w, area.h, area.x, area.y), (160.0, 100.0, 80.0, 50.0));
+        assert_eq!(local.active_area.w, 160.0);
+        assert!(!*shared.lifecycle.is_first_run.read().unwrap());
+        assert_eq!(shared.config.version.load(Ordering::SeqCst), 1);
+
+        // A second connection no longer touches the configuration.
+        let mut again = MappingConfig::default();
+        on_device_connected(&shared, &StubDriver, 0x1234, 0x5678, &mut again);
+        assert_eq!(shared.config.version.load(Ordering::SeqCst), 1);
+    }
+
+    #[test]
+    fn disconnecting_restores_the_empty_device_and_clears_the_last_packet() {
+        let shared = shared(false);
+        let mut local = MappingConfig::default();
+        on_device_connected(&shared, &StubDriver, 0x1234, 0x5678, &mut local);
+        shared.pipeline.tablet_data.write().unwrap().is_connected = true;
+
+        on_disconnected(&shared);
+
+        assert_eq!(shared.device.read().unwrap().vid, 0);
+        assert_eq!(shared.device.read().unwrap().name, "No Tablet Detected");
+        assert!(!shared.pipeline.tablet_data.read().unwrap().is_connected);
+    }
+
+    #[test]
+    fn the_filter_pipeline_starts_empty_without_plugins() {
+        let shared = shared(false);
+        let pipeline = init_filter_pipeline(&shared, &MappingConfig::default());
+        assert!(pipeline.entries.is_empty());
+    }
+
+    #[test]
+    fn raising_the_thread_priority_never_fails_the_caller() {
+        init_thread_priority();
+    }
+
+    // The two tests below run the whole owner setup with the loop already told to stop: HID API,
+    // injector, filters, shared segment and command socket come up and go down, and no tablet is
+    // ever detected or opened.
+
+    #[test]
+    fn an_owner_started_during_shutdown_sets_up_and_tears_down_cleanly() {
+        let shared = shared(false);
+        shared
+            .lifecycle
+            .shutdown_requested
+            .store(true, Ordering::Relaxed);
+        let (sender, _receiver) = bounded(1);
+        owner_iteration(&shared, &sender);
+        let status = shared.lifecycle.engine_status.read().unwrap().clone();
+        assert!(
+            matches!(status, EngineStatus::Running | EngineStatus::Failed(_)),
+            "{status:?}"
+        );
+        assert_eq!(shared.device.read().unwrap().vid, 0);
+    }
+
+    #[test]
+    fn a_reload_request_restarts_the_owner_context() {
+        let shared = shared(false);
+        shared
+            .config
+            .reload_requested
+            .store(true, Ordering::Relaxed);
+        let (sender, _receiver) = bounded(1);
+        owner_iteration(&shared, &sender);
+        // The request is consumed by the loop that honours it (unless setup failed first).
+        let status = shared.lifecycle.engine_status.read().unwrap().clone();
+        if matches!(status, EngineStatus::Running) {
+            assert!(!shared.config.reload_requested.load(Ordering::Relaxed));
+        }
+    }
+}

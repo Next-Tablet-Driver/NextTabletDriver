@@ -185,12 +185,7 @@ impl ReportParser for WacomDriverIntuosV1Parser {
 }
 
 #[cfg(test)]
-#[allow(
-    clippy::unwrap_used,
-    clippy::expect_used,
-    clippy::panic,
-    clippy::float_cmp
-)]
+#[allow(clippy::float_cmp)]
 mod tests {
     use super::*;
 
@@ -213,5 +208,110 @@ mod tests {
             .ok_or("Intuos V1 parser failed to parse tablet report")?;
         assert_eq!(result.status, crate::drivers::TabletStatus::Contact);
         Ok(())
+    }
+
+    const TOOL: [u8; 10] = [0x02, 0x27, 0x12, 0x34, 0x56, 0x78, 0x40, 0x80, 0x80, 0x03];
+
+    #[test]
+    fn tablet_report_decodes_every_field() {
+        let parsed = IntuosV1Parser::new().parse(&TOOL).unwrap();
+        assert_eq!(parsed.status, crate::drivers::TabletStatus::Contact);
+        assert_eq!((parsed.x, parsed.y), (0x2469, 0xACF1));
+        assert_eq!(parsed.pressure, 0x200 | 4 | 1);
+        assert_eq!((parsed.tilt_x, parsed.tilt_y), (-63, -64));
+        assert_eq!(parsed.buttons, 0b11);
+        assert_eq!(parsed.hover_distance, 3);
+        assert_eq!(parsed.raw_len, 10);
+    }
+
+    #[test]
+    fn zero_pressure_is_hover() {
+        let mut data = TOOL;
+        data[1] = 0x20;
+        data[6] = 0;
+        data[7] = 0;
+        let parsed = IntuosV1Parser::new().parse(&data).unwrap();
+        assert_eq!(parsed.status, crate::drivers::TabletStatus::Hover);
+        assert_eq!(parsed.pressure, 0);
+    }
+
+    #[test]
+    fn rotation_reports_reuse_the_last_pen_state() {
+        let parser = IntuosV1Parser::new();
+        parser.parse(&TOOL).unwrap();
+        let mut rotation = TOOL;
+        rotation[1] = 0x0A;
+        let parsed = parser.parse(&rotation).unwrap();
+        assert_eq!(parsed.status, crate::drivers::TabletStatus::Rotation);
+        assert_eq!((parsed.x, parsed.y), (0x2469, 0xACF1));
+        assert_eq!(parsed.pressure, 0x205);
+        assert_eq!((parsed.tilt_x, parsed.tilt_y), (-63, -64));
+        assert_eq!(parsed.buttons, 0b11);
+    }
+
+    #[test]
+    fn tool_change_reports_flag_the_eraser_end() {
+        let mut data = [0x02, 0xC2, 0, 0x80, 0, 0, 0, 0, 0, 0];
+        let eraser = IntuosV1Parser::new().parse(&data).unwrap();
+        assert_eq!(eraser.status, crate::drivers::TabletStatus::Tool);
+        assert!(eraser.eraser);
+        data[3] = 0;
+        assert!(!IntuosV1Parser::new().parse(&data).unwrap().eraser);
+    }
+
+    #[test]
+    fn aux_report_exposes_byte_4_as_buttons() {
+        let parsed = IntuosV1Parser::new().parse(&[0x03, 0, 0, 0, 0x09]).unwrap();
+        assert_eq!(parsed.status, crate::drivers::TabletStatus::Aux);
+        assert_eq!(parsed.buttons, 9);
+    }
+
+    #[test]
+    fn ignored_and_malformed_reports() {
+        let parser = IntuosV1Parser::new();
+        // Proximity-out markers and unknown report kinds produce nothing.
+        assert!(
+            parser
+                .parse(&[0x10, 0x20, 0, 0, 0, 0, 0, 0, 0, 0])
+                .is_none()
+        );
+        assert!(
+            parser
+                .parse(&[0x02, 0x80, 0, 0, 0, 0, 0, 0, 0, 0])
+                .is_none()
+        );
+        assert!(
+            parser
+                .parse(&[0x02, 0x00, 0, 0, 0, 0, 0, 0, 0, 0])
+                .is_none()
+        );
+        assert!(
+            parser
+                .parse(&[0x55, 0x27, 0, 0, 0, 0, 0, 0, 0, 0])
+                .is_none()
+        );
+        // A pen report shorter than its fixed layout is rejected, not misread.
+        assert!(parser.parse(&TOOL[..9]).is_none());
+        assert!(parser.parse(&[]).is_none());
+    }
+
+    #[test]
+    fn driver_variant_skips_the_leading_byte() {
+        let mut framed = vec![0xFF];
+        framed.extend_from_slice(&TOOL);
+        let parsed = WacomDriverIntuosV1Parser::new().parse(&framed).unwrap();
+        assert_eq!((parsed.x, parsed.y), (0x2469, 0xACF1));
+        assert!(WacomDriverIntuosV1Parser::default().parse(&[]).is_none());
+    }
+
+    #[test]
+    fn the_default_parser_is_a_fresh_one() {
+        let parser = IntuosV1Parser::default();
+        assert!(parser.parse(&[0x03, 0, 0, 0, 0x07]).is_some());
+    }
+
+    #[test]
+    fn an_aux_report_too_short_to_hold_the_keys_is_rejected() {
+        assert!(IntuosV1Parser::new().parse(&[0x03, 0, 0, 0]).is_none());
     }
 }

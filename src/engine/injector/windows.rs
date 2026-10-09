@@ -197,8 +197,21 @@ fn query_screen_size() -> (i32, i32) {
 ///
 /// See <https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-mouse_event#remarks>.
 fn send_absolute_move(target_x: f32, target_y: f32, screen_w: i32, screen_h: i32) {
+    if let Some((nx, ny)) = normalize_absolute(target_x, target_y, screen_w, screen_h) {
+        send_mouse_input(nx, ny, MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE);
+    }
+}
+
+/// Maps a pixel position to the 0-65535 range of `MOUSEEVENTF_ABSOLUTE`; `None` for a screen too
+/// small to normalize against.
+fn normalize_absolute(
+    target_x: f32,
+    target_y: f32,
+    screen_w: i32,
+    screen_h: i32,
+) -> Option<(i32, i32)> {
     if screen_w <= 1 || screen_h <= 1 {
-        return;
+        return None;
     }
 
     let w = i64::from(screen_w) - 1;
@@ -209,12 +222,7 @@ fn send_absolute_move(target_x: f32, target_y: f32, screen_w: i32, screen_h: i32
     // Add w/2 or h/2 (signed) to round to the nearest normalized unit instead of truncating.
     let nx = (x * 65535 + w / 2 * x.signum()) / w;
     let ny = (y * 65535 + h / 2 * y.signum()) / h;
-
-    send_mouse_input(
-        nx as i32,
-        ny as i32,
-        MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE,
-    );
+    Some((nx as i32, ny as i32))
 }
 
 fn send_mouse_input(dx: i32, dy: i32, flags: u32) {
@@ -237,5 +245,100 @@ fn send_mouse_input(dx: i32, dy: i32, flags: u32) {
     // SAFETY: `input` is a fully-initialized, valid `INPUT` for the duration of the call.
     unsafe {
         SendInput(1, &raw const input, cbsize);
+    }
+}
+
+#[cfg(test)]
+#[allow(clippy::float_cmp)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_injector_starts_with_the_screen_size_and_no_button_held() {
+        let injector = Injector::try_new().unwrap();
+        assert!(!injector.last_pressure_down);
+        assert_eq!((injector.remainder_x, injector.remainder_y), (0.0, 0.0));
+        assert!(injector.screen_w > 0 && injector.screen_h > 0);
+        let default = Injector::default();
+        assert!(default.screen_w > 0);
+    }
+
+    #[test]
+    fn the_screen_metrics_are_not_re_queried_within_the_throttle() {
+        let mut injector = Injector::new();
+        injector.screen_w = 1234;
+        injector.screen_h = 567;
+        injector.refresh_screen_metrics();
+        assert_eq!((injector.screen_w, injector.screen_h), (1234, 567));
+    }
+
+    #[test]
+    fn the_screen_metrics_are_refreshed_once_the_throttle_has_elapsed() {
+        let mut injector = Injector::new();
+        injector.screen_w = 1;
+        injector.screen_h = 1;
+        injector.last_metrics_refresh = Instant::now()
+            .checked_sub(SCREEN_METRICS_REFRESH * 2)
+            .unwrap();
+        injector.refresh_screen_metrics();
+        assert!(injector.screen_w > 1 && injector.screen_h > 1);
+    }
+
+    #[test]
+    fn sub_pixel_relative_motion_accumulates_without_touching_the_cursor() {
+        let mut injector = Injector::new();
+        injector.move_relative(0.4, -0.3);
+        assert!((injector.remainder_x - 0.4).abs() < 1e-6);
+        assert!((injector.remainder_y + 0.3).abs() < 1e-6);
+        injector.move_relative(0.4, -0.3);
+        assert!((injector.remainder_x - 0.8).abs() < 1e-6);
+        assert!((injector.remainder_y + 0.6).abs() < 1e-6);
+    }
+
+    #[test]
+    fn releasing_a_button_that_is_not_held_does_nothing() {
+        let mut injector = Injector::new();
+        injector.set_left_button(false);
+        assert!(!injector.last_pressure_down);
+        injector.set_proximity(true);
+    }
+
+    #[test]
+    fn absolute_positions_are_normalized_to_the_sendinput_range() {
+        // 1920x1080: the last pixel maps to 65535, the first to 0, the middle to about half.
+        assert_eq!(normalize_absolute(0.0, 0.0, 1920, 1080), Some((0, 0)));
+        assert_eq!(
+            normalize_absolute(1919.0, 1079.0, 1920, 1080),
+            Some((65535, 65535))
+        );
+        let (mx, my) = normalize_absolute(960.0, 540.0, 1920, 1080).unwrap();
+        assert!((32_700..=32_900).contains(&mx), "{mx}");
+        assert!((32_700..=32_900).contains(&my), "{my}");
+    }
+
+    #[test]
+    fn positions_are_rounded_to_the_nearest_pixel() {
+        assert_eq!(
+            normalize_absolute(10.4, 10.4, 1920, 1080),
+            normalize_absolute(10.0, 10.0, 1920, 1080)
+        );
+        assert_ne!(
+            normalize_absolute(10.6, 10.0, 1920, 1080),
+            normalize_absolute(10.0, 10.0, 1920, 1080)
+        );
+    }
+
+    #[test]
+    fn positions_left_of_or_above_the_screen_stay_negative() {
+        let (nx, ny) = normalize_absolute(-10.0, -10.0, 1920, 1080).unwrap();
+        assert!(nx < 0 && ny < 0);
+    }
+
+    #[test]
+    fn a_screen_too_small_to_normalize_against_is_ignored() {
+        assert_eq!(normalize_absolute(5.0, 5.0, 1, 1080), None);
+        assert_eq!(normalize_absolute(5.0, 5.0, 1920, 0), None);
+        // Nothing is sent either (and nothing can move the cursor in this test).
+        send_absolute_move(5.0, 5.0, 0, 0);
     }
 }

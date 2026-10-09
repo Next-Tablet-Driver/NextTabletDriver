@@ -44,3 +44,45 @@ impl ReportParser for PTUParser {
         }
     }
 }
+
+#[cfg(test)]
+#[allow(clippy::float_cmp)]
+mod tests {
+    use super::*;
+    use crate::drivers::TabletStatus;
+
+    fn report(b1: u8, x: u16, y: u16, pressure: u16) -> [u8; 8] {
+        let (x, y, p) = (x.to_le_bytes(), y.to_le_bytes(), pressure.to_le_bytes());
+        [0x02, b1, x[0], x[1], y[0], y[1], p[0], p[1]]
+    }
+
+    #[test]
+    fn decodes_position_pressure_buttons_and_eraser() {
+        let parsed = PTUParser
+            .parse(&report(0x02 | 0x10 | 0x04, 0x1234, 0x5678, 0x03FF))
+            .unwrap();
+        assert_eq!(parsed.status, TabletStatus::Contact);
+        assert_eq!(
+            (parsed.x, parsed.y, parsed.pressure),
+            (0x1234, 0x5678, 0x03FF)
+        );
+        assert_eq!(parsed.buttons, 0b11);
+        assert!(parsed.eraser);
+    }
+
+    #[test]
+    fn no_pressure_is_hover() {
+        let parsed = PTUParser.parse(&report(0, 1, 2, 0)).unwrap();
+        assert_eq!(parsed.status, TabletStatus::Hover);
+        assert_eq!(parsed.buttons, 0);
+        assert!(!parsed.eraser);
+    }
+
+    #[test]
+    fn rejects_other_ids_and_short_reports() {
+        let mut data = report(0, 1, 2, 3);
+        data[0] = 0x03;
+        assert!(PTUParser.parse(&data).is_none());
+        assert!(PTUParser.parse(&data[..7]).is_none());
+    }
+}

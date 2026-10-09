@@ -111,3 +111,55 @@ fn send_message(msg: TelemetryMessage) {
         }
     }
 }
+
+#[cfg(test)]
+#[allow(clippy::float_cmp)]
+mod tests {
+    use super::*;
+    use crate::engine::state::SharedState;
+
+    // The tests run without a worker: no API key is embedded in test builds and `init` is
+    // only called with telemetry disabled, so nothing can leave the machine.
+
+    #[test]
+    fn smoke_capturing_without_a_worker_does_not_panic() {
+        // Smoke test: there is nothing to observe, the call must simply be harmless.
+        capture_event("started", None);
+        capture_event("started", Some(serde_json::json!({ "a": 1 })));
+        capture_event_with_set("started", None, Some(serde_json::json!({ "plan": "free" })));
+        capture_event_dedup("tablet_connected", None, None, "wacom");
+        send_message(TelemetryMessage::Event {
+            event_name: "x".into(),
+            properties: None,
+            set_properties: None,
+            dedup_key: Some("k".into()),
+        });
+    }
+
+    #[test]
+    fn disabled_telemetry_starts_no_worker() {
+        // Reads a process-global `OnceLock`: it relies on no other test ever starting a worker.
+        TelemetryService::init("install".to_string(), false);
+        assert!(TELEMETRY_SENDER.get().is_none());
+        // Shutting down without a worker returns immediately.
+        TelemetryService::shutdown(Duration::from_millis(10));
+    }
+
+    #[test]
+    fn smoke_the_app_closed_summary_without_a_worker_does_not_panic() {
+        // Smoke test: the summary is only sent when a worker exists, so this checks it cannot panic.
+        let shared = SharedState::new();
+        shared
+            .pipeline
+            .packet_count
+            .store(5, std::sync::atomic::Ordering::Relaxed);
+        capture_app_closed(&shared);
+    }
+
+    #[test]
+    fn the_session_id_is_stable_within_a_run() {
+        let first = SESSION_ID.clone();
+        assert_eq!(first, *SESSION_ID);
+        assert!(uuid::Uuid::parse_str(&SESSION_ID).is_ok());
+    }
+}

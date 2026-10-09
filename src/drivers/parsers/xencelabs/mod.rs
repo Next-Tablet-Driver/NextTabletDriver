@@ -75,12 +75,7 @@ impl ReportParser for XenceLabsParser {
 }
 
 #[cfg(test)]
-#[allow(
-    clippy::unwrap_used,
-    clippy::expect_used,
-    clippy::panic,
-    clippy::float_cmp
-)]
+#[allow(clippy::float_cmp)]
 mod tests {
     use super::*;
 
@@ -97,5 +92,44 @@ mod tests {
         assert_eq!(report.buttons, 7);
         assert_eq!(report.tilt_x, 10);
         Ok(())
+    }
+
+    #[test]
+    fn express_keys_are_reported_as_an_aux_report() {
+        let parsed = XenceLabsParser.parse(&[0, 0xF1, 0x07, 0, 0]).unwrap();
+        assert_eq!(parsed.status, crate::drivers::TabletStatus::Aux);
+        assert_eq!(parsed.buttons, 7);
+    }
+
+    #[test]
+    fn a_pen_without_pressure_hovers_and_the_eraser_end_is_flagged() {
+        let parsed = XenceLabsParser
+            .parse(&[
+                0,
+                0x20 | 0x40,
+                0x02,
+                0x01,
+                0x04,
+                0x03,
+                0x00,
+                0x00,
+                0xFE,
+                0x05,
+            ])
+            .unwrap();
+        assert_eq!(parsed.status, crate::drivers::TabletStatus::Hover);
+        assert!(parsed.eraser);
+        assert_eq!((parsed.tilt_x, parsed.tilt_y), (-2, 5));
+    }
+
+    #[test]
+    fn reports_that_are_neither_pen_nor_keys_are_ignored() {
+        assert!(
+            XenceLabsParser
+                .parse(&[0, 0x01, 0, 0, 0, 0, 0, 0, 0, 0])
+                .is_none()
+        );
+        assert!(XenceLabsParser.parse(&[0, 0x20, 0x02]).is_none());
+        assert!(XenceLabsParser.parse(&[]).is_none());
     }
 }

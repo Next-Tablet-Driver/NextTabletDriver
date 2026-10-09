@@ -123,3 +123,77 @@ impl ReportParser for WacomDriverIntuos4Parser {
         }
     }
 }
+
+#[cfg(test)]
+#[allow(clippy::float_cmp)]
+mod tests {
+    use super::*;
+    use crate::drivers::TabletStatus;
+
+    const V1_TOOL: [u8; 10] = [0x02, 0x27, 0x12, 0x34, 0x56, 0x78, 0x40, 0x80, 0x80, 0x03];
+
+    /// `[id, b1, x(2), y(2), buttons, _, _, flags]`: x = 0x2469, y = 0xACF0 (flags = 0b10).
+    fn mouse(b1: u8, b6: u8) -> [u8; 10] {
+        [0x02, b1, 0x12, 0x34, 0x56, 0x78, b6, 0, 0, 0b10]
+    }
+
+    #[test]
+    fn mouse_reports_decode_position_and_five_buttons() {
+        for b1 in [0xEC, 0xAC] {
+            let parsed = Intuos4Parser::new()
+                .parse(&mouse(b1, 0x01 | 0x04 | 0x02 | 0x08 | 0x10))
+                .unwrap();
+            assert_eq!(parsed.status, TabletStatus::Mouse);
+            assert_eq!((parsed.x, parsed.y), (0x2469, 0xACF0));
+            assert_eq!(parsed.buttons, 0b1_1111);
+        }
+        // Each button bit lands on its own output bit.
+        assert_eq!(
+            Intuos4Parser::new()
+                .parse(&mouse(0xEC, 0x04))
+                .unwrap()
+                .buttons,
+            0b10
+        );
+        assert_eq!(
+            Intuos4Parser::new()
+                .parse(&mouse(0xEC, 0x02))
+                .unwrap()
+                .buttons,
+            0b100
+        );
+    }
+
+    #[test]
+    fn pen_reports_are_delegated_to_intuos_v1() {
+        let ours = Intuos4Parser::new().parse(&V1_TOOL).unwrap();
+        let v1 = IntuosV1Parser::new().parse(&V1_TOOL).unwrap();
+        assert_eq!(ours.status, TabletStatus::Contact);
+        assert_eq!((ours.x, ours.y, ours.pressure), (v1.x, v1.y, v1.pressure));
+    }
+
+    #[test]
+    fn express_key_report_exposes_byte_3_as_buttons() {
+        let parsed = Intuos4Parser::new().parse(&[0x0C, 0, 0, 0x2A]).unwrap();
+        assert_eq!(parsed.status, TabletStatus::Aux);
+        assert_eq!(parsed.buttons, 0x2A);
+    }
+
+    #[test]
+    fn driver_variant_skips_the_leading_byte() {
+        let mut framed = vec![0xFF];
+        framed.extend_from_slice(&mouse(0xEC, 0x01));
+        let parsed = WacomDriverIntuos4Parser::new().parse(&framed).unwrap();
+        assert_eq!((parsed.status, parsed.buttons), (TabletStatus::Mouse, 1));
+        assert!(WacomDriverIntuos4Parser::default().parse(&[]).is_none());
+    }
+
+    #[test]
+    fn unknown_and_truncated_reports_are_rejected() {
+        let parser = Intuos4Parser::default();
+        assert!(parser.parse(&[]).is_none());
+        assert!(parser.parse(&[0x03, 0, 0, 0, 1]).is_none());
+        assert!(parser.parse(&[0x02, 0xEC, 1, 2]).is_none());
+        assert!(parser.parse(&[0x0C, 0, 0]).is_none());
+    }
+}

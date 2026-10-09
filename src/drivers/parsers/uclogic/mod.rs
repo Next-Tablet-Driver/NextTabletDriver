@@ -120,12 +120,7 @@ impl ReportParser for UCLogicTiltParser {
 }
 
 #[cfg(test)]
-#[allow(
-    clippy::unwrap_used,
-    clippy::expect_used,
-    clippy::panic,
-    clippy::float_cmp
-)]
+#[allow(clippy::float_cmp)]
 mod tests {
     use super::*;
 
@@ -153,5 +148,113 @@ mod tests {
         assert_eq!(report.status, crate::drivers::TabletStatus::Aux);
         assert_eq!(report.buttons, 5);
         Ok(())
+    }
+
+    use crate::drivers::TabletStatus;
+
+    /// `[id, b1, x(2), y(2), pressure(2), _, _, tilt_x, tilt_y]`.
+    fn pen(b1: u8) -> [u8; 12] {
+        [
+            0x08, b1, 0x34, 0x12, 0x78, 0x56, 0x00, 0x01, 0, 0, 0xFE, 0x05,
+        ]
+    }
+
+    fn aux(b1: u8, keys: u8) -> [u8; 5] {
+        [0x08, b1, 0, 0, keys]
+    }
+
+    #[test]
+    fn the_plain_parser_decodes_pen_reports_without_tilt() {
+        let parsed = UCLogicParser.parse(&pen(0x05)).unwrap();
+        assert_eq!(parsed.status, TabletStatus::Contact);
+        assert_eq!(
+            (parsed.x, parsed.y, parsed.pressure),
+            (0x1234, 0x5678, 0x0100)
+        );
+        assert_eq!(parsed.buttons, 0b101);
+        assert!(parsed.eraser);
+        assert_eq!((parsed.tilt_x, parsed.tilt_y), (0, 0));
+    }
+
+    #[test]
+    fn no_pressure_is_hover() {
+        let mut data = pen(0x01);
+        data[6] = 0;
+        data[7] = 0;
+        let parsed = UCLogicParser.parse(&data).unwrap();
+        assert_eq!(parsed.status, TabletStatus::Hover);
+        assert_eq!(parsed.buttons, 0b001);
+        assert!(!parsed.eraser);
+    }
+
+    #[test]
+    fn the_plain_parser_routes_aux_and_ignores_proximity_out() {
+        let parsed = UCLogicParser.parse(&aux(0x40, 0x09)).unwrap();
+        assert_eq!((parsed.status, parsed.buttons), (TabletStatus::Aux, 9));
+        assert!(UCLogicParser.parse(&pen(0xC0)).is_none());
+    }
+
+    #[test]
+    fn v1_only_accepts_flagged_pen_reports_and_aux_reports() {
+        let parsed = UCLogicV1Parser.parse(&pen(0x41)).unwrap();
+        assert_eq!(parsed.status, TabletStatus::Contact);
+        assert_eq!(parsed.buttons, 0b001);
+        assert_eq!((parsed.tilt_x, parsed.tilt_y), (0, 0));
+        let aux = UCLogicV1Parser.parse(&aux(0xE0, 0x03)).unwrap();
+        assert_eq!((aux.status, aux.buttons), (TabletStatus::Aux, 3));
+        assert!(UCLogicV1Parser.parse(&pen(0x01)).is_none());
+    }
+
+    #[test]
+    fn v2_reads_the_tilt_and_treats_0xf0_as_proximity_out() {
+        let parsed = UCLogicV2Parser.parse(&pen(0x01)).unwrap();
+        assert_eq!((parsed.tilt_x, parsed.tilt_y), (-2, 5));
+        let aux = UCLogicV2Parser.parse(&aux(0xE0, 0x06)).unwrap();
+        assert_eq!((aux.status, aux.buttons), (TabletStatus::Aux, 6));
+        assert!(UCLogicV2Parser.parse(&pen(0xF0)).is_none());
+    }
+
+    #[test]
+    fn the_tilt_parser_reads_tilt_and_routes_flagged_reports_to_aux() {
+        let parsed = UCLogicTiltParser.parse(&pen(0x01)).unwrap();
+        assert_eq!((parsed.tilt_x, parsed.tilt_y), (-2, 5));
+        let aux = UCLogicTiltParser.parse(&aux(0x40, 0x0C)).unwrap();
+        assert_eq!((aux.status, aux.buttons), (TabletStatus::Aux, 12));
+    }
+
+    #[test]
+    fn tilt_is_zero_when_the_report_has_no_tilt_bytes() {
+        let parsed = UCLogicV2Parser.parse(&pen(0x01)[..10]).unwrap();
+        assert_eq!((parsed.tilt_x, parsed.tilt_y), (0, 0));
+    }
+
+    #[test]
+    fn short_reports_are_rejected() {
+        for parser in [
+            &UCLogicParser as &dyn ReportParser,
+            &UCLogicV1Parser,
+            &UCLogicV2Parser,
+            &UCLogicTiltParser,
+        ] {
+            assert!(parser.parse(&[]).is_none());
+            assert!(parser.parse(&[0x08]).is_none());
+            assert!(parser.parse(&[0x08, 0x01, 0x02, 0x03]).is_none());
+        }
+    }
+
+    #[test]
+    fn the_second_barrel_button_maps_to_button_one() {
+        let mut data = [0x08, 0x02, 0x34, 0x12, 0x78, 0x56, 0x00, 0x01];
+        let parsed = UCLogicParser.parse(&data).unwrap();
+        assert_eq!(parsed.buttons, 0b10);
+        assert!(!parsed.eraser);
+        data[1] = 0x07;
+        assert_eq!(UCLogicParser.parse(&data).unwrap().buttons, 0b111);
+    }
+
+    #[test]
+    fn an_aux_report_too_short_to_hold_the_keys_is_rejected() {
+        assert!(UCLogicParser.parse(&[0x08, 0x40, 0x00]).is_none());
+        assert!(UCLogicV1Parser.parse(&[0x08, 0xE0, 0x00, 0x00]).is_none());
     }
 }

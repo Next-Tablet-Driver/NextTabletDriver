@@ -66,12 +66,7 @@ impl ReportParser for FlooGooParser {
 }
 
 #[cfg(test)]
-#[allow(
-    clippy::unwrap_used,
-    clippy::expect_used,
-    clippy::panic,
-    clippy::float_cmp
-)]
+#[allow(clippy::float_cmp)]
 mod tests {
     use super::*;
 
@@ -100,5 +95,51 @@ mod tests {
         let parser = FlooGooParser;
         let data: [u8; 12] = [0x01, 0x00, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
         assert!(parser.parse(&data).is_none());
+    }
+
+    use crate::drivers::TabletStatus;
+
+    fn report(b1: u8, pressure: u16, tilt: (i16, i16)) -> [u8; 12] {
+        let (p, tx, ty) = (
+            pressure.to_le_bytes(),
+            tilt.0.to_le_bytes(),
+            tilt.1.to_le_bytes(),
+        );
+        [
+            0x01, b1, 0x34, 0x12, 0x78, 0x56, p[0], p[1], tx[0], tx[1], ty[0], ty[1],
+        ]
+    }
+
+    #[test]
+    fn contact_decodes_everything_with_hundredths_of_a_degree_tilt() {
+        let parsed = FlooGooParser
+            .parse(&report(0x20 | 0x08 | 0x04 | 0x02, 300, (500, -300)))
+            .unwrap();
+        assert_eq!(parsed.status, TabletStatus::Contact);
+        assert_eq!((parsed.x, parsed.y, parsed.pressure), (0x1234, 0x5678, 300));
+        assert_eq!((parsed.tilt_x, parsed.tilt_y), (5, -3));
+        assert_eq!(parsed.buttons, 0b11);
+        assert!(parsed.eraser);
+    }
+
+    #[test]
+    fn no_pressure_is_hover() {
+        let parsed = FlooGooParser.parse(&report(0x20, 0, (0, 0))).unwrap();
+        assert_eq!(parsed.status, TabletStatus::Hover);
+        assert!(!parsed.eraser);
+        assert_eq!(parsed.buttons, 0);
+    }
+
+    #[test]
+    fn only_in_range_pen_reports_are_parsed() {
+        assert!(FlooGooParser.parse(&report(0x00, 1, (0, 0))).is_none());
+        let mut other = report(0x20, 1, (0, 0));
+        other[0] = 0x02;
+        assert!(FlooGooParser.parse(&other).is_none());
+        assert!(
+            FlooGooParser
+                .parse(&report(0x20, 1, (0, 0))[..11])
+                .is_none()
+        );
     }
 }
