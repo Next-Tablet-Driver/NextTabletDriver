@@ -308,4 +308,15 @@ mod tests {
         assert_eq!((parsed.x, parsed.y), (0x2469, 0xACF1));
         assert!(WacomDriverIntuosV1Parser::default().parse(&[]).is_none());
     }
+
+    #[test]
+    fn the_default_parser_is_a_fresh_one() {
+        let parser = IntuosV1Parser::default();
+        assert!(parser.parse(&[0x03, 0, 0, 0, 0x07]).is_some());
+    }
+
+    #[test]
+    fn an_aux_report_too_short_to_hold_the_keys_is_rejected() {
+        assert!(IntuosV1Parser::new().parse(&[0x03, 0, 0, 0]).is_none());
+    }
 }

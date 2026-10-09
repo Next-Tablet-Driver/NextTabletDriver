@@ -253,5 +253,14 @@ mod tests {
                 assert!(parser.parse(&[0x10, 1, 2]).is_none());
             }
         }
+
+        #[test]
+        fn v2_pressure_needs_the_tip_flag() {
+            let parsed = GeniusParserV2
+                .parse(&[0x02, 1, 0, 1, 0, 0x00, 0xFF, 0xFF])
+                .unwrap();
+            assert_eq!(parsed.status, TabletStatus::Hover);
+            assert_eq!(parsed.pressure, 0);
+        }
     }
 }

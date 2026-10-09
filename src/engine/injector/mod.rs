@@ -95,3 +95,55 @@ pub use windows::Injector;
 pub mod linux;
 #[cfg(target_os = "linux")]
 pub use linux::Injector;
+
+#[cfg(test)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::float_cmp,
+    clippy::indexing_slicing
+)]
+mod tests {
+    use super::*;
+
+    /// Only the calls that cannot reach the operating system: these tests must never move the
+    /// developer's cursor or click.
+    #[cfg(windows)]
+    #[test]
+    fn the_injector_forwards_the_calls_that_need_no_os_event() {
+        let mut injector = Injector::try_new().unwrap();
+        let sink: &mut dyn InputSink = &mut injector;
+        sink.set_proximity(true);
+        // Less than a pixel: accumulated, not injected.
+        sink.move_relative(0.25, 0.25);
+        // The button is not held: nothing to release.
+        sink.set_left_button(false);
+    }
+
+    #[test]
+    fn the_sink_is_object_safe() {
+        struct Nothing;
+        impl InputSink for Nothing {
+            fn set_proximity(&mut self, _in_proximity: bool) {}
+            fn move_absolute(
+                &mut self,
+                _target_x: f32,
+                _target_y: f32,
+                _u: f32,
+                _v: f32,
+                _pressure: i32,
+                _tilt_x: i32,
+                _tilt_y: i32,
+            ) {
+            }
+            fn move_relative(&mut self, _dx: f32, _dy: f32) {}
+            fn set_left_button(&mut self, _is_down: bool) {}
+        }
+        let mut sink: Box<dyn InputSink> = Box::new(Nothing);
+        sink.set_proximity(false);
+        sink.move_absolute(1.0, 2.0, 0.1, 0.2, 3, 4, 5);
+        sink.move_relative(1.0, 2.0);
+        sink.set_left_button(true);
+    }
+}

@@ -248,5 +248,13 @@ mod tests {
             assert!(VeikkV1Parser.parse(&[0x09, 0x99]).is_none());
             assert!(VeikkTiltParser.parse(&[0x09, 0x77, 0, 0, 0]).is_none());
         }
+
+        #[test]
+        fn the_a15_parser_ignores_reports_that_are_neither_pen_nor_aux() {
+            assert!(VeikkA15Parser.parse(&[0x09, 0x41, 0x02]).is_none());
+            assert!(VeikkA15Parser.parse(&[]).is_none());
+            // A pen-flagged report too short to hold a pen report is dropped.
+            assert!(VeikkA15Parser.parse(&[0x09, 0x41, 0x21, 1, 2]).is_none());
+        }
     }
 }

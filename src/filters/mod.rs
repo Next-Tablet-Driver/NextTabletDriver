@@ -344,4 +344,22 @@ mod tests {
         pipeline.reset();
         assert_eq!(pipeline.entries.len(), 2);
     }
+
+    mod more {
+        #![allow(clippy::indexing_slicing)]
+
+        use super::*;
+
+        #[test]
+        fn a_default_pipeline_is_empty() {
+            assert!(FilterPipeline::default().entries.is_empty());
+        }
+
+        #[test]
+        fn a_manager_without_plugins_gives_an_empty_pipeline() {
+            let manager = PluginManager::new();
+            let pipeline = FilterPipeline::from_manager(&manager, &MappingConfig::default());
+            assert!(pipeline.entries.is_empty());
+        }
+    }
 }

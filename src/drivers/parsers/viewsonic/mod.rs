@@ -91,4 +91,44 @@ mod tests {
         assert_eq!(report.tilt_x, 10);
         Ok(())
     }
+
+    mod more {
+        #![allow(clippy::indexing_slicing)]
+
+        use super::*;
+        use crate::drivers::TabletStatus;
+
+        fn report(b9: u8, pressure: u16) -> [u8; 14] {
+            let p = pressure.to_le_bytes();
+            [
+                0, 0x34, 0x12, 0, 0, 0x78, 0x56, 0, 0, b9, p[0], p[1], 0xFE, 0x05,
+            ]
+        }
+
+        #[test]
+        fn pressure_needs_the_tip_flag_and_without_it_the_pen_hovers() {
+            let parsed = ViewSonicParser.parse(&report(0b11, 500)).unwrap();
+            assert_eq!(parsed.status, TabletStatus::Hover);
+            assert_eq!(parsed.pressure, 0);
+            assert_eq!((parsed.x, parsed.y), (0x1234, 0x5678));
+            assert_eq!((parsed.tilt_x, parsed.tilt_y), (-2, 5));
+        }
+
+        #[test]
+        fn a_pen_with_the_tip_flag_is_in_contact_with_both_buttons() {
+            let parsed = ViewSonicParser
+                .parse(&report(0b11 | 0x04 | 0x08 | 0x10, 500))
+                .unwrap();
+            assert_eq!(parsed.status, TabletStatus::Contact);
+            assert_eq!(parsed.pressure, 500);
+            assert_eq!(parsed.buttons, 0b11);
+        }
+
+        #[test]
+        fn reports_without_the_in_range_bits_or_too_short_are_rejected() {
+            assert!(ViewSonicParser.parse(&report(0b01, 1)).is_none());
+            assert!(ViewSonicParser.parse(&report(0b11, 1)[..13]).is_none());
+            assert!(ViewSonicParser.parse(&[]).is_none());
+        }
+    }
 }

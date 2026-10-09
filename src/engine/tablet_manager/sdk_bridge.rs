@@ -391,4 +391,81 @@ mod tests {
         assert_eq!((area.x, area.y), (50.0, 30.0));
         assert_eq!(shared.config.version.load(Ordering::SeqCst), before + 1);
     }
+
+    #[test]
+    fn publishing_makes_the_live_state_visible_to_readers() {
+        use crate::engine::interop::shm::ShmReader;
+        let writer = ShmWriter::create().expect("writer should create the segment");
+        let reader = ShmReader::open().expect("reader should open the same segment");
+
+        let shared = Arc::new(SharedState::new());
+        {
+            let mut device = shared.device.write().unwrap();
+            device.name = "Wacom".to_string();
+            device.vid = 0x056A;
+            device.pid = 0x037A;
+        }
+        shared.config.version.store(9, Ordering::Relaxed);
+        let data = TabletData {
+            is_connected: true,
+            status: TabletStatus::Contact,
+            buttons: 2,
+            eraser: true,
+            ..TabletData::default()
+        };
+        let config = MappingConfig {
+            mode: DriverMode::Relative,
+            ..MappingConfig::default()
+        };
+        let frame = ProcessedFrame {
+            u: 0.25,
+            v: 0.75,
+            screen_x: 480.0,
+            screen_y: 810.0,
+            is_down: true,
+            pressure: 1234,
+            tilt_x: -5,
+            tilt_y: 7,
+        };
+
+        publish_shm_state(&writer, &shared, &data, &config, &frame);
+
+        let published = reader.read().unwrap();
+        assert!(published.is_connected);
+        assert_eq!(published.status, TabletStatus::Contact as u8);
+        assert_eq!((published.buttons, published.eraser), (2, true));
+        assert_eq!(&published.device_name[..5], b"Wacom");
+        assert_eq!(published.device_name_len, 5);
+        assert_eq!((published.vid, published.pid), (0x056A, 0x037A));
+        assert_eq!(published.mode, 1);
+        assert_eq!((published.u, published.v), (0.25, 0.75));
+        assert_eq!((published.screen_x, published.screen_y), (480.0, 810.0));
+        assert_eq!(
+            (published.pressure, published.tilt_x, published.tilt_y),
+            (1234, -5, 7)
+        );
+        assert!(published.is_down);
+        assert_eq!(published.config_version, 9);
+    }
+
+    #[test]
+    fn a_device_name_longer_than_the_segment_is_truncated() {
+        use crate::engine::interop::shm::ShmReader;
+        let writer = ShmWriter::create().expect("writer should create the segment");
+        let reader = ShmReader::open().expect("reader should open the same segment");
+        let shared = Arc::new(SharedState::new());
+        shared.device.write().unwrap().name = "x".repeat(DEVICE_NAME_CAPACITY * 2);
+
+        publish_shm_state(
+            &writer,
+            &shared,
+            &TabletData::default(),
+            &MappingConfig::default(),
+            &ProcessedFrame::default(),
+        );
+
+        let published = reader.read().unwrap();
+        assert_eq!(published.device_name_len as usize, DEVICE_NAME_CAPACITY);
+        assert!(published.device_name.iter().all(|b| *b == b'x'));
+    }
 }

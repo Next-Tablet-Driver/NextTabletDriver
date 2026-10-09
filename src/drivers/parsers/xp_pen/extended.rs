@@ -325,5 +325,35 @@ mod tests {
             );
             assert!(XpPenParser.parse(&[0x02, 0x02]).is_none());
         }
+
+        #[test]
+        fn gen2_maps_the_second_barrel_button() {
+            let parsed = XpPenGen2Parser.parse(&report(0xA4, 14)).unwrap();
+            assert_eq!(parsed.buttons, 0b10);
+        }
+
+        #[test]
+        fn the_offset_pressure_parser_without_pressure_hovers() {
+            let mut data = report(0x06, 10);
+            data[6] = 0;
+            data[7] = 0;
+            let parsed = XpPenOffsetPressureParser.parse(&data).unwrap();
+            assert_eq!(parsed.status, TabletStatus::Hover);
+        }
+
+        #[test]
+        fn offset_pressure_reads_whatever_tilt_bytes_are_available() {
+            // Called directly: the parser only asks for tilt on long reports, so the shorter
+            // layouts are only reachable here.
+            let full = report(0x06, 10);
+            let one = parse_offset_pressure(&full[..9], true).unwrap();
+            assert_eq!((one.tilt_x, one.tilt_y), (-2, 0));
+            let none = parse_offset_pressure(&full[..8], true).unwrap();
+            assert_eq!((none.tilt_x, none.tilt_y), (0, 0));
+            let both = parse_offset_pressure(&full, true).unwrap();
+            assert_eq!((both.tilt_x, both.tilt_y), (-2, 5));
+            let ignored = parse_offset_pressure(&full, false).unwrap();
+            assert_eq!((ignored.tilt_x, ignored.tilt_y), (0, 0));
+        }
     }
 }

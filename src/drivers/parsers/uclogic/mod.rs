@@ -250,5 +250,21 @@ mod tests {
                 assert!(parser.parse(&[0x08, 0x01, 0x02, 0x03]).is_none());
             }
         }
+
+        #[test]
+        fn the_second_barrel_button_maps_to_button_one() {
+            let mut data = [0x08, 0x02, 0x34, 0x12, 0x78, 0x56, 0x00, 0x01];
+            let parsed = UCLogicParser.parse(&data).unwrap();
+            assert_eq!(parsed.buttons, 0b10);
+            assert!(!parsed.eraser);
+            data[1] = 0x07;
+            assert_eq!(UCLogicParser.parse(&data).unwrap().buttons, 0b111);
+        }
+
+        #[test]
+        fn an_aux_report_too_short_to_hold_the_keys_is_rejected() {
+            assert!(UCLogicParser.parse(&[0x08, 0x40, 0x00]).is_none());
+            assert!(UCLogicV1Parser.parse(&[0x08, 0xE0, 0x00, 0x00]).is_none());
+        }
     }
 }

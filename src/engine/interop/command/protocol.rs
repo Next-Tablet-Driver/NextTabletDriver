@@ -175,4 +175,55 @@ mod tests {
             assert_eq!(Response::decode(response.encode()), Some(response));
         }
     }
+
+    mod more {
+        #![allow(clippy::indexing_slicing)]
+
+        use super::*;
+
+        fn area() -> ActiveArea {
+            ActiveArea {
+                x: 1.0,
+                y: 2.0,
+                w: 3.0,
+                h: 4.0,
+                rotation: 5.0,
+            }
+        }
+
+        #[test]
+        fn every_request_survives_an_encode_decode_round_trip() {
+            for request in [
+                Request::Ping,
+                Request::SetMode(DriverMode::Absolute),
+                Request::SetMode(DriverMode::Relative),
+                Request::SetActiveArea(area()),
+            ] {
+                assert_eq!(Request::decode(request.encode()), Some(request));
+            }
+        }
+
+        #[test]
+        fn an_unknown_tag_is_not_a_request() {
+            let mut buf = Request::Ping.encode();
+            buf[0] = 9;
+            assert_eq!(Request::decode(buf), None);
+        }
+
+        #[test]
+        fn an_unknown_mode_byte_is_not_a_mode_change() {
+            let mut buf = Request::SetMode(DriverMode::Relative).encode();
+            buf[1] = 7;
+            assert_eq!(Request::decode(buf), None);
+        }
+
+        #[test]
+        fn responses_round_trip_and_unknown_tags_are_rejected() {
+            for response in [Response::Ok, Response::Rejected] {
+                assert_eq!(Response::decode(response.encode()), Some(response));
+            }
+            assert_eq!(Response::decode([2]), None);
+            assert_eq!(Response::decode([255]), None);
+        }
+    }
 }

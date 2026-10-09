@@ -266,4 +266,41 @@ mod tests {
         assert_eq!(config.mode, DriverMode::Absolute);
         assert!((config.active_area.w - 100.0).abs() < 1e-5);
     }
+
+    #[test]
+    fn an_unrecognised_output_mode_keeps_the_default_mode() {
+        let json = r#"{ "Profiles": [ { "OutputMode": { "Path": "Some.Other.Mode" } } ] }"#;
+        let config = parse_otd_profile_str(json).unwrap();
+        assert_eq!(config.mode, MappingConfig::default().mode);
+    }
+
+    #[test]
+    fn a_profile_without_an_output_mode_keeps_the_default_mode() {
+        let config = parse_otd_profile_str(r#"{ "Profiles": [ {} ] }"#).unwrap();
+        assert_eq!(config.mode, MappingConfig::default().mode);
+    }
+
+    #[test]
+    fn a_file_that_does_not_exist_cannot_be_imported() {
+        let error = import_otd_profile(Path::new("ntd-no-such-otd-settings.json")).unwrap_err();
+        assert!(error.starts_with("Failed to read OTD settings"), "{error}");
+    }
+
+    #[test]
+    fn an_otd_file_on_disk_is_imported() {
+        log::set_max_level(log::LevelFilter::Trace);
+        let nanos = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_nanos();
+        let path = std::env::temp_dir().join(format!("ntd_otd_import_{nanos}.json"));
+        fs::write(
+            &path,
+            r#"{ "Profiles": [ { "OutputMode": { "Path": "OpenTabletDriver.Desktop.Output.RelativeMode" } } ] }"#,
+        )
+        .unwrap();
+        let config = import_otd_profile(&path).unwrap();
+        assert_eq!(config.mode, DriverMode::Relative);
+        let _ = fs::remove_file(path);
+    }
 }

@@ -1,6 +1,15 @@
 # cargo-nextest configuration: https://nexte.st/docs/configuration/
 nextest-version = "0.9.100"
 
+# Tests that bind a fixed, machine-wide name (command socket, shared memory, HID owner lock)
+# must not run at the same time.
+[test-groups]
+interop-names = { max-threads = 1 }
+
+[[profile.default.overrides]]
+filter = 'test(/engine::interop::/) | test(/engine::tablet_manager::(owner|reader|sdk_bridge)::/) | test(/engine::tablet_manager::tests::/)'
+test-group = 'interop-names'
+
 [profile.default]
 # Flag tests that run suspiciously long while developing.
 slow-timeout = { period = "30s" }

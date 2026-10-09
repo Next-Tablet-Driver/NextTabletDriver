@@ -108,4 +108,17 @@ mod tests {
         assert!(parser.parse(&[0x77, 0, 0]).is_none());
         assert!(parser.parse(&[0x0C, 0, 0, 0, 0, 1, 1]).is_none());
     }
+
+    #[test]
+    fn every_express_key_bit_lands_on_its_own_button() {
+        // b5 bit 0 is button 0, b6 bits 0..7 are buttons 1..8; only eight buttons fit in the output.
+        for bit in 0..8u32 {
+            let data = [0x0C, 0, 0, 0, 0, 0, 1u8 << bit, 0, 0, 0];
+            let parsed = CintiqV1Parser::new().parse(&data).unwrap();
+            let expected = u8::try_from((1u32 << (bit + 1)) & 0xFF).unwrap();
+            assert_eq!(parsed.buttons, expected, "b6 bit {bit}");
+        }
+        let data = [0x0C, 0, 0, 0, 0, 0x01, 0, 0, 0, 0];
+        assert_eq!(CintiqV1Parser::new().parse(&data).unwrap().buttons, 0b1);
+    }
 }

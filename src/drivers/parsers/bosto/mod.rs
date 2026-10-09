@@ -75,4 +75,26 @@ mod tests {
         let data: [u8; 8] = [0, 0x00, 0x02, 0x01, 0x04, 0x03, 0x01, 0x00];
         assert!(parser.parse(&data).is_none());
     }
+
+    mod more {
+        #![allow(clippy::indexing_slicing)]
+
+        use super::*;
+        use crate::drivers::TabletStatus;
+
+        #[test]
+        fn a_pen_without_pressure_hovers() {
+            let parsed = BostoParser
+                .parse(&[0, 0x22, 0x02, 0x01, 0x04, 0x03, 0x00, 0x00])
+                .unwrap();
+            assert_eq!(parsed.status, TabletStatus::Hover);
+            assert_eq!(parsed.pressure, 0);
+        }
+
+        #[test]
+        fn short_reports_are_rejected() {
+            assert!(BostoParser.parse(&[0, 0x22, 0x02]).is_none());
+            assert!(BostoParser.parse(&[]).is_none());
+        }
+    }
 }

@@ -78,7 +78,10 @@ fn map_view(handle: HANDLE, size: usize) -> Option<Mapping> {
 /// `ShmSegment`. Windows reference-counts the underlying pages: if another
 /// process already created this mapping, this call opens the same one.
 pub fn create_mapping(size: usize) -> Option<Mapping> {
-    let name = wide_name();
+    create_named_mapping(&wide_name(), size)
+}
+
+fn create_named_mapping(name: &[u16], size: usize) -> Option<Mapping> {
     let size_u64 = size as u64;
     let size_high = (size_u64 >> 32) as u32;
     let size_low = (size_u64 & 0xFFFF_FFFF) as u32;
@@ -107,7 +110,10 @@ pub fn create_mapping(size: usize) -> Option<Mapping> {
 /// it. Used by readers, which should never bring the segment into existence
 /// themselves; only the current HID owner publishes into it.
 pub fn open_mapping(size: usize) -> Option<Mapping> {
-    let name = wide_name();
+    open_named_mapping(&wide_name(), size)
+}
+
+fn open_named_mapping(name: &[u16], size: usize) -> Option<Mapping> {
     // SAFETY: `name` is a valid, NUL-terminated UTF-16 buffer kept alive for
     // the duration of the call.
     let handle = unsafe {
@@ -117,4 +123,68 @@ pub fn open_mapping(size: usize) -> Option<Mapping> {
         return None;
     }
     map_view(handle, size)
+}
+
+#[cfg(test)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::float_cmp,
+    clippy::indexing_slicing
+)]
+mod tests {
+    use super::*;
+
+    fn name(tag: &str) -> Vec<u16> {
+        format!("Local\\NtdShmTest_{}_{tag}", std::process::id())
+            .encode_utf16()
+            .chain(std::iter::once(0))
+            .collect()
+    }
+
+    #[test]
+    fn opening_a_mapping_nobody_created_gives_nothing() {
+        assert!(open_named_mapping(&name("absent"), 64).is_none());
+    }
+
+    #[test]
+    fn a_mapping_name_the_os_refuses_gives_nothing() {
+        // Kernel object names cannot contain a backslash after the namespace prefix.
+        let bad: Vec<u16> = "Local\\ntd\\not\\valid\0".encode_utf16().collect();
+        assert!(create_named_mapping(&bad, 64).is_none());
+    }
+
+    #[test]
+    fn a_view_larger_than_the_mapping_is_refused() {
+        let name = name("too_big");
+        // SAFETY: a page-file backed mapping of 64 bytes with a valid, NUL-terminated name.
+        let handle = unsafe {
+            CreateFileMappingW(
+                INVALID_HANDLE_VALUE,
+                std::ptr::null(),
+                PAGE_READWRITE,
+                0,
+                64,
+                name.as_ptr(),
+            )
+        };
+        assert!(!handle.is_null());
+        // `map_view` takes ownership of the handle and closes it when the view cannot be made.
+        assert!(map_view(handle, 1 << 20).is_none());
+    }
+
+    #[test]
+    fn two_mappings_of_the_same_name_share_their_memory() {
+        let name = name("shared");
+        let first = create_named_mapping(&name, 4096).expect("create");
+        let second = open_named_mapping(&name, 4096).expect("open");
+        // SAFETY: both views map the same live 4096-byte region.
+        unsafe {
+            first.as_ptr().cast::<u8>().write(0x5A);
+        }
+        // SAFETY: as above.
+        let read_back = unsafe { second.as_ptr().cast::<u8>().read() };
+        assert_eq!(read_back, 0x5A);
+    }
 }

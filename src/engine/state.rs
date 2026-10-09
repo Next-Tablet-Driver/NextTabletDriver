@@ -302,4 +302,69 @@ mod tests {
         assert_eq!(*guard, 42u32);
         drop(guard);
     }
+
+    mod more {
+        #![allow(clippy::indexing_slicing)]
+
+        use super::*;
+        use std::sync::atomic::Ordering;
+
+        #[test]
+        fn the_default_states_are_the_new_ones() {
+            assert_eq!(ConfigState::default().version.load(Ordering::Relaxed), 0);
+            assert_eq!(
+                PipelineState::default()
+                    .packet_count
+                    .load(Ordering::Relaxed),
+                0
+            );
+            assert!(!*LifecycleState::default().is_first_run.read().unwrap());
+            assert_eq!(SharedState::default().device.read().unwrap().vid, 0);
+        }
+
+        fn poisoned<T: Clone + Send + Sync + 'static>(
+            value: T,
+        ) -> (Arc<RwLock<T>>, Arc<std::sync::Mutex<T>>) {
+            let rw = Arc::new(RwLock::new(value.clone()));
+            let mutex = Arc::new(std::sync::Mutex::new(value));
+            let (rw2, mutex2) = (Arc::clone(&rw), Arc::clone(&mutex));
+            let _ = std::thread::spawn(move || {
+                let _rw = rw2.write().unwrap();
+                let _mutex = mutex2.lock().unwrap();
+                panic!("poison both locks");
+            })
+            .join();
+            (rw, mutex)
+        }
+
+        #[test]
+        fn a_poisoned_lock_is_still_readable() {
+            log::set_max_level(log::LevelFilter::Trace);
+            let (rw, _) = poisoned(42u32);
+            assert_eq!(*rw.read().unwrap_or_log("test"), 42);
+        }
+
+        #[test]
+        fn a_poisoned_write_lock_is_reset_to_its_default() {
+            log::set_max_level(log::LevelFilter::Trace);
+            let (rw, _) = poisoned(42u32);
+            assert_eq!(*rw.write().unwrap_or_reset("test"), 0);
+        }
+
+        #[test]
+        fn a_poisoned_mutex_is_reset_to_its_default() {
+            log::set_max_level(log::LevelFilter::Trace);
+            let (_, mutex) = poisoned(42u32);
+            assert_eq!(*mutex.lock().unwrap_or_reset("test"), 0);
+        }
+
+        #[test]
+        fn healthy_locks_pass_through_untouched() {
+            let rw = RwLock::new(7u32);
+            assert_eq!(*rw.read().unwrap_or_log("test"), 7);
+            assert_eq!(*rw.write().unwrap_or_reset("test"), 7);
+            let mutex = std::sync::Mutex::new(8u32);
+            assert_eq!(*mutex.lock().unwrap_or_reset("test"), 8);
+        }
+    }
 }

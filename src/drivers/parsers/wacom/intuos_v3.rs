@@ -388,5 +388,60 @@ mod tests {
             assert_eq!((parsed.status, parsed.buttons), (TabletStatus::Aux, 1));
             assert!(parser.parse(&[]).is_none());
         }
+
+        #[test]
+        #[allow(clippy::default_constructed_unit_structs)]
+        fn the_default_parsers_behave_like_the_new_ones() {
+            let plain = IntuosV3Parser::default();
+            assert!(plain.parse(&[0x11, 0x01, 0x00, 0x00]).is_some());
+            let driver = WacomDriverIntuosV3Parser::default();
+            assert!(driver.parse(&[0xFF, 0x11, 0x01, 0x00, 0x00]).is_some());
+        }
+
+        #[test]
+        fn a_tablet_report_without_pressure_hovers() {
+            let mut data = tablet(0x00, 0, 0);
+            data[7] = 0;
+            data[8] = 0;
+            let parsed = IntuosV3Parser::new().parse(&data).unwrap();
+            assert_eq!(parsed.status, TabletStatus::Hover);
+            assert_eq!(parsed.pressure, 0);
+        }
+
+        #[test]
+        fn a_tablet_report_missing_its_last_byte_is_rejected() {
+            assert!(
+                IntuosV3Parser::new()
+                    .parse(&tablet(0x02, 0, 0)[..13])
+                    .is_none()
+            );
+        }
+
+        #[test]
+        fn the_extended_report_maps_the_second_button_and_hovers_without_pressure() {
+            let mut data = [0u8; 20];
+            data[0] = 0x1E;
+            data[2] = 0x04;
+            let parsed = IntuosV3Parser::new().parse(&data).unwrap();
+            assert_eq!(parsed.status, TabletStatus::Hover);
+            assert_eq!(parsed.buttons, 0b10);
+        }
+
+        #[test]
+        fn the_aux_keys_cover_every_button_bit_of_the_first_byte() {
+            let key = |b1: u8| {
+                IntuosV3Parser::new()
+                    .parse(&[0x11, b1, 0x00, 0x00])
+                    .unwrap()
+                    .buttons
+            };
+            assert_eq!(key(0x01), 0b0000_0001);
+            assert_eq!(key(0x02), 0b0000_0010);
+            assert_eq!(key(0x04), 0b0000_0100);
+            assert_eq!(key(0x08), 0b0000_1000);
+            assert_eq!(key(0x10), 0b0010_0000);
+            assert_eq!(key(0x20), 0b0100_0000);
+            assert_eq!(key(0x40), 0b1000_0000);
+        }
     }
 }

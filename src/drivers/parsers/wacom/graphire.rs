@@ -181,4 +181,13 @@ mod tests {
         assert!(GraphireParser.parse(&data[..7]).is_none());
         assert!(GraphireParser.parse(&[]).is_none());
     }
+
+    #[test]
+    fn the_first_aux_key_is_reported_alone() {
+        let parsed = GraphireParser
+            .parse(&[0x02, 0x00, 0, 0, 0, 0, 0, 0x40])
+            .unwrap();
+        assert_eq!(parsed.status, TabletStatus::Aux);
+        assert_eq!(parsed.buttons, 0b01);
+    }
 }

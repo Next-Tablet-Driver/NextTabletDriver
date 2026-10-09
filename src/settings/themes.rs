@@ -312,4 +312,112 @@ mod tests {
         delete_theme_file("neon-night").unwrap();
         assert!(list_theme_files().is_empty());
     }
+
+    mod more {
+        #![allow(clippy::indexing_slicing)]
+
+        use super::*;
+
+        #[test]
+        fn a_themes_folder_that_cannot_be_listed_gives_no_theme() {
+            let nanos = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_nanos();
+            let dir = std::env::temp_dir().join(format!("ntd_themes_blocked_{nanos}"));
+            fs::create_dir_all(&dir).unwrap();
+            crate::settings::set_test_settings_dir(dir.clone());
+            // "Themes" is a regular file, so it is neither created nor listed.
+            fs::write(dir.join("Themes"), "not a folder").unwrap();
+            assert!(list_theme_files().is_empty());
+            let _ = fs::remove_dir_all(dir);
+        }
+
+        fn blocked_settings(name: &str) -> PathBuf {
+            let nanos = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_nanos();
+            let dir = std::env::temp_dir().join(format!("ntd_themes_{name}_{nanos}"));
+            fs::create_dir_all(&dir).unwrap();
+            crate::settings::set_test_settings_dir(dir.clone());
+            dir
+        }
+
+        #[test]
+        fn a_theme_path_without_a_file_name_is_refused() {
+            assert_eq!(
+                read_theme(Path::new("..")).unwrap_err(),
+                "Invalid theme file name"
+            );
+        }
+
+        #[test]
+        fn a_theme_name_without_usable_characters_is_refused() {
+            assert_eq!(
+                read_theme(Path::new("!!!.json")).unwrap_err(),
+                "Theme file name has no usable characters"
+            );
+        }
+
+        #[test]
+        fn a_theme_file_that_does_not_exist_is_refused() {
+            assert!(read_theme(Path::new("ntd-no-such-theme.json")).is_err());
+        }
+
+        #[test]
+        fn a_theme_file_that_is_not_text_is_refused() {
+            let dir = blocked_settings("binary");
+            let file = dir.join("binary.json");
+            fs::write(&file, [0xFF, 0xFE, 0xFD]).unwrap();
+            let error = read_theme(&file).unwrap_err();
+            assert!(error.starts_with("binary.json:"), "{error}");
+            let _ = fs::remove_dir_all(dir);
+        }
+
+        #[test]
+        fn listing_skips_duplicate_ids_and_unreadable_files() {
+            log::set_max_level(log::LevelFilter::Trace);
+            let dir = blocked_settings("listing");
+            let themes = dir.join("Themes");
+            fs::create_dir_all(&themes).unwrap();
+            fs::write(themes.join("Cool Theme.json"), "{}").unwrap();
+            fs::write(themes.join("cool-theme.json"), "{}").unwrap();
+            fs::write(themes.join("broken.json"), [0xFF, 0xFE]).unwrap();
+            let listed = list_theme_files();
+            assert_eq!(listed.len(), 1);
+            assert_eq!(listed[0].id, "cool-theme");
+            let _ = fs::remove_dir_all(dir);
+        }
+
+        #[test]
+        fn a_theme_that_cannot_be_written_is_reported() {
+            let dir = blocked_settings("unwritable");
+            let source = dir.join("source.json");
+            fs::write(&source, "{}").unwrap();
+            // `Themes` is a file, so the copy has nowhere to go.
+            fs::write(dir.join("Themes"), "not a folder").unwrap();
+            let error = import_theme_file(&source).unwrap_err();
+            assert!(error.starts_with("Failed to save the theme"), "{error}");
+            let _ = fs::remove_dir_all(dir);
+        }
+
+        #[test]
+        fn deleting_from_a_themes_folder_that_cannot_be_read_is_reported() {
+            let dir = blocked_settings("undeletable_folder");
+            fs::write(dir.join("Themes"), "not a folder").unwrap();
+            assert!(delete_theme_file("neon").is_err());
+            let _ = fs::remove_dir_all(dir);
+        }
+
+        #[test]
+        fn a_theme_that_cannot_be_removed_is_reported() {
+            let dir = blocked_settings("undeletable_theme");
+            // A directory that looks like a theme file cannot be removed as a file.
+            fs::create_dir_all(dir.join("Themes").join("neon.json")).unwrap();
+            let error = delete_theme_file("neon").unwrap_err();
+            assert!(error.starts_with("Failed to delete the theme"), "{error}");
+            let _ = fs::remove_dir_all(dir);
+        }
+    }
 }

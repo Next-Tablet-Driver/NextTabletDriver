@@ -25,14 +25,23 @@ pub fn get_settings_dir() -> PathBuf {
         }
     }
 
-    ProjectDirs::from("com", "NextTabletDriver", "NextTabletReader").map_or_else(
+    settings_dir_in(
+        ProjectDirs::from("com", "NextTabletDriver", "NextTabletReader")
+            .map(|dirs| dirs.config_dir().to_path_buf()),
+    )
+}
+
+/// `<config_dir>/Settings`, created on demand; a relative `Settings` when the platform has no
+/// per-user configuration directory.
+fn settings_dir_in(config_dir: Option<PathBuf>) -> PathBuf {
+    config_dir.map_or_else(
         || PathBuf::from("Settings"),
-        |proj_dirs| {
-            let config_dir = proj_dirs.config_dir().join("Settings");
-            if !config_dir.exists() {
-                let _ = fs::create_dir_all(&config_dir);
+        |dir| {
+            let settings = dir.join("Settings");
+            if !settings.exists() {
+                let _ = fs::create_dir_all(&settings);
             }
-            config_dir
+            settings
         },
     )
 }
@@ -97,5 +106,107 @@ pub fn migrate_profiles_to_subdir() {
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::float_cmp,
+    clippy::indexing_slicing
+)]
+mod tests {
+    use super::*;
+
+    fn temp(name: &str) -> PathBuf {
+        let nanos = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_nanos();
+        let dir = std::env::temp_dir().join(format!("ntd_paths_{name}_{nanos}"));
+        fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    #[test]
+    fn without_a_platform_directory_the_settings_live_next_to_the_app() {
+        assert_eq!(settings_dir_in(None), PathBuf::from("Settings"));
+    }
+
+    #[test]
+    fn the_settings_folder_is_created_inside_the_config_directory() {
+        let config = temp("settings_in");
+        let settings = settings_dir_in(Some(config.clone()));
+        assert_eq!(settings, config.join("Settings"));
+        assert!(settings.is_dir());
+        // A second call finds it again.
+        assert_eq!(settings_dir_in(Some(config.clone())), settings);
+        let _ = fs::remove_dir_all(config);
+    }
+
+    #[test]
+    fn the_plugins_folder_is_created_on_demand() {
+        let dir = temp("plugins");
+        set_test_settings_dir(dir.clone());
+        let plugins = get_plugins_dir();
+        assert_eq!(plugins, dir.join("plugins"));
+        assert!(plugins.is_dir());
+        let _ = fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn migrating_without_a_readable_settings_folder_does_nothing() {
+        let dir = temp("unreadable");
+        let file = dir.join("not_a_folder");
+        fs::write(&file, "x").unwrap();
+        set_test_settings_dir(file);
+        migrate_profiles_to_subdir();
+        let _ = fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn a_legacy_profile_that_cannot_be_moved_stays_where_it_is() {
+        log::set_max_level(log::LevelFilter::Trace);
+        let dir = temp("blocked_migration");
+        set_test_settings_dir(dir.clone());
+        fs::write(dir.join("legacy.json"), "{}").unwrap();
+        // `profiles` is a file, so nothing can be moved into it.
+        fs::write(dir.join("profiles"), "not a folder").unwrap();
+        migrate_profiles_to_subdir();
+        assert!(dir.join("legacy.json").exists());
+        let _ = fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn a_legacy_profile_never_replaces_a_profile_with_the_same_name() {
+        let dir = temp("same_name");
+        set_test_settings_dir(dir.clone());
+        fs::create_dir_all(dir.join("profiles")).unwrap();
+        fs::write(dir.join("legacy.json"), "old").unwrap();
+        fs::write(dir.join("profiles").join("legacy.json"), "new").unwrap();
+        migrate_profiles_to_subdir();
+        assert_eq!(fs::read_to_string(dir.join("legacy.json")).unwrap(), "old");
+        assert_eq!(
+            fs::read_to_string(dir.join("profiles").join("legacy.json")).unwrap(),
+            "new"
+        );
+        let _ = fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn a_legacy_profile_is_moved_into_the_profiles_folder() {
+        log::set_max_level(log::LevelFilter::Trace);
+        let dir = temp("moved");
+        set_test_settings_dir(dir.clone());
+        fs::write(dir.join("legacy.json"), "{}").unwrap();
+        fs::write(dir.join("app_preferences.json"), "{}").unwrap();
+        migrate_profiles_to_subdir();
+        assert!(dir.join("profiles").join("legacy.json").exists());
+        assert!(!dir.join("legacy.json").exists());
+        // App-owned files stay in the root.
+        assert!(dir.join("app_preferences.json").exists());
+        let _ = fs::remove_dir_all(dir);
     }
 }

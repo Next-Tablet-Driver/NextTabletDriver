@@ -44,12 +44,17 @@ impl Default for AppPreferences {
 /// Saves application preferences to `app_preferences.json`.
 pub fn save_app_preferences(prefs: &AppPreferences) {
     let path = super::get_settings_dir().join("app_preferences.json");
-    match serde_json::to_string_pretty(prefs) {
+    write_json(&path, prefs);
+}
+
+/// Writes `value` as pretty JSON through a temporary file, so a crash never leaves a partial file.
+fn write_json<T: Serialize + ?Sized>(path: &std::path::Path, value: &T) {
+    match serde_json::to_string_pretty(value) {
         Ok(json) => {
             let tmp = path.with_extension("json.tmp");
             if let Err(e) = fs::write(&tmp, &json) {
                 log::error!(target: "Config", "Failed to write temp app preferences: {e}");
-            } else if let Err(e) = fs::rename(&tmp, &path) {
+            } else if let Err(e) = fs::rename(&tmp, path) {
                 log::error!(target: "Config", "Failed to rename temp app preferences: {e}");
             } else {
                 log::debug!(target: "Config", "Saved app preferences");
@@ -115,6 +120,7 @@ mod tests {
                 .as_nanos();
             let path = std::env::temp_dir().join(format!("ntd_app_prefs_{name}_{nanos}"));
             fs::create_dir_all(&path).unwrap();
+            log::set_max_level(log::LevelFilter::Trace);
             set_test_settings_dir(path.clone());
             Self(path)
         }
@@ -196,5 +202,55 @@ mod tests {
         let rewritten: serde_json::Value =
             serde_json::from_str(&fs::read_to_string(dir.file()).unwrap()).unwrap();
         assert_eq!(rewritten["telemetry_id"], loaded.telemetry_id.as_str());
+    }
+
+    mod more {
+        #![allow(clippy::indexing_slicing)]
+
+        use super::*;
+
+        struct FailingSerialize;
+
+        impl Serialize for FailingSerialize {
+            fn serialize<S: serde::Serializer>(&self, _: S) -> Result<S::Ok, S::Error> {
+                Err(serde::ser::Error::custom("cannot be serialized"))
+            }
+        }
+
+        #[test]
+        fn a_value_that_cannot_be_serialized_writes_nothing() {
+            let dir = TempSettings::new("serialize_fail");
+            let path = dir.0.join("prefs.json");
+            write_json(&path, &FailingSerialize);
+            assert!(!path.exists());
+        }
+
+        #[test]
+        fn a_temporary_file_that_cannot_be_written_leaves_no_file() {
+            let dir = TempSettings::new("write_fail");
+            // The folder of the target does not exist, so the temporary file cannot be created.
+            let path = dir.0.join("missing_folder").join("prefs.json");
+            write_json(&path, &AppPreferences::default());
+            assert!(!path.exists());
+        }
+
+        #[test]
+        fn a_target_that_cannot_be_replaced_is_left_alone() {
+            let dir = TempSettings::new("rename_fail");
+            // The target is a directory: the final rename cannot succeed.
+            let path = dir.0.join("prefs.json");
+            fs::create_dir_all(&path).unwrap();
+            write_json(&path, &AppPreferences::default());
+            assert!(path.is_dir());
+        }
+
+        #[test]
+        fn preferences_that_cannot_be_read_fall_back_to_the_defaults() {
+            let dir = TempSettings::new("read_fail");
+            fs::create_dir_all(dir.file()).unwrap();
+            let loaded = load_app_preferences();
+            assert!(loaded.telemetry_enabled);
+            assert!(dir.file().is_dir());
+        }
     }
 }

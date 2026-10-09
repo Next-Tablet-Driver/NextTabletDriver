@@ -185,5 +185,36 @@ mod tests {
                 message
             );
         }
+
+        #[test]
+        fn anonymizing_with_the_real_environment_hides_the_current_user() {
+            for variable in ["USERNAME", "USER"] {
+                if let Ok(user) = std::env::var(variable)
+                    && user.len() >= 3
+                {
+                    let cleaned = anonymize_path(&format!("panic in /home/{user}/src/main.rs"));
+                    assert!(!cleaned.contains(&user), "{cleaned}");
+                }
+            }
+            // Without any user information the message is returned as it was.
+            assert_eq!(anonymize_path("index out of bounds"), "index out of bounds");
+        }
+
+        #[test]
+        fn the_panic_hook_writes_an_anonymized_report_for_the_next_launch() {
+            let dir = temp_settings("hook");
+            setup_panic_hook();
+            let result = std::panic::catch_unwind(|| {
+                panic!("boom in C:\\Users\\Nobody\\src");
+            });
+            // Put the default hook back for whatever runs next in this process.
+            let _ = std::panic::take_hook();
+            assert!(result.is_err());
+
+            let report = std::fs::read_to_string(dir.join("crash_report.json")).unwrap();
+            let json: serde_json::Value = serde_json::from_str(&report).unwrap();
+            assert!(json["panic_message"].as_str().unwrap().contains("boom"));
+            let _ = std::fs::remove_dir_all(dir);
+        }
     }
 }

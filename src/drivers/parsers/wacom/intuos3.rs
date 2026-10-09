@@ -283,4 +283,35 @@ mod tests {
         assert!(parser.parse(&[0x02, 0xF0, 1, 2]).is_none());
         assert!(parser.parse(&[0x0C, 0, 0, 0, 0]).is_none());
     }
+
+    #[test]
+    fn each_express_key_bit_lands_on_its_own_button() {
+        for bit in 0..4u8 {
+            let low = [0x0C, 0, 0, 0, 0, 1 << bit, 0];
+            assert_eq!(Intuos3Parser::new().parse(&low).unwrap().buttons, 1 << bit);
+            let high = [0x0C, 0, 0, 0, 0, 0, 1 << bit];
+            assert_eq!(
+                Intuos3Parser::new().parse(&high).unwrap().buttons,
+                1 << (bit + 4)
+            );
+        }
+    }
+
+    #[test]
+    fn the_two_extra_keys_do_not_fit_in_the_button_byte() {
+        // The extra-aux layout adds buttons 8 and 9, which the 8-bit output cannot represent.
+        let parser = Intuos3ExtraAuxParser::default();
+        let extra_only = parser.parse(&[0x0C, 0, 0, 0, 0, 0x10, 0x10]).unwrap();
+        assert_eq!(
+            (extra_only.status, extra_only.buttons),
+            (TabletStatus::Aux, 0)
+        );
+        let everything = parser.parse(&[0x0C, 0, 0, 0, 0, 0x1F, 0x1F]).unwrap();
+        assert_eq!(everything.buttons, 0xFF);
+        // The plain parser ignores those bits altogether.
+        let plain = Intuos3Parser::new()
+            .parse(&[0x0C, 0, 0, 0, 0, 0x10, 0x10])
+            .unwrap();
+        assert_eq!(plain.buttons, 0);
+    }
 }

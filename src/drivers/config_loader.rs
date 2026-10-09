@@ -34,11 +34,16 @@ fn load_and_index_configurations() -> ConfigIndex {
 
 #[must_use]
 pub fn load_configurations() -> Vec<TabletConfiguration> {
+    load_configurations_from(Path::new("tablets"))
+}
+
+/// Tablet configurations found in `local_dir` (if it exists), then the embedded ones; the first
+/// configuration with a given name wins.
+fn load_configurations_from(local_dir: &Path) -> Vec<TabletConfiguration> {
     let global_start = Instant::now();
     let mut configs = Vec::new();
     let mut loaded_names = HashSet::new();
 
-    let local_dir = Path::new("tablets");
     if local_dir.exists() {
         let disk_start = Instant::now();
         load_from_disk_recursive(local_dir, &mut configs, &mut loaded_names);
@@ -190,27 +195,6 @@ mod tests {
     }
 
     #[test]
-    fn every_embedded_configuration_parses() {
-        let mut parsed = 0;
-        let mut failures = Vec::new();
-        for_each_embedded_file(&TABLET_CONFIGS_DIR, &mut |file| {
-            if file.path().extension().and_then(|e| e.to_str()) != Some("json") {
-                return;
-            }
-            let text = file.contents_utf8().unwrap_or_default();
-            match serde_json::from_str::<TabletConfiguration>(text) {
-                Ok(_) => parsed += 1,
-                Err(e) => failures.push(format!("{}: {e}", file.path().display())),
-            }
-        });
-        assert!(
-            failures.is_empty(),
-            "unparsable configurations: {failures:#?}"
-        );
-        assert!(parsed > 100, "only {parsed} embedded configurations");
-    }
-
-    #[test]
     fn the_loaded_catalogue_has_unique_names_and_sane_specs() {
         let configs = load_configurations();
         assert!(configs.len() > 100);
@@ -270,5 +254,105 @@ mod tests {
         let mut names = HashSet::new();
         load_from_disk_recursive(Path::new("ntd-no-such-folder"), &mut configs, &mut names);
         assert!(configs.is_empty());
+    }
+
+    const GOOD: &[u8] = br#"{
+        "Name": "Embedded Alpha",
+        "Specifications": {
+            "Digitizer": { "Width": 160.0, "Height": 100.0, "MaxX": 16000, "MaxY": 10000 },
+            "Pen": { "MaxPressure": 8191 }
+        },
+        "DigitizerIdentifiers": [
+            { "VendorID": 1, "ProductID": 2, "ReportParser": "Test.Tablet.ReportParser" }
+        ]
+    }"#;
+
+    static ENTRIES: [DirEntry<'static>; 5] = [
+        DirEntry::File(include_dir::File::new("good.json", GOOD)),
+        DirEntry::File(include_dir::File::new("duplicate.json", GOOD)),
+        DirEntry::File(include_dir::File::new("broken.json", b"{ nope")),
+        DirEntry::File(include_dir::File::new("binary.json", &[0xFF, 0xFE, 0xFD])),
+        DirEntry::File(include_dir::File::new("notes.txt", b"not a configuration")),
+    ];
+
+    static NESTED: [DirEntry<'static>; 1] = [DirEntry::Dir(Dir::new("sub", &ENTRIES))];
+    static ROOT: Dir<'static> = Dir::new("", &NESTED);
+
+    #[test]
+    fn embedded_loading_walks_folders_and_skips_duplicates_junk_and_broken_files() {
+        log::set_max_level(log::LevelFilter::Trace);
+        let mut configs = Vec::new();
+        let mut names = HashSet::new();
+        load_embedded_recursive(&ROOT, &mut configs, &mut names);
+        assert_eq!(configs.len(), 1);
+        assert_eq!(configs[0].name, "Embedded Alpha");
+        assert!(names.contains("Embedded Alpha"));
+    }
+
+    #[test]
+    fn disk_loading_reports_files_that_cannot_be_read_or_parsed() {
+        log::set_max_level(log::LevelFilter::Trace);
+        let dir = TempDir::new("unreadable");
+        fs::write(dir.0.join("binary.json"), [0xFF, 0xFE, 0xFD]).unwrap();
+        fs::write(dir.0.join("broken.json"), "{ nope").unwrap();
+        let mut configs = Vec::new();
+        let mut names = HashSet::new();
+        load_from_disk_recursive(&dir.0, &mut configs, &mut names);
+        assert!(configs.is_empty());
+    }
+
+    #[test]
+    fn the_whole_catalogue_loads_with_logging_enabled() {
+        log::set_max_level(log::LevelFilter::Trace);
+        assert!(load_configurations().len() > 100);
+        assert!(!INDEXED_CONFIGS.is_empty());
+    }
+
+    #[test]
+    fn every_embedded_configuration_parses() {
+        let mut files = Vec::new();
+        for_each_embedded_file(&TABLET_CONFIGS_DIR, &mut |file| {
+            files.push((
+                file.path().to_path_buf(),
+                file.contents_utf8().unwrap_or_default().to_string(),
+            ));
+        });
+        let configurations: Vec<_> = files
+            .iter()
+            .filter(|(path, _)| path.extension().and_then(|e| e.to_str()) == Some("json"))
+            .collect();
+        let failures: Vec<String> = configurations
+            .iter()
+            .filter_map(|(path, text)| {
+                serde_json::from_str::<TabletConfiguration>(text)
+                    .err()
+                    .map(|e| format!("{}: {e}", path.display()))
+            })
+            .collect();
+        assert!(
+            failures.is_empty(),
+            "unparsable configurations: {failures:#?}"
+        );
+        let count = configurations.len();
+        assert!(count > 100, "only {count} embedded configurations");
+    }
+
+    #[test]
+    fn without_a_local_folder_only_the_embedded_catalogue_is_loaded() {
+        let configs = load_configurations_from(Path::new("ntd-no-such-folder"));
+        assert!(configs.len() > 100);
+    }
+
+    #[test]
+    fn local_configurations_are_loaded_before_the_embedded_ones() {
+        let dir = TempDir::new("local_first");
+        fs::write(
+            dir.0.join("mine.json"),
+            MINIMAL.replace("NAME", "Disk Alpha"),
+        )
+        .unwrap();
+        let configs = load_configurations_from(&dir.0);
+        assert_eq!(configs[0].name, "Disk Alpha");
+        assert!(configs.len() > 100);
     }
 }

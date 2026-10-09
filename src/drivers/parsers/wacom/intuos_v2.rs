@@ -281,5 +281,23 @@ mod tests {
             assert_eq!((parsed.status, parsed.buttons), (TabletStatus::Aux, 5));
             assert!(WacomDriverIntuosV2Parser::new().parse(&[]).is_none());
         }
+
+        #[test]
+        #[allow(clippy::default_constructed_unit_structs)]
+        fn the_default_parsers_behave_like_the_new_ones() {
+            let plain = IntuosV2Parser::default();
+            assert!(plain.parse(&[0x11, 0x01]).is_some());
+            let driver = WacomDriverIntuosV2Parser::default();
+            assert!(driver.parse(&[0xFF, 0x11, 0x01]).is_some());
+        }
+
+        #[test]
+        fn the_extended_report_without_pressure_hovers() {
+            let mut data = [0u8; 13];
+            data[0] = 0x1E;
+            let parsed = IntuosV2Parser::new().parse(&data).unwrap();
+            assert_eq!(parsed.status, TabletStatus::Hover);
+            assert_eq!(parsed.pressure, 0);
+        }
     }
 }

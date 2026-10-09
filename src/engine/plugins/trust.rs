@@ -18,7 +18,6 @@ use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
 use std::fmt::Write as _;
 use std::fs;
-use std::io::Read;
 use std::path::{Path, PathBuf};
 
 /// Minisign public key (base64, second line of the `.pub` file) of the official plugin
@@ -94,10 +93,7 @@ impl TrustStore {
     }
 
     fn save(&self) -> Result<(), String> {
-        let json = serde_json::to_string_pretty(&TrustFile {
-            trusted: self.entries.clone(),
-        })
-        .map_err(|e| e.to_string())?;
+        let json = format!("{:#}", serde_json::json!({ "trusted": &self.entries }));
         if let Some(parent) = self.path.parent() {
             fs::create_dir_all(parent).map_err(|e| e.to_string())?;
         }
@@ -117,16 +113,7 @@ impl TrustStore {
 pub fn sha256_file(path: &Path) -> std::io::Result<String> {
     let mut file = fs::File::open(path)?;
     let mut hasher = Sha256::new();
-    let mut buf = vec![0u8; 64 * 1024];
-    loop {
-        let n = file.read(&mut buf)?;
-        if n == 0 {
-            break;
-        }
-        if let Some(chunk) = buf.get(..n) {
-            hasher.update(chunk);
-        }
-    }
+    std::io::copy(&mut file, &mut hasher)?;
     let digest = hasher.finalize();
     let mut hex = String::with_capacity(digest.len() * 2);
     for byte in digest {
@@ -139,7 +126,12 @@ pub fn sha256_file(path: &Path) -> std::io::Result<String> {
 /// official key. Always `false` when no official key was embedded at build time.
 #[must_use]
 pub fn has_valid_official_signature(library: &Path) -> bool {
-    OFFICIAL_PUBKEY.is_some_and(|key| verify_signature(library, key))
+    has_valid_signature_with(library, OFFICIAL_PUBKEY)
+}
+
+/// `true` if `library` is signed by `key` (always `false` without a key).
+fn has_valid_signature_with(library: &Path, key: Option<&str>) -> bool {
+    key.is_some_and(|key| verify_signature(library, key))
 }
 
 fn verify_signature(library: &Path, pubkey_base64: &str) -> bool {
@@ -157,21 +149,10 @@ fn verify_signature(library: &Path, pubkey_base64: &str) -> bool {
     let Ok(mut verifier) = public_key.verify_stream(&signature) else {
         return false;
     };
-    let Ok(mut file) = fs::File::open(library) else {
+    let Ok(bytes) = fs::read(library) else {
         return false;
     };
-    let mut buf = vec![0u8; 64 * 1024];
-    loop {
-        match file.read(&mut buf) {
-            Ok(0) => break,
-            Ok(n) => {
-                if let Some(chunk) = buf.get(..n) {
-                    verifier.update(chunk);
-                }
-            }
-            Err(_) => return false,
-        }
-    }
+    verifier.update(&bytes);
     verifier.finalize().is_ok()
 }
 
@@ -254,7 +235,7 @@ mod tests {
             "RWQf6LRCGA9i53mlYecO4IzT51TGPpvWucNSCh1CBM0QTaLn73Y7GFO3"
         ));
         // The key embedded at build time is absent in tests, so nothing is "official".
-        assert!(!has_valid_official_signature(&lib) || OFFICIAL_PUBKEY.is_some());
+        assert!(!has_valid_official_signature(&lib));
         let _ = fs::remove_dir_all(dir);
     }
 
@@ -379,15 +360,96 @@ mod tests {
             assert!(!verify_signature(&dir.join("absent.dll"), key));
         }
 
+        fn signed_library(name: &str, content: &[u8]) -> (PathBuf, String) {
+            let dir = temp_dir(name);
+            let library = dir.join("filter.dll");
+            fs::write(&library, content).unwrap();
+            let keys = minisign::KeyPair::generate_unencrypted_keypair().unwrap();
+            let signature = minisign::sign(
+                Some(&keys.pk),
+                &keys.sk,
+                std::io::Cursor::new(content),
+                Some("test"),
+                None,
+            )
+            .unwrap();
+            fs::write(dir.join("filter.dll.minisig"), signature.to_string()).unwrap();
+            (library, keys.pk.to_base64())
+        }
+
         #[test]
-        fn without_an_embedded_key_nothing_is_official() {
-            // Local builds have no NTD_PLUGIN_PUBKEY: the check must fail closed.
-            if OFFICIAL_PUBKEY.is_none() {
-                let dir = temp_dir("no_key");
-                let library = dir.join("filter.dll");
-                fs::write(&library, b"test").unwrap();
-                assert!(!has_valid_official_signature(&library));
-            }
+        fn a_library_signed_with_the_official_key_is_accepted() {
+            let (library, key) = signed_library("signed", b"plugin bytes");
+            assert!(verify_signature(&library, &key));
+        }
+
+        #[test]
+        fn a_library_modified_after_signing_is_refused() {
+            let (library, key) = signed_library("tampered", b"plugin bytes");
+            fs::write(&library, b"plugin bytes, plus something").unwrap();
+            assert!(!verify_signature(&library, &key));
+        }
+
+        #[test]
+        fn a_signature_made_with_another_key_is_refused() {
+            let (library, _) = signed_library("other_key", b"plugin bytes");
+            let (_, other_key) = signed_library("another", b"x");
+            assert!(!verify_signature(&library, &other_key));
+        }
+
+        #[test]
+        fn an_unsigned_library_is_never_official() {
+            let dir = temp_dir("unsigned");
+            let library = dir.join("filter.dll");
+            fs::write(&library, b"test").unwrap();
+            assert!(!has_valid_official_signature(&library));
+        }
+
+        #[test]
+        fn a_store_without_a_usable_path_cannot_persist_an_approval() {
+            let mut store = TrustStore {
+                path: PathBuf::new(),
+                entries: BTreeMap::new(),
+            };
+            assert!(store.trust(HASH, "filter.dll").is_err());
+            assert!(!store.is_trusted(HASH));
+        }
+
+        #[test]
+        fn a_signed_library_that_has_disappeared_is_refused() {
+            let (library, key) = signed_library("vanished", b"plugin bytes");
+            fs::remove_file(&library).unwrap();
+            assert!(!verify_signature(&library, &key));
+        }
+
+        #[test]
+        fn a_revocation_that_cannot_be_saved_is_reported() {
+            let dir = temp_dir("revoke_unsaveable");
+            let blocker = dir.join("blocker");
+            fs::write(&blocker, "file").unwrap();
+            let mut store = TrustStore {
+                path: blocker.join("trusted_plugins.json"),
+                entries: BTreeMap::from([(HASH.to_string(), "filter.dll".to_string())]),
+            };
+            assert!(store.revoke(HASH).is_err());
+        }
+
+        #[test]
+        fn the_store_file_is_pretty_printed_json_keyed_by_hash() {
+            let dir = temp_dir("format");
+            let path = dir.join("trusted_plugins.json");
+            let mut store = TrustStore::load(path.clone());
+            store.trust(HASH, "filter.dll").unwrap();
+            let json: serde_json::Value =
+                serde_json::from_str(&fs::read_to_string(path).unwrap()).unwrap();
+            assert_eq!(json["trusted"][HASH], "filter.dll");
+        }
+
+        #[test]
+        fn an_embedded_key_enables_the_signature_check() {
+            let (library, key) = signed_library("with_key", b"plugin bytes");
+            assert!(has_valid_signature_with(&library, Some(&key)));
+            assert!(!has_valid_signature_with(&library, None));
         }
     }
 }
