@@ -2,7 +2,7 @@ name: Nix
 
 on:
   push:
-    branches: [main, master, dev]
+    branches: [main]
     paths:
       - "flake.nix"
       - "flake.lock"
@@ -12,7 +12,7 @@ on:
       - "scripts/99-nexttabletdriver.rules"
       - ".github/workflows/nix.yml"
   pull_request:
-    branches: [main, master, dev]
+    branches: [main]
     paths:
       - "flake.nix"
       - "flake.lock"

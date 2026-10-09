@@ -1,0 +1,72 @@
+name: PR labels
+
+on:
+  pull_request_target:
+    branches: [main]
+    types: [opened, edited, synchronize, reopened]
+
+# Never checks out or runs code from the pull request: labels are derived from the changed
+# paths (config read from the base branch) and from the PR title.
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  area:
+    name: Label by changed paths
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/labeler@v5
+        with:
+          sync-labels: true
+
+  type:
+    name: Label by commit type
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const typeLabels = {
+              feat: '✨ Feature',
+              fix: '🐛 Bug',
+              perf: '⚡ Perf',
+              refactor: '⚙️ Refac',
+              docs: '📝 Documentation',
+              test: '🧪 Test',
+              build: '📦 Build',
+              ci: '🤖 CI',
+              chore: '🧹 Chore',
+              style: '🧹 Chore',
+              revert: '⏪ Revert',
+            };
+            const breaking = '💥 Breaking';
+            const managed = new Set([...Object.values(typeLabels), breaking]);
+
+            const pr = context.payload.pull_request;
+            const match = /^(\w+)(?:\([^)]*\))?(!)?:/.exec(pr.title);
+            const wanted = new Set();
+            if (match) {
+              const label = typeLabels[match[1]];
+              if (label) wanted.add(label);
+              if (match[2]) wanted.add(breaking);
+            }
+
+            // The payload can be stale on re-runs, so read the live labels.
+            const { data: live } = await github.rest.issues.listLabelsOnIssue({
+              ...context.repo, issue_number: pr.number,
+            });
+            const current = live.map((l) => l.name);
+            for (const name of current) {
+              if (managed.has(name) && !wanted.has(name)) {
+                await github.rest.issues.removeLabel({
+                  ...context.repo, issue_number: pr.number, name,
+                });
+              }
+            }
+            const toAdd = [...wanted].filter((n) => !current.includes(n));
+            if (toAdd.length) {
+              await github.rest.issues.addLabels({
+                ...context.repo, issue_number: pr.number, labels: toAdd,
+              });
+            }

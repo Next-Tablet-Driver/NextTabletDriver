@@ -1,0 +1,32 @@
+# Area labels, applied by .github/workflows/pr-labels.yml from the files a PR changes.
+"area: frontend":
+  - changed-files:
+      - any-glob-to-any-file: "frontend/**"
+
+"area: backend":
+  - changed-files:
+      - any-glob-to-any-file: ["src/**", "src-tauri/**", "Cargo.toml", "Cargo.lock"]
+
+"area: plugins":
+  - changed-files:
+      - any-glob-to-any-file: ["plugins/**", "sdk/**"]
+
+"area: tablets":
+  - changed-files:
+      - any-glob-to-any-file: "tablets/**"
+
+"area: ci":
+  - changed-files:
+      - any-glob-to-any-file: [".github/**", ".config/**"]
+
+"area: packaging":
+  - changed-files:
+      - any-glob-to-any-file: ["packaging/**", "nix/**", "flake.nix", "flake.lock", "scripts/**"]
+
+"area: docs":
+  - changed-files:
+      - any-glob-to-any-file: ["docs/**", "README.md", ".github/*.md"]
+
+"dependencies":
+  - changed-files:
+      - any-glob-to-any-file: ["Cargo.lock", "**/Cargo.lock", "frontend/package-lock.json"]

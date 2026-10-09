@@ -5,6 +5,18 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5
+    # Version updates are disabled; Dependabot only opens security updates.
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-major", "version-update:semver-minor", "version-update:semver-patch"]
+    # Titles must pass the Conventional Commits check on PR titles.
+    commit-message:
+      prefix: "chore(deps)"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "ci(deps)"
