@@ -46,8 +46,10 @@ jobs:
   build-package:
     name: Build package (nix build .#default)
     runs-on: ubuntu-latest
-    # Fails with "hash mismatch" until `npmDeps.hash` in nix/default.nix is filled in
-    # (see the comment there); the module checks above do not depend on this job.
+    # Known failure, non-blocking: nixpkgs ships rustc 1.98.x while the crate requires 1.99.0
+    # (`rust-version` in Cargo.toml). Remove `continue-on-error` once nixpkgs has 1.99 or the
+    # flake takes its toolchain from rust-overlay/fenix. The module checks above do not
+    # depend on this job.
     continue-on-error: true
 
     steps:
