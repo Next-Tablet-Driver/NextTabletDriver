@@ -15,9 +15,9 @@ pkgs.rustPlatform.buildRustPackage {
   npmRoot = "frontend";
   npmDeps = pkgs.fetchNpmDeps {
     src = ../frontend;
-    # Run `nix build .#default` once: the build fails with the expected hash, paste it here
-    # (and again whenever frontend/package-lock.json changes).
-    hash = pkgs.lib.fakeHash;
+    # Update this hash whenever frontend/package-lock.json changes: `nix build .#default`
+    # fails with the expected hash, paste it here.
+    hash = "sha256-SVdX38kH5wi7HXMg0fL5R4jK+tmU0WrqlUqIppniCzY=";
   };
 
   nativeBuildInputs = with pkgs; [

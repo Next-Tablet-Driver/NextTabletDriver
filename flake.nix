@@ -11,7 +11,9 @@
   };
 
   outputs = { self, nixpkgs, flake-utils, home-manager }:
-    flake-utils.lib.eachDefaultSystem (system:
+    # Linux only: nixpkgs 26.11 dropped x86_64-darwin, so evaluating every default system
+    # (as `nix flake check --all-systems` does) throws.
+    flake-utils.lib.eachSystem [ "x86_64-linux" "aarch64-linux" ] (system:
       let
         pkgs = import nixpkgs {
           inherit system;

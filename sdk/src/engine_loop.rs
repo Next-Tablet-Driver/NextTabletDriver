@@ -106,7 +106,11 @@ fn apply_shm_snapshot(
     device.pid = snapshot.pid;
     drop(device);
 
-    let mut data = shared.pipeline.tablet_data.write().unwrap_or_reset("tablet_data");
+    let mut data = shared
+        .pipeline
+        .tablet_data
+        .write()
+        .unwrap_or_reset("tablet_data");
     data.is_connected = snapshot.is_connected;
     data.status = status_from_discriminant(snapshot.status);
     data.buttons = snapshot.buttons;
@@ -114,7 +118,8 @@ fn apply_shm_snapshot(
     drop(data);
 
     *shared
-        .pipeline.processed_frame
+        .pipeline
+        .processed_frame
         .write()
         .unwrap_or_reset("processed_frame") = ProcessedFrame {
         u: snapshot.u,
@@ -322,7 +327,8 @@ fn owner_iteration(shared: &Arc<SharedState>, is_owner: &Arc<AtomicBool>) {
     let hid_api = match hidapi::HidApi::new() {
         Ok(api) => {
             *shared
-                .lifecycle.engine_status
+                .lifecycle
+                .engine_status
                 .write()
                 .unwrap_or_reset("engine_status") =
                 next_tablet_driver::engine::state::EngineStatus::Running;
@@ -331,7 +337,8 @@ fn owner_iteration(shared: &Arc<SharedState>, is_owner: &Arc<AtomicBool>) {
         Err(e) => {
             log::error!(target: "EngineLoop", "CRITICAL: Failed to initialise HID API: {e}");
             *shared
-                .lifecycle.engine_status
+                .lifecycle
+                .engine_status
                 .write()
                 .unwrap_or_reset("engine_status") =
                 next_tablet_driver::engine::state::EngineStatus::Failed(e.to_string());
@@ -438,7 +445,11 @@ fn on_device_connected(
     *shared.device.write().unwrap_or_reset("device_state") = new_device.clone();
     log::info!(target: "EngineLoop", "Tablet metadata populated: {}", new_device.name);
 
-    let mut is_first = shared.lifecycle.is_first_run.write().unwrap_or_reset("is_first_run");
+    let mut is_first = shared
+        .lifecycle
+        .is_first_run
+        .write()
+        .unwrap_or_reset("is_first_run");
     if *is_first {
         let mut config = shared.config.mapping.write().unwrap_or_log("config");
         config.active_area.w = size.0;
@@ -457,8 +468,11 @@ fn on_disconnected(shared: &Arc<SharedState>) {
     log::info!(target: "EngineLoop", "Device disconnected, resetting shared state");
     *shared.device.write().unwrap_or_reset("device_state") =
         next_tablet_driver::engine::state::DeviceState::default();
-    *shared.pipeline.tablet_data.write().unwrap_or_reset("tablet_data") =
-        next_tablet_driver::drivers::TabletData::default();
+    *shared
+        .pipeline
+        .tablet_data
+        .write()
+        .unwrap_or_reset("tablet_data") = next_tablet_driver::drivers::TabletData::default();
 }
 
 /// The main packet reading loop, driving the real HID device. Adapted from
@@ -518,10 +532,15 @@ fn run_polling_loop(
                 };
                 let frame = pipeline.process(&out, driver, local_config, filters, shared);
                 *shared
-                    .pipeline.processed_frame
+                    .pipeline
+                    .processed_frame
                     .write()
                     .unwrap_or_reset("processed_frame") = frame;
-                *shared.pipeline.tablet_data.write().unwrap_or_reset("tablet_data") = out.clone();
+                *shared
+                    .pipeline
+                    .tablet_data
+                    .write()
+                    .unwrap_or_reset("tablet_data") = out.clone();
                 if let Some(writer) = shm_writer {
                     publish_shm_state(writer, shared, &out, local_config, &frame);
                 }
@@ -554,10 +573,15 @@ fn process_packet(
     if let Some(data) = driver.parse(raw) {
         let frame = pipeline.process(&data, driver, local_config, filters, shared);
         *shared
-            .pipeline.processed_frame
+            .pipeline
+            .processed_frame
             .write()
             .unwrap_or_reset("processed_frame") = frame;
-        *shared.pipeline.tablet_data.write().unwrap_or_reset("tablet_data") = data.clone();
+        *shared
+            .pipeline
+            .tablet_data
+            .write()
+            .unwrap_or_reset("tablet_data") = data.clone();
         if let Some(writer) = shm_writer {
             publish_shm_state(writer, shared, &data, local_config, &frame);
         }

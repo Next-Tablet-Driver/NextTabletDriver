@@ -417,7 +417,7 @@ pub fn set_fast_timer(enable: bool) {
 }
 
 #[cfg(not(windows))]
-pub fn set_fast_timer(_enable: bool) {}
+pub const fn set_fast_timer(_enable: bool) {}
 
 /// Reads `/etc/os-release` to extract the system's human-readable distribution name.
 #[cfg(target_os = "linux")]
