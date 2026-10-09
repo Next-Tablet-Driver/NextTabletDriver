@@ -91,7 +91,7 @@ mod tests {
     use crossbeam_channel::bounded;
 
     fn shared() -> Arc<SharedState> {
-        log::set_max_level(log::LevelFilter::Trace);
+        crate::test_support::evaluate_log_arguments();
         Arc::new(SharedState::new())
     }
 

@@ -162,7 +162,7 @@ mod tests {
 
     #[test]
     fn a_legacy_profile_that_cannot_be_moved_stays_where_it_is() {
-        log::set_max_level(log::LevelFilter::Trace);
+        crate::test_support::evaluate_log_arguments();
         let dir = temp("blocked_migration");
         set_test_settings_dir(dir.clone());
         fs::write(dir.join("legacy.json"), "{}").unwrap();
@@ -191,7 +191,7 @@ mod tests {
 
     #[test]
     fn a_legacy_profile_is_moved_into_the_profiles_folder() {
-        log::set_max_level(log::LevelFilter::Trace);
+        crate::test_support::evaluate_log_arguments();
         let dir = temp("moved");
         set_test_settings_dir(dir.clone());
         fs::write(dir.join("legacy.json"), "{}").unwrap();

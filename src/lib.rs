@@ -42,5 +42,8 @@ pub mod logger;
 pub mod settings;
 pub mod startup;
 
+#[cfg(test)]
+mod test_support;
+
 /// Version.
 pub const VERSION: &str = "2.0.0";

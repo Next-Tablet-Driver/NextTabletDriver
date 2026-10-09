@@ -371,7 +371,7 @@ mod tests {
 
     #[test]
     fn listing_skips_duplicate_ids_and_unreadable_files() {
-        log::set_max_level(log::LevelFilter::Trace);
+        crate::test_support::evaluate_log_arguments();
         let dir = blocked_settings("listing");
         let themes = dir.join("Themes");
         fs::create_dir_all(&themes).unwrap();

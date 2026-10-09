@@ -204,6 +204,8 @@ mod tests {
                 "Wacom.IntuosV1.WacomDriverIntuosV1ReportParser",
                 "WacomDriverIntuosV1Parser",
             ),
+            // Known issue (#165): the five plain names below resolve to the "WacomDriver" variants.
+            // They pin today's mapping and are expected to change with the fix.
             (
                 "Wacom.IntuosV2.IntuosV2ReportParser",
                 "WacomDriverIntuosV2Parser",
@@ -256,7 +258,7 @@ mod tests {
 
     #[test]
     fn an_unknown_parser_name_falls_back_to_the_generic_parser() {
-        log::set_max_level(log::LevelFilter::Trace);
+        crate::test_support::evaluate_log_arguments();
         let parser = create_parser("Some.Unknown.Vendor.ReportParser");
         assert!(parser.name().contains("FallbackParser"));
         // An empty name falls back quietly.

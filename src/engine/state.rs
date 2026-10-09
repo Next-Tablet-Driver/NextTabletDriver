@@ -330,21 +330,21 @@ mod tests {
 
     #[test]
     fn a_poisoned_lock_is_still_readable() {
-        log::set_max_level(log::LevelFilter::Trace);
+        crate::test_support::evaluate_log_arguments();
         let (rw, _) = poisoned(42u32);
         assert_eq!(*rw.read().unwrap_or_log("test"), 42);
     }
 
     #[test]
     fn a_poisoned_write_lock_is_reset_to_its_default() {
-        log::set_max_level(log::LevelFilter::Trace);
+        crate::test_support::evaluate_log_arguments();
         let (rw, _) = poisoned(42u32);
         assert_eq!(*rw.write().unwrap_or_reset("test"), 0);
     }
 
     #[test]
     fn a_poisoned_mutex_is_reset_to_its_default() {
-        log::set_max_level(log::LevelFilter::Trace);
+        crate::test_support::evaluate_log_arguments();
         let (_, mutex) = poisoned(42u32);
         assert_eq!(*mutex.lock().unwrap_or_reset("test"), 0);
     }

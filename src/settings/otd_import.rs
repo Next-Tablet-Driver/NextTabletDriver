@@ -288,7 +288,7 @@ mod tests {
 
     #[test]
     fn an_otd_file_on_disk_is_imported() {
-        log::set_max_level(log::LevelFilter::Trace);
+        crate::test_support::evaluate_log_arguments();
         let nanos = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()

@@ -178,7 +178,7 @@ mod tests {
     }
 
     fn quiet_state() -> (Arc<SharedState>, Sender<TabletData>) {
-        log::set_max_level(log::LevelFilter::Trace);
+        crate::test_support::evaluate_log_arguments();
         let (sender, _receiver) = bounded(1);
         (Arc::new(SharedState::new()), sender)
     }

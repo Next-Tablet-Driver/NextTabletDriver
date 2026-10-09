@@ -236,7 +236,7 @@ mod tests {
 
     #[test]
     fn a_missing_or_invalid_locale_file_gives_no_translation() {
-        log::set_max_level(log::LevelFilter::Trace);
+        crate::test_support::evaluate_log_arguments();
         assert!(I18n::parse_locale(Locale::French, None).is_empty());
         assert!(I18n::parse_locale(Locale::French, Some("{ not json")).is_empty());
         assert!(I18n::parse_locale(Locale::French, Some("[1, 2]")).is_empty());
@@ -258,7 +258,7 @@ mod tests {
 
     #[test]
     fn a_key_missing_from_the_active_language_falls_back_to_english_then_to_the_key() {
-        log::set_max_level(log::LevelFilter::Trace);
+        crate::test_support::evaluate_log_arguments();
         let i18n = I18n {
             locale: Locale::French,
             translations: HashMap::new(),
@@ -271,7 +271,7 @@ mod tests {
     #[test]
     fn selecting_the_current_language_again_changes_nothing() {
         let _guard = TEST_MUTEX.lock().unwrap();
-        log::set_max_level(log::LevelFilter::Trace);
+        crate::test_support::evaluate_log_arguments();
         set_locale(Locale::French);
         assert_eq!(current_locale(), Locale::French);
         set_locale(Locale::French);

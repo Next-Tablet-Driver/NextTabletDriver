@@ -3,18 +3,7 @@ use super::models::Release;
 const OWNER: &str = "Next-Tablet-Driver";
 const REPO: &str = "NextTabletDriver";
 
-#[cfg(test)]
-thread_local! {
-    static TEST_URL: std::cell::RefCell<Option<String>> = const { std::cell::RefCell::new(None) };
-}
-
 fn github_releases_list_url() -> String {
-    #[cfg(test)]
-    {
-        if let Some(url) = TEST_URL.with(|url| url.borrow().clone()) {
-            return url;
-        }
-    }
     format!("https://api.github.com/repos/{OWNER}/{REPO}/releases?per_page=30")
 }
 
@@ -134,10 +123,10 @@ mod tests {
     }
 
     #[test]
-    fn the_public_entry_point_uses_the_configured_endpoint() {
-        TEST_URL.with(|url| *url.borrow_mut() = Some(serve_once("200 OK", RELEASES)));
-        let releases = fetch_releases().unwrap();
-        assert_eq!(releases.len(), 2);
-        assert_eq!(releases[0].tag_name, "v2.1.0");
+    fn the_releases_endpoint_targets_the_project_repository() {
+        assert_eq!(
+            github_releases_list_url(),
+            "https://api.github.com/repos/Next-Tablet-Driver/NextTabletDriver/releases?per_page=30"
+        );
     }
 }

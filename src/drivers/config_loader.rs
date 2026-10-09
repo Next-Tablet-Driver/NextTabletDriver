@@ -274,7 +274,7 @@ mod tests {
 
     #[test]
     fn embedded_loading_walks_folders_and_skips_duplicates_junk_and_broken_files() {
-        log::set_max_level(log::LevelFilter::Trace);
+        crate::test_support::evaluate_log_arguments();
         let mut configs = Vec::new();
         let mut names = HashSet::new();
         load_embedded_recursive(&ROOT, &mut configs, &mut names);
@@ -285,7 +285,7 @@ mod tests {
 
     #[test]
     fn disk_loading_reports_files_that_cannot_be_read_or_parsed() {
-        log::set_max_level(log::LevelFilter::Trace);
+        crate::test_support::evaluate_log_arguments();
         let dir = TempDir::new("unreadable");
         fs::write(dir.0.join("binary.json"), [0xFF, 0xFE, 0xFD]).unwrap();
         fs::write(dir.0.join("broken.json"), "{ nope").unwrap();
@@ -296,8 +296,8 @@ mod tests {
     }
 
     #[test]
-    fn the_whole_catalogue_loads_with_logging_enabled() {
-        log::set_max_level(log::LevelFilter::Trace);
+    fn smoke_the_whole_catalogue_loads_with_logging_enabled() {
+        crate::test_support::evaluate_log_arguments();
         assert!(load_configurations().len() > 100);
         assert!(!INDEXED_CONFIGS.is_empty());
     }

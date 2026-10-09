@@ -98,7 +98,7 @@ mod tests {
 
     #[test]
     fn a_failing_save_does_not_stop_the_saver() {
-        log::set_max_level(log::LevelFilter::Trace);
+        crate::test_support::evaluate_log_arguments();
         let (sender, receiver) = unbounded();
         let (attempts_tx, attempts_rx) = bounded(8);
         ThreadSupervisor::spawn_saver_with(receiver, Duration::from_millis(20), move |cfg| {
@@ -127,7 +127,11 @@ mod tests {
             Ok(())
         });
         drop(sender);
-        // The closure (and with it `saved_tx`) is dropped when the thread ends.
-        assert!(saved_rx.recv_timeout(Duration::from_secs(5)).is_err());
+        // The closure (and with it `saved_tx`) is dropped when the thread ends, which is what
+        // disconnects the channel; a plain timeout would mean the saver is still running.
+        assert_eq!(
+            saved_rx.recv_timeout(Duration::from_secs(5)),
+            Err(crossbeam_channel::RecvTimeoutError::Disconnected)
+        );
     }
 }

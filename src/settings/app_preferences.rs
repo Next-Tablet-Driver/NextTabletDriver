@@ -114,7 +114,7 @@ mod tests {
                 .as_nanos();
             let path = std::env::temp_dir().join(format!("ntd_app_prefs_{name}_{nanos}"));
             fs::create_dir_all(&path).unwrap();
-            log::set_max_level(log::LevelFilter::Trace);
+            crate::test_support::evaluate_log_arguments();
             set_test_settings_dir(path.clone());
             Self(path)
         }

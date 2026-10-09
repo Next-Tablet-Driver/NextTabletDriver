@@ -293,7 +293,8 @@ mod tests {
 
     #[test]
     fn the_two_extra_keys_do_not_fit_in_the_button_byte() {
-        // The extra-aux layout adds buttons 8 and 9, which the 8-bit output cannot represent.
+        // Known issue (#164): the extra-aux layout adds buttons 8 and 9, which the 8-bit output
+        // cannot represent. This pins today's behaviour and is expected to change with the fix.
         let parser = Intuos3ExtraAuxParser::default();
         let extra_only = parser.parse(&[0x0C, 0, 0, 0, 0, 0x10, 0x10]).unwrap();
         assert_eq!(
