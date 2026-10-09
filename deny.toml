@@ -1,13 +1,42 @@
 # cargo-deny policy: https://embarkstudios.github.io/cargo-deny/
-# Run locally with: cargo deny check advisories bans sources
+# Run locally with: cargo deny check   (once per crate: --manifest-path <crate>/Cargo.toml)
+# CI runs `bans licenses sources` in ci.yml and `advisories` in security.yml.
 
 [advisories]
 version = 2
 yanked = "deny"
 
+[licenses]
+version = 2
+# Permissive licenses, plus MPL-2.0 (file-level copyleft: cbindgen, cssparser). Dual-licensed
+# crates only need one allowed alternative, so copyleft options (LGPL, GPL) are not listed.
+allow = [
+    "0BSD",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "CC0-1.0",
+    "CDLA-Permissive-2.0",
+    "ISC",
+    "MIT",
+    "MIT-0",
+    "MPL-2.0",
+    "Unicode-3.0",
+    "Unlicense",
+    "Zlib",
+]
+
+[licenses.private]
+# In-repo crates are not published (`publish = false`) and several plugins are third-party work, so
+# their own license field is not checked here.
+ignore = true
+
 [bans]
 multiple-versions = "warn"
 wildcards = "deny"
+# `path = "..."` dependencies of unpublished crates have no version requirement.
+allow-wildcard-paths = true
 
 [sources]
 unknown-registry = "deny"

@@ -4,6 +4,7 @@ authors = ["iSweat <https://github.com/iSweat-exe>"]
 description = "Tablet Driver for Osu! and Drawing"
 repository = "https://github.com/Next-Tablet-Driver/NextTabletDriver"
 version = "2.0.0"
+publish = false
 edition = "2024"
 license = "MIT"
 readme = "README.md"
