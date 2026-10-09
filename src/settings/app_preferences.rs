@@ -44,12 +44,12 @@ impl Default for AppPreferences {
 /// Saves application preferences to `app_preferences.json`.
 pub fn save_app_preferences(prefs: &AppPreferences) {
     let path = super::get_settings_dir().join("app_preferences.json");
-    write_json(&path, prefs);
+    write_json(&path, serde_json::to_string_pretty(prefs));
 }
 
-/// Writes `value` as pretty JSON through a temporary file, so a crash never leaves a partial file.
-fn write_json<T: Serialize + ?Sized>(path: &std::path::Path, value: &T) {
-    match serde_json::to_string_pretty(value) {
+/// Writes serialized JSON through a temporary file, so a crash never leaves a partial file.
+fn write_json(path: &std::path::Path, json: serde_json::Result<String>) {
+    match json {
         Ok(json) => {
             let tmp = path.with_extension("json.tmp");
             if let Err(e) = fs::write(&tmp, &json) {
@@ -208,20 +208,11 @@ mod tests {
         #![allow(clippy::indexing_slicing)]
 
         use super::*;
-
-        struct FailingSerialize;
-
-        impl Serialize for FailingSerialize {
-            fn serialize<S: serde::Serializer>(&self, _: S) -> Result<S::Ok, S::Error> {
-                Err(serde::ser::Error::custom("cannot be serialized"))
-            }
-        }
-
         #[test]
         fn a_value_that_cannot_be_serialized_writes_nothing() {
             let dir = TempSettings::new("serialize_fail");
             let path = dir.0.join("prefs.json");
-            write_json(&path, &FailingSerialize);
+            write_json(&path, Err(serde_json::from_str::<u8>("x").unwrap_err()));
             assert!(!path.exists());
         }
 
@@ -230,7 +221,10 @@ mod tests {
             let dir = TempSettings::new("write_fail");
             // The folder of the target does not exist, so the temporary file cannot be created.
             let path = dir.0.join("missing_folder").join("prefs.json");
-            write_json(&path, &AppPreferences::default());
+            write_json(
+                &path,
+                serde_json::to_string_pretty(&AppPreferences::default()),
+            );
             assert!(!path.exists());
         }
 
@@ -240,7 +234,10 @@ mod tests {
             // The target is a directory: the final rename cannot succeed.
             let path = dir.0.join("prefs.json");
             fs::create_dir_all(&path).unwrap();
-            write_json(&path, &AppPreferences::default());
+            write_json(
+                &path,
+                serde_json::to_string_pretty(&AppPreferences::default()),
+            );
             assert!(path.is_dir());
         }
 

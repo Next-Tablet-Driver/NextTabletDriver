@@ -309,35 +309,6 @@ mod tests {
     }
 
     #[test]
-    fn every_embedded_configuration_parses() {
-        let mut files = Vec::new();
-        for_each_embedded_file(&TABLET_CONFIGS_DIR, &mut |file| {
-            files.push((
-                file.path().to_path_buf(),
-                file.contents_utf8().unwrap_or_default().to_string(),
-            ));
-        });
-        let configurations: Vec<_> = files
-            .iter()
-            .filter(|(path, _)| path.extension().and_then(|e| e.to_str()) == Some("json"))
-            .collect();
-        let failures: Vec<String> = configurations
-            .iter()
-            .filter_map(|(path, text)| {
-                serde_json::from_str::<TabletConfiguration>(text)
-                    .err()
-                    .map(|e| format!("{}: {e}", path.display()))
-            })
-            .collect();
-        assert!(
-            failures.is_empty(),
-            "unparsable configurations: {failures:#?}"
-        );
-        let count = configurations.len();
-        assert!(count > 100, "only {count} embedded configurations");
-    }
-
-    #[test]
     fn without_a_local_folder_only_the_embedded_catalogue_is_loaded() {
         let configs = load_configurations_from(Path::new("ntd-no-such-folder"));
         assert!(configs.len() > 100);
@@ -354,5 +325,30 @@ mod tests {
         let configs = load_configurations_from(&dir.0);
         assert_eq!(configs[0].name, "Disk Alpha");
         assert!(configs.len() > 100);
+    }
+
+    #[test]
+    fn every_embedded_configuration_parses() {
+        let mut files = Vec::new();
+        for_each_embedded_file(&TABLET_CONFIGS_DIR, &mut |file| {
+            files.push((
+                file.path().to_path_buf(),
+                file.contents_utf8().unwrap_or_default().to_string(),
+            ));
+        });
+        let configurations: Vec<_> = files
+            .iter()
+            .filter(|(path, _)| path.extension().and_then(|e| e.to_str()) == Some("json"))
+            .collect();
+        let unparsable = configurations
+            .iter()
+            .filter(|(_, text)| serde_json::from_str::<TabletConfiguration>(text).is_err())
+            .count();
+        assert_eq!(
+            unparsable, 0,
+            "{unparsable} embedded configurations do not parse"
+        );
+        let count = configurations.len();
+        assert!(count > 100, "only {count} embedded configurations");
     }
 }

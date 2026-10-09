@@ -34,28 +34,28 @@ fn quarantine_corrupt_file(path: &Path) {
 /// Returns an error string if serialization fails, the temporary file cannot be written,
 /// or the final rename operation fails.
 pub fn save_to_path(path: &Path, config: &MappingConfig) -> Result<(), String> {
-    save_json_to_path(path, config)
+    write_json_atomically(path, serde_json::to_string_pretty(config))
 }
 
-fn save_json_to_path<T: serde::Serialize + ?Sized>(path: &Path, value: &T) -> Result<(), String> {
+/// Writes serialized JSON to `path` through a temporary file; `json` carries the outcome of the
+/// serialization so that a failure is reported together with the file it was meant for.
+fn write_json_atomically(path: &Path, json: serde_json::Result<String>) -> Result<(), String> {
     if let Some(parent) = path.parent()
         && !parent.exists()
     {
         let _ = fs::create_dir_all(parent);
     }
 
-    let json = serde_json::to_string_pretty(value).map_err(|e| {
+    let json = json.map_err(|e| {
         log::error!(target: "Config", "Failed to serialize config for {}: {e}", path.display());
         e.to_string()
     })?;
 
     let tmp_path = path.with_extension("json.tmp");
     // fsync before the rename so a power loss cannot leave an empty/partial file in place.
-    let write_result = fs::File::create(&tmp_path).and_then(|mut file| {
-        use std::io::Write;
-        file.write_all(json.as_bytes())?;
-        file.sync_all()
-    });
+    let write_result = fs::write(&tmp_path, &json)
+        .and_then(|()| fs::OpenOptions::new().write(true).open(&tmp_path))
+        .and_then(|file| file.sync_all());
     write_result.map_err(|e| {
         log::error!(target: "Config", "Failed to write temp file {}: {e}", tmp_path.display());
         let _ = fs::remove_file(&tmp_path);
@@ -392,21 +392,14 @@ mod tests {
         #![allow(clippy::indexing_slicing)]
 
         use super::*;
-
-        struct FailingSerialize;
-
-        impl serde::Serialize for FailingSerialize {
-            fn serialize<S: serde::Serializer>(&self, _: S) -> Result<S::Ok, S::Error> {
-                Err(serde::ser::Error::custom("cannot be serialized"))
-            }
-        }
-
         #[test]
         fn a_value_that_cannot_be_serialized_is_reported_and_nothing_is_written() {
             let dir = TempSettings::new("serialize_fail");
             let path = dir.0.join("never.json");
-            let error = save_json_to_path(&path, &FailingSerialize).unwrap_err();
-            assert!(error.contains("cannot be serialized"), "{error}");
+            let error =
+                write_json_atomically(&path, Err(serde_json::from_str::<u8>("x").unwrap_err()))
+                    .unwrap_err();
+            assert!(error.contains("line 1"), "{error}");
             assert!(!path.exists());
         }
 

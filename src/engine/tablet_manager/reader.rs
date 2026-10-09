@@ -3,11 +3,12 @@
 
 use super::owner::owner_iteration;
 use super::sdk_bridge::apply_shm_snapshot;
+use super::try_acquire_boxed;
 use crate::drivers::TabletData;
-use crate::engine::interop::lock::try_acquire_hid_owner;
 use crate::engine::interop::shm::ShmReader;
 use crate::engine::state::SharedState;
 use crossbeam_channel::Sender;
+use std::any::Any;
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
 use std::thread;
@@ -26,20 +27,20 @@ pub(super) fn reader_iteration(shared: &Arc<SharedState>, sender: &Sender<Tablet
         shared,
         sender,
         OWNER_PROMOTION_RETRY_INTERVAL,
-        try_acquire_hid_owner,
-        owner_iteration,
+        &try_acquire_boxed,
+        &owner_iteration,
     );
 }
 
 /// The reader loop, with its two OS-bound collaborators passed in: how to try to become the HID
 /// owner (`try_acquire`, whose guard is held until the loop ends) and what to run once promoted
 /// (`take_over`).
-fn reader_loop<G>(
+fn reader_loop(
     shared: &Arc<SharedState>,
     sender: &Sender<TabletData>,
     promotion_retry_interval: Duration,
-    try_acquire: impl Fn() -> Option<G>,
-    take_over: impl FnOnce(&Arc<SharedState>, &Sender<TabletData>),
+    try_acquire: &dyn Fn() -> Option<Box<dyn Any>>,
+    take_over: &dyn Fn(&Arc<SharedState>, &Sender<TabletData>),
 ) {
     log::info!(target: "TabletManager", "Another process owns the HID device; running in reader mode");
 
@@ -124,30 +125,15 @@ mod tests {
     }
 
     /// What a reader runs once promoted: it only records that it did.
-    fn mark(flag: &std::cell::Cell<bool>) -> impl FnOnce(&Arc<SharedState>, &Sender<TabletData>) {
+    fn mark(flag: &std::cell::Cell<bool>) -> impl Fn(&Arc<SharedState>, &Sender<TabletData>) {
         move |_, _| flag.set(true)
-    }
-
-    #[test]
-    fn a_reader_takes_over_as_soon_as_it_can_become_the_owner() {
-        let shared = shared();
-        let (sender, _receiver) = bounded(1);
-        let promoted = std::cell::Cell::new(false);
-        reader_loop(
-            &shared,
-            &sender,
-            Duration::ZERO,
-            || Some(()),
-            mark(&promoted),
-        );
-        assert!(promoted.get());
     }
 
     /// Asks the reader to stop once `condition` holds (or after a generous timeout, so a failing
     /// test ends instead of hanging).
     fn stop_when(
         shared: &Arc<SharedState>,
-        condition: impl Fn() -> bool + Send + 'static,
+        condition: Box<dyn Fn() -> bool + Send>,
     ) -> thread::JoinHandle<()> {
         let shared = Arc::clone(shared);
         thread::spawn(move || {
@@ -160,6 +146,21 @@ mod tests {
                 .shutdown_requested
                 .store(true, Ordering::Relaxed);
         })
+    }
+
+    #[test]
+    fn a_reader_takes_over_as_soon_as_it_can_become_the_owner() {
+        let shared = shared();
+        let (sender, _receiver) = bounded(1);
+        let promoted = std::cell::Cell::new(false);
+        reader_loop(
+            &shared,
+            &sender,
+            Duration::ZERO,
+            &|| Some(Box::new(()) as Box<dyn Any>),
+            &mark(&promoted),
+        );
+        assert!(promoted.get());
     }
 
     #[test]
@@ -176,7 +177,10 @@ mod tests {
 
         let shared = shared();
         let probe = Arc::clone(&shared);
-        let stopper = stop_when(&shared, move || probe.device.read().unwrap().vid == 0x056A);
+        let stopper = stop_when(
+            &shared,
+            Box::new(move || probe.device.read().unwrap().vid == 0x056A),
+        );
         let (sender, _receiver) = bounded(1);
         reader_iteration(&shared, &sender);
         stopper.join().unwrap();
@@ -193,17 +197,20 @@ mod tests {
         let attempts = Arc::new(std::sync::atomic::AtomicUsize::new(0));
         let promoted = std::cell::Cell::new(false);
         let counted = Arc::clone(&attempts);
-        let stopper = stop_when(&shared, move || counted.load(Ordering::Relaxed) >= 3);
+        let stopper = stop_when(
+            &shared,
+            Box::new(move || counted.load(Ordering::Relaxed) >= 3),
+        );
         let counting = Arc::clone(&attempts);
         reader_loop(
             &shared,
             &sender,
             Duration::ZERO,
-            move || {
+            &move || {
                 counting.fetch_add(1, Ordering::Relaxed);
-                None::<()>
+                None
             },
-            mark(&promoted),
+            &mark(&promoted),
         );
         stopper.join().unwrap();
         assert!(attempts.load(Ordering::Relaxed) >= 3);
@@ -233,13 +240,16 @@ mod tests {
             }
         });
         let probe = Arc::clone(&shared);
-        let stopper = stop_when(&shared, move || probe.device.read().unwrap().vid == 0x1111);
+        let stopper = stop_when(
+            &shared,
+            Box::new(move || probe.device.read().unwrap().vid == 0x1111),
+        );
         reader_loop(
             &shared,
             &sender,
             Duration::from_secs(3600),
-            || None::<()>,
-            mark(&promoted),
+            &|| None,
+            &mark(&promoted),
         );
         stopper.join().unwrap();
         done.store(true, Ordering::Relaxed);
