@@ -20,12 +20,7 @@ impl ReportParser for SkipByteParser {
 }
 
 #[cfg(test)]
-#[allow(
-    clippy::unwrap_used,
-    clippy::expect_used,
-    clippy::panic,
-    clippy::float_cmp
-)]
+#[allow(clippy::float_cmp)]
 mod tests {
     use super::*;
 
@@ -43,27 +38,21 @@ mod tests {
         Ok(())
     }
 
-    mod more {
-        #![allow(clippy::indexing_slicing)]
+    #[test]
+    fn an_empty_report_is_rejected() {
+        assert!(SkipByteParser.parse(&[]).is_none());
+    }
 
-        use super::*;
+    #[test]
+    fn a_single_byte_leaves_nothing_to_parse() {
+        assert!(SkipByteParser.parse(&[0x05]).is_none());
+    }
 
-        #[test]
-        fn an_empty_report_is_rejected() {
-            assert!(SkipByteParser.parse(&[]).is_none());
-        }
-
-        #[test]
-        fn a_single_byte_leaves_nothing_to_parse() {
-            assert!(SkipByteParser.parse(&[0x05]).is_none());
-        }
-
-        #[test]
-        fn the_raw_data_keeps_the_skipped_byte() {
-            let data = [0x05, 0x02, 0x01, 0x02, 0x01, 0x04, 0x03, 0x01, 0x00];
-            let parsed = SkipByteParser.parse(&data).unwrap();
-            assert_eq!(parsed.raw_len, 9);
-            assert_eq!(parsed.raw_data[0], 0x05);
-        }
+    #[test]
+    fn the_raw_data_keeps_the_skipped_byte() {
+        let data = [0x05, 0x02, 0x01, 0x02, 0x01, 0x04, 0x03, 0x01, 0x00];
+        let parsed = SkipByteParser.parse(&data).unwrap();
+        assert_eq!(parsed.raw_len, 9);
+        assert_eq!(parsed.raw_data[0], 0x05);
     }
 }

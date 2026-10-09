@@ -190,7 +190,7 @@ impl Default for DriverStats {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used, clippy::float_cmp)]
+#[allow(clippy::float_cmp)]
 mod tests {
     use super::*;
 

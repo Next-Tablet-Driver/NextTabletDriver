@@ -217,7 +217,6 @@ impl ShmReader {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 mod tests {
     use super::*;
     use std::sync::Arc;
@@ -297,42 +296,36 @@ mod tests {
             .expect("writer thread should not panic");
     }
 
-    mod more {
-        #![allow(clippy::indexing_slicing)]
+    #[test]
+    fn a_segment_from_another_abi_version_is_not_opened() {
+        let writer = ShmWriter::create().expect("writer should create the segment");
+        // SAFETY: the writer's mapping is a live `ShmSegment` for as long as `writer` exists.
+        let segment = unsafe { &*writer.mapping.as_ptr().cast::<ShmSegment>() };
+        segment
+            .abi_version
+            .store(SDK_ABI_VERSION + 1, Ordering::Release);
+        assert!(ShmReader::open().is_none());
 
-        use super::*;
+        segment
+            .abi_version
+            .store(SDK_ABI_VERSION, Ordering::Release);
+        assert!(ShmReader::open().is_some());
+    }
 
-        #[test]
-        fn a_segment_from_another_abi_version_is_not_opened() {
-            let writer = ShmWriter::create().expect("writer should create the segment");
-            // SAFETY: the writer's mapping is a live `ShmSegment` for as long as `writer` exists.
-            let segment = unsafe { &*writer.mapping.as_ptr().cast::<ShmSegment>() };
-            segment
-                .abi_version
-                .store(SDK_ABI_VERSION + 1, Ordering::Release);
-            assert!(ShmReader::open().is_none());
+    #[test]
+    fn a_reader_gives_up_when_the_writer_never_finishes_publishing() {
+        let writer = ShmWriter::create().expect("writer should create the segment");
+        let reader = ShmReader::open().expect("reader should open the same segment");
+        writer.publish(&SdkPublicState::default());
+        // SAFETY: the writer's mapping is a live `ShmSegment` for as long as `writer` exists.
+        let segment = unsafe { &*writer.mapping.as_ptr().cast::<ShmSegment>() };
 
-            segment
-                .abi_version
-                .store(SDK_ABI_VERSION, Ordering::Release);
-            assert!(ShmReader::open().is_some());
-        }
+        // An odd sequence number means "a publish is in progress".
+        let stable = segment.seq.load(Ordering::Acquire);
+        segment.seq.store(stable | 1, Ordering::Release);
+        assert!(reader.read().is_none());
 
-        #[test]
-        fn a_reader_gives_up_when_the_writer_never_finishes_publishing() {
-            let writer = ShmWriter::create().expect("writer should create the segment");
-            let reader = ShmReader::open().expect("reader should open the same segment");
-            writer.publish(&SdkPublicState::default());
-            // SAFETY: the writer's mapping is a live `ShmSegment` for as long as `writer` exists.
-            let segment = unsafe { &*writer.mapping.as_ptr().cast::<ShmSegment>() };
-
-            // An odd sequence number means "a publish is in progress".
-            let stable = segment.seq.load(Ordering::Acquire);
-            segment.seq.store(stable | 1, Ordering::Release);
-            assert!(reader.read().is_none());
-
-            segment.seq.store(stable & !1, Ordering::Release);
-            assert!(reader.read().is_some());
-        }
+        segment.seq.store(stable & !1, Ordering::Release);
+        assert!(reader.read().is_some());
     }
 }

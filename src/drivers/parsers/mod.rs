@@ -254,18 +254,12 @@ mod tests {
         assert!(empty.name().contains("FallbackParser"));
     }
 
-    mod more {
-        #![allow(clippy::indexing_slicing)]
-
-        use super::*;
-
-        #[test]
-        fn an_unknown_parser_name_falls_back_to_the_generic_parser() {
-            log::set_max_level(log::LevelFilter::Trace);
-            let parser = create_parser("Some.Unknown.Vendor.ReportParser");
-            assert!(parser.name().contains("FallbackParser"));
-            // An empty name falls back quietly.
-            assert!(create_parser("").name().contains("FallbackParser"));
-        }
+    #[test]
+    fn an_unknown_parser_name_falls_back_to_the_generic_parser() {
+        log::set_max_level(log::LevelFilter::Trace);
+        let parser = create_parser("Some.Unknown.Vendor.ReportParser");
+        assert!(parser.name().contains("FallbackParser"));
+        // An empty name falls back quietly.
+        assert!(create_parser("").name().contains("FallbackParser"));
     }
 }

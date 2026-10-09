@@ -249,13 +249,7 @@ fn send_mouse_input(dx: i32, dy: i32, flags: u32) {
 }
 
 #[cfg(test)]
-#[allow(
-    clippy::unwrap_used,
-    clippy::expect_used,
-    clippy::panic,
-    clippy::float_cmp,
-    clippy::indexing_slicing
-)]
+#[allow(clippy::float_cmp)]
 mod tests {
     use super::*;
 

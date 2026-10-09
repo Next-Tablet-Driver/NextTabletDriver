@@ -76,12 +76,6 @@ fn anonymize_path_impl(
 }
 
 #[cfg(test)]
-#[allow(
-    clippy::unwrap_used,
-    clippy::expect_used,
-    clippy::panic,
-    clippy::indexing_slicing
-)]
 mod tests {
     use super::*;
 
@@ -115,106 +109,100 @@ mod tests {
         );
     }
 
-    mod more {
-        #![allow(clippy::indexing_slicing)]
+    use crate::settings::set_test_settings_dir;
 
-        use super::*;
+    fn temp_settings(name: &str) -> std::path::PathBuf {
+        let nanos = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_nanos();
+        let path = std::env::temp_dir().join(format!("ntd_crash_{name}_{nanos}"));
+        std::fs::create_dir_all(&path).unwrap();
+        set_test_settings_dir(path.clone());
+        path
+    }
 
-        use crate::settings::set_test_settings_dir;
+    #[test]
+    fn a_pending_report_is_consumed_once_it_is_sent() {
+        let dir = temp_settings("pending");
+        let file = dir.join("crash_report.json");
+        std::fs::write(&file, r#"{ "panic_message": "boom" }"#).unwrap();
+        send_pending_crash_reports();
+        assert!(!file.exists());
+        let _ = std::fs::remove_dir_all(dir);
+    }
 
-        fn temp_settings(name: &str) -> std::path::PathBuf {
-            let nanos = std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap_or_default()
-                .as_nanos();
-            let path = std::env::temp_dir().join(format!("ntd_crash_{name}_{nanos}"));
-            std::fs::create_dir_all(&path).unwrap();
-            set_test_settings_dir(path.clone());
-            path
-        }
+    #[test]
+    fn an_unreadable_report_is_discarded_rather_than_retried_forever() {
+        let dir = temp_settings("garbage");
+        let file = dir.join("crash_report.json");
+        std::fs::write(&file, "not json at all").unwrap();
+        send_pending_crash_reports();
+        assert!(!file.exists());
+        let _ = std::fs::remove_dir_all(dir);
+    }
 
-        #[test]
-        fn a_pending_report_is_consumed_once_it_is_sent() {
-            let dir = temp_settings("pending");
-            let file = dir.join("crash_report.json");
-            std::fs::write(&file, r#"{ "panic_message": "boom" }"#).unwrap();
-            send_pending_crash_reports();
-            assert!(!file.exists());
-            let _ = std::fs::remove_dir_all(dir);
-        }
+    #[test]
+    fn nothing_happens_without_a_pending_report() {
+        let dir = temp_settings("none");
+        send_pending_crash_reports();
+        assert!(!dir.join("crash_report.json").exists());
+        let _ = std::fs::remove_dir_all(dir);
+    }
 
-        #[test]
-        fn an_unreadable_report_is_discarded_rather_than_retried_forever() {
-            let dir = temp_settings("garbage");
-            let file = dir.join("crash_report.json");
-            std::fs::write(&file, "not json at all").unwrap();
-            send_pending_crash_reports();
-            assert!(!file.exists());
-            let _ = std::fs::remove_dir_all(dir);
-        }
+    #[test]
+    fn anonymizing_hides_every_known_user_name() {
+        let message = r"panic at C:\Users\alice\src\main.rs and /home/bob/x (carol)";
+        let cleaned = anonymize_path_impl(
+            message,
+            Some(r"C:\Users\alice"),
+            Some("/home/bob"),
+            Some("carol"),
+        );
+        assert!(!cleaned.contains("alice"));
+        assert!(!cleaned.contains("bob"));
+        assert!(!cleaned.contains("carol"));
+        assert_eq!(cleaned.matches("<HIDDEN>").count(), 3);
+    }
 
-        #[test]
-        fn nothing_happens_without_a_pending_report() {
-            let dir = temp_settings("none");
-            send_pending_crash_reports();
-            assert!(!dir.join("crash_report.json").exists());
-            let _ = std::fs::remove_dir_all(dir);
-        }
+    #[test]
+    fn anonymizing_leaves_messages_alone_without_user_information() {
+        let message = "index out of bounds";
+        assert_eq!(anonymize_path_impl(message, None, None, None), message);
+        assert_eq!(
+            anonymize_path_impl(message, Some(""), Some("/"), Some("")),
+            message
+        );
+    }
 
-        #[test]
-        fn anonymizing_hides_every_known_user_name() {
-            let message = r"panic at C:\Users\alice\src\main.rs and /home/bob/x (carol)";
-            let cleaned = anonymize_path_impl(
-                message,
-                Some(r"C:\Users\alice"),
-                Some("/home/bob"),
-                Some("carol"),
-            );
-            assert!(!cleaned.contains("alice"));
-            assert!(!cleaned.contains("bob"));
-            assert!(!cleaned.contains("carol"));
-            assert_eq!(cleaned.matches("<HIDDEN>").count(), 3);
-        }
-
-        #[test]
-        fn anonymizing_leaves_messages_alone_without_user_information() {
-            let message = "index out of bounds";
-            assert_eq!(anonymize_path_impl(message, None, None, None), message);
-            assert_eq!(
-                anonymize_path_impl(message, Some(""), Some("/"), Some("")),
-                message
-            );
-        }
-
-        #[test]
-        fn anonymizing_with_the_real_environment_hides_the_current_user() {
-            for variable in ["USERNAME", "USER"] {
-                if let Ok(user) = std::env::var(variable)
-                    && user.len() >= 3
-                {
-                    let cleaned = anonymize_path(&format!("panic in /home/{user}/src/main.rs"));
-                    assert!(!cleaned.contains(&user), "{cleaned}");
-                }
+    #[test]
+    fn anonymizing_with_the_real_environment_hides_the_current_user() {
+        for variable in ["USERNAME", "USER"] {
+            if let Ok(user) = std::env::var(variable)
+                && user.len() >= 3
+            {
+                let cleaned = anonymize_path(&format!("panic in /home/{user}/src/main.rs"));
+                assert!(!cleaned.contains(&user), "{cleaned}");
             }
-            // Without any user information the message is returned as it was.
-            assert_eq!(anonymize_path("index out of bounds"), "index out of bounds");
         }
+        // Without any user information the message is returned as it was.
+        assert_eq!(anonymize_path("index out of bounds"), "index out of bounds");
+    }
 
-        #[test]
-        fn the_panic_hook_writes_an_anonymized_report_for_the_next_launch() {
-            let dir = temp_settings("hook");
-            setup_panic_hook();
-            let result = std::panic::catch_unwind(|| {
-                panic!("boom in C:\\Users\\Nobody\\src");
-            });
-            // Put the default hook back for whatever runs next in this process.
-            let _ = std::panic::take_hook();
-            assert!(result.is_err());
+    #[test]
+    fn the_panic_hook_writes_an_anonymized_report_for_the_next_launch() {
+        let dir = temp_settings("hook");
+        setup_panic_hook();
+        let result = std::panic::catch_unwind(|| {
+            panic!("boom in C:\\Users\\Nobody\\src");
+        });
+        // Put the default hook back for whatever runs next in this process.
+        let _ = std::panic::take_hook();
+        assert!(result.is_err());
 
-            let report = std::fs::read_to_string(dir.join("crash_report.json")).unwrap();
-            let json: serde_json::Value = serde_json::from_str(&report).unwrap();
-            assert!(json["panic_message"].as_str().unwrap().contains("boom"));
-            let _ = std::fs::remove_dir_all(dir);
-        }
+        let report = std::fs::read_to_string(dir.join("crash_report.json")).unwrap();
+        let json: serde_json::Value = serde_json::from_str(&report).unwrap();
+        assert!(json["panic_message"].as_str().unwrap().contains("boom"));
+        let _ = std::fs::remove_dir_all(dir);
     }
 }

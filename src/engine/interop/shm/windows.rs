@@ -126,13 +126,7 @@ fn open_named_mapping(name: &[u16], size: usize) -> Option<Mapping> {
 }
 
 #[cfg(test)]
-#[allow(
-    clippy::unwrap_used,
-    clippy::expect_used,
-    clippy::panic,
-    clippy::float_cmp,
-    clippy::indexing_slicing
-)]
+#[allow(clippy::float_cmp)]
 mod tests {
     use super::*;
 

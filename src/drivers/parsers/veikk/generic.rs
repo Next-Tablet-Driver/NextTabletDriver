@@ -125,12 +125,7 @@ impl ReportParser for VeikkTiltParser {
 }
 
 #[cfg(test)]
-#[allow(
-    clippy::unwrap_used,
-    clippy::expect_used,
-    clippy::panic,
-    clippy::float_cmp
-)]
+#[allow(clippy::float_cmp)]
 mod tests {
     use super::*;
 
@@ -166,95 +161,90 @@ mod tests {
         Ok(())
     }
 
-    mod more {
-        #![allow(clippy::indexing_slicing)]
+    use crate::drivers::TabletStatus;
 
-        use super::*;
-        use crate::drivers::TabletStatus;
+    /// `[id, kind, b2, x(3), y(3), pressure(2), tilt_x, tilt_y]`.
+    fn pen(kind: u8, b2: u8) -> [u8; 13] {
+        [
+            0x09, kind, b2, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0xFE, 0x05,
+        ]
+    }
 
-        /// `[id, kind, b2, x(3), y(3), pressure(2), tilt_x, tilt_y]`.
-        fn pen(kind: u8, b2: u8) -> [u8; 13] {
-            [
-                0x09, kind, b2, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0xFE, 0x05,
-            ]
-        }
+    #[test]
+    fn tablet_report_decodes_24_bit_coordinates_and_buttons() {
+        let parsed = VeikkParser.parse(&pen(0x41, 0x20 | 0x04)).unwrap();
+        assert_eq!(parsed.status, TabletStatus::Contact);
+        assert_eq!((parsed.x, parsed.y), (0x0003_0201, 0x0006_0504));
+        assert_eq!(parsed.pressure, 0x0807);
+        assert_eq!(parsed.buttons, 0b10);
+        // The plain parser ignores the tilt bytes.
+        assert_eq!((parsed.tilt_x, parsed.tilt_y), (0, 0));
+    }
 
-        #[test]
-        fn tablet_report_decodes_24_bit_coordinates_and_buttons() {
-            let parsed = VeikkParser.parse(&pen(0x41, 0x20 | 0x04)).unwrap();
-            assert_eq!(parsed.status, TabletStatus::Contact);
-            assert_eq!((parsed.x, parsed.y), (0x0003_0201, 0x0006_0504));
-            assert_eq!(parsed.pressure, 0x0807);
-            assert_eq!(parsed.buttons, 0b10);
-            // The plain parser ignores the tilt bytes.
-            assert_eq!((parsed.tilt_x, parsed.tilt_y), (0, 0));
-        }
+    #[test]
+    fn no_pressure_is_hover_and_a_cleared_in_range_flag_is_out_of_range() {
+        let mut data = pen(0x41, 0x20);
+        data[9] = 0;
+        data[10] = 0;
+        assert_eq!(
+            VeikkV1Parser.parse(&data).unwrap().status,
+            TabletStatus::Hover
+        );
+        assert_eq!(
+            VeikkV1Parser.parse(&pen(0x41, 0x04)).unwrap().status,
+            TabletStatus::OutOfRange
+        );
+    }
 
-        #[test]
-        fn no_pressure_is_hover_and_a_cleared_in_range_flag_is_out_of_range() {
-            let mut data = pen(0x41, 0x20);
-            data[9] = 0;
-            data[10] = 0;
-            assert_eq!(
-                VeikkV1Parser.parse(&data).unwrap().status,
-                TabletStatus::Hover
-            );
-            assert_eq!(
-                VeikkV1Parser.parse(&pen(0x41, 0x04)).unwrap().status,
-                TabletStatus::OutOfRange
-            );
-        }
+    #[test]
+    fn touchpad_and_out_of_range_markers_are_ignored() {
+        assert!(VeikkParser.parse(&pen(0x43, 0x20)).is_none());
+        assert!(VeikkA15Parser.parse(&pen(0x43, 0x20)).is_none());
+        assert!(VeikkV1Parser.parse(&pen(0x41, 0xC0)).is_none());
+        assert!(VeikkTiltParser.parse(&pen(0x41, 0xC0)).is_none());
+        assert!(VeikkTiltParser.parse(&pen(0x43, 0x20)).is_none());
+    }
 
-        #[test]
-        fn touchpad_and_out_of_range_markers_are_ignored() {
-            assert!(VeikkParser.parse(&pen(0x43, 0x20)).is_none());
-            assert!(VeikkA15Parser.parse(&pen(0x43, 0x20)).is_none());
-            assert!(VeikkV1Parser.parse(&pen(0x41, 0xC0)).is_none());
-            assert!(VeikkTiltParser.parse(&pen(0x41, 0xC0)).is_none());
-            assert!(VeikkTiltParser.parse(&pen(0x43, 0x20)).is_none());
-        }
+    #[test]
+    fn aux_reports_expose_their_key_byte() {
+        let aux = VeikkParser.parse(&[0x09, 0x01, 0x01, 0x00, 0x0A]).unwrap();
+        assert_eq!((aux.status, aux.buttons), (TabletStatus::Aux, 0x0A));
+        let aux = VeikkA15Parser
+            .parse(&[0x09, 0x01, 0x01, 0x00, 0x03])
+            .unwrap();
+        assert_eq!(aux.buttons, 3);
+        let aux = VeikkV1Parser.parse(&[0x03, 0x06]).unwrap();
+        assert_eq!((aux.status, aux.buttons), (TabletStatus::Aux, 6));
+        let aux = VeikkTiltParser
+            .parse(&[0x09, 0x42, 0x00, 0x00, 0x05])
+            .unwrap();
+        assert_eq!((aux.status, aux.buttons), (TabletStatus::Aux, 5));
+    }
 
-        #[test]
-        fn aux_reports_expose_their_key_byte() {
-            let aux = VeikkParser.parse(&[0x09, 0x01, 0x01, 0x00, 0x0A]).unwrap();
-            assert_eq!((aux.status, aux.buttons), (TabletStatus::Aux, 0x0A));
-            let aux = VeikkA15Parser
-                .parse(&[0x09, 0x01, 0x01, 0x00, 0x03])
-                .unwrap();
-            assert_eq!(aux.buttons, 3);
-            let aux = VeikkV1Parser.parse(&[0x03, 0x06]).unwrap();
-            assert_eq!((aux.status, aux.buttons), (TabletStatus::Aux, 6));
-            let aux = VeikkTiltParser
-                .parse(&[0x09, 0x42, 0x00, 0x00, 0x05])
-                .unwrap();
-            assert_eq!((aux.status, aux.buttons), (TabletStatus::Aux, 5));
-        }
+    #[test]
+    fn the_tilt_parser_reads_two_signed_tilt_bytes() {
+        let parsed = VeikkTiltParser.parse(&pen(0x41, 0x20)).unwrap();
+        assert_eq!((parsed.tilt_x, parsed.tilt_y), (-2, 5));
+        let one_byte = VeikkTiltParser.parse(&pen(0x41, 0x20)[..12]).unwrap();
+        assert_eq!((one_byte.tilt_x, one_byte.tilt_y), (-2, 0));
+        let none = VeikkTiltParser.parse(&pen(0x41, 0x20)[..11]).unwrap();
+        assert_eq!((none.tilt_x, none.tilt_y), (0, 0));
+    }
 
-        #[test]
-        fn the_tilt_parser_reads_two_signed_tilt_bytes() {
-            let parsed = VeikkTiltParser.parse(&pen(0x41, 0x20)).unwrap();
-            assert_eq!((parsed.tilt_x, parsed.tilt_y), (-2, 5));
-            let one_byte = VeikkTiltParser.parse(&pen(0x41, 0x20)[..12]).unwrap();
-            assert_eq!((one_byte.tilt_x, one_byte.tilt_y), (-2, 0));
-            let none = VeikkTiltParser.parse(&pen(0x41, 0x20)[..11]).unwrap();
-            assert_eq!((none.tilt_x, none.tilt_y), (0, 0));
-        }
+    #[test]
+    fn unknown_and_truncated_reports_are_rejected() {
+        assert!(VeikkParser.parse(&[]).is_none());
+        assert!(VeikkParser.parse(&[0x09, 0x41, 0x20, 1, 2]).is_none());
+        assert!(VeikkParser.parse(&[0x09, 0x41, 0x02]).is_none());
+        assert!(VeikkV1Parser.parse(&[0x09, 0x99]).is_none());
+        assert!(VeikkTiltParser.parse(&[0x09, 0x77, 0, 0, 0]).is_none());
+    }
 
-        #[test]
-        fn unknown_and_truncated_reports_are_rejected() {
-            assert!(VeikkParser.parse(&[]).is_none());
-            assert!(VeikkParser.parse(&[0x09, 0x41, 0x20, 1, 2]).is_none());
-            assert!(VeikkParser.parse(&[0x09, 0x41, 0x02]).is_none());
-            assert!(VeikkV1Parser.parse(&[0x09, 0x99]).is_none());
-            assert!(VeikkTiltParser.parse(&[0x09, 0x77, 0, 0, 0]).is_none());
-        }
-
-        #[test]
-        fn the_a15_parser_ignores_reports_that_are_neither_pen_nor_aux() {
-            assert!(VeikkA15Parser.parse(&[0x09, 0x41, 0x02]).is_none());
-            assert!(VeikkA15Parser.parse(&[]).is_none());
-            // A pen-flagged report too short to hold a pen report is dropped.
-            assert!(VeikkA15Parser.parse(&[0x09, 0x41, 0x21, 1, 2]).is_none());
-        }
+    #[test]
+    fn the_a15_parser_ignores_reports_that_are_neither_pen_nor_aux() {
+        assert!(VeikkA15Parser.parse(&[0x09, 0x41, 0x02]).is_none());
+        assert!(VeikkA15Parser.parse(&[]).is_none());
+        // A pen-flagged report too short to hold a pen report is dropped.
+        assert!(VeikkA15Parser.parse(&[0x09, 0x41, 0x21, 1, 2]).is_none());
     }
 }

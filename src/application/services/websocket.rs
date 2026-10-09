@@ -333,7 +333,6 @@ pub fn websocket_loop(shared: &Arc<SharedState>) {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used, clippy::indexing_slicing)]
 mod tests {
     use super::*;
     use crate::drivers::{TabletData, TabletStatus};

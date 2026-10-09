@@ -91,12 +91,7 @@ impl ReportParser for TenMoonParser {
 }
 
 #[cfg(test)]
-#[allow(
-    clippy::unwrap_used,
-    clippy::expect_used,
-    clippy::panic,
-    clippy::float_cmp
-)]
+#[allow(clippy::float_cmp)]
 mod tests {
     use super::*;
 
@@ -115,95 +110,90 @@ mod tests {
         Ok(())
     }
 
-    mod more {
-        #![allow(clippy::indexing_slicing)]
+    use crate::drivers::TabletStatus;
 
-        use super::*;
-        use crate::drivers::TabletStatus;
+    /// A report of 10 bytes always takes the tablet branch.
+    fn pen(pre_pressure: u16, b9: u8) -> [u8; 10] {
+        let p = pre_pressure.to_be_bytes();
+        [0x00, 0x12, 0x34, 0x56, 0x78, p[0], p[1], 0, 0, b9]
+    }
 
-        /// A report of 10 bytes always takes the tablet branch.
-        fn pen(pre_pressure: u16, b9: u8) -> [u8; 10] {
-            let p = pre_pressure.to_be_bytes();
-            [0x00, 0x12, 0x34, 0x56, 0x78, p[0], p[1], 0, 0, b9]
-        }
+    /// A report whose byte 11 is not 0xFF is an aux report.
+    fn aux(b11: u8, b12: u8) -> [u8; 13] {
+        let mut data = [0u8; 13];
+        data[11] = b11;
+        data[12] = b12;
+        data
+    }
 
-        /// A report whose byte 11 is not 0xFF is an aux report.
-        fn aux(b11: u8, b12: u8) -> [u8; 13] {
-            let mut data = [0u8; 13];
-            data[11] = b11;
-            data[12] = b12;
-            data
-        }
+    #[test]
+    fn pen_report_inverts_the_raw_pressure() {
+        let parsed = TenMoonParser.parse(&pen(100, 0x00)).unwrap();
+        assert_eq!(parsed.status, TabletStatus::Contact);
+        assert_eq!((parsed.x, parsed.y), (0x1234, 0x5678));
+        assert_eq!(parsed.pressure, 0x0672 - 100);
+        assert_eq!(parsed.buttons, 0);
+    }
 
-        #[test]
-        fn pen_report_inverts_the_raw_pressure() {
-            let parsed = TenMoonParser.parse(&pen(100, 0x00)).unwrap();
-            assert_eq!(parsed.status, TabletStatus::Contact);
-            assert_eq!((parsed.x, parsed.y), (0x1234, 0x5678));
-            assert_eq!(parsed.pressure, 0x0672 - 100);
-            assert_eq!(parsed.buttons, 0);
-        }
+    #[test]
+    fn pressing_a_barrel_button_offsets_the_pressure_by_50() {
+        let parsed = TenMoonParser.parse(&pen(100, 0x06)).unwrap();
+        assert_eq!(parsed.pressure, 0x0672 - 50);
+        assert_eq!(parsed.buttons, 0b11);
+        let single = TenMoonParser.parse(&pen(100, 0x04)).unwrap();
+        assert_eq!(single.buttons, 0b01);
+    }
 
-        #[test]
-        fn pressing_a_barrel_button_offsets_the_pressure_by_50() {
-            let parsed = TenMoonParser.parse(&pen(100, 0x06)).unwrap();
-            assert_eq!(parsed.pressure, 0x0672 - 50);
-            assert_eq!(parsed.buttons, 0b11);
-            let single = TenMoonParser.parse(&pen(100, 0x04)).unwrap();
-            assert_eq!(single.buttons, 0b01);
-        }
+    #[test]
+    fn raw_pressure_below_the_offset_reads_as_the_maximum() {
+        let parsed = TenMoonParser.parse(&pen(10, 0x06)).unwrap();
+        assert_eq!(parsed.pressure, 0x0672);
+    }
 
-        #[test]
-        fn raw_pressure_below_the_offset_reads_as_the_maximum() {
-            let parsed = TenMoonParser.parse(&pen(10, 0x06)).unwrap();
-            assert_eq!(parsed.pressure, 0x0672);
-        }
+    #[test]
+    fn raw_pressure_beyond_the_range_is_hover() {
+        let parsed = TenMoonParser.parse(&pen(0x0800, 0x00)).unwrap();
+        assert_eq!(parsed.pressure, 0);
+        assert_eq!(parsed.status, TabletStatus::Hover);
+    }
 
-        #[test]
-        fn raw_pressure_beyond_the_range_is_hover() {
-            let parsed = TenMoonParser.parse(&pen(0x0800, 0x00)).unwrap();
-            assert_eq!(parsed.pressure, 0);
-            assert_eq!(parsed.status, TabletStatus::Hover);
-        }
+    #[test]
+    fn aux_keys_are_decoded_from_bytes_11_and_12() {
+        assert_eq!(
+            TenMoonParser.parse(&aux(0x01, 0x31)).unwrap().buttons,
+            0b0000_0001
+        );
+        assert_eq!(
+            TenMoonParser.parse(&aux(0x01, 0x23)).unwrap().buttons,
+            0b0100_0000
+        );
+        assert_eq!(
+            TenMoonParser.parse(&aux(0x01, 0x32)).unwrap().buttons,
+            0b1000_0000
+        );
+        let all_pressed = TenMoonParser.parse(&aux(0x00, 0x33)).unwrap();
+        assert_eq!(all_pressed.status, TabletStatus::Aux);
+        assert_eq!(all_pressed.buttons, 0b0011_1110);
+        // A cleared bit means the key is down: with every bit set none is.
+        assert_eq!(TenMoonParser.parse(&aux(0xF8, 0x33)).unwrap().buttons, 0);
+        assert_eq!(
+            TenMoonParser.parse(&aux(0xBF, 0x33)).unwrap().buttons,
+            0b0000_0100
+        );
+    }
 
-        #[test]
-        fn aux_keys_are_decoded_from_bytes_11_and_12() {
-            assert_eq!(
-                TenMoonParser.parse(&aux(0x01, 0x31)).unwrap().buttons,
-                0b0000_0001
-            );
-            assert_eq!(
-                TenMoonParser.parse(&aux(0x01, 0x23)).unwrap().buttons,
-                0b0100_0000
-            );
-            assert_eq!(
-                TenMoonParser.parse(&aux(0x01, 0x32)).unwrap().buttons,
-                0b1000_0000
-            );
-            let all_pressed = TenMoonParser.parse(&aux(0x00, 0x33)).unwrap();
-            assert_eq!(all_pressed.status, TabletStatus::Aux);
-            assert_eq!(all_pressed.buttons, 0b0011_1110);
-            // A cleared bit means the key is down: with every bit set none is.
-            assert_eq!(TenMoonParser.parse(&aux(0xF8, 0x33)).unwrap().buttons, 0);
-            assert_eq!(
-                TenMoonParser.parse(&aux(0xBF, 0x33)).unwrap().buttons,
-                0b0000_0100
-            );
-        }
+    #[test]
+    fn a_0xff_marker_in_byte_11_keeps_a_long_report_on_the_pen_branch() {
+        let mut data = aux(0xFF, 0x33);
+        data[9] = 0x04;
+        let parsed = TenMoonParser.parse(&data).unwrap();
+        assert_ne!(parsed.status, TabletStatus::Aux);
+        assert_eq!(parsed.buttons, 0b01);
+    }
 
-        #[test]
-        fn a_0xff_marker_in_byte_11_keeps_a_long_report_on_the_pen_branch() {
-            let mut data = aux(0xFF, 0x33);
-            data[9] = 0x04;
-            let parsed = TenMoonParser.parse(&data).unwrap();
-            assert_ne!(parsed.status, TabletStatus::Aux);
-            assert_eq!(parsed.buttons, 0b01);
-        }
-
-        #[test]
-        fn short_reports_are_rejected() {
-            assert!(TenMoonParser.parse(&[]).is_none());
-            assert!(TenMoonParser.parse(&[0u8; 9]).is_none());
-        }
+    #[test]
+    fn short_reports_are_rejected() {
+        assert!(TenMoonParser.parse(&[]).is_none());
+        assert!(TenMoonParser.parse(&[0u8; 9]).is_none());
     }
 }

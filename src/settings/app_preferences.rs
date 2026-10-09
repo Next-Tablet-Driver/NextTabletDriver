@@ -97,13 +97,7 @@ pub fn load_app_preferences() -> AppPreferences {
 }
 
 #[cfg(test)]
-#[allow(
-    clippy::unwrap_used,
-    clippy::expect_used,
-    clippy::panic,
-    clippy::float_cmp,
-    clippy::indexing_slicing
-)]
+#[allow(clippy::float_cmp)]
 mod tests {
     use super::*;
     use crate::settings::set_test_settings_dir;
@@ -204,50 +198,45 @@ mod tests {
         assert_eq!(rewritten["telemetry_id"], loaded.telemetry_id.as_str());
     }
 
-    mod more {
-        #![allow(clippy::indexing_slicing)]
+    #[test]
+    fn a_value_that_cannot_be_serialized_writes_nothing() {
+        let dir = TempSettings::new("serialize_fail");
+        let path = dir.0.join("prefs.json");
+        write_json(&path, Err(serde_json::from_str::<u8>("x").unwrap_err()));
+        assert!(!path.exists());
+    }
 
-        use super::*;
-        #[test]
-        fn a_value_that_cannot_be_serialized_writes_nothing() {
-            let dir = TempSettings::new("serialize_fail");
-            let path = dir.0.join("prefs.json");
-            write_json(&path, Err(serde_json::from_str::<u8>("x").unwrap_err()));
-            assert!(!path.exists());
-        }
+    #[test]
+    fn a_temporary_file_that_cannot_be_written_leaves_no_file() {
+        let dir = TempSettings::new("write_fail");
+        // The folder of the target does not exist, so the temporary file cannot be created.
+        let path = dir.0.join("missing_folder").join("prefs.json");
+        write_json(
+            &path,
+            serde_json::to_string_pretty(&AppPreferences::default()),
+        );
+        assert!(!path.exists());
+    }
 
-        #[test]
-        fn a_temporary_file_that_cannot_be_written_leaves_no_file() {
-            let dir = TempSettings::new("write_fail");
-            // The folder of the target does not exist, so the temporary file cannot be created.
-            let path = dir.0.join("missing_folder").join("prefs.json");
-            write_json(
-                &path,
-                serde_json::to_string_pretty(&AppPreferences::default()),
-            );
-            assert!(!path.exists());
-        }
+    #[test]
+    fn a_target_that_cannot_be_replaced_is_left_alone() {
+        let dir = TempSettings::new("rename_fail");
+        // The target is a directory: the final rename cannot succeed.
+        let path = dir.0.join("prefs.json");
+        fs::create_dir_all(&path).unwrap();
+        write_json(
+            &path,
+            serde_json::to_string_pretty(&AppPreferences::default()),
+        );
+        assert!(path.is_dir());
+    }
 
-        #[test]
-        fn a_target_that_cannot_be_replaced_is_left_alone() {
-            let dir = TempSettings::new("rename_fail");
-            // The target is a directory: the final rename cannot succeed.
-            let path = dir.0.join("prefs.json");
-            fs::create_dir_all(&path).unwrap();
-            write_json(
-                &path,
-                serde_json::to_string_pretty(&AppPreferences::default()),
-            );
-            assert!(path.is_dir());
-        }
-
-        #[test]
-        fn preferences_that_cannot_be_read_fall_back_to_the_defaults() {
-            let dir = TempSettings::new("read_fail");
-            fs::create_dir_all(dir.file()).unwrap();
-            let loaded = load_app_preferences();
-            assert!(loaded.telemetry_enabled);
-            assert!(dir.file().is_dir());
-        }
+    #[test]
+    fn preferences_that_cannot_be_read_fall_back_to_the_defaults() {
+        let dir = TempSettings::new("read_fail");
+        fs::create_dir_all(dir.file()).unwrap();
+        let loaded = load_app_preferences();
+        assert!(loaded.telemetry_enabled);
+        assert!(dir.file().is_dir());
     }
 }

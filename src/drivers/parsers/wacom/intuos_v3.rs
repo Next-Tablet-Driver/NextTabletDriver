@@ -245,12 +245,7 @@ impl ReportParser for WacomDriverIntuosV3Parser {
 }
 
 #[cfg(test)]
-#[allow(
-    clippy::unwrap_used,
-    clippy::expect_used,
-    clippy::panic,
-    clippy::float_cmp
-)]
+#[allow(clippy::float_cmp)]
 mod tests {
     use super::*;
 
@@ -297,151 +292,146 @@ mod tests {
         assert_eq!(result.buttons, 1 << 0);
     }
 
-    mod more {
-        #![allow(clippy::indexing_slicing)]
+    use crate::drivers::TabletStatus;
 
-        use super::*;
-        use crate::drivers::TabletStatus;
+    fn tablet(b2: u8, t_x: u8, t_y: u8) -> [u8; 14] {
+        // [id, 0x01, b2, x(2), y(2), pressure(2), t_x, _, t_y, _, hover]
+        [
+            0x1F, 0x01, b2, 0x34, 0x12, 0x78, 0x56, 0x00, 0x01, t_x, 0, t_y, 0, 4,
+        ]
+    }
 
-        fn tablet(b2: u8, t_x: u8, t_y: u8) -> [u8; 14] {
-            // [id, 0x01, b2, x(2), y(2), pressure(2), t_x, _, t_y, _, hover]
-            [
-                0x1F, 0x01, b2, 0x34, 0x12, 0x78, 0x56, 0x00, 0x01, t_x, 0, t_y, 0, 4,
-            ]
-        }
+    #[test]
+    fn tablet_report_decodes_every_field() {
+        let parsed = IntuosV3Parser::new()
+            .parse(&tablet(0x02 | 0x04 | 0x20, 0x05, 0x02))
+            .unwrap();
+        assert_eq!(parsed.status, TabletStatus::Contact);
+        assert_eq!(
+            (parsed.x, parsed.y, parsed.pressure),
+            (0x1234, 0x5678, 0x0100)
+        );
+        assert_eq!((parsed.tilt_x, parsed.tilt_y), (5, 2));
+        assert_eq!(parsed.buttons, 0b11);
+        assert!(parsed.eraser);
+        assert_eq!(parsed.hover_distance, 4);
+    }
 
-        #[test]
-        fn tablet_report_decodes_every_field() {
-            let parsed = IntuosV3Parser::new()
-                .parse(&tablet(0x02 | 0x04 | 0x20, 0x05, 0x02))
-                .unwrap();
-            assert_eq!(parsed.status, TabletStatus::Contact);
-            assert_eq!(
-                (parsed.x, parsed.y, parsed.pressure),
-                (0x1234, 0x5678, 0x0100)
-            );
-            assert_eq!((parsed.tilt_x, parsed.tilt_y), (5, 2));
-            assert_eq!(parsed.buttons, 0b11);
-            assert!(parsed.eraser);
-            assert_eq!(parsed.hover_distance, 4);
-        }
+    #[test]
+    fn negative_tilt_is_stored_as_an_offset_from_0xff() {
+        let parsed = IntuosV3Parser::new()
+            .parse(&tablet(0x00, 0xF0, 0x80))
+            .unwrap();
+        assert_eq!(parsed.tilt_x, -15);
+        assert_eq!(parsed.tilt_y, -127);
+    }
 
-        #[test]
-        fn negative_tilt_is_stored_as_an_offset_from_0xff() {
-            let parsed = IntuosV3Parser::new()
-                .parse(&tablet(0x00, 0xF0, 0x80))
-                .unwrap();
-            assert_eq!(parsed.tilt_x, -15);
-            assert_eq!(parsed.tilt_y, -127);
-        }
+    #[test]
+    fn tablet_reports_need_the_0x01_subtype() {
+        let mut data = tablet(0, 0, 0);
+        data[1] = 0x02;
+        assert!(IntuosV3Parser::new().parse(&data).is_none());
+        assert!(IntuosV3Parser::new().parse(&data[..13]).is_none());
+    }
 
-        #[test]
-        fn tablet_reports_need_the_0x01_subtype() {
-            let mut data = tablet(0, 0, 0);
-            data[1] = 0x02;
-            assert!(IntuosV3Parser::new().parse(&data).is_none());
-            assert!(IntuosV3Parser::new().parse(&data[..13]).is_none());
-        }
+    #[test]
+    fn extended_report_uses_three_byte_coordinates_and_three_buttons() {
+        let mut data = [0u8; 20];
+        data[0] = 0x1E;
+        data[2] = 0x02 | 0x08 | 0x20;
+        data[3..6].copy_from_slice(&[0x34, 0x12, 0x01]); // x
+        data[6..9].copy_from_slice(&[0x78, 0x56, 0x02]); // y
+        data[9..11].copy_from_slice(&[0x00, 0x03]); // pressure
+        data[11..13].copy_from_slice(&[0xFE, 0xFF]); // tilt x = -2
+        data[13..15].copy_from_slice(&[0x07, 0x00]); // tilt y = 7
+        data[19] = 9;
+        let parsed = IntuosV3Parser::new().parse(&data).unwrap();
+        assert_eq!((parsed.x, parsed.y), (0x0001_1234, 0x0002_5678));
+        assert_eq!(parsed.pressure, 0x0300);
+        assert_eq!((parsed.tilt_x, parsed.tilt_y), (-2, 7));
+        assert_eq!(parsed.buttons, 0b101);
+        assert!(parsed.eraser);
+        assert_eq!(parsed.hover_distance, 9);
+        assert!(IntuosV3Parser::new().parse(&data[..19]).is_none());
+    }
 
-        #[test]
-        fn extended_report_uses_three_byte_coordinates_and_three_buttons() {
-            let mut data = [0u8; 20];
-            data[0] = 0x1E;
-            data[2] = 0x02 | 0x08 | 0x20;
-            data[3..6].copy_from_slice(&[0x34, 0x12, 0x01]); // x
-            data[6..9].copy_from_slice(&[0x78, 0x56, 0x02]); // y
-            data[9..11].copy_from_slice(&[0x00, 0x03]); // pressure
-            data[11..13].copy_from_slice(&[0xFE, 0xFF]); // tilt x = -2
-            data[13..15].copy_from_slice(&[0x07, 0x00]); // tilt y = 7
-            data[19] = 9;
-            let parsed = IntuosV3Parser::new().parse(&data).unwrap();
-            assert_eq!((parsed.x, parsed.y), (0x0001_1234, 0x0002_5678));
-            assert_eq!(parsed.pressure, 0x0300);
-            assert_eq!((parsed.tilt_x, parsed.tilt_y), (-2, 7));
-            assert_eq!(parsed.buttons, 0b101);
-            assert!(parsed.eraser);
-            assert_eq!(parsed.hover_distance, 9);
-            assert!(IntuosV3Parser::new().parse(&data[..19]).is_none());
-        }
+    #[test]
+    fn aux_report_merges_two_button_bytes() {
+        // b1 bits 0..3 and 4..6 map to buttons 0..3 and 5..7, b2 bit 0 to button 4.
+        let parsed = IntuosV3Parser::new()
+            .parse(&[0x11, 0x15, 0x00, 0x01])
+            .unwrap();
+        assert_eq!(parsed.status, TabletStatus::Aux);
+        assert_eq!(parsed.buttons, 0b0011_0101);
+        let none = IntuosV3Parser::new()
+            .parse(&[0x11, 0x00, 0x00, 0x00])
+            .unwrap();
+        assert_eq!(none.buttons, 0);
+        assert!(IntuosV3Parser::new().parse(&[0x11, 0x15]).is_none());
+    }
 
-        #[test]
-        fn aux_report_merges_two_button_bytes() {
-            // b1 bits 0..3 and 4..6 map to buttons 0..3 and 5..7, b2 bit 0 to button 4.
-            let parsed = IntuosV3Parser::new()
-                .parse(&[0x11, 0x15, 0x00, 0x01])
-                .unwrap();
-            assert_eq!(parsed.status, TabletStatus::Aux);
-            assert_eq!(parsed.buttons, 0b0011_0101);
-            let none = IntuosV3Parser::new()
-                .parse(&[0x11, 0x00, 0x00, 0x00])
-                .unwrap();
-            assert_eq!(none.buttons, 0);
-            assert!(IntuosV3Parser::new().parse(&[0x11, 0x15]).is_none());
-        }
+    #[test]
+    fn unknown_ids_are_rejected_and_the_driver_variant_skips_a_byte() {
+        assert!(IntuosV3Parser::new().parse(&[0x55, 1, 2, 3]).is_none());
+        assert!(IntuosV3Parser::new().parse(&[]).is_none());
+        let parser = WacomDriverIntuosV3Parser::new();
+        let parsed = parser.parse(&[0xFF, 0x11, 0x01, 0x00, 0x00]).unwrap();
+        assert_eq!((parsed.status, parsed.buttons), (TabletStatus::Aux, 1));
+        assert!(parser.parse(&[]).is_none());
+    }
 
-        #[test]
-        fn unknown_ids_are_rejected_and_the_driver_variant_skips_a_byte() {
-            assert!(IntuosV3Parser::new().parse(&[0x55, 1, 2, 3]).is_none());
-            assert!(IntuosV3Parser::new().parse(&[]).is_none());
-            let parser = WacomDriverIntuosV3Parser::new();
-            let parsed = parser.parse(&[0xFF, 0x11, 0x01, 0x00, 0x00]).unwrap();
-            assert_eq!((parsed.status, parsed.buttons), (TabletStatus::Aux, 1));
-            assert!(parser.parse(&[]).is_none());
-        }
+    #[test]
+    #[allow(clippy::default_constructed_unit_structs)]
+    fn the_default_parsers_behave_like_the_new_ones() {
+        let plain = IntuosV3Parser::default();
+        assert!(plain.parse(&[0x11, 0x01, 0x00, 0x00]).is_some());
+        let driver = WacomDriverIntuosV3Parser::default();
+        assert!(driver.parse(&[0xFF, 0x11, 0x01, 0x00, 0x00]).is_some());
+    }
 
-        #[test]
-        #[allow(clippy::default_constructed_unit_structs)]
-        fn the_default_parsers_behave_like_the_new_ones() {
-            let plain = IntuosV3Parser::default();
-            assert!(plain.parse(&[0x11, 0x01, 0x00, 0x00]).is_some());
-            let driver = WacomDriverIntuosV3Parser::default();
-            assert!(driver.parse(&[0xFF, 0x11, 0x01, 0x00, 0x00]).is_some());
-        }
+    #[test]
+    fn a_tablet_report_without_pressure_hovers() {
+        let mut data = tablet(0x00, 0, 0);
+        data[7] = 0;
+        data[8] = 0;
+        let parsed = IntuosV3Parser::new().parse(&data).unwrap();
+        assert_eq!(parsed.status, TabletStatus::Hover);
+        assert_eq!(parsed.pressure, 0);
+    }
 
-        #[test]
-        fn a_tablet_report_without_pressure_hovers() {
-            let mut data = tablet(0x00, 0, 0);
-            data[7] = 0;
-            data[8] = 0;
-            let parsed = IntuosV3Parser::new().parse(&data).unwrap();
-            assert_eq!(parsed.status, TabletStatus::Hover);
-            assert_eq!(parsed.pressure, 0);
-        }
+    #[test]
+    fn a_tablet_report_missing_its_last_byte_is_rejected() {
+        assert!(
+            IntuosV3Parser::new()
+                .parse(&tablet(0x02, 0, 0)[..13])
+                .is_none()
+        );
+    }
 
-        #[test]
-        fn a_tablet_report_missing_its_last_byte_is_rejected() {
-            assert!(
-                IntuosV3Parser::new()
-                    .parse(&tablet(0x02, 0, 0)[..13])
-                    .is_none()
-            );
-        }
+    #[test]
+    fn the_extended_report_maps_the_second_button_and_hovers_without_pressure() {
+        let mut data = [0u8; 20];
+        data[0] = 0x1E;
+        data[2] = 0x04;
+        let parsed = IntuosV3Parser::new().parse(&data).unwrap();
+        assert_eq!(parsed.status, TabletStatus::Hover);
+        assert_eq!(parsed.buttons, 0b10);
+    }
 
-        #[test]
-        fn the_extended_report_maps_the_second_button_and_hovers_without_pressure() {
-            let mut data = [0u8; 20];
-            data[0] = 0x1E;
-            data[2] = 0x04;
-            let parsed = IntuosV3Parser::new().parse(&data).unwrap();
-            assert_eq!(parsed.status, TabletStatus::Hover);
-            assert_eq!(parsed.buttons, 0b10);
-        }
-
-        #[test]
-        fn the_aux_keys_cover_every_button_bit_of_the_first_byte() {
-            let key = |b1: u8| {
-                IntuosV3Parser::new()
-                    .parse(&[0x11, b1, 0x00, 0x00])
-                    .unwrap()
-                    .buttons
-            };
-            assert_eq!(key(0x01), 0b0000_0001);
-            assert_eq!(key(0x02), 0b0000_0010);
-            assert_eq!(key(0x04), 0b0000_0100);
-            assert_eq!(key(0x08), 0b0000_1000);
-            assert_eq!(key(0x10), 0b0010_0000);
-            assert_eq!(key(0x20), 0b0100_0000);
-            assert_eq!(key(0x40), 0b1000_0000);
-        }
+    #[test]
+    fn the_aux_keys_cover_every_button_bit_of_the_first_byte() {
+        let key = |b1: u8| {
+            IntuosV3Parser::new()
+                .parse(&[0x11, b1, 0x00, 0x00])
+                .unwrap()
+                .buttons
+        };
+        assert_eq!(key(0x01), 0b0000_0001);
+        assert_eq!(key(0x02), 0b0000_0010);
+        assert_eq!(key(0x04), 0b0000_0100);
+        assert_eq!(key(0x08), 0b0000_1000);
+        assert_eq!(key(0x10), 0b0010_0000);
+        assert_eq!(key(0x20), 0b0100_0000);
+        assert_eq!(key(0x40), 0b1000_0000);
     }
 }

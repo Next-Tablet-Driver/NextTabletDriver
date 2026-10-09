@@ -170,12 +170,7 @@ impl Pipeline {
 }
 
 #[cfg(test)]
-#[allow(
-    clippy::unwrap_used,
-    clippy::expect_used,
-    clippy::panic,
-    clippy::float_cmp
-)]
+#[allow(clippy::float_cmp)]
 mod tests {
     use super::*;
     use crate::core::config::models::MappingConfig;
@@ -423,41 +418,35 @@ mod tests {
         assert_eq!(frame.pressure, 0);
     }
 
-    mod more {
-        #![allow(clippy::indexing_slicing)]
+    use crate::drivers::NextTabletDriver;
 
-        use super::*;
+    #[test]
+    fn a_default_pipeline_starts_clean() {
+        let pipeline = Pipeline::default();
+        assert_eq!(pipeline.tip_threshold_raw, 0.0);
+        assert_eq!(pipeline.last_max_p, 0.0);
+        assert_eq!(pipeline.last_threshold, 0);
+    }
 
-        use crate::drivers::NextTabletDriver;
+    #[test]
+    fn resetting_the_relative_tracking_of_a_fresh_pipeline_is_harmless() {
+        let mut pipeline = Pipeline::new();
+        pipeline.reset_relative();
+        assert_eq!(pipeline.last_threshold, 0);
+    }
 
-        #[test]
-        fn a_default_pipeline_starts_clean() {
-            let pipeline = Pipeline::default();
-            assert_eq!(pipeline.tip_threshold_raw, 0.0);
-            assert_eq!(pipeline.last_max_p, 0.0);
-            assert_eq!(pipeline.last_threshold, 0);
-        }
+    #[test]
+    fn the_test_drivers_describe_themselves() {
+        assert_eq!(MockDriver.get_name(), "Mock Driver");
+        assert_eq!(MockDriver.get_specs(), (1000.0, 1000.0, 1000.0));
+        assert_eq!(MockDriver.get_physical_specs(), (100.0, 100.0));
+        assert_eq!(MockDriver.get_vid_pid(), (0, 0));
+        assert!(MockDriver.parse(&[1, 2, 3]).is_none());
 
-        #[test]
-        fn resetting_the_relative_tracking_of_a_fresh_pipeline_is_harmless() {
-            let mut pipeline = Pipeline::new();
-            pipeline.reset_relative();
-            assert_eq!(pipeline.last_threshold, 0);
-        }
-
-        #[test]
-        fn the_test_drivers_describe_themselves() {
-            assert_eq!(MockDriver.get_name(), "Mock Driver");
-            assert_eq!(MockDriver.get_specs(), (1000.0, 1000.0, 1000.0));
-            assert_eq!(MockDriver.get_physical_specs(), (100.0, 100.0));
-            assert_eq!(MockDriver.get_vid_pid(), (0, 0));
-            assert!(MockDriver.parse(&[1, 2, 3]).is_none());
-
-            assert_eq!(MockDegenerateDriver.get_name(), "Mock Degenerate");
-            assert_eq!(MockDegenerateDriver.get_specs(), (0.0, 0.0, 0.0));
-            assert_eq!(MockDegenerateDriver.get_physical_specs(), (0.0, 0.0));
-            assert_eq!(MockDegenerateDriver.get_vid_pid(), (0, 0));
-            assert!(MockDegenerateDriver.parse(&[1, 2, 3]).is_none());
-        }
+        assert_eq!(MockDegenerateDriver.get_name(), "Mock Degenerate");
+        assert_eq!(MockDegenerateDriver.get_specs(), (0.0, 0.0, 0.0));
+        assert_eq!(MockDegenerateDriver.get_physical_specs(), (0.0, 0.0));
+        assert_eq!(MockDegenerateDriver.get_vid_pid(), (0, 0));
+        assert!(MockDegenerateDriver.parse(&[1, 2, 3]).is_none());
     }
 }

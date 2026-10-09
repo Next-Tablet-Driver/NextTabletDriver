@@ -97,13 +97,7 @@ pub mod linux;
 pub use linux::Injector;
 
 #[cfg(test)]
-#[allow(
-    clippy::unwrap_used,
-    clippy::expect_used,
-    clippy::panic,
-    clippy::float_cmp,
-    clippy::indexing_slicing
-)]
+#[allow(clippy::float_cmp)]
 mod tests {
     use super::*;
 
