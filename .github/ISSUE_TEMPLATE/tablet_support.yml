@@ -1,0 +1,32 @@
+name: "✍️ Tablet Support Request"
+description: "Request support for a new tablet model that isn't working yet"
+title: "[Tablet Support] "
+labels: ["✍️ Tablet Support"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Request Support for a New Tablet ✍️
+        To add support for a new tablet, we need the USB descriptors and HID reports.
+  - type: input
+    id: tablet_model
+    attributes:
+      label: "Tablet Model"
+      description: "The exact brand and model of your tablet."
+      placeholder: "e.g., XP-Pen Deco 01 V2"
+    validations:
+      required: true
+  - type: input
+    id: vid_pid
+    attributes:
+      label: "Vendor ID (VID) and Product ID (PID)"
+      description: "You can find this in the Device Manager (Windows) or using `lsusb` (Linux)."
+      placeholder: "e.g., 0x28BD:0x0914"
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: "Additional Information"
+      description: "Does the tablet work partially? Does it have a screen? Any buttons or dials?"
+      placeholder: "The pen works but buttons are not recognized..."

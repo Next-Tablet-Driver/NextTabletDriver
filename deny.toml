@@ -1,0 +1,15 @@
+# cargo-deny policy: https://embarkstudios.github.io/cargo-deny/
+# Run locally with: cargo deny check advisories bans sources
+
+[advisories]
+version = 2
+yanked = "deny"
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]

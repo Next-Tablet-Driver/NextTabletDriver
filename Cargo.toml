@@ -1,0 +1,115 @@
+[package]
+name = "next_tablet_driver"
+authors = ["iSweat <https://github.com/iSweat-exe>"]
+description = "Tablet Driver for Osu! and Drawing"
+repository = "https://github.com/Next-Tablet-Driver/NextTabletDriver"
+version = "2.0.0"
+edition = "2024"
+license = "MIT"
+readme = "README.md"
+keywords = ["tablet", "driver", "rust", "osu"]
+categories = ["hardware-support"]
+rust-version = "1.99.0"
+
+[features]
+default = ["desktop"]
+# Everything that talks to the OS: HID polling thread and input injection.
+# Disabled by the SDK, which embeds the pure processing pipeline only.
+desktop = ["dep:display-info"]
+
+[dependencies]
+# Windows & Linux
+hidapi = "2.6.3"
+display-info = { version = "0.5.9", optional = true }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+base64 = "0.23.1"
+directories = "6.0.0"
+log = { version = "0.4", features = ["std"] }
+chrono = "0.4"
+crossbeam-channel = "0.5.15"
+include_dir = "0.7"
+tungstenite = { version = "0.29.0", default-features = false, features = ["handshake"] }
+ureq = { version = "2.12.1", features = ["json"] }
+uuid = { version = "1.23.3", features = ["v4", "serde"] }
+interprocess = "2.2.3"
+regex = "1.13.1"
+sha2 = "0.10"
+minisign-verify = "0.2"
+libloading = "0.9"
+ntd_plugin_api = { path = "sdk/plugin_api" }
+
+# Windows
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_System_Threading", "Win32_System_Memory", "Win32_Security", "Win32_UI_WindowsAndMessaging", "Win32_UI_Input_KeyboardAndMouse", "Win32_Media", "Win32_System_LibraryLoader", "Win32_System_SystemInformation", "Win32_Storage_FileSystem", "Win32_Devices_HumanInterfaceDevice", "Win32_System_Registry"] }
+
+# Linux
+[target.'cfg(target_os = "linux")'.dependencies]
+evdev = "0.13"
+nix = { version = "0.31.3", features = ["sched", "fs", "mman"] }
+libc = "0.2"
+
+[dev-dependencies]
+cargo-husky = { version = "1.5.0", default-features = false, features = ["user-hooks"] }
+criterion = "0.8"
+
+[[test]]
+name = "transform_properties"
+path = "qa/tests/transform_properties.rs"
+
+[[bench]]
+name = "pipeline"
+path = "qa/benches/pipeline.rs"
+harness = false
+
+[[bench]]
+name = "transforms"
+path = "qa/benches/transforms.rs"
+harness = false
+
+[[bench]]
+name = "hot_path"
+path = "qa/benches/hot_path.rs"
+harness = false
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+# Keep unwinding: the engine relies on catch_unwind to survive a panic in a parser or
+# filter, and FFI/plugin boundaries must not abort the whole app.
+panic = "unwind"
+strip = true
+# debug = true
+incremental = false
+
+[lints.rust]
+dead_code = "deny"
+# missing_docs = "warn"
+
+[lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+indexing_slicing = "deny"
+exit = "deny"
+todo = "deny"
+unimplemented = "deny"
+lossy_float_literal = "deny"
+
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+nursery = { level = "warn", priority = -1 }
+missing_panics_doc = "warn"
+missing_errors_doc = "warn"
+undocumented_unsafe_blocks = "warn"
+multiple_unsafe_ops_per_block = "warn"
+fn_to_numeric_cast_any = "warn"
+
+cast_precision_loss = "allow"
+cast_possible_truncation = "allow"
+cast_sign_loss = "allow"
+too_many_lines = "allow"
+similar_names = "allow"
+# Style-only lint that fires on idiomatic `assert!(x.is_empty())` in tests.
+assert_is_empty = "allow"

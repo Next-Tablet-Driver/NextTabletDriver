@@ -1,0 +1,63 @@
+    Finished `bench` profile [optimized] target(s) in 0.31s
+     Running qa\benches\hot_path.rs (target\release\deps\hot_path-a2266ae199287167.exe)
+Gnuplot not found, using plotters backend
+Benchmarking hot_path/process_packet/tray_hidden
+Benchmarking hot_path/process_packet/tray_hidden: Warming up for 2.0000 s
+Benchmarking hot_path/process_packet/tray_hidden: Collecting 100 samples in estimated 5.0004 s (23M iterations)
+Benchmarking hot_path/process_packet/tray_hidden: Analyzing
+hot_path/process_packet/tray_hidden
+                        time:   [216.38 ns 217.12 ns 217.97 ns]
+                        thrpt:  [4.5877 Melem/s 4.6057 Melem/s 4.6215 Melem/s]
+                 change:
+                        time:   [−8.2881% −6.8394% −5.3853%] (p = 0.00 < 0.05)
+                        thrpt:  [+5.6918% +7.3416% +9.0371%]
+                        Performance has improved.
+Found 13 outliers among 100 measurements (13.00%)
+  2 (2.00%) low mild
+  8 (8.00%) high mild
+  3 (3.00%) high severe
+Benchmarking hot_path/process_packet/ui_60hz
+Benchmarking hot_path/process_packet/ui_60hz: Warming up for 2.0000 s
+Benchmarking hot_path/process_packet/ui_60hz: Collecting 100 samples in estimated 5.0001 s (22M iterations)
+Benchmarking hot_path/process_packet/ui_60hz: Analyzing
+hot_path/process_packet/ui_60hz
+                        time:   [219.16 ns 220.32 ns 221.83 ns]
+                        thrpt:  [4.5080 Melem/s 4.5388 Melem/s 4.5630 Melem/s]
+                 change:
+                        time:   [+0.3081% +1.2799% +2.3414%] (p = 0.01 < 0.05)
+                        thrpt:  [−2.2878% −1.2637% −0.3071%]
+                        Change within noise threshold.
+Found 2 outliers among 100 measurements (2.00%)
+  1 (1.00%) high mild
+  1 (1.00%) high severe
+Benchmarking hot_path/process_packet/ui_stress
+Benchmarking hot_path/process_packet/ui_stress: Warming up for 2.0000 s
+Benchmarking hot_path/process_packet/ui_stress: Collecting 100 samples in estimated 5.0008 s (16M iterations)
+Benchmarking hot_path/process_packet/ui_stress: Analyzing
+hot_path/process_packet/ui_stress
+                        time:   [311.87 ns 314.90 ns 317.90 ns]
+                        thrpt:  [3.1456 Melem/s 3.1756 Melem/s 3.2065 Melem/s]
+                 change:
+                        time:   [−2.8555% −1.4472% −0.0815%] (p = 0.05 > 0.05)
+                        thrpt:  [+0.0816% +1.4685% +2.9395%]
+                        No change in performance detected.
+Found 2 outliers among 100 measurements (2.00%)
+  2 (2.00%) high mild
+
+Benchmarking hot_path/ui_snapshot_capture
+Benchmarking hot_path/ui_snapshot_capture: Warming up for 2.0000 s
+Benchmarking hot_path/ui_snapshot_capture: Collecting 100 samples in estimated 5.0013 s (16M iterations)
+Benchmarking hot_path/ui_snapshot_capture: Analyzing
+hot_path/ui_snapshot_capture
+                        time:   [319.39 ns 322.33 ns 325.79 ns]
+                        change: [+0.0515% +1.1973% +2.2517%] (p = 0.04 < 0.05)
+                        Change within noise threshold.
+Found 2 outliers among 100 measurements (2.00%)
+  2 (2.00%) high mild
+
+
+hot_path tail latency (ns per packet, 64-packet batches x 20000)
+scenario             p50       p99     p99.9       max       mean
+tray_hidden          211       425      1459      2841      222.0
+ui_60hz              211       464      1691      2592      223.5
+ui_stress            294       544      1269      2438      312.4

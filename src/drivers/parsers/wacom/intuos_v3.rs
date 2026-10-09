@@ -1,0 +1,299 @@
+use crate::drivers::TabletData;
+use crate::drivers::parsers::ReportParser;
+
+// Intuos V3
+
+pub struct IntuosV3Parser;
+
+impl IntuosV3Parser {
+    #[must_use]
+    pub const fn new() -> Self {
+        Self
+    }
+}
+
+impl Default for IntuosV3Parser {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl IntuosV3Parser {
+    fn parse_internal(data: &[u8]) -> Option<TabletData> {
+        match data {
+            [0x11, ..] => Self::parse_aux(data),
+            [0x1E, ..] => Self::parse_extended(data),
+            [0x1F, 0x01, ..] => Self::parse_tablet(data),
+            _ => None,
+        }
+    }
+
+    fn parse_tablet(data: &[u8]) -> Option<TabletData> {
+        match data {
+            [
+                _,
+                _,
+                b2,
+                x_lo,
+                x_hi,
+                y_lo,
+                y_hi,
+                p_lo,
+                p_hi,
+                t_x,
+                _,
+                t_y,
+                _,
+                h_dist,
+                ..,
+            ] => {
+                let x = u32::from(u16::from_le_bytes([*x_lo, *x_hi]));
+                let y = u32::from(u16::from_le_bytes([*y_lo, *y_hi]));
+                let pressure = u16::from_le_bytes([*p_lo, *p_hi]);
+
+                let tilt_x = if (*t_x & 0x80) != 0 {
+                    (i16::from(*t_x) - 0xFF) as i8
+                } else {
+                    t_x.cast_signed()
+                };
+                let tilt_y = if (*t_y & 0x80) != 0 {
+                    (i16::from(*t_y) - 0xFF) as i8
+                } else {
+                    t_y.cast_signed()
+                };
+
+                let mut buttons: u8 = 0;
+                if (*b2 & 0x02) != 0 {
+                    buttons |= 1 << 0;
+                }
+                if (*b2 & 0x04) != 0 {
+                    buttons |= 1 << 1;
+                }
+                let eraser = (*b2 & 0x20) != 0;
+
+                let status = if pressure > 0 {
+                    crate::drivers::TabletStatus::Contact
+                } else {
+                    crate::drivers::TabletStatus::Hover
+                };
+
+                let mut tablet_data = TabletData {
+                    status,
+                    x,
+                    y,
+                    pressure,
+                    tilt_x,
+                    tilt_y,
+                    buttons,
+                    eraser,
+                    hover_distance: *h_dist,
+                    is_connected: true,
+                    ..Default::default()
+                };
+                tablet_data.set_raw(data);
+                Some(tablet_data)
+            }
+            _ => None,
+        }
+    }
+
+    fn parse_extended(data: &[u8]) -> Option<TabletData> {
+        match data {
+            [
+                _,
+                _,
+                b2,
+                x_lo,
+                x_hi,
+                x_ext,
+                y_lo,
+                y_hi,
+                y_ext,
+                p_lo,
+                p_hi,
+                t_x_lo,
+                t_x_hi,
+                t_y_lo,
+                t_y_hi,
+                _,
+                _,
+                _,
+                _,
+                h_dist,
+                ..,
+            ] => {
+                let x = u32::from(u16::from_le_bytes([*x_lo, *x_hi])) | (u32::from(*x_ext) << 16);
+                let y = u32::from(u16::from_le_bytes([*y_lo, *y_hi])) | (u32::from(*y_ext) << 16);
+                let pressure = u16::from_le_bytes([*p_lo, *p_hi]);
+                let tilt_x = (i16::from_le_bytes([*t_x_lo, *t_x_hi])) as i8;
+                let tilt_y = (i16::from_le_bytes([*t_y_lo, *t_y_hi])) as i8;
+
+                let mut buttons: u8 = 0;
+                if (*b2 & 0x02) != 0 {
+                    buttons |= 1 << 0;
+                }
+                if (*b2 & 0x04) != 0 {
+                    buttons |= 1 << 1;
+                }
+                if (*b2 & 0x08) != 0 {
+                    buttons |= 1 << 2;
+                }
+                let eraser = (*b2 & 0x20) != 0;
+
+                let status = if pressure > 0 {
+                    crate::drivers::TabletStatus::Contact
+                } else {
+                    crate::drivers::TabletStatus::Hover
+                };
+
+                let mut tablet_data = TabletData {
+                    status,
+                    x,
+                    y,
+                    pressure,
+                    tilt_x,
+                    tilt_y,
+                    buttons,
+                    eraser,
+                    hover_distance: *h_dist,
+                    is_connected: true,
+                    ..Default::default()
+                };
+                tablet_data.set_raw(data);
+                Some(tablet_data)
+            }
+            _ => None,
+        }
+    }
+
+    fn parse_aux(data: &[u8]) -> Option<TabletData> {
+        match data {
+            [_, b1, _, b2, ..] => {
+                let mut buttons: u16 = 0;
+                if (*b1 & 1) != 0 {
+                    buttons |= 1 << 0;
+                }
+                if (*b1 & 2) != 0 {
+                    buttons |= 1 << 1;
+                }
+                if (*b1 & 4) != 0 {
+                    buttons |= 1 << 2;
+                }
+                if (*b1 & 8) != 0 {
+                    buttons |= 1 << 3;
+                }
+                if (*b2 & 1) != 0 {
+                    buttons |= 1 << 4;
+                }
+                if (*b1 & 16) != 0 {
+                    buttons |= 1 << 5;
+                }
+                if (*b1 & 32) != 0 {
+                    buttons |= 1 << 6;
+                }
+                if (*b1 & 64) != 0 {
+                    buttons |= 1 << 7;
+                }
+
+                let mut tablet_data = TabletData {
+                    status: crate::drivers::TabletStatus::Aux,
+                    buttons: buttons as u8,
+                    is_connected: true,
+                    ..Default::default()
+                };
+                tablet_data.set_raw(data);
+                Some(tablet_data)
+            }
+            _ => None,
+        }
+    }
+}
+
+impl ReportParser for IntuosV3Parser {
+    fn parse(&self, data: &[u8]) -> Option<TabletData> {
+        Self::parse_internal(data)
+    }
+}
+
+pub struct WacomDriverIntuosV3Parser;
+
+impl WacomDriverIntuosV3Parser {
+    #[must_use]
+    pub const fn new() -> Self {
+        Self
+    }
+
+    fn parse_internal(data: &[u8]) -> Option<TabletData> {
+        IntuosV3Parser::parse_internal(data)
+    }
+}
+
+impl Default for WacomDriverIntuosV3Parser {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl ReportParser for WacomDriverIntuosV3Parser {
+    fn parse(&self, data: &[u8]) -> Option<TabletData> {
+        // Skip the first byte safely
+        match data {
+            [_, rest @ ..] => Self::parse_internal(rest),
+            _ => None,
+        }
+    }
+}
+
+#[cfg(test)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::float_cmp
+)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_intuos_v3_tablet_report() {
+        let parser = IntuosV3Parser::new();
+        // Report ID 1F, status 01, Pen buttons, X, Y, Pressure, Tilt
+        let mut data = [0u8; 15];
+        data[0] = 0x1F;
+        data[1] = 0x01;
+        data[2] = 0x02; // Pen button 1
+        data[3] = 0x01;
+        data[4] = 0x00; // X = 1
+        data[7] = 0xAA;
+        data[8] = 0x00; // Pressure = 170
+
+        let result = parser.parse(&data).expect("Should parse");
+        assert_eq!(result.x, 1);
+        assert_eq!(result.pressure, 170);
+        assert_eq!(result.buttons, 1 << 0);
+    }
+
+    #[test]
+    fn test_intuos_v3_extended_report() {
+        let parser = IntuosV3Parser::new();
+        // Report ID 1E (extended format), status 01, b2=0x02, x_lo=0x10, x_hi=0x20, x_ext=0x01
+        let mut data = [0u8; 25];
+        data[0] = 0x1E;
+        data[1] = 0x01;
+        data[2] = 0x02; // Pen button 1
+        data[3] = 0x10; // x_lo
+        data[4] = 0x20; // x_hi (0x2010 = 8208)
+        data[5] = 0x01; // x_ext (0x010000 = 65536) -> total x = 73744
+        data[6] = 0x05; // y_lo
+        data[7] = 0x00; // y_hi
+        data[8] = 0x02; // y_ext (0x020000 = 131072) -> total y = 131077
+        data[9] = 0x50; // p_lo
+        data[10] = 0x01; // p_hi = 336
+
+        let result = parser.parse(&data).expect("Should parse extended report");
+        assert_eq!(result.x, 73744);
+        assert_eq!(result.y, 131_077);
+        assert_eq!(result.pressure, 336);
+        assert_eq!(result.buttons, 1 << 0);
+    }
+}

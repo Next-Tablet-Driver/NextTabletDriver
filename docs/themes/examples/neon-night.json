@@ -1,0 +1,32 @@
+{
+  "$schema": "https://raw.githubusercontent.com/Next-Tablet-Driver/NextTabletDriver/master/docs/themes/theme.schema.json",
+  "schema": 1,
+  "metadata": {
+    "name": "Neon Night",
+    "author": "NextTabletDriver",
+    "version": "1.0",
+    "description": "Dark purple with a hot pink accent."
+  },
+  "base": "dark",
+  "tokens": {
+    "bg-app": "#0d0b1a",
+    "bg-panel": "#16122b",
+    "bg-panel-hover": "#241d45",
+    "bg-input": "#0a0814",
+    "text-main": "#d8d2f0",
+    "text-muted": "#9a90c0",
+    "text-active": "#ffffff",
+    "accent": "#c4147d",
+    "accent-hover": "#e0239a",
+    "text-on-accent": "#ffffff",
+    "border": "#2e2656",
+    "input-bg": "#0a0814",
+    "input-bg-hover": "#120e24",
+    "input-bg-focus": "#1a1433",
+    "input-border": "#2e2656",
+    "input-border-hover": "#463a82",
+    "radius-sm": "4px",
+    "radius-md": "8px",
+    "radius-lg": "12px"
+  }
+}

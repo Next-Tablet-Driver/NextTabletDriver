@@ -1,0 +1,15 @@
+language = "C"
+header = """/*
+ * NextTabletDriver SDK -- generated C header. Do not edit by hand;
+ * regenerated from sdk/src/ffi.rs by cbindgen (see sdk/build.rs).
+ */"""
+include_guard = "NTD_SDK_H"
+pragma_once = true
+documentation = true
+documentation_style = "doxy"
+
+[fn]
+args = "auto"
+
+[parse]
+parse_deps = false

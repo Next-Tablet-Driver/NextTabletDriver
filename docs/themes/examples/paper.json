@@ -1,0 +1,30 @@
+{
+  "$schema": "https://raw.githubusercontent.com/Next-Tablet-Driver/NextTabletDriver/master/docs/themes/theme.schema.json",
+  "schema": 1,
+  "metadata": {
+    "name": "Paper",
+    "author": "NextTabletDriver",
+    "version": "1.0",
+    "description": "Warm off-white light theme with a green accent."
+  },
+  "base": "light",
+  "tokens": {
+    "bg-app": "#f6f1e7",
+    "bg-panel": "#fffdf8",
+    "bg-panel-hover": "#ebe4d3",
+    "bg-input": "#fffdf8",
+    "text-main": "#3b3528",
+    "text-muted": "#6d6552",
+    "text-active": "#14110a",
+    "accent": "#2f7d4f",
+    "accent-hover": "#3b9961",
+    "text-on-accent": "#ffffff",
+    "border": "#d9cfb8",
+    "input-bg": "#fbf7ec",
+    "input-bg-hover": "#f3ecdb",
+    "input-bg-focus": "#ffffff",
+    "input-border": "#d9cfb8",
+    "input-border-hover": "#bfb394",
+    "font-sans": "'Segoe UI', Helvetica, sans-serif"
+  }
+}

@@ -1,0 +1,43 @@
+[package]
+name = "next_tablet_driver-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2024"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+arbitrary = { version = "1", features = ["derive"] }
+
+[dependencies.next_tablet_driver]
+path = ".."
+
+[[bin]]
+name = "rotate_point"
+path = "fuzz_targets/rotate_point.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "physical_to_normalized"
+path = "fuzz_targets/physical_to_normalized.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "normalized_to_screen"
+path = "fuzz_targets/normalized_to_screen.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "apply_relative_delta"
+path = "fuzz_targets/apply_relative_delta.rs"
+test = false
+doc = false
+bench = false

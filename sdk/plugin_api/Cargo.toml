@@ -1,0 +1,38 @@
+[package]
+name = "ntd_plugin_api"
+version = "0.1.0"
+authors = ["iSweat <https://github.com/iSweat-exe>"]
+description = "Plugin ABI and SDK for NextTabletDriver dynamic filters"
+edition = "2024"
+license = "MIT"
+rust-version = "1.99.0"
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+[lints.rust]
+dead_code = "deny"
+
+[lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+indexing_slicing = "deny"
+exit = "deny"
+todo = "deny"
+unimplemented = "deny"
+lossy_float_literal = "deny"
+
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+nursery = { level = "warn", priority = -1 }
+missing_panics_doc = "warn"
+missing_errors_doc = "warn"
+undocumented_unsafe_blocks = "warn"
+multiple_unsafe_ops_per_block = "warn"
+
+cast_precision_loss = "allow"
+cast_possible_truncation = "allow"
+cast_sign_loss = "allow"
+similar_names = "allow"

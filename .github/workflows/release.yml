@@ -1,0 +1,129 @@
+name: Release Build
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      ref_name:
+        description: "Dry run: builds every installer and uploads them as workflow artifacts (no GitHub Release is created)"
+        required: false
+        default: "dry-run"
+
+permissions:
+  contents: write
+
+env:
+  # Only real tag pushes publish; manual runs are dry runs.
+  RELEASE_TAG: ${{ github.event_name == 'push' && github.ref_name || '' }}
+
+jobs:
+  build:
+    name: Build ${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows x64
+            os: windows-latest
+            rust_target: x86_64-pc-windows-msvc
+            args: "--target x86_64-pc-windows-msvc --bundles nsis"
+          - name: Windows ARM64
+            os: windows-latest
+            rust_target: aarch64-pc-windows-msvc
+            args: "--target aarch64-pc-windows-msvc --bundles nsis"
+          - name: Linux x64
+            os: ubuntu-22.04
+            rust_target: x86_64-unknown-linux-gnu
+            args: "--bundles appimage,deb"
+          - name: Linux ARM64
+            os: ubuntu-22.04-arm
+            rust_target: aarch64-unknown-linux-gnu
+            args: "--bundles appimage,deb"
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Linux dependencies
+        if: startsWith(matrix.os, 'ubuntu')
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config patchelf libfuse2 \
+            libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev \
+            libudev-dev libxdo-dev libssl-dev
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.99.0
+          targets: ${{ matrix.rust_target }}
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: "src-tauri -> target"
+          key: ${{ matrix.rust_target }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci --prefix frontend
+
+      # tauri-action builds the bundles, signs the updater artifacts, creates the draft
+      # release for the tag and merges this platform into `latest.json`.
+      - name: Build and upload bundles
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          tauriScript: node frontend/node_modules/@tauri-apps/cli/tauri.js
+          args: ${{ matrix.args }}
+          tagName: ${{ env.RELEASE_TAG }}
+          releaseName: "Release ${{ env.RELEASE_TAG }}"
+          releaseDraft: true
+          uploadUpdaterJson: true
+          uploadWorkflowArtifacts: ${{ env.RELEASE_TAG == '' }}
+          workflowArtifactNamePattern: "[name]-[platform]-[arch]-[bundle]"
+
+  publish-release:
+    name: Publish Release
+    if: github.event_name == 'push'
+    needs: build
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      TAG: ${{ github.ref_name }}
+
+    steps:
+      - name: Download installers
+        run: |
+          mkdir assets
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --dir assets \
+            --pattern "*.exe" --pattern "*.AppImage" --pattern "*.deb"
+
+      - name: Compute checksums
+        run: |
+          cd assets
+          sha256sum * > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - name: Upload checksums
+        run: gh release upload "$TAG" assets/SHA256SUMS.txt --repo "$GITHUB_REPOSITORY" --clobber
+
+      - name: Generate notes and publish
+        run: |
+          notes=$(gh api -X POST "repos/$GITHUB_REPOSITORY/releases/generate-notes" -f tag_name="$TAG" --jq .body)
+          gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --notes "$notes" --draft=false

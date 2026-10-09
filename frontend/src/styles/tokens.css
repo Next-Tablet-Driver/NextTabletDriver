@@ -1,0 +1,243 @@
+/*
+ * NextTabletDriver design tokens.
+ *
+ * Three layers, from the least to the most specific. Components read tokens; they never
+ * hard-code a color, size or duration.
+ *
+ *   1. PRIMITIVES  - theme-independent scales (space, radius, type, motion, layers).
+ *   2. SEMANTIC    - what a value *means* (surface, text, border, accent, status, overlay).
+ *                    These are the tokens a theme overrides. Values below are the default
+ *                    (dark) theme.
+ *   3. COMPONENT   - per-component knobs, DERIVED from the semantic layer so that changing
+ *                    `--accent` re-colors every component, yet each can still be overridden.
+ *
+ * The list of tokens a user theme may override is the contract in
+ * `src/lib/theme/tokens.ts`; `design-tokens.test.ts` keeps it in sync with this file.
+ */
+
+:root {
+  /* ============================================================
+   * 1. PRIMITIVES
+   * ============================================================ */
+
+  /* --- Space: 1 unit = 4px, plus the half steps the UI actually uses --- */
+  --space-0-5: 2px;
+  --space-1: 4px;
+  --space-1-5: 6px;
+  --space-2: 8px;
+  --space-2-5: 10px;
+  --space-3: 12px;
+  --space-3-5: 14px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 28px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-14: 56px;
+  --space-20: 80px;
+
+  /* Legacy names, kept as aliases of the scale above. */
+  --spacing-xs: var(--space-1);
+  --spacing-sm: var(--space-2);
+  --spacing-md: var(--space-4);
+  --spacing-lg: var(--space-6);
+  --spacing-xl: var(--space-8);
+
+  /* --- Radius --- */
+  --radius-sm: 2px;
+  --radius-sm-plus: 3px;
+  --radius-md: 4px;
+  --radius-md-plus: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-pill: 20px;
+
+  /* --- Typography --- */
+  --font-sans: 'Helvetica', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  --font-mono: 'Consolas', 'Courier New', monospace;
+
+  --font-xs: 10px;
+  --font-sm: 11px;
+  --font-base: 12px;
+  --font-md: 13px;
+  --font-lg: 14px;
+  --font-lg-plus: 15px;
+  --font-xl: 16px;
+  --font-xl-plus: 18px;
+  --font-2xl: 20px;
+  --font-3xl: 22px;
+  --font-4xl: 28px;
+  --font-5xl: 32px;
+
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-bold: 600;
+  --font-weight-heavy: 700;
+
+  /* --- Icons --- */
+  --icon-sm: 14px;
+  --icon-md: 16px;
+
+  /* --- Borders & focus --- */
+  --border-width: 1px;
+  --outline-width: 2px;
+
+  /* --- Motion --- */
+  --transition-fast: 80ms;
+  --transition-quick: 100ms;
+  --transition-normal: 150ms;
+  --transition-moderate: 200ms;
+  --transition-slow: 300ms;
+  --ease-standard: ease;
+  --ease-emphasized: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* --- Layers (global stacking only; local stacking inside a component stays local) --- */
+  --z-dropdown: 1000;
+  --z-floating: 9999;
+  --z-tooltip: 99999;
+
+  /* --- States --- */
+  --disabled-opacity: 0.5;
+
+  /* ============================================================
+   * 2. SEMANTIC (themable) - default theme: dark
+   * ============================================================ */
+
+  color-scheme: dark;
+
+  /* Surfaces */
+  --bg-app: #252526;
+  --bg-panel: #2d2d30;
+  --bg-panel-hover: #3e3e42;
+  --bg-tab: transparent;
+  --bg-input: #1e1e1e;
+
+  /* Text */
+  --text-main: #cccccc;
+  --text-muted: #999999;
+  --text-active: #ffffff;
+  --text-on-accent: #ffffff;
+  --text-number: #569cd6;
+  /* Titles and names that sit one step above `--text-main`, and the strongest text of all. */
+  --text-strong: #e0e0e0;
+  --text-emphasis: #ffffff;
+
+  /* Accent */
+  --accent: #007acc;
+  --accent-hover: #0098ff;
+
+  /* Borders */
+  --border: #3f3f46;
+  --border-hover: rgb(var(--overlay-rgb) / 0.15);
+
+  /* Status colors */
+  --info: #5cb6ff;
+  --warning: #ffb84d;
+  --error: #ff6b6b;
+  --danger: #ef4444;
+  --danger-hover: #f87171;
+  --success: #6bff6b;
+  --debug: #a1a1aa;
+
+  /* Tinted backgrounds / borders for status badges, derived from the status colors. */
+  --info-bg: color-mix(in srgb, var(--info) 15%, transparent);
+  --info-border: color-mix(in srgb, var(--info) 30%, transparent);
+  --warning-bg: color-mix(in srgb, var(--warning) 15%, transparent);
+  --warning-border: color-mix(in srgb, var(--warning) 30%, transparent);
+  --error-bg: color-mix(in srgb, var(--error) 15%, transparent);
+  --error-border: color-mix(in srgb, var(--error) 30%, transparent);
+  --success-bg: color-mix(in srgb, var(--success) 15%, transparent);
+  --success-border: color-mix(in srgb, var(--success) 30%, transparent);
+  --debug-bg: color-mix(in srgb, var(--debug) 15%, transparent);
+  --debug-border: color-mix(in srgb, var(--debug) 30%, transparent);
+
+  /*
+   * Overlays: translucent layers drawn on top of a surface. `--overlay-rgb` lightens (white
+   * on dark themes, black on light themes); `--shade-rgb` darkens. Components use the stepped
+   * alphas below instead of hard-coding rgba().
+   */
+  --overlay-rgb: 255 255 255;
+  --shade-rgb: 0 0 0;
+
+  --overlay-3: rgb(var(--overlay-rgb) / 0.03);
+  --overlay-4: rgb(var(--overlay-rgb) / 0.04);
+  --overlay-5: rgb(var(--overlay-rgb) / 0.05);
+  --overlay-8: rgb(var(--overlay-rgb) / 0.08);
+  --overlay-10: rgb(var(--overlay-rgb) / 0.1);
+  --overlay-15: rgb(var(--overlay-rgb) / 0.15);
+  --overlay-20: rgb(var(--overlay-rgb) / 0.2);
+  --overlay-90: rgb(var(--overlay-rgb) / 0.9);
+
+  --shade-10: rgb(var(--shade-rgb) / 0.1);
+  --shade-15: rgb(var(--shade-rgb) / 0.15);
+  --shade-20: rgb(var(--shade-rgb) / 0.2);
+  --shade-30: rgb(var(--shade-rgb) / 0.3);
+
+  /* Elevation */
+  --shadow-popover: 0 4px 12px rgb(var(--shade-rgb) / 0.5);
+  --shadow-floating: 0 10px 30px rgb(var(--shade-rgb) / 0.5);
+
+  /* Focus */
+  --focus-ring-color: var(--accent);
+  --focus-ring-width: var(--outline-width);
+
+  /* ============================================================
+   * 3. COMPONENT (derived from the semantic layer)
+   * ============================================================ */
+
+  --bg-tab-active: var(--accent);
+
+  /* Inputs & triggers */
+  --input-height: 30px;
+  --input-padding: 0 8px;
+  --input-radius: 4px;
+  --input-font-size: 13px;
+  --input-bg: #181818;
+  --input-bg-hover: #1c1c1c;
+  --input-bg-focus: #1e1e1e;
+  --input-border: #2a2a2a;
+  --input-border-hover: #444444;
+  --input-border-focus: var(--focus-ring-color);
+
+  /* Menus & dropdowns */
+  --menu-bg: var(--bg-panel);
+  --menu-border: var(--border);
+  --menu-gap: 2px;
+  --menu-padding: 4px;
+  --menu-radius-outer: 8px;
+  --menu-radius-inner: calc(var(--menu-radius-outer) - var(--menu-padding));
+  --menu-zindex: var(--z-dropdown);
+
+  /* Menu items */
+  --item-min-height: 28px;
+  --item-padding: 6px 10px;
+  --item-font-size: 13px;
+  --item-bg-hover: var(--bg-panel-hover);
+  --item-bg-selected: var(--accent);
+  --item-bg-selected-hover: var(--accent-hover);
+  --item-text: var(--text-main);
+  --item-text-muted: var(--text-muted);
+  --item-text-active: var(--text-on-accent);
+  --item-icon-size: 14px;
+
+  /* Console */
+  --console-text: #d4d4d4;
+
+  /* Window title bar */
+  --titlebar-close-bg: #f44139;
+  --titlebar-close-fg: #ffffff;
+
+  /* Tablet / display areas (data visualisation, intentionally theme-independent) */
+  --area-display: #007acc;
+  --area-contrast: #ffffff;
+  --area-playfield: rgb(255 105 180 / 0.25);
+  --area-tablet: #4a64a0;
+  --area-border-main: #f1f1f1;
+  --area-border-pink: #ff66cc;
+
+  font-family: var(--font-sans);
+  color: var(--text-main);
+  background-color: var(--bg-app);
+}

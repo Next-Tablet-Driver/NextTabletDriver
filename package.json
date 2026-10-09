@@ -1,0 +1,11 @@
+{
+  "name": "next-tablet-driver",
+  "private": true,
+  "scripts": {
+    "tauri-dev": "node frontend/node_modules/@tauri-apps/cli/tauri.js dev",
+    "tauri-build": "node frontend/node_modules/@tauri-apps/cli/tauri.js build",
+    "test": "npm --prefix frontend run test",
+    "lint": "npm --prefix frontend run lint",
+    "build:audit": "npm --prefix frontend run build:audit"
+  }
+}

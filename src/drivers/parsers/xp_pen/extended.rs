@@ -1,0 +1,208 @@
+use crate::drivers::TabletData;
+use crate::drivers::parsers::{ReportParser, xp_pen::standard::parse as standard_parse};
+
+fn parse_aux(data: &[u8], offset: usize) -> TabletData {
+    let buttons = data.get(offset).copied().unwrap_or(0);
+    let mut tablet_data = TabletData {
+        status: crate::drivers::TabletStatus::Aux,
+        buttons,
+        is_connected: true,
+        ..Default::default()
+    };
+    tablet_data.set_raw(data);
+    tablet_data
+}
+
+fn parse_gen2(data: &[u8]) -> Option<TabletData> {
+    match data {
+        [
+            _,
+            b1,
+            x_lo,
+            x_hi,
+            y_lo,
+            y_hi,
+            p_lo,
+            p_hi,
+            t_x,
+            t_y,
+            x_ext,
+            y_ext,
+            _,
+            p_ext,
+            ..,
+        ] => {
+            let x = u32::from(u16::from_le_bytes([*x_lo, *x_hi])) | (u32::from(*x_ext) << 16);
+            let y = u32::from(u16::from_le_bytes([*y_lo, *y_hi])) | (u32::from(*y_ext) << 16);
+            let pressure =
+                (u16::from_le_bytes([*p_lo, *p_hi]) & 0xBFFF) | (u16::from(*p_ext & 0x01) << 13);
+
+            let mut buttons: u8 = 0;
+            if (*b1 & 0x02) != 0 {
+                buttons |= 1 << 0;
+            }
+            if (*b1 & 0x04) != 0 {
+                buttons |= 1 << 1;
+            }
+            let eraser = (*b1 & 0x08) != 0;
+
+            let status = if pressure > 0 {
+                crate::drivers::TabletStatus::Contact
+            } else {
+                crate::drivers::TabletStatus::Hover
+            };
+
+            let mut tablet_data = TabletData {
+                status,
+                x,
+                y,
+                pressure,
+                tilt_x: t_x.cast_signed(),
+                tilt_y: t_y.cast_signed(),
+                buttons,
+                eraser,
+                is_connected: true,
+                ..Default::default()
+            };
+            tablet_data.set_raw(data);
+            Some(tablet_data)
+        }
+        _ => None,
+    }
+}
+
+fn parse_offset_pressure(data: &[u8], has_tilt: bool) -> Option<TabletData> {
+    match data {
+        [_, b1, x_lo, x_hi, y_lo, y_hi, p_lo, p_hi, rest @ ..] => {
+            let x = u32::from(u16::from_le_bytes([*x_lo, *x_hi]));
+            let y = u32::from(u16::from_le_bytes([*y_lo, *y_hi]));
+            let pressure = u16::from_le_bytes([*p_lo, *p_hi]);
+
+            let mut buttons: u8 = 0;
+            if (*b1 & 0x02) != 0 {
+                buttons |= 1 << 0;
+            }
+            if (*b1 & 0x04) != 0 {
+                buttons |= 1 << 1;
+            }
+            let eraser = (*b1 & 0x08) != 0;
+
+            let (tilt_x, tilt_y) = if has_tilt {
+                match rest {
+                    [tx, ty, ..] => (tx.cast_signed(), ty.cast_signed()),
+                    [tx, ..] => (tx.cast_signed(), 0),
+                    _ => (0, 0),
+                }
+            } else {
+                (0, 0)
+            };
+
+            let status = if pressure > 0 {
+                crate::drivers::TabletStatus::Contact
+            } else {
+                crate::drivers::TabletStatus::Hover
+            };
+
+            let mut tablet_data = TabletData {
+                status,
+                x,
+                y,
+                pressure,
+                tilt_x,
+                tilt_y,
+                buttons,
+                eraser,
+                is_connected: true,
+                ..Default::default()
+            };
+            tablet_data.set_raw(data);
+            Some(tablet_data)
+        }
+        _ => None,
+    }
+}
+
+pub struct XpPenGen2Parser;
+
+impl ReportParser for XpPenGen2Parser {
+    fn parse(&self, data: &[u8]) -> Option<TabletData> {
+        match data {
+            [_, 0xF0, ..] => Some(parse_aux(data, 2)),
+            [_, b1, ..] if (*b1 & 0xF0) == 0xA0 => parse_gen2(data),
+            _ => standard_parse(data),
+        }
+    }
+}
+
+pub struct XpPenDeco03Parser;
+
+impl ReportParser for XpPenDeco03Parser {
+    fn parse(&self, data: &[u8]) -> Option<TabletData> {
+        match data {
+            [_, 0xF0, ..] => Some(parse_aux(data, 2)),
+            [_, b1, ..] if (*b1 & 0x10) != 0 => Some(parse_aux(data, 2)),
+            _ => standard_parse(data),
+        }
+    }
+}
+
+pub struct XpPenOffsetPressureParser;
+
+impl ReportParser for XpPenOffsetPressureParser {
+    fn parse(&self, data: &[u8]) -> Option<TabletData> {
+        match data {
+            [_, b1, ..] if (*b1 & 0x10) != 0 => Some(parse_aux(data, 2)),
+            _ if data.len() >= 10 => parse_offset_pressure(data, true),
+            _ => parse_offset_pressure(data, false),
+        }
+    }
+}
+
+pub struct XpPenOffsetAuxParser;
+
+impl ReportParser for XpPenOffsetAuxParser {
+    fn parse(&self, data: &[u8]) -> Option<TabletData> {
+        match data {
+            [_, b1, ..] if (*b1 & 0x20) != 0 => Some(parse_aux(data, 4)),
+            _ => standard_parse(data),
+        }
+    }
+}
+
+pub struct XpPenParser;
+
+impl ReportParser for XpPenParser {
+    fn parse(&self, data: &[u8]) -> Option<TabletData> {
+        match data {
+            [_, b1, ..] if (*b1 & 0x10) != 0 => Some(parse_aux(data, 2)),
+            _ => standard_parse(data),
+        }
+    }
+}
+
+#[cfg(test)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::float_cmp
+)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_xp_pen_gen2() -> Result<(), Box<dyn std::error::Error>> {
+        let parser = XpPenGen2Parser;
+        let data: [u8; 14] = [
+            0, 0xA2, 0x02, 0, 0x04, 0, 0x01, 0x00, 10, 20, 0x01, 0x03, 0, 0,
+        ];
+        let report = parser
+            .parse(&data)
+            .ok_or("XP-Pen Gen2 parser failed to parse tablet packet")?;
+        assert_eq!(report.status, crate::drivers::TabletStatus::Contact);
+        assert_eq!(report.x, 65538); // 0x02 | (0x01 << 16)
+        assert_eq!(report.y, 196_612); // 0x04 | (0x03 << 16)
+        assert_eq!(report.buttons, 1);
+        Ok(())
+    }
+}

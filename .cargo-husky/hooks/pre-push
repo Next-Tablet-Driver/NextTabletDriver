@@ -1,0 +1,13 @@
+#!/bin/sh
+# Installed by cargo-husky (user-hooks). Runs the full CI gate from
+# .github/workflows/rust-quality-check.yml before code leaves this machine.
+set -e
+
+echo '+cargo fmt --all -- --check'
+cargo fmt --all -- --check
+
+echo '+cargo clippy --workspace --all-targets --all-features -- -D warnings'
+cargo clippy --workspace --all-targets --all-features -- -D warnings
+
+echo '+cargo test --workspace --all-features'
+cargo test --workspace --all-features

@@ -1,0 +1,56 @@
+@import './fonts.css';
+@import './styles/tokens.css';
+@import './styles/themes.css';
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  margin: 0;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  user-select: none;
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* Base UI Elements */
+input[type="text"],
+input[type="number"] {
+  background-color: transparent;
+  color: var(--text-main);
+  border: none;
+  padding: var(--space-0-5) var(--space-1);
+  font-size: var(--font-base);
+  outline: none;
+  text-align: right;
+  width: 100%;
+}
+
+/* Keyboard focus: one themed ring for every focusable element that does not draw its own. */
+:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--space-0-5);
+}
+
+/*
+ * Reduced motion: every transition in the app reads these tokens, so zeroing them is enough to
+ * honour the system setting everywhere.
+ */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --transition-fast: 0ms;
+    --transition-quick: 0ms;
+    --transition-normal: 0ms;
+    --transition-moderate: 0ms;
+    --transition-slow: 0ms;
+  }
+}

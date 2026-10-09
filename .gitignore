@@ -1,0 +1,11 @@
+/target
+**/target/
+plugins/*.dll
+plugins/*.so
+/user_mode_dist
+debug.log
+/ressources
+.dev
+flamegraph
+.claude/
+crash.log

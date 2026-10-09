@@ -1,0 +1,15 @@
+pub mod bamboo;
+pub mod bamboo_pad;
+pub mod bamboo_v2;
+pub mod cintiq_v1;
+pub mod graphire;
+pub mod intuos;
+pub mod intuos3;
+pub mod intuos4;
+pub mod intuos_pro;
+pub mod intuos_v1;
+pub mod intuos_v2;
+pub mod intuos_v3;
+pub mod misc;
+pub mod pl;
+pub mod ptu;
