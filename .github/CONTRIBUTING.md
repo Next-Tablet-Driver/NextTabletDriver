@@ -36,13 +36,28 @@ Before pushing, verify that your changes pass all local linting and formatting g
   ```
 
 ### 4. Commit and Push
-We enforce **Conventional Commit** guidelines. Structure your commit messages as follows:
-`type(scope): description` (e.g., `fix(websocket): handle bind error gracefully`).
-
 Push your branch to your fork:
 ```bash
 git push origin my-contribution-branch
 ```
 
 ### 5. Open a Pull Request
-Go to the original repository on GitHub, and open a Pull Request. Provide a clear explanation of what your change does, what testing you performed, and reference any issues resolved.
+Go to the original repository on GitHub, and open a Pull Request against `main`. Provide a clear explanation of what your change does, what testing you performed, and reference any issues resolved.
+
+Pull requests are **squash-merged only**: the PR title becomes the single commit on `main`, so it must follow **Conventional Commits** (checked automatically):
+
+`type(scope): description`, lowercase, e.g. `fix(websocket): handle bind error gracefully`.
+
+| Type | Use for |
+| --- | --- |
+| `feat` | a new feature |
+| `fix` | a bug fix |
+| `perf` | a performance improvement |
+| `refactor` | a change that neither fixes a bug nor adds a feature |
+| `docs` | documentation only |
+| `test` | adding or fixing tests |
+| `build`, `ci`, `chore`, `style`, `revert` | tooling, pipelines, housekeeping, formatting, reverts |
+
+Add `!` after the type or scope (`feat(api)!: ...`) for a breaking change. Labels are applied automatically from the title and from the files you changed.
+
+A PR can only be merged when the **CI success** check is green and your branch is up to date with `main`.

@@ -1,0 +1,175 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  rust:
+    name: Rust Quality Check (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        rust: [1.99.0]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ matrix.rust }}
+          components: clippy,rustfmt
+
+      - name: Install system dependencies (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pkg-config libudev-dev libgtk-3-dev libglib2.0-dev libgdk-pixbuf2.0-dev libpango1.0-dev libcairo2-dev libatk1.0-dev libx11-dev libxrandr-dev libxfixes-dev libxrender-dev libx11-xcb-dev libxkbcommon-dev libgl1-mesa-dev libegl1-mesa-dev libgles2-mesa-dev libfuse2 libxdo-dev
+
+      - name: Rustfmt check
+        run: cargo fmt --all -- --check
+
+      - name: Cargo check
+        run: cargo check --workspace --all-targets --all-features
+
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+
+      - name: Run tests
+        run: cargo test --workspace --all-features --verbose
+
+  # The root crate is not a Cargo workspace, so `--workspace` above never reaches the
+  # SDK, plugin API or the bundled plugins; check them explicitly.
+  plugins:
+    name: SDK, plugin API and bundled plugins
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pkg-config libudev-dev libgtk-3-dev libglib2.0-dev libgdk-pixbuf2.0-dev libpango1.0-dev libcairo2-dev libatk1.0-dev libx11-dev libxrandr-dev libxfixes-dev libxrender-dev libx11-xcb-dev libxkbcommon-dev libxdo-dev
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.99.0
+          components: clippy,rustfmt
+
+      - name: Check plugin API and plugins
+        run: |
+          set -e
+          for manifest in sdk/plugin_api/Cargo.toml sdk/Cargo.toml plugins/*/Cargo.toml; do
+            echo "::group::$manifest"
+            cargo fmt --manifest-path "$manifest" -- --check
+            cargo clippy --manifest-path "$manifest" --all-targets -- -D warnings
+            cargo test --manifest-path "$manifest"
+            echo "::endgroup::"
+          done
+
+  # Compiles the whole desktop app (frontend + Rust) without bundling, so a broken
+  # release build is caught on every PR instead of on the day of a tag.
+  tauri:
+    name: Tauri build (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, windows-latest]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Linux dependencies
+        if: startsWith(matrix.os, 'ubuntu')
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config patchelf \
+            libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev \
+            libudev-dev libxdo-dev libssl-dev
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.99.0
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: "src-tauri -> target"
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci --prefix frontend
+
+      - name: Frontend lint, type-check and tests
+        run: |
+          npm --prefix frontend run lint
+          npm --prefix frontend run check
+          npm --prefix frontend run test -- --run
+
+      - name: Clippy (Tauri crate)
+        if: startsWith(matrix.os, 'ubuntu')
+        run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
+
+      - name: Build app (no bundle)
+        # The updater artifacts need the signing key, which is only available on releases.
+        run: >
+          node frontend/node_modules/@tauri-apps/cli/tauri.js build
+          --debug --no-bundle
+          --config '{"bundle":{"createUpdaterArtifacts":false}}'
+
+  # Single required status check: the branch ruleset only has to know this name, so
+  # adding or renaming jobs above never requires touching the ruleset.
+  ci-success:
+    name: CI success
+    if: always()
+    needs: [rust, plugins, tauri]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every job to have succeeded
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          echo "$NEEDS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
+          echo "$NEEDS" | jq -e 'all(.[]; .result == "success")' > /dev/null

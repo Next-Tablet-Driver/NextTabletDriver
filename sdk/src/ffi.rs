@@ -235,7 +235,8 @@ pub extern "C" fn ntd_shutdown() {
         if let Some(handle) = handle {
             handle
                 .shared
-                .lifecycle.shutdown_requested
+                .lifecycle
+                .shutdown_requested
                 .store(true, Ordering::Relaxed);
             let _ = handle.thread.join();
         }
@@ -285,7 +286,11 @@ fn build_ntd_state(shared: &Arc<SharedState>) -> NtdState {
     let pid = device.pid;
     drop(device);
 
-    let data = shared.pipeline.tablet_data.read().unwrap_or_log("tablet_data");
+    let data = shared
+        .pipeline
+        .tablet_data
+        .read()
+        .unwrap_or_log("tablet_data");
     let is_connected = data.is_connected;
     let status = data.status as u8;
     let buttons = data.buttons;
@@ -293,7 +298,8 @@ fn build_ntd_state(shared: &Arc<SharedState>) -> NtdState {
     drop(data);
 
     let frame = shared
-        .pipeline.processed_frame
+        .pipeline
+        .processed_frame
         .read()
         .unwrap_or_log("processed_frame");
     let (u, v, screen_x, screen_y, pressure, tilt_x, tilt_y, is_down) = (

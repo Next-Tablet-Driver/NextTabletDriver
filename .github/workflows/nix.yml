@@ -2,7 +2,7 @@ name: Nix
 
 on:
   push:
-    branches: [main, master, dev]
+    branches: [main]
     paths:
       - "flake.nix"
       - "flake.lock"
@@ -12,7 +12,7 @@ on:
       - "scripts/99-nexttabletdriver.rules"
       - ".github/workflows/nix.yml"
   pull_request:
-    branches: [main, master, dev]
+    branches: [main]
     paths:
       - "flake.nix"
       - "flake.lock"
@@ -46,9 +46,6 @@ jobs:
   build-package:
     name: Build package (nix build .#default)
     runs-on: ubuntu-latest
-    # Fails with "hash mismatch" until `npmDeps.hash` in nix/default.nix is filled in
-    # (see the comment there); the module checks above do not depend on this job.
-    continue-on-error: true
 
     steps:
       - name: Checkout
@@ -63,7 +60,9 @@ jobs:
             experimental-features = nix-command flakes
 
       - name: nix build .#default
-        run: nix build .#default -L
+        # Flakes drop git submodules from the source unless asked: the tablet configurations
+        # (tablets/OpenTabletDriver) are embedded at compile time.
+        run: nix build "git+file://$PWD?submodules=1#default" -L
 
       - name: Verify udev rules were installed into the package
         run: test -f result/lib/udev/rules.d/99-nexttabletdriver.rules
