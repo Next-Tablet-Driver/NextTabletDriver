@@ -62,8 +62,25 @@ jobs:
       - name: Clippy
         run: cargo clippy --workspace --all-targets --all-features -- -D warnings
 
+      - name: Install cargo-nextest
+        uses: taiki-e/install-action@v2
+        with:
+          tool: nextest
+
       - name: Run tests
-        run: cargo test --workspace --all-features --verbose
+        run: cargo nextest run --workspace --all-features --profile ci
+
+      # nextest does not run doctests.
+      - name: Run doctests
+        run: cargo test --workspace --all-features --doc
+
+      - name: Upload test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nextest-junit-${{ matrix.os }}
+          path: target/nextest/ci/junit.xml
+          if-no-files-found: ignore
 
   # The root crate is not a Cargo workspace, so `--workspace` above never reaches the
   # SDK, plugin API or the bundled plugins; check them explicitly.
@@ -87,6 +104,11 @@ jobs:
           toolchain: 1.99.0
           components: clippy,rustfmt
 
+      - name: Install cargo-nextest
+        uses: taiki-e/install-action@v2
+        with:
+          tool: nextest
+
       - name: Check plugin API and plugins
         run: |
           set -e
@@ -94,7 +116,7 @@ jobs:
             echo "::group::$manifest"
             cargo fmt --manifest-path "$manifest" -- --check
             cargo clippy --manifest-path "$manifest" --all-targets -- -D warnings
-            cargo test --manifest-path "$manifest"
+            cargo nextest run --manifest-path "$manifest" --no-tests=pass
             echo "::endgroup::"
           done
 

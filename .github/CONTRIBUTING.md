@@ -25,7 +25,8 @@ Before pushing, make sure your changes pass the same checks as the CI:
 ```bash
 cargo fmt --all -- --check
 cargo clippy --workspace --all-targets --all-features -- -D warnings
-cargo test --workspace --all-features
+cargo nextest run --workspace --all-features   # cargo install --locked cargo-nextest
+cargo test --workspace --all-features --doc
 npm --prefix frontend ci
 npm --prefix frontend run lint
 npm --prefix frontend run check

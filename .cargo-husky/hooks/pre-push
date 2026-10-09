@@ -1,7 +1,12 @@
 #!/bin/sh
 # Installed by cargo-husky (user-hooks). Runs the full CI gate from
-# .github/workflows/rust-quality-check.yml before code leaves this machine.
+# .github/workflows/ci.yml before code leaves this machine.
 set -e
+
+if ! cargo nextest --version >/dev/null 2>&1; then
+  echo 'cargo-nextest is required to run the tests: cargo install --locked cargo-nextest' >&2
+  exit 1
+fi
 
 echo '+cargo fmt --all -- --check'
 cargo fmt --all -- --check
@@ -9,5 +14,9 @@ cargo fmt --all -- --check
 echo '+cargo clippy --workspace --all-targets --all-features -- -D warnings'
 cargo clippy --workspace --all-targets --all-features -- -D warnings
 
-echo '+cargo test --workspace --all-features'
-cargo test --workspace --all-features
+echo '+cargo nextest run --workspace --all-features'
+cargo nextest run --workspace --all-features
+
+# nextest does not run doctests.
+echo '+cargo test --workspace --all-features --doc'
+cargo test --workspace --all-features --doc
