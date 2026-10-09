@@ -159,6 +159,11 @@ jobs:
           --debug --no-bundle
           --config '{"bundle":{"createUpdaterArtifacts":false}}'
 
+      - name: Verify the app does not open a console window
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./scripts/assert-gui-subsystem.ps1 src-tauri/target/debug/app.exe
+
   # Single required status check: the branch ruleset only has to know this name, so
   # adding or renaming jobs above never requires touching the ruleset.
   ci-success:

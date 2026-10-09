@@ -29,6 +29,10 @@ tauri-plugin-dialog = "2.2.0"
 tauri-plugin-process = "2"
 tauri-plugin-shell = "2.4.0"
 
+# Debug builds reattach to the parent console (see src/main.rs).
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_System_Console"] }
+
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-updater = "2"
 
