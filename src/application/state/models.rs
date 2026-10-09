@@ -146,3 +146,117 @@ impl Metrics {
         self.avg_ui_latency_ms = 0.0;
     }
 }
+
+#[cfg(test)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::float_cmp,
+    clippy::indexing_slicing
+)]
+mod tests {
+    use super::*;
+    use std::time::Duration;
+
+    fn profile(path: Option<&str>) -> ProfileState {
+        ProfileState {
+            name: "osu!".to_string(),
+            path: path.map(PathBuf::from),
+            last_saved: MappingConfig::default(),
+        }
+    }
+
+    #[test]
+    fn a_profile_is_dirty_once_the_config_differs_from_the_saved_one() {
+        let state = profile(Some("osu.json"));
+        let mut current = MappingConfig::default();
+        assert!(!state.is_dirty(&current));
+        current.active_area.w += 1.0;
+        assert!(state.is_dirty(&current));
+    }
+
+    #[test]
+    fn the_display_name_is_the_profile_name_with_a_marker_when_dirty() {
+        let state = profile(Some("osu.json"));
+        let mut current = MappingConfig::default();
+        assert_eq!(state.display_name(&current), "osu!");
+        current.active_area.w += 1.0;
+        assert_eq!(state.display_name(&current), "*osu!");
+    }
+
+    #[test]
+    fn an_unsaved_session_does_not_show_the_profile_name() {
+        let state = profile(None);
+        let shown = state.display_name(&MappingConfig::default());
+        assert!(!shown.is_empty());
+        assert!(!shown.contains("osu!"));
+    }
+
+    #[test]
+    fn marking_saved_clears_the_dirty_state() {
+        let mut state = profile(Some("osu.json"));
+        let mut current = MappingConfig::default();
+        current.active_area.w += 1.0;
+        state.mark_saved(&current);
+        assert!(!state.is_dirty(&current));
+        assert_eq!(state.last_saved, current);
+    }
+
+    #[test]
+    fn toast_levels_and_tabs_compare_by_value() {
+        assert_eq!(ToastLevel::Warning, ToastLevel::Warning);
+        assert_ne!(ToastLevel::Info, ToastLevel::Error);
+        assert_ne!(AppTab::Output, AppTab::Console);
+    }
+
+    #[test]
+    fn latency_tracks_min_max_and_a_moving_average() {
+        let mut metrics = Metrics::default();
+        assert_eq!(metrics.min_ui_latency_ms, f32::MAX);
+        metrics.update_latency(10.0);
+        metrics.update_latency(2.0);
+        metrics.update_latency(6.0);
+        assert_eq!(metrics.ui_latency_ms, 6.0);
+        assert_eq!(metrics.min_ui_latency_ms, 2.0);
+        assert_eq!(metrics.max_ui_latency_ms, 10.0);
+        // avg = 0.1 * (10 - 0), then 0.1 * (2 - 1) added, then 0.1 * (6 - 1.1) added.
+        assert!((metrics.avg_ui_latency_ms - 1.59).abs() < 1e-4);
+    }
+
+    #[test]
+    fn resetting_the_latency_statistics_starts_over() {
+        let mut metrics = Metrics::default();
+        metrics.update_latency(5.0);
+        metrics.reset_ui_latency();
+        assert_eq!(metrics.min_ui_latency_ms, f32::MAX);
+        assert_eq!(metrics.max_ui_latency_ms, 0.0);
+        assert_eq!(metrics.avg_ui_latency_ms, 0.0);
+    }
+
+    #[test]
+    fn the_packet_rate_is_smoothed_and_only_updated_every_200_ms() {
+        let mut metrics = Metrics::default();
+        // Too soon: nothing changes.
+        metrics.update_hz(1000);
+        assert_eq!(metrics.displayed_hz, 0.0);
+        assert_eq!(metrics.last_packet_count, 0);
+
+        // About one second later, 1000 packets arrived: 30 % of the way to 1000 Hz.
+        metrics.last_hz_update = Instant::now().checked_sub(Duration::from_secs(1)).unwrap();
+        metrics.update_hz(1000);
+        assert!(
+            (250.0..=350.0).contains(&metrics.displayed_hz),
+            "{}",
+            metrics.displayed_hz
+        );
+        assert_eq!(metrics.last_packet_count, 1000);
+
+        // A counter that went backwards never produces a negative rate.
+        metrics.last_hz_update = Instant::now().checked_sub(Duration::from_secs(1)).unwrap();
+        let before = metrics.displayed_hz;
+        metrics.update_hz(10);
+        assert!(metrics.displayed_hz < before);
+        assert!(metrics.displayed_hz >= 0.0);
+    }
+}
