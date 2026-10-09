@@ -96,3 +96,66 @@ impl NextTabletDriver for GenericNextTabletDriver {
         self.parser.parse(data)
     }
 }
+
+#[cfg(test)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::float_cmp,
+    clippy::indexing_slicing
+)]
+mod tests {
+    use super::*;
+    use crate::drivers::TabletStatus;
+
+    const CONFIG: &str = r#"{
+        "Name": "Test Tablet",
+        "Specifications": {
+            "Digitizer": { "Width": 160.0, "Height": 100.0, "MaxX": 16000, "MaxY": 10000 },
+            "Pen": { "MaxPressure": 8191, "ButtonCount": 2 }
+        },
+        "DigitizerIdentifiers": [
+            { "VendorID": 4660, "ProductID": 22136, "ReportParser": "Test.Tablet.ReportParser" }
+        ]
+    }"#;
+
+    fn driver(input_report_length: Option<usize>) -> GenericNextTabletDriver {
+        let mut config: TabletConfiguration = serde_json::from_str(CONFIG).unwrap();
+        config.digitizer_identifiers[0].input_report_length = input_report_length;
+        let digitizer = config.digitizer_identifiers[0].clone();
+        GenericNextTabletDriver::new(config, &digitizer, 0x1234, 0x5678)
+    }
+
+    #[test]
+    fn exposes_the_configuration_as_driver_specs() {
+        let driver = driver(None);
+        assert_eq!(driver.get_name(), "Test Tablet");
+        assert_eq!(driver.get_specs(), (16000.0, 10000.0, 8191.0));
+        assert_eq!(driver.get_physical_specs(), (160.0, 100.0));
+        assert_eq!(driver.get_vid_pid(), (0x1234, 0x5678));
+    }
+
+    #[test]
+    fn reports_go_through_the_parser_named_in_the_configuration() {
+        // "Tablet" in the parser name selects the generic fallback layout.
+        let parsed = driver(None)
+            .parse(&[0x02, 0x01, 0x10, 0x00, 0x20, 0x00, 0x05, 0x00])
+            .unwrap();
+        assert_eq!(parsed.status, TabletStatus::Contact);
+        assert_eq!((parsed.x, parsed.y, parsed.pressure), (16, 32, 5));
+        assert!(driver(None).parse(&[0x02]).is_none());
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn linux_prefixes_reports_of_the_expected_length_with_a_zero_report_id() {
+        // hidraw omits the report id, so a report of exactly `InputReportLength` bytes gets a
+        // leading 0x00 before reaching the parser: the status byte is then the first byte.
+        let data = [0xA1, 0x10, 0x00, 0x20, 0x00, 0x05, 0x00, 0x00];
+        let parsed = driver(Some(8)).parse(&data).unwrap();
+        assert_eq!(parsed.status, TabletStatus::Contact);
+        assert_eq!((parsed.x, parsed.y, parsed.pressure), (16, 32, 5));
+        assert_eq!(parsed.raw_len, 9);
+    }
+}

@@ -189,3 +189,98 @@ impl ReportParser for WacomDriverIntuos3Parser {
         }
     }
 }
+
+#[cfg(test)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::float_cmp,
+    clippy::indexing_slicing
+)]
+mod tests {
+    use super::*;
+    use crate::drivers::TabletStatus;
+
+    const V1_TOOL: [u8; 10] = [0x02, 0x27, 0x12, 0x34, 0x56, 0x78, 0x40, 0x80, 0x80, 0x03];
+
+    /// `[id, b1, x(2), y(2), _, _, buttons, flags]`: a mouse report, x = 0x2469, y = 0xACF0.
+    fn mouse(b1: u8, b8: u8, b9: u8) -> [u8; 10] {
+        [0x02, b1, 0x12, 0x34, 0x56, 0x78, 0, 0, b8, b9]
+    }
+
+    #[test]
+    fn mouse_reports_decode_position_and_five_buttons() {
+        let parsed = Intuos3Parser::new()
+            .parse(&mouse(0xF0, 0x04 | 0x10 | 0x08 | 0x20 | 0x40, 0b10))
+            .unwrap();
+        assert_eq!(parsed.status, TabletStatus::Mouse);
+        assert_eq!((parsed.x, parsed.y), (0x2469, 0xACF0));
+        assert_eq!(parsed.buttons, 0b1_1111);
+    }
+
+    #[test]
+    fn both_mouse_id_ranges_are_recognised() {
+        for b1 in [0xB0, 0xBF, 0xF0, 0xFF] {
+            let parsed = Intuos3Parser::new().parse(&mouse(b1, 0, 0)).unwrap();
+            assert_eq!(parsed.status, TabletStatus::Mouse, "b1 = {b1:#04x}");
+        }
+    }
+
+    #[test]
+    fn pen_reports_are_delegated_to_intuos_v1() {
+        let ours = Intuos3Parser::new().parse(&V1_TOOL).unwrap();
+        let v1 = IntuosV1Parser::new().parse(&V1_TOOL).unwrap();
+        assert_eq!(ours.status, TabletStatus::Contact);
+        assert_eq!(
+            (ours.x, ours.y, ours.pressure, ours.tilt_x, ours.tilt_y),
+            (v1.x, v1.y, v1.pressure, v1.tilt_x, v1.tilt_y)
+        );
+    }
+
+    #[test]
+    fn id_3_is_the_v1_aux_report() {
+        let parsed = Intuos3Parser::new().parse(&[0x03, 0, 0, 0, 0x07]).unwrap();
+        assert_eq!(parsed.status, TabletStatus::Aux);
+        assert_eq!(parsed.buttons, 7);
+    }
+
+    #[test]
+    fn express_key_report_maps_eight_buttons() {
+        // b5 low nibble -> buttons 0..3, b6 low nibble -> buttons 4..7.
+        let parsed = Intuos3Parser::new()
+            .parse(&[0x0C, 0, 0, 0, 0, 0x05, 0x0A])
+            .unwrap();
+        assert_eq!(parsed.status, TabletStatus::Aux);
+        assert_eq!(parsed.buttons, 0b1010_0101);
+    }
+
+    #[test]
+    fn extra_aux_parser_handles_express_keys_and_defers_everything_else() {
+        let parser = Intuos3ExtraAuxParser::new();
+        let aux = parser.parse(&[0x0C, 0, 0, 0, 0, 0x01, 0x01]).unwrap();
+        assert_eq!((aux.status, aux.buttons), (TabletStatus::Aux, 0b0001_0001));
+        assert_eq!(
+            parser.parse(&mouse(0xF0, 0, 0)).unwrap().status,
+            TabletStatus::Mouse
+        );
+    }
+
+    #[test]
+    fn driver_variant_skips_the_leading_byte() {
+        let mut framed = vec![0xFF];
+        framed.extend_from_slice(&mouse(0xF0, 0x04, 0));
+        let parsed = WacomDriverIntuos3Parser::new().parse(&framed).unwrap();
+        assert_eq!((parsed.status, parsed.buttons), (TabletStatus::Mouse, 1));
+        assert!(WacomDriverIntuos3Parser::default().parse(&[]).is_none());
+    }
+
+    #[test]
+    fn unknown_and_truncated_reports_are_rejected() {
+        let parser = Intuos3Parser::default();
+        assert!(parser.parse(&[]).is_none());
+        assert!(parser.parse(&[0x55, 1, 2, 3]).is_none());
+        assert!(parser.parse(&[0x02, 0xF0, 1, 2]).is_none());
+        assert!(parser.parse(&[0x0C, 0, 0, 0, 0]).is_none());
+    }
+}

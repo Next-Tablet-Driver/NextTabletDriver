@@ -90,3 +90,111 @@ pub fn load_app_preferences() -> AppPreferences {
         }
     }
 }
+
+#[cfg(test)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::float_cmp,
+    clippy::indexing_slicing
+)]
+mod tests {
+    use super::*;
+    use crate::settings::set_test_settings_dir;
+    use std::path::PathBuf;
+
+    /// A throw-away settings directory, removed on drop.
+    struct TempSettings(PathBuf);
+
+    impl TempSettings {
+        fn new(name: &str) -> Self {
+            let nanos = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_nanos();
+            let path = std::env::temp_dir().join(format!("ntd_app_prefs_{name}_{nanos}"));
+            fs::create_dir_all(&path).unwrap();
+            set_test_settings_dir(path.clone());
+            Self(path)
+        }
+
+        fn file(&self) -> PathBuf {
+            self.0.join("app_preferences.json")
+        }
+    }
+
+    impl Drop for TempSettings {
+        fn drop(&mut self) {
+            let _ = fs::remove_dir_all(&self.0);
+        }
+    }
+
+    #[test]
+    fn defaults_enable_telemetry_with_a_fresh_uuid() {
+        let a = AppPreferences::default();
+        let b = AppPreferences::default();
+        assert!(a.telemetry_enabled);
+        assert_eq!(a.theme, ThemePreference::System);
+        assert_eq!(a.language, Locale::English);
+        assert!(uuid::Uuid::parse_str(&a.telemetry_id).is_ok());
+        assert_ne!(a.telemetry_id, b.telemetry_id);
+    }
+
+    #[test]
+    fn missing_fields_fall_back_to_their_defaults() {
+        let prefs: AppPreferences = serde_json::from_str("{}").unwrap();
+        assert!(prefs.telemetry_enabled);
+        assert_eq!(prefs.theme, ThemePreference::System);
+        assert!(uuid::Uuid::parse_str(&prefs.telemetry_id).is_ok());
+
+        let prefs: AppPreferences =
+            serde_json::from_str(r#"{ "language": "French", "telemetry_enabled": false }"#)
+                .unwrap();
+        assert_eq!(prefs.language, Locale::French);
+        assert!(!prefs.telemetry_enabled);
+    }
+
+    #[test]
+    fn save_then_load_round_trips() {
+        let dir = TempSettings::new("roundtrip");
+        let prefs = AppPreferences {
+            theme: ThemePreference::Dark,
+            language: Locale::French,
+            telemetry_enabled: false,
+            telemetry_id: "00000000-0000-4000-8000-000000000001".to_string(),
+        };
+        save_app_preferences(&prefs);
+        assert!(dir.file().exists());
+        // The atomic write leaves no temporary file behind.
+        assert!(!dir.0.join("app_preferences.json.tmp").exists());
+
+        let loaded = load_app_preferences();
+        assert_eq!(loaded.theme, ThemePreference::Dark);
+        assert_eq!(loaded.language, Locale::French);
+        assert!(!loaded.telemetry_enabled);
+        assert_eq!(loaded.telemetry_id, prefs.telemetry_id);
+    }
+
+    #[test]
+    fn a_missing_file_yields_defaults_and_creates_the_file() {
+        let dir = TempSettings::new("missing");
+        assert!(!dir.file().exists());
+        let loaded = load_app_preferences();
+        assert!(loaded.telemetry_enabled);
+        assert!(dir.file().exists());
+        // The identifier that was created is the one that is reloaded next time.
+        assert_eq!(load_app_preferences().telemetry_id, loaded.telemetry_id);
+    }
+
+    #[test]
+    fn a_corrupt_file_is_replaced_by_valid_defaults() {
+        let dir = TempSettings::new("corrupt");
+        fs::write(dir.file(), "{ not json").unwrap();
+        let loaded = load_app_preferences();
+        assert!(loaded.telemetry_enabled);
+        let rewritten: serde_json::Value =
+            serde_json::from_str(&fs::read_to_string(dir.file()).unwrap()).unwrap();
+        assert_eq!(rewritten["telemetry_id"], loaded.telemetry_id.as_str());
+    }
+}
