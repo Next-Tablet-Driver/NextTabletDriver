@@ -9,3 +9,7 @@ debug.log
 flamegraph
 .claude/
 crash.log
+
+# Test coverage reports
+frontend/coverage/
+lcov.info

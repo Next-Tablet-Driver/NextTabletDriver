@@ -53,6 +53,7 @@ libc = "0.2"
 [dev-dependencies]
 cargo-husky = { version = "1.5.0", default-features = false, features = ["user-hooks"] }
 criterion = "0.8"
+proptest = "1"
 
 [[test]]
 name = "transform_properties"
