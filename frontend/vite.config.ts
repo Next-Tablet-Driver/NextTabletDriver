@@ -62,6 +62,8 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./src/setupTests.ts'],
+    // The end-to-end specs are run by Playwright (`npm run e2e`).
+    exclude: ['**/node_modules/**', 'e2e/**', 'e2e-native/**'],
     coverage: {
       provider: 'v8',
       include: ['src/**/*.{ts,svelte}'],

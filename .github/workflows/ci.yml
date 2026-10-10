@@ -165,6 +165,44 @@ jobs:
       - name: Build
         run: npm --prefix frontend run build
 
+  # The real Svelte app in a browser, against the Tauri IPC mock (`/?mock` on the dev server):
+  # every screen, without a tablet or a native window. Traces, screenshots and videos of the
+  # failures are kept as an artifact.
+  e2e:
+    name: E2E (Playwright)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --prefix frontend
+
+      - name: Install Chromium
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: Run the end-to-end tests
+        run: npm --prefix frontend run e2e
+
+      - name: Upload the report and the traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            frontend/playwright-report/
+            frontend/test-results/
+          retention-days: 7
+          if-no-files-found: ignore
+
   # Deterministic checks on the lockfiles (bans, licenses, sources). Security advisories are
   # checked by security.yml: a new advisory must not fail unrelated pull requests.
   deny:
@@ -239,9 +277,11 @@ jobs:
 
       - name: Build app (no bundle)
         # The updater artifacts need the signing key, which is only available on releases.
+        # `tauri/custom-protocol` embeds the frontend like a shipped build does; without it a
+        # debug build loads the dev server URL, which the smoke test below could not reach.
         run: >
           node frontend/node_modules/@tauri-apps/cli/tauri.js build
-          --debug --no-bundle
+          --debug --no-bundle --features tauri/custom-protocol
           --config '{"bundle":{"createUpdaterArtifacts":false}}'
 
       - name: Verify the app does not open a console window
@@ -249,12 +289,41 @@ jobs:
         shell: pwsh
         run: ./scripts/assert-gui-subsystem.ps1 src-tauri/target/debug/app.exe
 
+      # Smoke test of the app that was just built. Linux: driven through tauri-driver (WebDriver),
+      # nothing is mocked, the Rust backend and the webview are the ones that ship. Windows: the
+      # WebView2 runtime of the runners ignores the remote-debugging switch msedgedriver relies
+      # on, so the script checks what it can without WebDriver (window shown, no console).
+      - name: Install the WebDriver tooling (Linux)
+        if: startsWith(matrix.os, 'ubuntu')
+        run: sudo apt-get install -y webkit2gtk-driver xvfb
+
+      - name: Cache tauri-driver
+        if: startsWith(matrix.os, 'ubuntu')
+        id: tauri-driver-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin/tauri-driver
+          key: tauri-driver-${{ runner.os }}-v1
+
+      - name: Install tauri-driver
+        if: startsWith(matrix.os, 'ubuntu') && steps.tauri-driver-cache.outputs.cache-hit != 'true'
+        run: cargo install tauri-driver --locked
+
+      - name: Smoke test the real app (Linux, WebDriver)
+        if: startsWith(matrix.os, 'ubuntu')
+        run: xvfb-run -a npm --prefix frontend run e2e:native
+
+      - name: Smoke test the real app (Windows, startup and window)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./scripts/smoke-windows.ps1 src-tauri/target/debug/app.exe
+
   # Single required status check: the branch ruleset only has to know this name, so
   # adding or renaming jobs above never requires touching the ruleset.
   ci-success:
     name: CI success
     if: always()
-    needs: [rust, plugins, frontend, deny, tauri]
+    needs: [rust, plugins, frontend, e2e, deny, tauri]
     runs-on: ubuntu-latest
     steps:
       - name: Require every job to have succeeded

@@ -13,3 +13,8 @@ crash.log
 # Test coverage reports
 frontend/coverage/
 lcov.info
+
+# Playwright
+frontend/test-results/
+frontend/playwright-report/
+frontend/blob-report/
