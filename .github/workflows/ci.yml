@@ -324,16 +324,21 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
+          "--- Edge policies"
+          foreach ($key in 'HKLM:\SOFTWARE\Policies\Microsoft\Edge', 'HKLM:\SOFTWARE\Policies\Microsoft\Edge\WebView2', 'HKLM:\SOFTWARE\Policies\Microsoft\Edge\WebView2\ReleaseChannels') { if (Test-Path $key) { "$key"; Get-ItemProperty $key | Format-List } else { "$key absent" } }
           $app = (Resolve-Path src-tauri/target/debug/app.exe).Path
-          $driver = Start-Process msedgedriver -ArgumentList '--port=9515','--verbose','--log-path=msedgedriver.log' -PassThru
-          Start-Sleep -Seconds 3
-          $body = @{ capabilities = @{ alwaysMatch = @{ browserName = 'webview2'; 'ms:edgeOptions' = @{ binary = $app; webviewOptions = @{} } } } } | ConvertTo-Json -Depth 6
-          try {
-            Invoke-RestMethod -Method Post -Uri http://127.0.0.1:9515/session -Body $body -ContentType 'application/json' -TimeoutSec 90 | ConvertTo-Json -Depth 4
-          } catch { "session failed: $($_.ErrorDetails.Message)" }
-          Get-Content msedgedriver.log -Tail 60
+          $data = Join-Path $env:RUNNER_TEMP 'wv2data'
+          $env:WEBVIEW2_USER_DATA_FOLDER = $data
+          $env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS = '--remote-debugging-port=9222'
+          $p = Start-Process $app -PassThru
+          Start-Sleep -Seconds 20
+          "alive: $(-not $p.HasExited)"
+          "--- data folder"
+          if (Test-Path $data) { Get-ChildItem $data -Recurse -Depth 2 | Select-Object -First 25 FullName } else { "no data folder" }
+          try { (Invoke-WebRequest http://127.0.0.1:9222/json/version -TimeoutSec 5).Content } catch { "devtools endpoint: $($_.Exception.Message)" }
+          "--- webview2 processes"
+          Get-CimInstance Win32_Process -Filter "Name='msedgewebview2.exe'" | Select-Object -First 3 CommandLine | Format-List
           Get-Process app, msedgewebview2 -ErrorAction SilentlyContinue | Stop-Process -Force
-          Stop-Process -Id $driver.Id -Force -ErrorAction SilentlyContinue
 
       - name: Smoke test the real app
         shell: bash
