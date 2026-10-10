@@ -376,6 +376,8 @@ mod tests {
 
     #[test]
     fn the_filter_pipeline_starts_empty_without_plugins() {
+        // The shared state loads the plugins folder of the current user: use an empty one.
+        let _settings = crate::test_support::empty_settings_dir();
         let shared = shared(false);
         let pipeline = init_filter_pipeline(&shared, &MappingConfig::default());
         assert!(pipeline.entries.is_empty());
