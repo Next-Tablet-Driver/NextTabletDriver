@@ -33,6 +33,14 @@ npm --prefix frontend run check
 npm --prefix frontend run test -- --run
 ```
 
+Coverage: the `Coverage` job measures the line coverage of the Rust production code (the inline `#[cfg(test)]` modules do not count) and of the frontend, posts the report on the pull request and fails below the floors of `coverage-thresholds.json` (Rust, frontend, and the two together). Locally:
+```bash
+cargo llvm-cov nextest --workspace --all-features --lcov --output-path lcov.info
+npm --prefix frontend run test -- --run --coverage
+python scripts/coverage_gate.py --lcov lcov.info --frontend frontend/coverage/coverage-summary.json
+```
+The floors only go up: when the report says coverage is well above a floor, raise it in your pull request. Lowering one needs a justification in the review. The Rust tests bind machine-wide names (a named pipe, a mutex, a shared-memory segment), so close a running NextTabletDriver before running them locally.
+
 End-to-end tests (optional locally, required in CI):
 ```bash
 npx --prefix frontend playwright install chromium   # once

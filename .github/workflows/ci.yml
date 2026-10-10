@@ -203,6 +203,103 @@ jobs:
           retention-days: 7
           if-no-files-found: ignore
 
+  # Line coverage of the Rust code (production code only) and of the frontend, merged into one
+  # report, with a floor for each (coverage-thresholds.json). Windows because that is where the
+  # named-pipe, mutex and shared-memory code of the engine is compiled and tested.
+  coverage:
+    name: Coverage
+    runs-on: windows-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.99.0
+          components: llvm-tools-preview
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          key: coverage
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+
+      - name: Install cargo-llvm-cov and cargo-nextest
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-llvm-cov,nextest
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci --prefix frontend
+
+      - name: Rust coverage
+        run: cargo llvm-cov nextest --workspace --all-features --profile ci --lcov --output-path lcov.info
+
+      - name: Frontend coverage
+        run: npm --prefix frontend run test -- --run --coverage
+
+      - name: Test the coverage gate
+        run: python -m unittest scripts/test_coverage_gate.py
+
+      - name: Enforce the coverage floors
+        id: gate
+        continue-on-error: true
+        shell: bash
+        run: |
+          status=0
+          python scripts/coverage_gate.py             --lcov lcov.info             --frontend frontend/coverage/coverage-summary.json             --markdown coverage.md || status=$?
+          if [ -f coverage.md ]; then cat coverage.md >> "$GITHUB_STEP_SUMMARY"; fi
+          exit $status
+
+      - name: Comment the report on the pull request
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        # Dependabot and forks get a read-only token: the report stays in the job summary.
+        continue-on-error: true
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.readFileSync('coverage.md', 'utf8');
+            const marker = '<!-- coverage-report -->';
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+            const comments = await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number });
+            const existing = comments.find((comment) => comment.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body });
+            }
+
+      - name: Upload the coverage reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-reports
+          path: |
+            lcov.info
+            coverage.md
+            frontend/coverage/lcov.info
+            frontend/coverage/coverage-summary.json
+          if-no-files-found: ignore
+
+      - name: Fail when a floor is not met
+        if: steps.gate.outcome == 'failure'
+        run: exit 1
+
   # Deterministic checks on the lockfiles (bans, licenses, sources). Security advisories are
   # checked by security.yml: a new advisory must not fail unrelated pull requests.
   deny:
@@ -323,7 +420,7 @@ jobs:
   ci-success:
     name: CI success
     if: always()
-    needs: [rust, plugins, frontend, e2e, deny, tauri]
+    needs: [rust, plugins, frontend, e2e, coverage, deny, tauri]
     runs-on: ubuntu-latest
     steps:
       - name: Require every job to have succeeded
