@@ -26,6 +26,13 @@ describe("ConsoleTable", () => {
         expect(screen.queryByText("No logs to display")).toBeNull();
     });
 
+    it("lists identical lines logged in the same second (a duplicate key crashed the table)", () => {
+        render(ConsoleTable, {
+            props: { filteredLogs: [log("WARN", "Packet dropped", "10:00:01"), log("WARN", "Packet dropped", "10:00:01")] },
+        });
+        expect(screen.getAllByText("Packet dropped")).toHaveLength(2);
+    });
+
     it("says so when there is nothing to display", () => {
         render(ConsoleTable, { props: { filteredLogs: [] } });
         expect(screen.getByText("No logs to display")).toBeInTheDocument();

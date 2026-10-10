@@ -24,6 +24,13 @@ describe("UntrustedPlugins", () => {
         expect(onTrust).toHaveBeenCalledWith(plugin.sha256);
     });
 
+    it("lists two files with the same hash, such as a copy of a library", () => {
+        const copy = { file_name: "sketchy - Copy.dll", sha256: plugin.sha256 };
+        render(UntrustedPlugins, { props: { plugins: [plugin, copy], onTrust: vi.fn() } });
+        expect(screen.getByText("sketchy.dll")).toBeInTheDocument();
+        expect(screen.getByText("sketchy - Copy.dll")).toBeInTheDocument();
+    });
+
     it("pluralises the title", () => {
         const other = { file_name: "b.dll", sha256: "b".repeat(64) };
         render(UntrustedPlugins, { props: { plugins: [plugin, other], onTrust: vi.fn() } });

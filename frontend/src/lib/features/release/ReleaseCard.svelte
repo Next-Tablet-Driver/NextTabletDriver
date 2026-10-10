@@ -131,7 +131,7 @@
 
     {#if parsed.items.length > 0}
         <div class="changelog">
-            {#each parsed.items as item (item)}
+            {#each parsed.items as item, itemIndex (itemIndex)}
                 <div class="changelog-item">
                     <span class="bullet"></span>
                     <span class="item-text">
