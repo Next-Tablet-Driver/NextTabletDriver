@@ -7,14 +7,17 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "check": "svelte-check --tsconfig ./tsconfig.app.json && tsc -p tsconfig.node.json",
+    "check": "svelte-check --tsconfig ./tsconfig.app.json && tsc -p tsconfig.node.json && tsc -p e2e/tsconfig.json && tsc -p e2e-native/tsconfig.json",
     "test": "vitest",
+    "e2e": "playwright test",
+    "e2e:native": "node --experimental-strip-types e2e-native/smoke.ts",
     "lint": "eslint .",
     "build:audit": "vite build && npx open-cli stats.html",
     "tauri": "tauri"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.64.0",
     "@sveltejs/vite-plugin-svelte": "^7.3.0",
     "@tauri-apps/cli": "^2.12.0",
     "@testing-library/jest-dom": "^7.0.1",

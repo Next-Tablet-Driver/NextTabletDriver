@@ -33,6 +33,13 @@ npm --prefix frontend run check
 npm --prefix frontend run test -- --run
 ```
 
+End-to-end tests (optional locally, required in CI):
+```bash
+npx --prefix frontend playwright install chromium   # once
+npm --prefix frontend run e2e                       # every screen, against the Tauri IPC mock
+```
+The Playwright suite (`frontend/e2e/`) runs the real Svelte app in a browser with the mock of `frontend/src/dev/tauri-mock.ts` (`/?mock` on the dev server), so it needs neither a tablet nor the native window. Each test also fails on any `console.error` or uncaught exception. When a test fails, run `npx playwright show-trace` on the file under `frontend/test-results/`; in CI the report and the traces are the `playwright-report` artifact. A smoke test of the real app (`npm --prefix frontend run e2e:native`, needs `tauri-driver` and a built app, see `.github/workflows/ci.yml`) runs in the `Tauri build` job.
+
 > **Why nextest rather than `cargo test`?** A few Rust tests touch state that belongs to the whole process: the panic hook installed by `setup_panic_hook`, the `log` level, and the telemetry sender. `cargo nextest` runs every test in its own process, so they cannot affect each other; under `cargo test` (threads in one process) they may interfere. Tests that depend on this say so in a comment. Tests whose only purpose is to check that a call does not panic are named `smoke_*`.
 
 ### 4. Commit and Push

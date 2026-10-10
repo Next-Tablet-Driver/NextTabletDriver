@@ -71,6 +71,8 @@ function makeLogs(): LogEntry[] {
             search_text: `${group.toLowerCase()} ${message.toLowerCase()}`,
         });
     }
+    // The same line twice within the same second, as a busy driver produces.
+    logs.splice(1, 0, { ...logs[0] });
     return logs;
 }
 
@@ -120,7 +122,11 @@ const plugins: PluginManifest[] = [
     },
 ];
 
-const untrusted: UntrustedPlugin[] = [{ file_name: "mystery_filter.dll", sha256: "a".repeat(64) }];
+// Two files with the same hash (a copy of the library): the list must cope with it.
+const untrusted: UntrustedPlugin[] = [
+    { file_name: "mystery_filter.dll", sha256: "a".repeat(64) },
+    { file_name: "mystery_filter - Copy.dll", sha256: "a".repeat(64) },
+];
 
 const releases = [
     {
@@ -180,7 +186,14 @@ const handlers = new Map<string, Handler>([
         max_y: 29600,
     })],
     ["get_config", () => config],
-    ["set_config", () => null],
+    [
+        "set_config",
+        (args) => {
+            // Keep what the UI saved, so a reload of the config returns it (like the real backend).
+            Object.assign(config, args.newConfig);
+            return null;
+        },
+    ],
     ["save_config", () => null],
     ["reset_config", () => null],
     ["get_metrics", () => ({ hz: 998, last_packet_count: 123456 })],
@@ -198,11 +211,32 @@ const handlers = new Map<string, Handler>([
     ["open_plugins_folder", () => null],
     ["open_themes_folder", () => null],
     ["install_plugin", () => false],
-    ["trust_plugin", () => false],
+    [
+        "trust_plugin",
+        (args) => {
+            // Trust is given to a hash, so every file with that hash is trusted at once.
+            const remaining = untrusted.filter((plugin) => plugin.sha256 !== args.sha256);
+            const trusted = remaining.length < untrusted.length;
+            untrusted.splice(0, untrusted.length, ...remaining);
+            return trusted;
+        },
+    ],
     ["delete_plugin", () => null],
     ["load_profile", () => null],
     ["import_otd_profile", () => null],
     ["export_profile", () => null],
+    [
+        "plugin:window|available_monitors",
+        () => [
+            {
+                name: "Mock Monitor",
+                position: { x: 0, y: 0 },
+                size: { width: 1920, height: 1080 },
+                workArea: { position: { x: 0, y: 0 }, size: { width: 1920, height: 1040 } },
+                scaleFactor: 1,
+            },
+        ],
+    ],
 ]);
 
 /** Fixtures for the GitHub REST calls the Credits page makes directly with `fetch`. */
@@ -223,8 +257,12 @@ function mockGithubFetch(): void {
 
 /** Installs a minimal `__TAURI_INTERNALS__` so the Tauri JS APIs work against fixtures. */
 export function installTauriMock(): void {
+    window.__ntdInvocations = [];
     const callbacks = new Map<number, (payload: unknown) => void>();
     let nextCallbackId = 1;
+
+    // The event API removes its local listener record through this object before telling the host.
+    window.__TAURI_EVENT_PLUGIN_INTERNALS__ = { unregisterListener: (): void => undefined };
 
     window.__TAURI_INTERNALS__ = {
         metadata: {
@@ -241,6 +279,8 @@ export function installTauriMock(): void {
         },
         convertFileSrc: (path: string): string => path,
         invoke: (command: string, args: Record<string, unknown> = {}): Promise<unknown> => {
+            // Recorded so the end-to-end tests can assert what the UI asked the backend to do.
+            window.__ntdInvocations?.push({ command, args });
             const handler = handlers.get(command);
             if (handler !== undefined) return Promise.resolve(handler(args));
             if (command === "plugin:event|listen") return Promise.resolve(nextCallbackId++);
