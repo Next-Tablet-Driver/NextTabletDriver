@@ -7,7 +7,7 @@
   the WebView2 runtime there ignores the remote-debugging switch that msedgedriver passes. This
   script checks what can be checked without it, on the binary that is built in CI:
     - the process keeps running after startup;
-    - a visible top-level window appears, titled NextTabletDriver, and it is not a console window;
+    - a visible top-level window titled NextTabletDriver appears, and it is not a console window;
     - the app did not start a console host (no conhost.exe / OpenConsole.exe child);
     - the WebView2 runtime was started for it.
   The PE subsystem of the binary is checked separately by assert-gui-subsystem.ps1.
@@ -27,11 +27,34 @@ $ErrorActionPreference = 'Stop'
 
 Add-Type -TypeDefinition @'
 using System;
+using System.Collections.Generic;
 using System.Text;
 using System.Runtime.InteropServices;
 public static class NativeWindow {
-    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
-    public static extern int GetClassName(IntPtr hWnd, StringBuilder name, int max);
+    delegate bool EnumProc(IntPtr hWnd, IntPtr lParam);
+    [DllImport("user32.dll")] static extern bool EnumWindows(EnumProc proc, IntPtr lParam);
+    [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
+    [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr hWnd);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetWindowText(IntPtr hWnd, StringBuilder text, int max);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetClassName(IntPtr hWnd, StringBuilder name, int max);
+
+    /// Visible top-level windows of a process, as "title|class" (the app also owns hidden helper windows).
+    public static List<string> VisibleWindows(uint pid) {
+        var found = new List<string>();
+        EnumWindows((hWnd, lParam) => {
+            uint owner;
+            GetWindowThreadProcessId(hWnd, out owner);
+            if (owner == pid && IsWindowVisible(hWnd)) {
+                var title = new StringBuilder(256);
+                var cls = new StringBuilder(256);
+                GetWindowText(hWnd, title, title.Capacity);
+                GetClassName(hWnd, cls, cls.Capacity);
+                found.Add(title + "|" + cls);
+            }
+            return true;
+        }, IntPtr.Zero);
+        return found;
+    }
 }
 '@
 
@@ -42,27 +65,24 @@ $failures = @()
 
 try {
     $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
-    $handle = [IntPtr]::Zero
+    $window = $null
     while ((Get-Date) -lt $deadline) {
         if ($process.HasExited) { break }
-        $process.Refresh()
-        if ($process.MainWindowHandle -ne [IntPtr]::Zero) { $handle = $process.MainWindowHandle; break }
+        $window = [NativeWindow]::VisibleWindows([uint32]$process.Id) | Where-Object { $_ -match '^NextTabletDriver\|' } | Select-Object -First 1
+        if ($window) { break }
         Start-Sleep -Milliseconds 500
     }
 
     if ($process.HasExited) {
         $failures += "the app exited with code $($process.ExitCode) before showing a window"
     }
-    elseif ($handle -eq [IntPtr]::Zero) {
-        $failures += "no window appeared within $TimeoutSeconds seconds"
+    elseif (-not $window) {
+        $seen = [NativeWindow]::VisibleWindows([uint32]$process.Id) -join '; '
+        $failures += "no NextTabletDriver window appeared within $TimeoutSeconds seconds (visible windows: $seen)"
     }
     else {
-        $title = $process.MainWindowTitle
-        $class = New-Object System.Text.StringBuilder 256
-        [void][NativeWindow]::GetClassName($handle, $class, $class.Capacity)
-        Write-Host "Window: '$title' (class $class)"
-        if ($title -notmatch 'NextTabletDriver') { $failures += "unexpected window title '$title'" }
-        if ($class.ToString() -eq 'ConsoleWindowClass') { $failures += 'the main window is a console window' }
+        Write-Host "Window: $window"
+        if ($window -match '\|ConsoleWindowClass$') { $failures += 'the main window is a console window' }
     }
 
     # Let the app settle, then check it is still running and what it started.
