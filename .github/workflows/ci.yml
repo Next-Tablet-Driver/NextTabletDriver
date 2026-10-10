@@ -289,65 +289,34 @@ jobs:
         shell: pwsh
         run: ./scripts/assert-gui-subsystem.ps1 src-tauri/target/debug/app.exe
 
-      # Smoke test of the app that was just built, driven through tauri-driver (WebDriver):
-      # nothing is mocked, the Rust backend and the webview are the ones that ship.
+      # Smoke test of the app that was just built. Linux: driven through tauri-driver (WebDriver),
+      # nothing is mocked, the Rust backend and the webview are the ones that ship. Windows: the
+      # WebView2 runtime of the runners ignores the remote-debugging switch msedgedriver relies
+      # on, so the script checks what it can without WebDriver (window shown, no console).
       - name: Install the WebDriver tooling (Linux)
         if: startsWith(matrix.os, 'ubuntu')
         run: sudo apt-get install -y webkit2gtk-driver xvfb
 
       - name: Cache tauri-driver
+        if: startsWith(matrix.os, 'ubuntu')
         id: tauri-driver-cache
         uses: actions/cache@v4
         with:
-          path: |
-            ~/.cargo/bin/tauri-driver
-            ~/.cargo/bin/tauri-driver.exe
-            ~/.cargo/bin/msedgedriver-tool.exe
-          key: webdriver-tools-${{ runner.os }}-v1
+          path: ~/.cargo/bin/tauri-driver
+          key: tauri-driver-${{ runner.os }}-v1
 
       - name: Install tauri-driver
-        if: steps.tauri-driver-cache.outputs.cache-hit != 'true'
+        if: startsWith(matrix.os, 'ubuntu') && steps.tauri-driver-cache.outputs.cache-hit != 'true'
         run: cargo install tauri-driver --locked
 
-      - name: Install msedgedriver-tool (Windows)
-        if: runner.os == 'Windows' && steps.tauri-driver-cache.outputs.cache-hit != 'true'
-        run: cargo install --git https://github.com/chippers/msedgedriver-tool
+      - name: Smoke test the real app (Linux, WebDriver)
+        if: startsWith(matrix.os, 'ubuntu')
+        run: xvfb-run -a npm --prefix frontend run e2e:native
 
-      - name: Install the Edge WebDriver matching the installed WebView2 (Windows)
+      - name: Smoke test the real app (Windows, startup and window)
         if: runner.os == 'Windows'
         shell: pwsh
-        run: |
-          & "$HOME/.cargo/bin/msedgedriver-tool.exe"
-          $PWD.Path | Out-File -Append -Encoding utf8 -FilePath $env:GITHUB_PATH
-
-      - name: Diagnose the app start (temporary)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          "--- Edge policies"
-          foreach ($key in 'HKLM:\SOFTWARE\Policies\Microsoft\Edge', 'HKLM:\SOFTWARE\Policies\Microsoft\Edge\WebView2', 'HKLM:\SOFTWARE\Policies\Microsoft\Edge\WebView2\ReleaseChannels') { if (Test-Path $key) { "$key"; Get-ItemProperty $key | Format-List } else { "$key absent" } }
-          $app = (Resolve-Path src-tauri/target/debug/app.exe).Path
-          $data = Join-Path $env:RUNNER_TEMP 'wv2data'
-          $env:WEBVIEW2_USER_DATA_FOLDER = $data
-          $env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS = '--remote-debugging-port=9222'
-          $p = Start-Process $app -PassThru
-          Start-Sleep -Seconds 20
-          "alive: $(-not $p.HasExited)"
-          "--- data folder"
-          if (Test-Path $data) { Get-ChildItem $data -Recurse -Depth 2 | Select-Object -First 25 FullName } else { "no data folder" }
-          try { (Invoke-WebRequest http://127.0.0.1:9222/json/version -TimeoutSec 5).Content } catch { "devtools endpoint: $($_.Exception.Message)" }
-          "--- webview2 processes"
-          Get-CimInstance Win32_Process -Filter "Name='msedgewebview2.exe'" | Select-Object -First 3 CommandLine | Format-List
-          Get-Process app, msedgewebview2 -ErrorAction SilentlyContinue | Stop-Process -Force
-
-      - name: Smoke test the real app
-        shell: bash
-        run: |
-          if [ "$RUNNER_OS" = "Linux" ]; then
-            xvfb-run -a npm --prefix frontend run e2e:native
-          else
-            npm --prefix frontend run e2e:native
-          fi
+        run: ./scripts/smoke-windows.ps1 src-tauri/target/debug/app.exe
 
   # Single required status check: the branch ruleset only has to know this name, so
   # adding or renaming jobs above never requires touching the ruleset.
