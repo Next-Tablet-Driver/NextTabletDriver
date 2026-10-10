@@ -320,6 +320,18 @@ jobs:
           & "$HOME/.cargo/bin/msedgedriver-tool.exe"
           $PWD.Path | Out-File -Append -Encoding utf8 -FilePath $env:GITHUB_PATH
 
+      - name: Diagnose the app start (temporary)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $p = Start-Process src-tauri/target/debug/app.exe -PassThru
+          Start-Sleep -Seconds 15
+          "alive: $(-not $p.HasExited)"
+          if ($p.HasExited) { "exit code: $($p.ExitCode)" }
+          "webview2 processes: $((Get-Process msedgewebview2 -ErrorAction SilentlyContinue | Measure-Object).Count)"
+          Get-WinEvent -FilterHashtable @{LogName='Application'; Level=2; StartTime=(Get-Date).AddMinutes(-5)} -MaxEvents 5 -ErrorAction SilentlyContinue | Format-List TimeCreated, ProviderName, Message
+          Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
+
       - name: Smoke test the real app
         shell: bash
         run: |
