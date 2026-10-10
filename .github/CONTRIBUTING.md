@@ -1,31 +1,55 @@
 # Contributing to NextTabletDriver
 
-Thank you for your interest in contributing to **NextTabletDriver**! We welcome bug fixes, documentation improvements, new tablet profiles, and feature contributions.
+Thank you for helping! Bug reports, new tablets, fixes, features, themes, plugins and better docs are all welcome. This page shows how to send a change. Please also read the [Code of Conduct](CODE_OF_CONDUCT.md).
 
-To keep the driver fast, clean, and stable, please follow the steps below.
+## Ways to help
 
----
+| You want to... | Start here |
+| --- | --- |
+| Report a bug | [Troubleshooting](../docs/troubleshooting.md#report-a-bug), then open an [issue](https://github.com/Next-Tablet-Driver/NextTabletDriver/issues/new/choose). |
+| Get a new tablet working | [Adding a tablet](../docs/adding-a-tablet.md) |
+| Fix a bug or build a feature | The steps below, and [Development](../docs/development.md). |
+| Write a plugin | [Plugin development](../docs/plugin-development.md) |
+| Make a theme | [Themes](../docs/themes.md#write-your-own-theme) |
+| Improve the docs | [Docs index](../docs/README.md), which also explains how we write them. |
+| Test on your hardware | Tell us in an issue or in [Discussions](https://github.com/Next-Tablet-Driver/NextTabletDriver/discussions) what works with your tablet and system. |
 
-## Quick Start Contribution Loop
+## Before you start
 
-### 1. Set Up the Repository
-Fork the repository on GitHub, clone it locally, and create a branch for your work:
+- Search the [issues](https://github.com/Next-Tablet-Driver/NextTabletDriver/issues) and [discussions](https://github.com/Next-Tablet-Driver/NextTabletDriver/discussions). Someone may already work on it.
+- For a big change, open an issue first so we can agree on the idea before you spend time on code.
+- Small fixes and docs changes do not need an issue.
+
+## The steps
+
+### 1. Set up
+
+Fork the repository on GitHub, clone your fork **with submodules**, and create a branch:
+
 ```bash
-git clone https://github.com/Next-Tablet-Driver/NextTabletDriver.git
+git clone --recurse-submodules https://github.com/<your-name>/NextTabletDriver.git
 cd NextTabletDriver
-git checkout -b my-contribution-branch
+git checkout -b my-change
 ```
 
-### 2. Make Your Changes
-Write your code, adding documentation and tests where necessary. Ensure your changes follow our coding standards (no `unwrap`, safe lock handling, etc.).
+[Development](../docs/development.md) lists what you need to build and run the project.
 
-### 3. Run the Checks
-Before pushing, make sure your changes pass the same checks as the CI:
+### 2. Make your change
+
+- Keep the change focused: one idea per pull request.
+- Follow the [code style](../docs/development.md#code-style). In short: no `unwrap`, `expect`, `panic!` or indexing in production code, and a `// SAFETY:` comment on every `unsafe` block.
+- Add or update tests for the behavior you changed.
+- Update the docs if you change something a user or a developer can see: a setting, a file path, a command, a screen.
+- If your change touches how installed copies update themselves (the tag format, release files, the installer, the update address or key), read [Releasing](../docs/releasing.md) first. A mistake there can leave every existing user without updates.
+
+### 3. Run the checks
+
+The CI runs the same checks on your pull request, so run them first. [Development](../docs/development.md#run-the-checks) has every command. The short list for the engine and the interface:
 
 ```bash
 cargo fmt --all -- --check
 cargo clippy --workspace --all-targets --all-features -- -D warnings
-cargo nextest run --workspace --all-features   # cargo install --locked cargo-nextest
+cargo nextest run --workspace --all-features
 cargo test --workspace --all-features --doc
 npm --prefix frontend ci
 npm --prefix frontend run lint
@@ -33,46 +57,43 @@ npm --prefix frontend run check
 npm --prefix frontend run test -- --run
 ```
 
-Coverage: the `Coverage` job measures the line coverage of the Rust production code (the inline `#[cfg(test)]` modules do not count) and of the frontend, posts the report on the pull request and fails below the floors of `coverage-thresholds.json` (Rust, frontend, and the two together). Locally:
-```bash
-cargo llvm-cov nextest --workspace --all-features --lcov --output-path lcov.info
-npm --prefix frontend run test -- --run --coverage
-python scripts/coverage_gate.py --lcov lcov.info --frontend frontend/coverage/coverage-summary.json
-```
-The floors only go up: when the report says coverage is well above a floor, raise it in your pull request. Lowering one needs a justification in the review. The Rust tests bind machine-wide names (a named pipe, a mutex, a shared-memory segment), so close a running NextTabletDriver before running them locally.
+Close NextTabletDriver before you run the Rust tests. A git hook can run most of these for you when you commit and push (see [Git hooks](../docs/development.md#git-hooks)).
 
-End-to-end tests (optional locally, required in CI):
-```bash
-npx --prefix frontend playwright install chromium   # once
-npm --prefix frontend run e2e                       # every screen, against the Tauri IPC mock
-```
-The Playwright suite (`frontend/e2e/`) runs the real Svelte app in a browser with the mock of `frontend/src/dev/tauri-mock.ts` (`/?mock` on the dev server), so it needs neither a tablet nor the native window. Each test also fails on any `console.error` or uncaught exception. When a test fails, run `npx playwright show-trace` on the file under `frontend/test-results/`; in CI the report and the traces are the `playwright-report` artifact. A smoke test of the real app runs in the `Tauri build` job: through `tauri-driver` on Linux (`npm --prefix frontend run e2e:native`, needs `tauri-driver` and a built app, see `.github/workflows/ci.yml`; it also works on Windows with `msedgedriver` and `NTD_SMOKE_LOCAL=1`), and with `scripts/smoke-windows.ps1` on the Windows runners.
+### 4. Push and open a pull request
 
-> **Why nextest rather than `cargo test`?** A few Rust tests touch state that belongs to the whole process: the panic hook installed by `setup_panic_hook`, the `log` level, and the telemetry sender. `cargo nextest` runs every test in its own process, so they cannot affect each other; under `cargo test` (threads in one process) they may interfere. Tests that depend on this say so in a comment. Tests whose only purpose is to check that a call does not panic are named `smoke_*`.
-
-### 4. Commit and Push
-Push your branch to your fork:
 ```bash
-git push origin my-contribution-branch
+git push origin my-change
 ```
 
-### 5. Open a Pull Request
-Go to the original repository on GitHub, and open a Pull Request against `main`. Provide a clear explanation of what your change does, what testing you performed, and reference any issues resolved.
+Open a pull request against `main` on GitHub. Say what the change does and why, how you tested it, and link the issue it closes. Add screenshots for changes you can see.
 
-Pull requests are **squash-merged only**: the PR title becomes the single commit on `main`, so it must follow **Conventional Commits** (checked automatically):
+## Pull request rules
 
-`type(scope): description`, lowercase, e.g. `fix(websocket): handle bind error gracefully`.
+- **Squash merge only.** The title of your pull request becomes the one commit on `main`, so it must follow [Conventional Commits](https://www.conventionalcommits.org). A check tests this automatically.
 
-| Type | Use for |
-| --- | --- |
-| `feat` | a new feature |
-| `fix` | a bug fix |
-| `perf` | a performance improvement |
-| `refactor` | a change that neither fixes a bug nor adds a feature |
-| `docs` | documentation only |
-| `test` | adding or fixing tests |
-| `build`, `ci`, `chore`, `style`, `revert` | tooling, pipelines, housekeeping, formatting, reverts |
+  `type(scope): description`, in lowercase. Example: `fix(websocket): handle bind error gracefully`.
 
-Add `!` after the type or scope (`feat(api)!: ...`) for a breaking change. Labels are applied automatically from the title and from the files you changed.
+  | Type | Use for |
+  | --- | --- |
+  | `feat` | A new feature. |
+  | `fix` | A bug fix. |
+  | `perf` | A speed improvement. |
+  | `refactor` | A change that neither fixes a bug nor adds a feature. |
+  | `docs` | Documentation only. |
+  | `test` | Adding or fixing tests. |
+  | `build`, `ci`, `chore`, `style`, `revert` | Tooling, pipelines, housekeeping, formatting, reverts. |
 
-A PR can only be merged when the **CI success** check is green and your branch is up to date with `main`.
+  Add `!` after the type or scope (`feat(api)!: ...`) for a breaking change.
+- Labels are added automatically from the title and from the files you changed.
+- The **CI success** check must be green, your branch must be up to date with `main`, and every review conversation must be resolved before the merge.
+- Nobody can push directly to `main` or rewrite its history.
+
+A maintainer reviews every pull request. Please answer comments, and push new commits to the same branch.
+
+## Releases and versioning
+
+Releases follow [Semantic Versioning](https://semver.org). The details, and the update rules you must not break, are in [Releasing](../docs/releasing.md).
+
+## License
+
+When you contribute, you license your work under the project's [MIT License](../LICENSE). Tablet definitions belong in [OpenTabletDriver](https://github.com/OpenTabletDriver/OpenTabletDriver), which uses the LGPLv3. See [Adding a tablet](../docs/adding-a-tablet.md#share-the-definition).

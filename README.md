@@ -1,16 +1,16 @@
-<div class="ntd-hero" align="center">
+<div align="center">
   <img src="resources/icon.png" alt="NextTabletDriver icon" width="96" height="96">
   <h1>NextTabletDriver</h1>
-  <p class="ntd-subtitle">
-    A modern, low-latency tablet driver for osu!, digital art, and everyday pen input.
-    Built in Rust with a Tauri + Svelte interface, cross-platform device support, and precise mapping controls.
+  <p>
+    A fast, free and open-source driver for drawing tablets.<br>
+    Made for osu!, and for everyday pen input.
   </p>
   <p>
     <a href="https://github.com/Next-Tablet-Driver/NextTabletDriver/releases">
-      <img alt="Releases" src="https://img.shields.io/github/v/release/Next-Tablet-Driver/NextTabletDriver?include_prereleases&label=release">
+      <img alt="Latest release" src="https://img.shields.io/github/v/release/Next-Tablet-Driver/NextTabletDriver?include_prereleases&label=release">
     </a>
-    <a href="https://github.com/Next-Tablet-Driver/NextTabletDriver/actions/workflows/rust-quality-check.yml">
-      <img alt="CI/CD" src="https://github.com/Next-Tablet-Driver/NextTabletDriver/actions/workflows/rust-quality-check.yml/badge.svg">
+    <a href="https://github.com/Next-Tablet-Driver/NextTabletDriver/actions/workflows/ci.yml">
+      <img alt="CI status" src="https://github.com/Next-Tablet-Driver/NextTabletDriver/actions/workflows/ci.yml/badge.svg">
     </a>
     <img alt="Platforms" src="https://img.shields.io/badge/platform-Windows%20%7C%20Linux-blue">
     <img alt="License" src="https://img.shields.io/badge/license-MIT-green">
@@ -18,90 +18,115 @@
   </p>
 </div>
 
-> **Attribution notice:** The tablet configuration files under [`tablets/OpenTabletDriver`](tablets/OpenTabletDriver) are a git submodule pinned to the [OpenTabletDriver](https://github.com/OpenTabletDriver/OpenTabletDriver) project, licensed under the **GNU Lesser General Public License v3.0 (LGPLv3)**. This submodule keeps OpenTabletDriver's LGPLv3-licensed content separate from NextTabletDriver's own MIT license, it is not copied into the MIT-licensed source tree. See the [License](#license) section for details.
+> **Attribution notice:** The tablet definitions in [`tablets/OpenTabletDriver`](tablets/OpenTabletDriver) are a git submodule that points to the [OpenTabletDriver](https://github.com/OpenTabletDriver/OpenTabletDriver) project. That project uses the **GNU Lesser General Public License v3.0 (LGPLv3)**. The submodule keeps this content separate from NextTabletDriver's own MIT license. It is not copied into the MIT-licensed source code. See [License](#license).
 
 ## What is NextTabletDriver?
 
-If you play osu! with a tablet, or draw digitally, your tablet's driver is the piece of software that turns pen movement into cursor movement on screen. NextTabletDriver is a free, open-source driver built to be fast, precise, and easy to set up, so you're not stuck with a manufacturer's driver that's slow, bloated, or missing the controls you actually need.
+A tablet driver is the program that turns the movement of your pen into the movement of the cursor on your screen. NextTabletDriver is a driver that you can use instead of the one from your tablet's maker. It reads the tablet directly, so it does not need that driver.
 
-It works with tablets from many different brands, so you don't need to keep multiple drivers installed if you own devices from more than one manufacturer.
+It works with tablets from many brands, so you can use one driver for all of them. It is written in [Rust](https://www.rust-lang.org) with a focus on low input delay.
 
-**Why people use it:**
+## What it can do
 
-- **Feels instant.** The driver is built in Rust for very low input lag, so your pen movement shows up on screen with minimal delay, important for fast-paced gameplay.
-- **Precise area mapping.** Choose exactly which part of your tablet maps to which part of your screen, rotate it, lock its aspect ratio, or snap it to a screen edge, all from a simple visual editor.
-- **Works on Windows and Linux.** One driver, consistent behavior, no matter your OS.
-- **Looks the way you want.** Customize the app's colors and layout with themes, and optionally show a guide for where the osu! playfield sits within your active area, right in the tablet preview.
-- **Shows you what's happening.** Built-in panels let you watch live pen data, smoothing filters, and input latency, handy when you're fine-tuning your setup or troubleshooting a tablet.
+- **Absolute and relative mode.** Map a part of your tablet to a part of your screen, or move the cursor like a mouse.
+- **A visual area editor.** Set the size, position and rotation of the area you use. Lock the aspect ratio, snap to the edges of your screens, and show where the osu! playfield sits inside your area.
+- **Pressure settings.** Choose how hard you must press for a click, and reshape the pressure with a curve.
+- **Profiles.** Save your settings, switch between them from the menu or the tray, share them as files, and import your settings from OpenTabletDriver.
+- **Plugins.** Add filters that smooth the pen path. You can write your own.
+- **Themes.** Pick a built-in theme, or make one in a small JSON file.
+- **Live data for other programs.** A local WebSocket server for stream overlays, and an SDK to embed the driver in your own program.
+- **Runs quietly.** It can start with your computer and live in the system tray.
 
-## Supported Tablets
+## Supported tablets
 
-NextTabletDriver supports tablets from many manufacturers, including:
+NextTabletDriver reads its tablet definitions from [OpenTabletDriver](https://github.com/OpenTabletDriver/OpenTabletDriver). It includes more than 350 of them, from 26 brands, including:
 
-- **Wacom** (Intuos, Bamboo, Cintiq, and more)
+- **Wacom** (Intuos, Bamboo, Cintiq and more)
 - **Huion** (including Kamvas)
 - **XP-Pen** and **UGEE**
-- **Gaomon, VEIKK, Artisul, Parblo, XenceLabs, UC-Logic**, and more
+- **Gaomon**, **VEIKK**, **Artisul**, **Parblo**, **XenceLabs**, **UC-Logic**, and others
 
-Don't see your tablet listed, or having trouble with detection? Device support is community-maintained and grows over time, see [Contributing](#contributing) below for how to help add a device.
+A definition only works if this project also has the matching *parser*, the code that reads that tablet's data. Not every tablet has been tested. If yours does not work, see [Adding a tablet](docs/adding-a-tablet.md). Help is welcome.
 
-## Installation
+## Windows and Linux
+
+| | Windows 10 and 11 | Linux (X11 and Wayland) |
+| --- | --- | --- |
+| Cursor position and click | Yes | Yes |
+| Pressure and tilt sent to other programs | **No.** The driver acts like a mouse. | Yes |
+| Extra setup | None | [udev rules](docs/linux.md) |
+
+On Windows, osu! works well, because it only needs position and a click. Drawing programs that need pressure do not get it yet.
+
+## Install
 
 ### Windows
 
-1. Download the latest Windows release from the [releases page](https://github.com/Next-Tablet-Driver/NextTabletDriver/releases).
-2. Run `NextTabletDriver_<version>_x64-setup.exe` (or `_arm64-setup.exe` on ARM devices). It also replaces an older Inno Setup install automatically.
-3. Launch NextTabletDriver and plug in your tablet.
+1. Download `NextTabletDriver_<version>_x64-setup.exe` from the [releases page](https://github.com/Next-Tablet-Driver/NextTabletDriver/releases). On an ARM PC, download the `arm64` file.
+2. Run it. If an older version from the Inno Setup installer is present, it is removed first.
+3. Start NextTabletDriver and plug in your tablet.
 
-### Arch Linux and AUR
+The installer is not code-signed yet, so Windows SmartScreen may show a warning. Choose **More info**, then **Run anyway**.
 
-An AUR package recipe is provided as `nexttabletdriver-git`.
+### Linux
 
-```bash
-git clone https://aur.archlinux.org/nexttabletdriver-git.git
-cd nexttabletdriver-git
-makepkg -si
-```
+The [releases page](https://github.com/Next-Tablet-Driver/NextTabletDriver/releases) has a `.deb` package (Debian and Ubuntu) and an AppImage, for x86_64 and ARM64. Linux needs permission to use your tablet and `/dev/uinput`. The [Linux setup](docs/linux.md) guide shows how, and also covers Arch Linux and NixOS.
 
-The package installs the binary, desktop entry, icon, license, and udev rules.
+### Build from source
 
-### Generic Linux
+See [Development](docs/development.md).
 
-The [releases page](https://github.com/Next-Tablet-Driver/NextTabletDriver/releases) provides a `.deb` (Debian/Ubuntu, installs the udev rules for you) and an `.AppImage` for x86_64 and ARM64.
+## Quick start
 
-NextTabletDriver requires access to HID tablet devices and `/dev/uinput`. With the AppImage, install the udev rules yourself:
+1. Plug in your tablet and start NextTabletDriver. The footer shows your tablet's name.
+2. Open the **Output** tab. Set the display area to match your screen, and choose how much of the tablet you want to use.
+3. Pick **Absolute Mode** in the footer.
+4. Press **Ctrl+S** to keep your settings.
 
-```bash
-sudo cp scripts/99-nexttabletdriver.rules /etc/udev/rules.d/
-sudo udevadm control --reload-rules
-sudo udevadm trigger
-```
+The [Getting started](docs/getting-started.md) guide explains every tab.
 
-This grants access to the current desktop user instantly, no group membership or
-logout required. If you run the driver from a headless/non-logind session, add
-your user to the `input` group instead and log out and back in:
-`sudo usermod -aG input "$USER"`.
+## Documentation
 
-More details are available in [`scripts/README-linux.md`](scripts/README-linux.md).
+| I want to... | Read |
+| --- | --- |
+| Install and set up my tablet | [Getting started](docs/getting-started.md) |
+| Fix a problem | [Troubleshooting](docs/troubleshooting.md) |
+| Set up Linux | [Linux setup](docs/linux.md) |
+| Smooth my pen movement | [Plugins](docs/plugins.md) |
+| Write a plugin | [Plugin development](docs/plugin-development.md) |
+| Change the colors | [Themes](docs/themes.md) |
+| Use pen data in another program | [Integrations](docs/integrations.md) |
+| Get a new tablet supported | [Adding a tablet](docs/adding-a-tablet.md) |
+| Understand how it works | [Architecture](docs/architecture.md) |
+| Build it and send a change | [Development](docs/development.md) and [Contributing](.github/CONTRIBUTING.md) |
 
-## Settings, Profiles and Themes
+All guides are listed in [`docs/`](docs/README.md).
 
-Your settings are saved as profiles, so you can switch between setups (e.g. one for osu!, one for drawing) from the File menu, which also lets you import and export profiles to share or back them up.
+## Privacy
 
-Want to change how the app looks? Pick a built-in theme in **Settings > Themes**.
+NextTabletDriver does not collect or send usage data. It contacts GitHub only to check for updates, to show release notes, and to show the list of contributors. Its WebSocket server is off by default and only accepts connections from your own computer.
+
+## Known limitations
+
+- On Windows, pressure and tilt are not sent to other programs.
+- The pen's side buttons and the eraser are not forwarded yet.
+- The installers do not include any plugin yet. See [Plugins](docs/plugins.md#build-the-plugins-from-this-repository).
+- The interface is in English only.
+
+The full list, with workarounds, is in [Troubleshooting](docs/troubleshooting.md#known-limitations).
 
 ## Contributing
 
-NextTabletDriver is open source and welcomes contributions, good first contributions include adding a new tablet, fixing a parser bug, Linux packaging improvements, theme examples, and UI polish. Building from source, the codebase layout, and the coding standards we follow are documented in [`CONTRIBUTING.md`](.github/CONTRIBUTING.md).
+NextTabletDriver is open source and welcomes help. Good first contributions are adding a tablet, fixing a parser bug, improving Linux packaging, making a theme, and polishing the interface. Read [`CONTRIBUTING.md`](.github/CONTRIBUTING.md) to start, and [Development](docs/development.md) to build the project.
 
-When adding support for a new tablet, please include its device VID/PID, physical dimensions, and any other details the driver needs to recognize it correctly.
+Need help or found a security problem? See [`SUPPORT.md`](.github/SUPPORT.md) and [`SECURITY.md`](.github/SECURITY.md).
 
 ## License
 
-NextTabletDriver is distributed under the MIT License. See [`LICENSE`](LICENSE) for details.
+NextTabletDriver is distributed under the MIT License. See [`LICENSE`](LICENSE).
 
-### Third-Party Licenses
+### Third-party licenses
 
-The tablet configuration files under [`tablets/OpenTabletDriver`](tablets/OpenTabletDriver) are a git submodule pinned to [OpenTabletDriver](https://github.com/OpenTabletDriver/OpenTabletDriver), which is licensed under the **GNU Lesser General Public License v3.0 (LGPLv3)**. This submodule is a separate, distinct component under the terms of the LGPLv3 and is not relicensed under NextTabletDriver's MIT license. The full text of the LGPLv3 can be found at [gnu.org/licenses/lgpl-3.0](https://www.gnu.org/licenses/lgpl-3.0.html).
+The tablet definitions in [`tablets/OpenTabletDriver`](tablets/OpenTabletDriver) come from [OpenTabletDriver](https://github.com/OpenTabletDriver/OpenTabletDriver), which uses the **GNU Lesser General Public License v3.0 (LGPLv3)**. This submodule is a separate component under the terms of the LGPLv3. It is not relicensed under NextTabletDriver's MIT license. You can read the full LGPLv3 text at [gnu.org/licenses/lgpl-3.0](https://www.gnu.org/licenses/lgpl-3.0.html).
 
 Copyright © OpenTabletDriver contributors.

@@ -86,9 +86,9 @@ jobs:
           if-no-files-found: ignore
 
   # The root crate is not a Cargo workspace, so `--workspace` above never reaches the
-  # SDK, plugin API or the bundled plugins; check them explicitly.
+  # SDK, plugin API, bundled plugins or example plugin; check them explicitly.
   plugins:
-    name: SDK, plugin API and bundled plugins
+    name: SDK, plugin API, plugins and examples
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -118,6 +118,7 @@ jobs:
             plugins/hawku_smoothing
             plugins/kalman_smoothing
             plugins/radial_follow
+            sdk/examples/rust_plugin
           save-if: ${{ github.ref == 'refs/heads/main' }}
 
       - name: Install cargo-nextest
@@ -125,15 +126,36 @@ jobs:
         with:
           tool: nextest
 
-      - name: Check plugin API and plugins
+      - name: Check plugin API, plugins and the example plugin
         run: |
           set -e
-          for manifest in sdk/plugin_api/Cargo.toml sdk/Cargo.toml plugins/*/Cargo.toml; do
+          for manifest in sdk/plugin_api/Cargo.toml sdk/Cargo.toml plugins/*/Cargo.toml sdk/examples/rust_plugin/Cargo.toml; do
             echo "::group::$manifest"
             cargo fmt --manifest-path "$manifest" -- --check
             cargo clippy --manifest-path "$manifest" --all-targets -- -D warnings
             cargo nextest run --manifest-path "$manifest" --no-tests=pass
             echo "::endgroup::"
+          done
+
+      # The two example plugins in docs/plugin-development.md must keep working. Build both as
+      # real libraries and check that each exports the seven functions every plugin needs, so a
+      # change to the plugin interface cannot break them without the CI noticing.
+      - name: Build the example plugins and check their exports
+        run: |
+          set -e
+          cargo build --release --manifest-path sdk/examples/rust_plugin/Cargo.toml
+          cc -std=c11 -O2 -Wall -Wextra -Werror -shared -fPIC sdk/examples/c_plugin/plugin.c -o "$RUNNER_TEMP/libc_flip_x.so"
+
+          # The seven functions that every plugin must export, in alphabetical order.
+          expected="ntd_plugin_create ntd_plugin_destroy ntd_plugin_handshake ntd_plugin_manifest ntd_plugin_process ntd_plugin_reset ntd_plugin_set_property"
+
+          for library in sdk/examples/rust_plugin/target/release/libsimple_smoothing.so "$RUNNER_TEMP/libc_flip_x.so"; do
+            actual=$(nm -D --defined-only "$library" | awk '{print $3}' | grep '^ntd_plugin_' | sort | paste -sd' ' -)
+            echo "$library exports: $actual"
+            if [ "$actual" != "$expected" ]; then
+              echo "::error::$library does not export exactly the seven plugin functions"
+              exit 1
+            fi
           done
 
   frontend:
@@ -317,7 +339,7 @@ jobs:
       - name: Check every crate
         run: |
           set -e
-          for manifest in Cargo.toml src-tauri/Cargo.toml sdk/Cargo.toml sdk/plugin_api/Cargo.toml plugins/*/Cargo.toml; do
+          for manifest in Cargo.toml src-tauri/Cargo.toml sdk/Cargo.toml sdk/plugin_api/Cargo.toml plugins/*/Cargo.toml sdk/examples/rust_plugin/Cargo.toml; do
             echo "::group::$manifest"
             cargo deny --manifest-path "$manifest" check bans licenses sources
             echo "::endgroup::"

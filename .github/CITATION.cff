@@ -8,7 +8,7 @@ authors:
     website: "https://github.com/iSweat-exe"
 repository-code: "https://github.com/Next-Tablet-Driver/NextTabletDriver"
 license: MIT
-version: 1.1.0
+version: 2.0.0
 keywords:
   - tablet
   - driver

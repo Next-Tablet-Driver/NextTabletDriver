@@ -42,7 +42,7 @@ jobs:
       - name: Check every crate
         run: |
           set -e
-          for manifest in Cargo.toml src-tauri/Cargo.toml sdk/Cargo.toml sdk/plugin_api/Cargo.toml plugins/*/Cargo.toml; do
+          for manifest in Cargo.toml src-tauri/Cargo.toml sdk/Cargo.toml sdk/plugin_api/Cargo.toml plugins/*/Cargo.toml sdk/examples/rust_plugin/Cargo.toml; do
             echo "::group::$manifest"
             cargo deny --manifest-path "$manifest" check advisories
             echo "::endgroup::"
