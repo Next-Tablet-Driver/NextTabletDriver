@@ -185,7 +185,7 @@
     
     <div bind:this={vizDisplayContainer} class="visual-area" bind:clientWidth={displayAreaW} bind:clientHeight={displayAreaH}>
     <div style:width="{canvasW}px" style:height="{canvasH}px" class="display-canvas">
-        {#each monitors as m (m.name)}
+        {#each monitors as m, index (index)}
             <div style:left="{((m.position.x - minX) / deskW) * 100}%" style:top="{((m.position.y - minY) / deskH) * 100}%" style:height="{(m.size.height / deskH) * 100}%" style:width="{(m.size.width / deskW) * 100}%" class="monitor-bg">
                 {m.size.width}x{m.size.height}
             </div>

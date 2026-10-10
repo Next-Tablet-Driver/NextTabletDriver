@@ -20,7 +20,7 @@
             Plugins run native code with full access to your system, so they stay disabled until you approve them.
         </p>
         <ul>
-            {#each plugins as plugin (plugin.sha256)}
+            {#each plugins as plugin (plugin.file_name)}
                 <li>
                     <span class="file">{plugin.file_name}</span>
                     <code class="hash" title={plugin.sha256}>{plugin.sha256.slice(0, 12)}…</code>

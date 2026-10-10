@@ -31,7 +31,7 @@
     <div bind:this={logsContainer} class="table-body-scroll">
         <table class="logs-table body-table">
             <tbody>
-                {#each filteredLogs as log (log.time + log.message)}
+                {#each filteredLogs as log, index (index)}
                     <tr>
                         <td class="col-time">{log.time}</td>
                         <td style:color="{getLevelColor(log.level)}" class="col-level">{log.level}</td>
