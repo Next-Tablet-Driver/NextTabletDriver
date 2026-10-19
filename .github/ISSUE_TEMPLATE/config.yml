@@ -1,5 +1,8 @@
 blank_issues_enabled: false
 contact_links:
+  - name: Troubleshooting guide
+    url: https://github.com/Next-Tablet-Driver/NextTabletDriver/blob/main/docs/troubleshooting.md
+    about: Common problems, known limitations, and how to read the logs. Please check it before you report a bug.
   - name: GitHub Discussions
     url: https://github.com/Next-Tablet-Driver/NextTabletDriver/discussions
-    about: Ask for help, share your presets, or discuss the project with the community.
+    about: Ask for help, share your profiles, or talk about the project with the community.

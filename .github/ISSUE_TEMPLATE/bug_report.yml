@@ -34,8 +34,8 @@ body:
     id: ntd_version
     attributes:
       label: "NextTabletDriver Version"
-      description: "Which version are you using? (e.g. v1.1.0 or commit hash if building from source)"
-      placeholder: "v1.1.0"
+      description: "Which version do you use? If you built it from source, give the commit instead."
+      placeholder: "v2.0.0"
     validations:
       required: true
   - type: input
@@ -67,5 +67,5 @@ body:
     id: logs
     attributes:
       label: "Console Logs / Error Messages"
-      description: "Please paste any relevant error messages or logs. You can find them in the console tab or in `Settings/session.log`."
+      description: "Paste the relevant error messages or log lines. You can find them in the Console tab, or in the file `session.log` (`session.prev.log` after a crash) in your Settings folder. See the Troubleshooting guide for the folder location."
       render: shell

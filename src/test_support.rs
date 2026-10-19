@@ -12,3 +12,29 @@
 pub fn evaluate_log_arguments() {
     log::set_max_level(log::LevelFilter::Trace);
 }
+
+/// Keeps the new, empty settings folder of a test alive. The folder is removed when this is dropped.
+pub struct EmptySettingsDir(std::path::PathBuf);
+
+impl Drop for EmptySettingsDir {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_dir_all(&self.0);
+    }
+}
+
+/// Points the settings folder of the current test at a new, empty directory.
+///
+/// Code such as `PluginManager::new` reads the folders of the current user. Without this, a test
+/// that expects "no plugins" fails on any machine where a plugin is installed, which includes
+/// the machine of a developer who tries the plugins.
+#[must_use]
+pub fn empty_settings_dir() -> EmptySettingsDir {
+    let nanos = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.as_nanos());
+    let path =
+        std::env::temp_dir().join(format!("ntd_empty_settings_{}_{nanos}", std::process::id()));
+    let _ = std::fs::create_dir_all(&path);
+    crate::settings::set_test_settings_dir(path.clone());
+    EmptySettingsDir(path)
+}

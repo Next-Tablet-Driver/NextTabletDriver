@@ -1,559 +1,104 @@
-# Fuzzing — Mathematical Transformations
+# Fuzzing
 
-This directory contains the fuzzers for the mathematical transformation layer of `NextTabletDriver`.
+A *fuzzer* is a program that calls a function again and again with inputs that it makes up, and watches for crashes and broken rules. It finds the cases that nobody thought of.
 
-The fuzzers test coordinate transformation functions with a very large number of automatically generated inputs in order to detect unexpected behavior, panics, non-finite values, and violations of mathematical invariants.
+This folder has fuzzers for the math that maps tablet coordinates to the screen (`src/core/math/transform.rs`). They use [`cargo-fuzz`](https://github.com/rust-fuzz/cargo-fuzz), which is built on LLVM's libFuzzer. A fuzzer is smarter than a random number generator: it watches which parts of the code run, and keeps the inputs that reach new parts.
 
-## Why use fuzzing?
+## What each fuzzer checks
 
-Unit tests verify known cases.
+Each fuzzer is a file in [`fuzz_targets/`](fuzz_targets). Besides "it must not crash", it checks rules that must always be true.
 
-Benchmarks measure performance.
+| Fuzzer | Function | Rules it checks |
+| --- | --- | --- |
+| `rotate_point` | `rotate_point` | The result is finite. A rotation of 0° returns the same point. The rotation center does not move. The distance to the center does not change. |
+| `physical_to_normalized` | `physical_to_normalized` | The result is finite. Without rotation, the center of the active area maps to (0.5, 0.5). |
+| `normalized_to_screen` | `normalized_to_screen` | The result is finite. A value below 0 is clamped to the start of the target area, and a value above 1 to its far edge. |
+| `apply_relative_delta` | `apply_relative_delta` | The result is finite. No movement gives no delta. Without rotation, the sensitivity scales the movement exactly. |
 
-Fuzzing answers a different question:
+The inputs are always **finite numbers in a realistic range** (for example coordinates within ±1000 mm and rotations within ±360°). The fuzzers do not send `NaN` or infinity.
 
-> What happens when the function receives inputs that the developer did not think about?
+## Set up
 
-The driver's mathematical functions primarily operate on `f32` values. They can therefore encounter special values such as:
-
-* `0.0`
-* `-0.0`
-* `NaN`
-* `+∞`
-* `-∞`
-* extremely large values
-* extremely small values
-* negative rotations
-* rotations greater than `360°`
-* zero dimensions
-* unusual parameter combinations
-
-The goal is to automatically discover inputs that may reveal a problem.
-
----
-
-## Architecture
-
-The fuzzers are located in:
-
-```text
-fuzz/
-├── Cargo.toml
-├── README.md
-└── fuzz_targets/
-    ├── rotate_point.rs
-    ├── physical_to_normalized.rs
-    ├── normalized_to_screen.rs
-    └── apply_relative_delta.rs
-```
-
-Each file corresponds to one mathematical function in the driver:
-
-| Fuzzer                   | Tested function            |
-| ------------------------ | -------------------------- |
-| `rotate_point`           | `rotate_point()`           |
-| `physical_to_normalized` | `physical_to_normalized()` |
-| `normalized_to_screen`   | `normalized_to_screen()`   |
-| `apply_relative_delta`   | `apply_relative_delta()`   |
-
----
-
-# Installation
-
-Fuzzing uses [`cargo-fuzz`](https://github.com/rust-fuzz/cargo-fuzz), which is based on LLVM libFuzzer.
-
-Install `cargo-fuzz`:
+You need a nightly Rust toolchain and `cargo-fuzz`:
 
 ```bash
+rustup toolchain install nightly
 cargo install cargo-fuzz
 ```
 
-Verify the installation:
+The fuzz project is in `qa/fuzz`, not in the default `fuzz/` folder. Always add `--fuzz-dir qa/fuzz`, and run the commands from the root of the repository.
+
+On **Windows**, the fuzzer needs the AddressSanitizer runtime DLL of Visual Studio. Add its folder to your `PATH` first. In PowerShell:
+
+```powershell
+$asan = (Get-ChildItem "C:\Program Files\Microsoft Visual Studio\2022\*\VC\Tools\MSVC\*\bin\Hostx64\x64\clang_rt.asan_dynamic-x86_64.dll" | Select-Object -First 1).DirectoryName
+$env:Path = "$asan;$env:Path"
+```
+
+If you start the fuzzer without it, it stops at once with the error code `0xc0000135` (`STATUS_DLL_NOT_FOUND`). Linux and macOS need nothing extra.
+
+## Run a fuzzer
 
 ```bash
-cargo +nightly fuzz --version
+cargo +nightly fuzz list --fuzz-dir qa/fuzz                       # the available fuzzers
+cargo +nightly fuzz run rotate_point --fuzz-dir qa/fuzz           # run until you press Ctrl+C
 ```
 
-The fuzzers also use:
-
-```toml
-libfuzzer-sys
-arbitrary
-```
-
-These dependencies are declared in `fuzz/Cargo.toml`.
-
----
-
-# Running a fuzzer
-
-`cargo +nightly fuzz` commands should be executed from the repository root.
-
-## `rotate_point`
+A fuzzer runs forever by default. Add limits after a `--`:
 
 ```bash
-cargo +nightly fuzz run rotate_point
+cargo +nightly fuzz run rotate_point --fuzz-dir qa/fuzz -- -max_total_time=300   # five minutes
+cargo +nightly fuzz run rotate_point --fuzz-dir qa/fuzz -- -runs=100000          # 100000 inputs
 ```
 
-The fuzzer will generate inputs for:
-
-```rust
-rotate_point(
-    x,
-    y,
-    center_x,
-    center_y,
-    rotation_degrees,
-)
-```
-
-It automatically searches for inputs capable of violating the properties checked by `rotate_point.rs`.
-
----
-
-## `physical_to_normalized`
+A longer run finds rarer problems. To run all four for five minutes each:
 
 ```bash
-cargo +nightly fuzz run physical_to_normalized
+for target in rotate_point physical_to_normalized normalized_to_screen apply_relative_delta; do
+  cargo +nightly fuzz run "$target" --fuzz-dir qa/fuzz -- -max_total_time=300
+done
 ```
 
-Tests:
+The fuzzers do **not** run in the CI. Run them yourself when you change `src/core/math/transform.rs`, together with the property tests (`cargo nextest run`) and the [benchmarks](../benches/README.md).
 
-```rust
-physical_to_normalized(
-    x_mm,
-    y_mm,
-    area_x,
-    area_y,
-    area_w,
-    area_h,
-    rotation,
-)
+## When a fuzzer finds a problem
+
+The fuzzer stops, prints an error such as `Assertion failed` or `deadly signal`, and saves the input that caused it:
+
+```text
+qa/fuzz/artifacts/rotate_point/crash-<hash>
 ```
 
-Particular attention is given to zero dimensions and non-finite values.
-
----
-
-## `normalized_to_screen`
+This file is a reproduction that never changes. Run it again with:
 
 ```bash
-cargo +nightly fuzz run normalized_to_screen
-```
-
-This tests, among other things, the behavior of the `clamp()` operation used to keep normalized coordinates within `[0, 1]`.
-
----
-
-## `apply_relative_delta`
-
-```bash
-cargo +nightly fuzz run apply_relative_delta
-```
-
-This tests relative movement, rotation, and sensitivity handling.
-
----
-
-# Limiting fuzzing duration
-
-By default, a fuzzer can continue indefinitely.
-
-To run a five-minute campaign:
-
-```bash
-cargo +nightly fuzz run rotate_point -- -max_total_time=300
-```
-
-Ten minutes:
-
-```bash
-cargo +nightly fuzz run rotate_point -- -max_total_time=600
-```
-
-Longer campaigns are preferable for discovering rare cases.
-
----
-
-# Limiting the number of executions
-
-The number of test cases can also be limited:
-
-```bash
-cargo +nightly fuzz run rotate_point -- -runs=1000000
-```
-
-This asks libFuzzer to perform approximately one million executions.
-
-For a quick verification:
-
-```bash
-cargo +nightly fuzz run rotate_point -- -runs=10000
-```
-
----
-
-# Running multiple fuzzers
-
-A complete campaign can be run with:
-
-```bash
-cargo +nightly fuzz run rotate_point -- -max_total_time=300
-cargo +nightly fuzz run physical_to_normalized -- -max_total_time=300
-cargo +nightly fuzz run normalized_to_screen -- -max_total_time=300
-cargo +nightly fuzz run apply_relative_delta -- -max_total_time=300
-```
-
-Each function then receives its own fuzzing campaign.
-
----
-
-# How does a fuzzer work?
-
-A fuzzer does not simply choose random numbers.
-
-libFuzzer starts with input data and applies different mutation strategies to discover new execution paths.
-
-Conceptually:
-
-```text
-        Seed / Corpus
-             │
-             ▼
-       Input generation
-             │
-             ▼
-       Tested function
-             │
-             ▼
-       Property checks
-             │
-       ┌─────┴─────┐
-       │           │
-      PASS       FAILURE
-       │           │
-       ▼           ▼
-New input added   Crash
-to corpus           │
-       │             ▼
-       └────────> Reproduction
-```
-
-The fuzzer continuously attempts to discover input combinations that have not yet been explored.
-
----
-
-# Why use `Arbitrary`?
-
-The input structures are declared using:
-
-```rust
-#[derive(arbitrary::Arbitrary)]
-```
-
-For example:
-
-```rust
-#[derive(Debug, arbitrary::Arbitrary)]
-struct RotateInput {
-    x: f32,
-    y: f32,
-    center_x: f32,
-    center_y: f32,
-    rotation_degrees: f32,
-}
-```
-
-`arbitrary` allows these structures to be constructed automatically from the bytes generated by libFuzzer.
-
-This allows the fuzzer to work directly with the function's parameters rather than requiring manually encoded input data.
-
----
-
-# Tested properties
-
-The fuzzing targets do not only check whether the functions crash.
-
-They also contain mathematical properties.
-
-## Zero-degree rotation
-
-A rotation of `0°` must preserve the point:
-
-```text
-rotate_point(P, C, 0°) = P
-```
-
-The fuzzer therefore checks:
-
-```rust
-assert_eq!(rx, x);
-assert_eq!(ry, y);
-```
-
----
-
-## Rotation around the center
-
-If the point is exactly the rotation center:
-
-```text
-P = C
-```
-
-then:
-
-```text
-rotate(P, C, θ) = P
-```
-
-for any valid rotation.
-
----
-
-## Active-area center
-
-Without rotation, the center of the physical active area must map to the center of normalized coordinates:
-
-```text
-physical center → (0.5, 0.5)
-```
-
----
-
-## Screen projection
-
-`normalized_to_screen()` uses `clamp()`.
-
-A normalized coordinate below `0` must be projected onto the corresponding edge.
-
-A normalized coordinate above `1` must be projected onto the opposite edge.
-
-This protects against regressions in:
-
-```rust
-u.clamp(0.0, 1.0)
-v.clamp(0.0, 1.0)
-```
-
----
-
-## Zero movement
-
-When:
-
-```text
-current position = previous position
-```
-
-the resulting movement must be:
-
-```text
-(dx, dy) = (0, 0)
-```
-
----
-
-# What to do when a fuzzer finds a problem
-
-libFuzzer will generally display a message similar to:
-
-```text
-==ERROR: libFuzzer: deadly signal
-```
-
-or:
-
-```text
-Assertion failed
-```
-
-It will also save the input that caused the failure to the fuzzer's artifact directory.
-
-For example:
-
-```text
-fuzz/artifacts/rotate_point/crash-xxxxxxxxxxxxxxxx
-```
-
-This input is extremely important.
-
-It provides a **deterministic reproduction case**.
-
----
-
-# Reproducing a crash
-
-If libFuzzer produces:
-
-```text
-fuzz/artifacts/rotate_point/crash-abcdef
-```
-
-the exact input can be executed again with:
-
-```bash
-cargo +nightly fuzz run rotate_point fuzz/artifacts/rotate_point/crash-abcdef
-```
-
-The issue can then be analyzed and fixed without relying on randomness.
-
----
-
-# Corpus
-
-Interesting inputs can be preserved in:
-
-```text
-fuzz/corpus/
-```
-
-For example:
-
-```text
-fuzz/
-├── corpus/
-│   ├── rotate_point/
-│   ├── physical_to_normalized/
-│   ├── normalized_to_screen/
-│   └── apply_relative_delta/
-└── fuzz_targets/
-```
-
-The corpus allows libFuzzer to start future campaigns from inputs that have already proven useful.
-
-Over time, the corpus can become a collection of difficult cases discovered during development.
-
----
-
-# Fuzzing and conventional tests
-
-Fuzzing does not replace unit tests.
-
-Each tool has a different purpose:
-
-| Tool               | Purpose                                     |
-| ------------------ | ------------------------------------------- |
-| `cargo test`       | Verify known behavior                       |
-| Property testing   | Verify general properties                   |
-| `cargo +nightly fuzz`       | Automatically search for problematic inputs |
-| `cargo bench`      | Measure performance                         |
-| Pipeline benchmark | Measure real processing cost                |
-
-A robust implementation should ideally benefit from several of these validation layers.
-
----
-
-# Fuzzing vs. benchmarks
-
-The benchmarks in `benches/transforms.rs` answer:
-
-> How long does this function take?
-
-The fuzzers answer:
-
-> Is there an unusual input that reveals a problem?
-
-These are independent concerns.
-
-A function can be:
-
-```text
-very fast + incorrect
-```
-
-or:
-
-```text
-correct + too slow
-```
-
-Both systems should therefore be maintained.
-
----
-
-# Recommended development workflow
-
-Before making an important change to `transform.rs`:
-
-```bash
-cargo test
+cargo +nightly fuzz run rotate_point --fuzz-dir qa/fuzz qa/fuzz/artifacts/rotate_point/crash-<hash>
 ```
 
 Then:
 
-```bash
-cargo bench --bench transforms
-```
+1. Decide if the **function** is wrong, or if the **rule** in the fuzzer is wrong. A rule must state something that is really promised. Do not add a rule only to see the fuzzer fail.
+2. Fix the code (or the rule).
+3. Copy the failing input into a normal test, in `qa/tests` or next to the function, so the problem cannot come back unseen.
+4. Do not commit the `crash-*` files. The `artifacts` folder is not tracked.
 
-After the modification:
+## The corpus
 
-```bash
-cargo test
-cargo bench --bench transforms
-```
+[`corpus/<fuzzer>/`](corpus) keeps the inputs that the fuzzer found useful. It is committed, so a new run starts where the last one stopped, instead of from zero. After a long run you may commit new files that reached new code, but keep the folder small.
 
-Then perform a fuzzing campaign:
+## Add a fuzzer
 
-```bash
-cargo +nightly fuzz run rotate_point -- -max_total_time=300
-cargo +nightly fuzz run physical_to_normalized -- -max_total_time=300
-cargo +nightly fuzz run normalized_to_screen -- -max_total_time=300
-cargo +nightly fuzz run apply_relative_delta -- -max_total_time=300
-```
+1. Create `fuzz_targets/<name>.rs`. Use [`rotate_point.rs`](fuzz_targets/rotate_point.rs) as a model: a struct that implements `Arbitrary`, built with the helpers in [`common.rs`](fuzz_targets/common.rs), and a `fuzz_target!` that calls the function and asserts the rules.
+2. Add a `[[bin]]` entry for it in `Cargo.toml`, like the existing ones, with `test = false`, `doc = false` and `bench = false`.
+3. Add a row to the table above.
 
-For CI or release validation, use a duration appropriate for the available execution time.
+## Fuzzing, tests and benchmarks
 
----
+| Tool | Question it answers |
+| --- | --- |
+| Unit tests | Does it give the right answer for the cases I know? |
+| Property tests (`qa/tests`) | Does a rule hold for thousands of random inputs? |
+| Fuzzing | Is there a strange input that breaks a rule or crashes? |
+| [Benchmarks](../benches/README.md) | How fast is it? |
 
-# Important principle
-
-Fuzzing should not be used to hide an undefined contract.
-
-Before adding a new assertion, determine whether the observed behavior is actually incorrect.
-
-For example, `NaN` or `∞` can be mathematically valid results when the input itself contains `NaN`, `∞`, or causes a division by zero.
-
-The contract of each function must therefore distinguish between:
-
-```text
-Valid input
-    ↓
-Expected behavior
-
-Degenerate input
-    ↓
-Explicitly defined behavior
-
-Invalid input
-    ↓
-Documented behavior
-```
-
-The fuzzer's role is then to verify that the implementation respects this contract.
-
----
-
-# Goal
-
-The mathematical layer should be protected by multiple validation levels:
-
-```text
-                 transform.rs
-                      │
-        ┌─────────────┼─────────────┐
-        │             │             │
-   Unit tests    Property tests   Fuzzing
-        │             │             │
-        └─────────────┼─────────────┘
-                      │
-                  Correctness
-                      │
-                      ▼
-                  Benchmarks
-                      │
-                      ▼
-                  Performance
-```
-
-This separation makes it possible to detect functional regressions and performance regressions without confusing the two problems.
+They answer different questions, so use them together.

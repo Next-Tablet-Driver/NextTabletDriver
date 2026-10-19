@@ -1,30 +1,43 @@
 # Support
 
-Need help with NextTabletDriver? We're here to assist you!
+Need help with NextTabletDriver? Here is where to look.
 
-## Where to get help
+## Try these first
 
-Before asking a question, please check if the issue has already been discussed or resolved:
+1. **[Troubleshooting](../docs/troubleshooting.md).** It covers the most common problems and the known limitations.
+2. **[Getting started](../docs/getting-started.md)** and the other [guides](../docs/README.md).
+3. **[Issues](https://github.com/Next-Tablet-Driver/NextTabletDriver/issues).** Search open and closed issues. Someone may have had the same problem.
 
-1. **[README](README.md)**: Check the main documentation.
-2. **[GitHub Issues](https://github.com/Next-Tablet-Driver/NextTabletDriver/issues)**: Search through open and closed issues. Someone might have had the same problem.
-3. **[GitHub Discussions](https://github.com/Next-Tablet-Driver/NextTabletDriver/discussions)**: Check the discussions tab for Q&A, general help, and community discussions.
+## Ask a question or share something
 
-### Reporting a Bug
+Use [GitHub Discussions](https://github.com/Next-Tablet-Driver/NextTabletDriver/discussions). It is the right place to:
 
-If you found a bug or driver crash, please [open a new issue](https://github.com/Next-Tablet-Driver/NextTabletDriver/issues/new).
+- ask how to do something,
+- share your profiles, themes and tablet setups,
+- talk about the project.
 
-Please include:
+## Report a bug
 
-- Your Operating System (Windows 10/11, Arch Linux, etc.).
-- Your Tablet model.
-- Steps to reproduce the issue.
-- Any relevant logs or screenshots.
+If something is broken, [open an issue](https://github.com/Next-Tablet-Driver/NextTabletDriver/issues/new/choose) and choose **Bug Report**. Please include:
 
-### Requesting a Feature or New Tablet Support
+- your operating system and version,
+- the NextTabletDriver version,
+- your tablet model,
+- the steps to make the problem happen,
+- the relevant log lines (from the **Console** tab, or from `session.log`).
 
-If you want to suggest a new feature, you can [open a feature request](https://github.com/Next-Tablet-Driver/NextTabletDriver/issues/new). Tablet configurations come from the [OpenTabletDriver](https://github.com/OpenTabletDriver/OpenTabletDriver) submodule, so support for a new tablet model should be contributed there; it will be picked up here on the next submodule update. If the device needs a new report parser, [open a feature request](https://github.com/Next-Tablet-Driver/NextTabletDriver/issues/new) here with the device VID/PID and physical dimensions as mentioned in the README.
+[Troubleshooting](../docs/troubleshooting.md#report-a-bug) explains where to find these.
 
-### Community
+## Ask for a new feature
 
-Feel free to connect with other users in the [GitHub Discussions](https://github.com/Next-Tablet-Driver/NextTabletDriver/discussions) section to share custom themes, tablet configurations, and usage tips.
+[Open an issue](https://github.com/Next-Tablet-Driver/NextTabletDriver/issues/new/choose) and choose **Feature Request**.
+
+## Ask for a new tablet
+
+Choose **Tablet Support Request** in the [issue list](https://github.com/Next-Tablet-Driver/NextTabletDriver/issues/new/choose). You need the tablet's model and its USB ID (`VID:PID`). [Adding a tablet](../docs/adding-a-tablet.md) shows how to find it, and how you can add support yourself.
+
+Tablet definitions come from [OpenTabletDriver](https://github.com/OpenTabletDriver/OpenTabletDriver). If your tablet needs a new definition, the best place for it is there.
+
+## Report a security problem
+
+Do not use a public issue. Follow the steps in the [security policy](SECURITY.md).
