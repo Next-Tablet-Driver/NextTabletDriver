@@ -4,6 +4,7 @@
 //! and extracts function pointers into a thread-safe `LoadedLibrary`.
 
 use super::error::PluginError;
+use super::trust::PinnedLibrary;
 use ntd_plugin_api::{
     NTD_PLUGIN_ABI_VERSION, NTD_PLUGIN_MAGIC, PluginContext, PluginManifest, PluginPacket,
     PluginStatus,
@@ -73,10 +74,23 @@ impl PluginLoader {
     /// fails the magic/version handshake, or produces an invalid manifest.
     pub fn load<P: AsRef<Path>>(path: P) -> Result<Arc<LoadedLibrary>, PluginError> {
         let path_ref = path.as_ref();
+        Self::load_from(path_ref, path_ref)
+    }
 
+    /// Loads the library held by `pinned`: the exact file that was just verified, not whatever
+    /// the path points to at this moment.
+    ///
+    /// # Errors
+    /// Same as [`PluginLoader::load`].
+    pub fn load_pinned(pinned: &PinnedLibrary) -> Result<Arc<LoadedLibrary>, PluginError> {
+        Self::load_from(&pinned.loader_path(), pinned.path())
+    }
+
+    /// `open_path` is what the OS loader opens; `path_ref` is the path recorded and logged.
+    fn load_from(open_path: &Path, path_ref: &Path) -> Result<Arc<LoadedLibrary>, PluginError> {
         // SAFETY: Loading a dynamic library is unsafe because executing library initialization
         // code may run arbitrary logic. This is the explicit purpose of loading external plugins.
-        let lib = unsafe { libloading::Library::new(path_ref) }?;
+        let lib = unsafe { libloading::Library::new(open_path) }?;
 
         // SAFETY: Symbol lookup of a known C function signature exported by export_ntd_plugin!
         let handshake_sym: libloading::Symbol<HandshakeFn> =

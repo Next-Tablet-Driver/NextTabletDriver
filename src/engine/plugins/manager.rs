@@ -5,7 +5,7 @@
 
 use super::instance::PluginInstance;
 use super::loader::{LoadedLibrary, PluginLoader};
-use super::trust::{self, TrustStore, UntrustedPlugin};
+use super::trust::{self, PinnedLibrary, TrustStore, UntrustedPlugin};
 use crate::core::config::models::MappingConfig;
 use crate::engine::state::LockRecoveryExt;
 use crate::filters::FilterPipeline;
@@ -109,8 +109,16 @@ impl PluginManager {
                 let path_display = path.display();
 
                 // Never execute a library the user has not approved: loading runs its
-                // initialisation code immediately.
-                let sha256 = match trust::sha256_file(&path) {
+                // initialisation code immediately. The file is opened once and both checked
+                // and loaded through that handle, so it cannot be swapped in between.
+                let mut pinned = match PinnedLibrary::open(&path) {
+                    Ok(pinned) => pinned,
+                    Err(e) => {
+                        log::warn!(target: "Plugins", "Cannot read plugin library {path_display}: {e}");
+                        continue;
+                    }
+                };
+                let sha256 = match pinned.sha256() {
                     Ok(hash) => hash,
                     Err(e) => {
                         log::warn!(target: "Plugins", "Cannot read plugin library {path_display}: {e}");
@@ -122,7 +130,7 @@ impl PluginManager {
                     .read()
                     .unwrap_or_log("plugin_trust")
                     .is_trusted(&sha256)
-                    || trust::has_valid_official_signature(&path);
+                    || pinned.has_valid_official_signature();
                 if !is_trusted {
                     log::warn!(
                         target: "Plugins",
@@ -135,7 +143,7 @@ impl PluginManager {
                     continue;
                 }
 
-                match PluginLoader::load(&path) {
+                match PluginLoader::load_pinned(&pinned) {
                     Ok(lib) => {
                         let id = lib.manifest.id.clone();
                         match discovered.entry(id) {
@@ -304,6 +312,42 @@ impl PluginManager {
 mod tests {
     use super::*;
     use ntd_plugin_api::{PluginContext, PluginPacket};
+
+    /// End to end with a real plugin when one has been built (`cargo build` in
+    /// `plugins/radial_follow`): an approved library loads through the pinned handle.
+    #[test]
+    fn an_approved_real_library_loads_through_the_pinned_handle() {
+        let built = PathBuf::from("plugins/radial_follow/target/debug").join(if cfg!(windows) {
+            "radial_follow.dll"
+        } else {
+            "libradial_follow.so"
+        });
+        if !built.exists() {
+            return;
+        }
+        let nanos = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_or(0, |d| d.as_nanos());
+        let dir = std::env::temp_dir().join(format!("ntd_plugins_pinned_{nanos}"));
+        std::fs::create_dir_all(&dir).unwrap();
+        let installed = dir.join(format!("radial_follow.{LIB_EXTENSION}"));
+        std::fs::copy(&built, &installed).unwrap();
+
+        let manager = PluginManager::with_paths_and_store(
+            vec![dir.clone()],
+            TrustStore::load(dir.join("trusted_plugins.json")),
+        );
+        assert!(manager.loaded_manifests().is_empty());
+        manager.trust_installed_file(&installed).unwrap();
+        manager.reload();
+        let manifests = manager.loaded_manifests();
+        assert_eq!(manifests.len(), 1);
+        assert_eq!(
+            manifests.first().map(|m| m.id.as_str()),
+            Some("radial_follow")
+        );
+        assert!(manager.untrusted_plugins().is_empty());
+    }
 
     #[test]
     fn test_untrusted_library_is_never_loaded() {
