@@ -49,11 +49,38 @@ const UINPUT_HELP: &str = "Failed to open /dev/uinput. This typically means the 
 3. Add your user to the group: sudo usermod -aG input $USER
 4. Log out/in, or run: sudo udevadm control --reload-rules && sudo udevadm trigger --sysname-match=uinput";
 
-fn create_uinput_device_builder() -> Result<evdev::uinput::VirtualDeviceBuilder<'static>, String> {
-    VirtualDevice::builder().map_err(|e| {
-        log::error!(target: "Injector", "CRITICAL ERROR: {e}
+/// Errors produced while creating the virtual input devices.
+#[derive(Debug, thiserror::Error)]
+pub enum InjectorError {
+    /// `/dev/uinput` could not be opened (missing permissions or kernel module).
+    #[error("{source}. {}", UINPUT_HELP)]
+    Uinput {
+        /// The error reported by the kernel.
+        #[source]
+        source: std::io::Error,
+    },
+    /// A virtual device could not be configured or created.
+    #[error("Failed to {what}: {source}")]
+    Setup {
+        /// The step that failed, for example `set ABS_X`.
+        what: &'static str,
+        /// The error reported by the kernel.
+        #[source]
+        source: std::io::Error,
+    },
+}
+
+/// Builds a `map_err` closure that names the setup step that failed.
+const fn setup(what: &'static str) -> impl FnOnce(std::io::Error) -> InjectorError {
+    move |source| InjectorError::Setup { what, source }
+}
+
+fn create_uinput_device_builder()
+-> Result<evdev::uinput::VirtualDeviceBuilder<'static>, InjectorError> {
+    VirtualDevice::builder().map_err(|source| {
+        log::error!(target: "Injector", "CRITICAL ERROR: {source}
 {UINPUT_HELP}");
-        format!("{e}. {UINPUT_HELP}")
+        InjectorError::Uinput { source }
     })
 }
 
@@ -67,7 +94,7 @@ impl Injector {
     /// # Errors
     /// Returns a human-readable error if `/dev/uinput` cannot be opened (missing
     /// permissions or kernel module) or a virtual device cannot be configured.
-    pub fn try_new() -> Result<Self, String> {
+    pub fn try_new() -> Result<Self, InjectorError> {
         let mut tablet_keys = AttributeSet::<KeyCode>::new();
         tablet_keys.insert(KeyCode::BTN_TOUCH);
         tablet_keys.insert(KeyCode::BTN_TOOL_PEN);
@@ -81,31 +108,31 @@ impl Injector {
                 AbsoluteAxisCode::ABS_X,
                 AbsInfo::new(0, 0, ABS_MAX, 0, 0, 100),
             ))
-            .map_err(|e| format!("Failed to set ABS_X: {e}"))?
+            .map_err(setup("set ABS_X"))?
             .with_absolute_axis(&UinputAbsSetup::new(
                 AbsoluteAxisCode::ABS_Y,
                 AbsInfo::new(0, 0, ABS_MAX, 0, 0, 100),
             ))
-            .map_err(|e| format!("Failed to set ABS_Y: {e}"))?
+            .map_err(setup("set ABS_Y"))?
             .with_absolute_axis(&UinputAbsSetup::new(
                 AbsoluteAxisCode::ABS_PRESSURE,
                 AbsInfo::new(0, 0, PRESSURE_MAX, 0, 0, 0),
             ))
-            .map_err(|e| format!("Failed to set ABS_PRESSURE: {e}"))?
+            .map_err(setup("set ABS_PRESSURE"))?
             .with_absolute_axis(&UinputAbsSetup::new(
                 AbsoluteAxisCode::ABS_TILT_X,
                 AbsInfo::new(0, -127, 127, 0, 0, 0),
             ))
-            .map_err(|e| format!("Failed to set ABS_TILT_X: {e}"))?
+            .map_err(setup("set ABS_TILT_X"))?
             .with_absolute_axis(&UinputAbsSetup::new(
                 AbsoluteAxisCode::ABS_TILT_Y,
                 AbsInfo::new(0, -127, 127, 0, 0, 0),
             ))
-            .map_err(|e| format!("Failed to set ABS_TILT_Y: {e}"))?
+            .map_err(setup("set ABS_TILT_Y"))?
             .with_keys(&tablet_keys)
-            .map_err(|e| format!("Failed to set tablet keys: {e}"))?
+            .map_err(setup("set tablet keys"))?
             .build()
-            .map_err(|e| format!("Failed to create virtual tablet device: {e}"))?;
+            .map_err(setup("create virtual tablet device"))?;
 
         log::info!(target: "Injector", "Virtual tablet device created: NextTabletDriver Virtual Pen");
 
@@ -122,11 +149,11 @@ impl Injector {
             .name("NextTabletDriver Virtual Mouse")
             .input_id(InputId::new(BusType::BUS_USB, 0x0001, 0x0002, 1))
             .with_relative_axes(&rel_axes)
-            .map_err(|e| format!("Failed to set REL axes: {e}"))?
+            .map_err(setup("set REL axes"))?
             .with_keys(&mouse_keys)
-            .map_err(|e| format!("Failed to set mouse keys: {e}"))?
+            .map_err(setup("set mouse keys"))?
             .build()
-            .map_err(|e| format!("Failed to create virtual mouse device: {e}"))?;
+            .map_err(setup("create virtual mouse device"))?;
 
         log::info!(target: "Injector", "Virtual mouse device created: NextTabletDriver Virtual Mouse");
 

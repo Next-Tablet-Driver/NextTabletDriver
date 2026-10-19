@@ -1,18 +1,22 @@
 //! # Plugin System Errors
 //!
 //! Strongly-typed errors encountered during dynamic library loading,
-//! ABI handshake negotiation, property synchronization, and execution.
+//! ABI handshake negotiation, property synchronization, execution, trust decisions
+//! and plugin removal.
 
-use std::fmt;
+use std::path::PathBuf;
 
 /// Errors produced during plugin loading, validation, or invocation.
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum PluginError {
     /// An I/O error occurred while inspecting plugin files or directories.
-    Io(std::io::Error),
+    #[error("Plugin I/O error: {0}")]
+    Io(#[from] std::io::Error),
     /// A dynamic library loading error occurred via `libloading`.
-    LibraryLoading(libloading::Error),
+    #[error("Dynamic library load error: {0}")]
+    LibraryLoading(#[from] libloading::Error),
     /// The plugin binary did not present the expected magic identifier.
+    #[error("Invalid plugin magic identifier: expected 0x{expected:08X}, found 0x{found:08X}")]
     InvalidMagic {
         /// The expected magic constant.
         expected: u32,
@@ -20,6 +24,7 @@ pub enum PluginError {
         found: u32,
     },
     /// The plugin binary targets an incompatible ABI version.
+    #[error("Incompatible plugin ABI version: expected {expected}, found {found}")]
     IncompatibleAbiVersion {
         /// The expected host ABI version.
         expected: u32,
@@ -27,82 +32,55 @@ pub enum PluginError {
         found: u32,
     },
     /// A required FFI symbol was not exported by the plugin library.
+    #[error("Missing required plugin FFI symbol: '{0}'")]
     MissingSymbol(&'static str),
     /// The plugin manifest could not be read or deserialized.
+    #[error("Failed to parse plugin manifest: {0}")]
     ManifestError(String),
     /// Instantiation of the plugin instance via `ntd_plugin_create` failed.
+    #[error("Plugin instance creation returned a null pointer")]
     InstanceCreationFailed,
     /// An error occurred while setting a plugin configuration property.
+    #[error("Failed to set plugin property '{0}'")]
     PropertyError(String),
     /// JSON serialization or deserialization failed.
-    Serialization(serde_json::Error),
+    #[error("Plugin serialization error: {0}")]
+    Serialization(#[from] serde_json::Error),
     /// String conversion to null-terminated C string failed due to interior nulls.
-    CString(std::ffi::NulError),
+    #[error("CString conversion error: {0}")]
+    CString(#[from] std::ffi::NulError),
 }
 
-impl fmt::Display for PluginError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Io(err) => write!(f, "Plugin I/O error: {err}"),
-            Self::LibraryLoading(err) => write!(f, "Dynamic library load error: {err}"),
-            Self::InvalidMagic { expected, found } => {
-                write!(
-                    f,
-                    "Invalid plugin magic identifier: expected 0x{expected:08X}, found 0x{found:08X}"
-                )
-            }
-            Self::IncompatibleAbiVersion { expected, found } => {
-                write!(
-                    f,
-                    "Incompatible plugin ABI version: expected {expected}, found {found}"
-                )
-            }
-            Self::MissingSymbol(name) => write!(f, "Missing required plugin FFI symbol: '{name}'"),
-            Self::ManifestError(msg) => write!(f, "Failed to parse plugin manifest: {msg}"),
-            Self::InstanceCreationFailed => {
-                write!(f, "Plugin instance creation returned a null pointer")
-            }
-            Self::PropertyError(key) => write!(f, "Failed to set plugin property '{key}'"),
-            Self::Serialization(err) => write!(f, "Plugin serialization error: {err}"),
-            Self::CString(err) => write!(f, "CString conversion error: {err}"),
-        }
-    }
+/// Errors produced while approving or revoking a plugin library.
+#[derive(Debug, thiserror::Error)]
+pub enum TrustError {
+    /// The library is not waiting for approval, for instance because the file changed since
+    /// it was listed.
+    #[error("This plugin is no longer pending approval (the file changed?)")]
+    NotPending,
+    /// The library could not be read, or the trust store could not be written.
+    #[error(transparent)]
+    Io(#[from] std::io::Error),
 }
 
-impl std::error::Error for PluginError {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        match self {
-            Self::Io(err) => Some(err),
-            Self::LibraryLoading(err) => Some(err),
-            Self::Serialization(err) => Some(err),
-            Self::CString(err) => Some(err),
-            _ => None,
-        }
-    }
-}
-
-impl From<std::io::Error> for PluginError {
-    fn from(err: std::io::Error) -> Self {
-        Self::Io(err)
-    }
-}
-
-impl From<libloading::Error> for PluginError {
-    fn from(err: libloading::Error) -> Self {
-        Self::LibraryLoading(err)
-    }
-}
-
-impl From<serde_json::Error> for PluginError {
-    fn from(err: serde_json::Error) -> Self {
-        Self::Serialization(err)
-    }
-}
-
-impl From<std::ffi::NulError> for PluginError {
-    fn from(err: std::ffi::NulError) -> Self {
-        Self::CString(err)
-    }
+/// Errors produced while removing a plugin library from disk.
+#[derive(Debug, thiserror::Error)]
+pub enum DeletePluginError {
+    /// No loaded plugin has this id.
+    #[error("Plugin '{id}' is not loaded")]
+    NotLoaded {
+        /// The id that was asked for.
+        id: String,
+    },
+    /// The library file could not be removed.
+    #[error("Failed to delete plugin file at {}: {source}", path.display())]
+    Remove {
+        /// The library file.
+        path: PathBuf,
+        /// Why it could not be removed.
+        #[source]
+        source: std::io::Error,
+    },
 }
 
 #[cfg(test)]
@@ -191,6 +169,32 @@ mod tests {
         let error = PluginError::from(cause);
         assert!(matches!(error, PluginError::LibraryLoading(_)));
         assert!(error.to_string().starts_with("Dynamic library load error"));
+        assert!(error.source().is_some());
+    }
+
+    #[test]
+    fn a_trust_error_says_why_the_approval_failed() {
+        assert_eq!(
+            TrustError::NotPending.to_string(),
+            "This plugin is no longer pending approval (the file changed?)"
+        );
+        let io = std::io::Error::other("disk full");
+        assert_eq!(TrustError::from(io).to_string(), "disk full");
+    }
+
+    #[test]
+    fn a_failed_removal_keeps_the_path_and_the_cause() {
+        let error = DeletePluginError::Remove {
+            path: PathBuf::from("plugins/filter.dll"),
+            source: std::io::Error::other("in use"),
+        };
+        assert_eq!(
+            error.to_string(),
+            format!(
+                "Failed to delete plugin file at {}: in use",
+                PathBuf::from("plugins/filter.dll").display()
+            )
+        );
         assert!(error.source().is_some());
     }
 }

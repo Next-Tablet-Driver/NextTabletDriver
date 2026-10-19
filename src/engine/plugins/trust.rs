@@ -13,6 +13,7 @@
 //!
 //! Anything else is reported as *untrusted* and left on disk, unloaded.
 
+use super::error::TrustError;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
@@ -68,8 +69,8 @@ impl TrustStore {
     /// Approves a library hash and persists the store.
     ///
     /// # Errors
-    /// Returns an error string if the store cannot be written; the approval is then not kept.
-    pub fn trust(&mut self, sha256: &str, file_name: &str) -> Result<(), String> {
+    /// Returns an error if the store cannot be written; the approval is then not kept.
+    pub fn trust(&mut self, sha256: &str, file_name: &str) -> Result<(), TrustError> {
         let previous = self
             .entries
             .insert(sha256.to_string(), file_name.to_string());
@@ -85,24 +86,24 @@ impl TrustStore {
     /// Forgets a library hash and persists the store.
     ///
     /// # Errors
-    /// Returns an error string if the store cannot be written.
-    pub fn revoke(&mut self, sha256: &str) -> Result<(), String> {
+    /// Returns an error if the store cannot be written.
+    pub fn revoke(&mut self, sha256: &str) -> Result<(), TrustError> {
         if self.entries.remove(sha256).is_some() {
             self.save()?;
         }
         Ok(())
     }
 
-    fn save(&self) -> Result<(), String> {
+    fn save(&self) -> Result<(), TrustError> {
         let json = format!("{:#}", serde_json::json!({ "trusted": &self.entries }));
         if let Some(parent) = self.path.parent() {
-            fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+            fs::create_dir_all(parent)?;
         }
         let tmp = self.path.with_extension("json.tmp");
-        fs::write(&tmp, json).map_err(|e| e.to_string())?;
+        fs::write(&tmp, json)?;
         fs::rename(&tmp, &self.path).map_err(|e| {
             let _ = fs::remove_file(&tmp);
-            e.to_string()
+            TrustError::from(e)
         })
     }
 }

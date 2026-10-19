@@ -122,7 +122,7 @@ pub fn load_profile(state: State<'_, Arc<SharedState>>, path: String) -> Result<
                 .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
             Ok(())
         }
-        Err(e) => Err(e),
+        Err(e) => Err(e.to_string()),
     }
 }
 
@@ -145,7 +145,7 @@ pub fn import_otd_profile(state: State<'_, Arc<SharedState>>, path: String) -> R
                 .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
             Ok(())
         }
-        Err(e) => Err(e),
+        Err(e) => Err(e.to_string()),
     }
 }
 
@@ -158,6 +158,7 @@ pub fn export_profile(state: State<'_, Arc<SharedState>>, path: String) -> Resul
         .unwrap_or_log("config_read_tauri")
         .clone();
     next_tablet_driver::settings::save_to_path(std::path::Path::new(&path), &current)
+        .map_err(|e| e.to_string())
 }
 
 #[derive(serde::Serialize)]
@@ -202,6 +203,7 @@ pub fn clear_logs() {
 pub fn get_releases()
 -> Result<Vec<next_tablet_driver::application::services::autoupdate::models::Release>, String> {
     next_tablet_driver::application::services::autoupdate::github::fetch_releases()
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -307,7 +309,10 @@ Install \"{}\"?",
     std::fs::copy(&source, &dest).map_err(|e| format!("Failed to copy plugin: {e}"))?;
 
     // The user has just confirmed this exact file: remember its hash so it is allowed to load.
-    state.plugins.trust_installed_file(&dest)?;
+    state
+        .plugins
+        .trust_installed_file(&dest)
+        .map_err(|e| e.to_string())?;
     state.plugins.reload();
     Ok(true)
 }
@@ -353,13 +358,20 @@ pub async fn trust_plugin(
         return Ok(false);
     }
 
-    state.plugins.trust_plugin(&sha256)?;
+    state
+        .plugins
+        .trust_plugin(&sha256)
+        .map_err(|e| e.to_string())?;
     Ok(true)
 }
 
 #[tauri::command]
 pub fn delete_plugin(state: State<'_, Arc<SharedState>>, id: String) -> Result<(), String> {
-    state.plugins.delete_plugin(&id).map(|_| ())
+    state
+        .plugins
+        .delete_plugin(&id)
+        .map(|_| ())
+        .map_err(|e| e.to_string())
 }
 
 /// Theme files found in the themes folder; the frontend parses and validates them.
@@ -385,12 +397,14 @@ pub async fn import_theme(
         return Ok(None);
     };
     let path = picked.into_path().map_err(|e| e.to_string())?;
-    next_tablet_driver::settings::themes::import_theme_file(&path).map(Some)
+    next_tablet_driver::settings::themes::import_theme_file(&path)
+        .map(Some)
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn delete_theme(id: String) -> Result<(), String> {
-    next_tablet_driver::settings::themes::delete_theme_file(&id)
+    next_tablet_driver::settings::themes::delete_theme_file(&id).map_err(|e| e.to_string())
 }
 
 #[tauri::command]

@@ -16,10 +16,11 @@ pub struct StatsServer {
 
 impl StatsServer {
     /// Starts the stats WebSocket server on `ip:port`.
-    pub fn start(ip: &str, port: u16) -> Result<Self, String> {
-        let addr = format!("{ip}:{port}");
-        let listener =
-            TcpListener::bind(&addr).map_err(|e| format!("Failed to bind {addr}: {e}"))?;
+    ///
+    /// # Errors
+    /// Returns the I/O error if the address cannot be bound.
+    pub fn start(ip: &str, port: u16) -> std::io::Result<Self> {
+        let listener = TcpListener::bind(format!("{ip}:{port}"))?;
         let _ = listener.set_nonblocking(true);
 
         let shutdown_flag = Arc::new(AtomicBool::new(false));

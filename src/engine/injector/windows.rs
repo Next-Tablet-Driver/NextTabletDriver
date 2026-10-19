@@ -45,6 +45,10 @@ pub struct Injector {
     last_metrics_refresh: Instant,
 }
 
+/// Creating the injector cannot fail on Windows; the alias keeps `Injector::try_new` shaped
+/// like the Linux one.
+pub type InjectorError = std::convert::Infallible;
+
 impl Default for Injector {
     fn default() -> Self {
         Self::new()
@@ -56,7 +60,8 @@ impl Injector {
     ///
     /// # Errors
     /// Never fails on Windows; the `Result` keeps the cross-platform API uniform.
-    pub fn try_new() -> Result<Self, String> {
+    #[must_use]
+    pub fn try_new() -> Result<Self, InjectorError> {
         Ok(Self::new())
     }
 

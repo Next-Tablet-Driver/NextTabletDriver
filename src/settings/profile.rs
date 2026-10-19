@@ -5,6 +5,17 @@ use crate::core::config::models::MappingConfig;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+/// Errors produced while reading or writing a profile file.
+#[derive(Debug, thiserror::Error)]
+pub enum ProfileError {
+    /// The file could not be read, written or renamed.
+    #[error(transparent)]
+    Io(#[from] std::io::Error),
+    /// The configuration could not be serialized, or the file is not valid JSON.
+    #[error(transparent)]
+    Json(#[from] serde_json::Error),
+}
+
 /// Moves an unreadable/invalid settings file out of the way (as `<name>.corrupt.bak`) so
 /// the next save does not silently overwrite what the user may still want to recover.
 fn quarantine_corrupt_file(path: &Path) {
@@ -31,15 +42,18 @@ fn quarantine_corrupt_file(path: &Path) {
 /// if the process crashes mid-write.
 ///
 /// # Errors
-/// Returns an error string if serialization fails, the temporary file cannot be written,
+/// Returns an error if serialization fails, the temporary file cannot be written,
 /// or the final rename operation fails.
-pub fn save_to_path(path: &Path, config: &MappingConfig) -> Result<(), String> {
+pub fn save_to_path(path: &Path, config: &MappingConfig) -> Result<(), ProfileError> {
     write_json_atomically(path, serde_json::to_string_pretty(config))
 }
 
 /// Writes serialized JSON to `path` through a temporary file; `json` carries the outcome of the
 /// serialization so that a failure is reported together with the file it was meant for.
-fn write_json_atomically(path: &Path, json: serde_json::Result<String>) -> Result<(), String> {
+fn write_json_atomically(
+    path: &Path,
+    json: serde_json::Result<String>,
+) -> Result<(), ProfileError> {
     if let Some(parent) = path.parent()
         && !parent.exists()
     {
@@ -48,7 +62,7 @@ fn write_json_atomically(path: &Path, json: serde_json::Result<String>) -> Resul
 
     let json = json.map_err(|e| {
         log::error!(target: "Config", "Failed to serialize config for {}: {e}", path.display());
-        e.to_string()
+        ProfileError::from(e)
     })?;
 
     let tmp_path = path.with_extension("json.tmp");
@@ -59,14 +73,14 @@ fn write_json_atomically(path: &Path, json: serde_json::Result<String>) -> Resul
     write_result.map_err(|e| {
         log::error!(target: "Config", "Failed to write temp file {}: {e}", tmp_path.display());
         let _ = fs::remove_file(&tmp_path);
-        e.to_string()
+        ProfileError::from(e)
     })?;
 
     fs::rename(&tmp_path, path).map_err(|e| {
         log::error!(target: "Config", "Failed to rename {}: {e}", tmp_path.display());
         // Clean up the orphaned temp file on rename failure
         let _ = fs::remove_file(&tmp_path);
-        e.to_string()
+        ProfileError::from(e)
     })?;
 
     Ok(())
@@ -101,7 +115,7 @@ pub fn sanitize_profile_name(name: &str) -> String {
 ///
 /// # Errors
 /// Returns an error if the profile name cannot be sanitized or if `save_to_path` fails.
-pub fn save_settings(name: &str, config: &MappingConfig) -> Result<(), String> {
+pub fn save_settings(name: &str, config: &MappingConfig) -> Result<(), ProfileError> {
     let dir = get_profiles_dir();
     let sanitized_name = sanitize_profile_name(name);
 
@@ -124,7 +138,7 @@ pub fn save_settings(name: &str, config: &MappingConfig) -> Result<(), String> {
 ///
 /// # Errors
 /// Returns an error if the settings directory cannot be resolved or if `save_to_path` fails.
-pub fn save_last_session(config: &MappingConfig) -> Result<(), String> {
+pub fn save_last_session(config: &MappingConfig) -> Result<(), ProfileError> {
     let path = get_settings_dir().join("last_session.json");
     save_to_path(&path, config)?;
     log::trace!(target: "Config", "Last session persistent state updated");
@@ -175,14 +189,14 @@ pub fn load_last_session() -> Option<(MappingConfig, Vec<String>)> {
 ///
 /// # Errors
 /// Returns an error if the file cannot be read or if the JSON content is invalid.
-pub fn load_settings_from_file(path: &Path) -> Result<(MappingConfig, Vec<String>), String> {
+pub fn load_settings_from_file(path: &Path) -> Result<(MappingConfig, Vec<String>), ProfileError> {
     let content = fs::read_to_string(path).map_err(|e| {
         log::error!(target: "Config", "Failed to read settings file {}: {e}", path.display());
-        e.to_string()
+        ProfileError::from(e)
     })?;
     let mut config: MappingConfig = serde_json::from_str(&content).map_err(|e| {
         log::error!(target: "Config", "Failed to parse settings JSON from {}: {e}", path.display());
-        e.to_string()
+        ProfileError::from(e)
     })?;
 
     let corrections = config.validate_and_repair();
@@ -388,7 +402,8 @@ mod tests {
         let path = dir.0.join("never.json");
         let error = write_json_atomically(&path, Err(serde_json::from_str::<u8>("x").unwrap_err()))
             .unwrap_err();
-        assert!(error.contains("line 1"), "{error}");
+        assert!(matches!(error, ProfileError::Json(_)), "{error}");
+        assert!(error.to_string().contains("line 1"), "{error}");
         assert!(!path.exists());
     }
 

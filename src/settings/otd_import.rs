@@ -65,19 +65,29 @@ struct OtdRelativeSettings {
     rotation: f32,
 }
 
+/// Errors produced while importing an `OpenTabletDriver` configuration.
+#[derive(Debug, thiserror::Error)]
+pub enum OtdImportError {
+    /// The file could not be read.
+    #[error("Failed to read OTD settings: {0}")]
+    Read(#[source] std::io::Error),
+    /// The content is not a valid OTD settings document.
+    #[error("Failed to parse OTD settings: {0}")]
+    Parse(#[source] serde_json::Error),
+    /// The document has no profile to import.
+    #[error("No profiles found in OTD settings")]
+    NoProfiles,
+}
+
 /// Parses an `OpenTabletDriver` configuration string into a `NextTabletDriver` `MappingConfig`.
 /// It converts OTD's Center-based Display coordinates to `NextTabletDriver`'s Top-Left coordinates.
 ///
 /// # Errors
-/// Returns an error string if the JSON string cannot be parsed or contains no profiles.
-pub fn parse_otd_profile_str(content: &str) -> Result<MappingConfig, String> {
-    let otd: OtdSettings =
-        serde_json::from_str(content).map_err(|e| format!("Failed to parse OTD settings: {e}"))?;
+/// Returns an error if the JSON string cannot be parsed or contains no profiles.
+pub fn parse_otd_profile_str(content: &str) -> Result<MappingConfig, OtdImportError> {
+    let otd: OtdSettings = serde_json::from_str(content).map_err(OtdImportError::Parse)?;
 
-    let profile = otd
-        .profiles
-        .first()
-        .ok_or("No profiles found in OTD settings")?;
+    let profile = otd.profiles.first().ok_or(OtdImportError::NoProfiles)?;
 
     let mut config = MappingConfig::default();
 
@@ -123,10 +133,9 @@ pub fn parse_otd_profile_str(content: &str) -> Result<MappingConfig, String> {
 /// Imports an `OpenTabletDriver` configuration or preset file into a `NextTabletDriver` `MappingConfig`.
 ///
 /// # Errors
-/// Returns an error string if the file could not be read or parsed.
-pub fn import_otd_profile(path: &Path) -> Result<MappingConfig, String> {
-    let content =
-        fs::read_to_string(path).map_err(|e| format!("Failed to read OTD settings: {e}"))?;
+/// Returns an error if the file could not be read or parsed.
+pub fn import_otd_profile(path: &Path) -> Result<MappingConfig, OtdImportError> {
+    let content = fs::read_to_string(path).map_err(OtdImportError::Read)?;
     let config = parse_otd_profile_str(&content)?;
     log::info!(target: "Config", "Successfully imported OTD profile from {:?}", path.file_name().unwrap_or_default().display());
     Ok(config)
@@ -283,7 +292,7 @@ mod tests {
     #[test]
     fn a_file_that_does_not_exist_cannot_be_imported() {
         let error = import_otd_profile(Path::new("ntd-no-such-otd-settings.json")).unwrap_err();
-        assert!(error.starts_with("Failed to read OTD settings"), "{error}");
+        assert!(matches!(error, OtdImportError::Read(_)), "{error}");
     }
 
     #[test]

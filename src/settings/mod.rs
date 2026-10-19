@@ -10,7 +10,7 @@ mod session;
 pub use logging::log_mapping_config;
 pub use paths::{get_plugins_dir, get_profiles_dir, get_settings_dir, migrate_profiles_to_subdir};
 pub use profile::{
-    list_profiles, load_last_session, load_settings_from_file, sanitize_profile_name,
+    ProfileError, list_profiles, load_last_session, load_settings_from_file, sanitize_profile_name,
     save_last_session, save_settings, save_to_path,
 };
 pub use session::{SessionMeta, load_session_meta, save_session_meta};
