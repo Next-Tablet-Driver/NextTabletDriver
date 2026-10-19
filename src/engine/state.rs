@@ -82,6 +82,10 @@ pub struct DeviceState {
     pub physical_size: (f32, f32),
     pub hardware_size: (f32, f32),
     pub max_pressure: f32,
+    /// Number of buttons on the pen (0 when the tablet description does not say).
+    pub pen_button_count: u8,
+    /// Number of keys on the tablet body (0 when it has none or the description does not say).
+    pub aux_button_count: u8,
 }
 
 impl Default for DeviceState {
@@ -93,6 +97,8 @@ impl Default for DeviceState {
             physical_size: (160.0, 100.0),
             hardware_size: (32767.0, 32767.0),
             max_pressure: 8192.0,
+            pen_button_count: 0,
+            aux_button_count: 0,
         }
     }
 }

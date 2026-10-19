@@ -36,6 +36,7 @@ use criterion::{Criterion, Throughput, criterion_group};
 use crossbeam_channel::bounded;
 use next_tablet_driver::application::state::UiSnapshot;
 use next_tablet_driver::core::config::models::{DriverMode, MappingConfig};
+use next_tablet_driver::core::input::{Key, MouseButton};
 use next_tablet_driver::drivers::{NextTabletDriver, TabletData, TabletStatus};
 use next_tablet_driver::engine::injector::InputSink;
 use next_tablet_driver::engine::pipeline::Pipeline;
@@ -116,6 +117,14 @@ impl InputSink for NullSink {
     }
 
     fn set_left_button(&mut self, is_down: bool) {
+        self.calls += u64::from(is_down);
+    }
+
+    fn set_mouse_button(&mut self, _button: MouseButton, is_down: bool) {
+        self.calls += u64::from(is_down);
+    }
+
+    fn set_key(&mut self, _key: Key, is_down: bool) {
         self.calls += u64::from(is_down);
     }
 }

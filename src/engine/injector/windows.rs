@@ -12,14 +12,18 @@
 //! between our packets, and expressing relative moves as absolute ones keeps
 //! them immune to the OS pointer speed/acceleration curve.
 
+use crate::core::input::{Key, MouseButton};
 use std::time::{Duration, Instant};
 use windows_sys::Win32::Foundation::POINT;
 use windows_sys::Win32::UI::Input::KeyboardAndMouse::{
-    INPUT, INPUT_0, INPUT_MOUSE, MOUSEEVENTF_ABSOLUTE, MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP,
-    MOUSEEVENTF_MOVE, MOUSEINPUT, SendInput,
+    INPUT, INPUT_0, INPUT_KEYBOARD, INPUT_MOUSE, KEYBDINPUT, KEYEVENTF_EXTENDEDKEY,
+    KEYEVENTF_KEYUP, KEYEVENTF_SCANCODE, MOUSEEVENTF_ABSOLUTE, MOUSEEVENTF_LEFTDOWN,
+    MOUSEEVENTF_LEFTUP, MOUSEEVENTF_MIDDLEDOWN, MOUSEEVENTF_MIDDLEUP, MOUSEEVENTF_MOVE,
+    MOUSEEVENTF_RIGHTDOWN, MOUSEEVENTF_RIGHTUP, MOUSEEVENTF_XDOWN, MOUSEEVENTF_XUP, MOUSEINPUT,
+    SendInput,
 };
 use windows_sys::Win32::UI::WindowsAndMessaging::{
-    GetCursorPos, GetSystemMetrics, SM_CXSCREEN, SM_CYSCREEN,
+    GetCursorPos, GetSystemMetrics, SM_CXSCREEN, SM_CYSCREEN, XBUTTON1, XBUTTON2,
 };
 
 /// Minimum interval between `GetSystemMetrics` refreshes for absolute-mode
@@ -187,6 +191,182 @@ impl Injector {
 
         send_mouse_input(0, 0, flags);
     }
+
+    /// Presses or releases a mouse button on behalf of a button binding.
+    pub fn set_mouse_button(&mut self, button: MouseButton, is_down: bool) {
+        let (flags, data) = mouse_button_event(button, is_down);
+        send_mouse_input_with_data(0, 0, data, flags);
+    }
+
+    /// Presses or releases a keyboard key on behalf of a button binding.
+    ///
+    /// The key is sent as a scan code, like a real keyboard does, because games and other
+    /// programs that read the keyboard directly ignore events made of a virtual key only.
+    pub fn set_key(&mut self, key: Key, is_down: bool) {
+        send_key_input(key, is_down);
+    }
+}
+
+/// The `SendInput` flags and extra data that press or release `button`.
+const fn mouse_button_event(button: MouseButton, is_down: bool) -> (u32, u32) {
+    match (button, is_down) {
+        (MouseButton::Left, true) => (MOUSEEVENTF_LEFTDOWN, 0),
+        (MouseButton::Left, false) => (MOUSEEVENTF_LEFTUP, 0),
+        (MouseButton::Right, true) => (MOUSEEVENTF_RIGHTDOWN, 0),
+        (MouseButton::Right, false) => (MOUSEEVENTF_RIGHTUP, 0),
+        (MouseButton::Middle, true) => (MOUSEEVENTF_MIDDLEDOWN, 0),
+        (MouseButton::Middle, false) => (MOUSEEVENTF_MIDDLEUP, 0),
+        (MouseButton::Back, true) => (MOUSEEVENTF_XDOWN, XBUTTON1 as u32),
+        (MouseButton::Back, false) => (MOUSEEVENTF_XUP, XBUTTON1 as u32),
+        (MouseButton::Forward, true) => (MOUSEEVENTF_XDOWN, XBUTTON2 as u32),
+        (MouseButton::Forward, false) => (MOUSEEVENTF_XUP, XBUTTON2 as u32),
+    }
+}
+
+/// The hardware scan code of `key` (set 1), by position on a US keyboard.
+///
+/// The code does not depend on the keyboard layout, so the key that was recorded in the
+/// interface is the key that is pressed here, on any layout. Windows turns it into the right
+/// character for the layout in use.
+const fn scan_code(key: Key) -> u16 {
+    match key {
+        Key::A => 0x1E,
+        Key::B => 0x30,
+        Key::C => 0x2E,
+        Key::D => 0x20,
+        Key::E => 0x12,
+        Key::F => 0x21,
+        Key::G => 0x22,
+        Key::H => 0x23,
+        Key::I => 0x17,
+        Key::J => 0x24,
+        Key::K => 0x25,
+        Key::L => 0x26,
+        Key::M => 0x32,
+        Key::N => 0x31,
+        Key::O => 0x18,
+        Key::P => 0x19,
+        Key::Q => 0x10,
+        Key::R => 0x13,
+        Key::S => 0x1F,
+        Key::T => 0x14,
+        Key::U => 0x16,
+        Key::V => 0x2F,
+        Key::W => 0x11,
+        Key::X => 0x2D,
+        Key::Y => 0x15,
+        Key::Z => 0x2C,
+        Key::Num1 => 0x02,
+        Key::Num2 => 0x03,
+        Key::Num3 => 0x04,
+        Key::Num4 => 0x05,
+        Key::Num5 => 0x06,
+        Key::Num6 => 0x07,
+        Key::Num7 => 0x08,
+        Key::Num8 => 0x09,
+        Key::Num9 => 0x0A,
+        Key::Num0 => 0x0B,
+        Key::F1 => 0x3B,
+        Key::F2 => 0x3C,
+        Key::F3 => 0x3D,
+        Key::F4 => 0x3E,
+        Key::F5 => 0x3F,
+        Key::F6 => 0x40,
+        Key::F7 => 0x41,
+        Key::F8 => 0x42,
+        Key::F9 => 0x43,
+        Key::F10 => 0x44,
+        Key::F11 => 0x57,
+        Key::F12 => 0x58,
+        Key::F13 => 0x64,
+        Key::F14 => 0x65,
+        Key::F15 => 0x66,
+        Key::F16 => 0x67,
+        Key::F17 => 0x68,
+        Key::F18 => 0x69,
+        Key::F19 => 0x6A,
+        Key::F20 => 0x6B,
+        Key::F21 => 0x6C,
+        Key::F22 => 0x6D,
+        Key::F23 => 0x6E,
+        Key::F24 => 0x76,
+        Key::Escape => 0x01,
+        Key::Tab => 0x0F,
+        Key::Enter => 0x1C,
+        Key::Space => 0x39,
+        Key::Backspace => 0x0E,
+        Key::Delete => 0x53,
+        Key::Insert => 0x52,
+        Key::Home => 0x47,
+        Key::End => 0x4F,
+        Key::PageUp => 0x49,
+        Key::PageDown => 0x51,
+        Key::Up => 0x48,
+        Key::Down => 0x50,
+        Key::Left => 0x4B,
+        Key::Right => 0x4D,
+        Key::Ctrl => 0x1D,
+        Key::Shift => 0x2A,
+        Key::Alt => 0x38,
+        Key::Meta => 0x5B,
+        Key::Minus => 0x0C,
+        Key::Equals => 0x0D,
+        Key::LeftBracket => 0x1A,
+        Key::RightBracket => 0x1B,
+        Key::Backslash => 0x2B,
+        Key::Semicolon => 0x27,
+        Key::Quote => 0x28,
+        Key::Backtick => 0x29,
+        Key::Comma => 0x33,
+        Key::Period => 0x34,
+        Key::Slash => 0x35,
+    }
+}
+
+/// Keys whose scan code needs the "extended" flag (the grey keys next to the main block).
+const fn is_extended_key(key: Key) -> bool {
+    matches!(
+        key,
+        Key::Delete
+            | Key::Insert
+            | Key::Home
+            | Key::End
+            | Key::PageUp
+            | Key::PageDown
+            | Key::Up
+            | Key::Down
+            | Key::Left
+            | Key::Right
+            | Key::Meta
+    )
+}
+
+fn send_key_input(key: Key, is_down: bool) {
+    let mut flags = KEYEVENTF_SCANCODE;
+    if !is_down {
+        flags |= KEYEVENTF_KEYUP;
+    }
+    if is_extended_key(key) {
+        flags |= KEYEVENTF_EXTENDEDKEY;
+    }
+
+    let input = INPUT {
+        r#type: INPUT_KEYBOARD,
+        Anonymous: INPUT_0 {
+            ki: KEYBDINPUT {
+                wVk: 0,
+                wScan: scan_code(key),
+                dwFlags: flags,
+                time: 0,
+                dwExtraInfo: 0,
+            },
+        },
+    };
+    let cbsize = i32::try_from(size_of::<INPUT>()).unwrap_or(i32::MAX);
+    // SAFETY: `input` is a fully-initialized, valid `INPUT` for the duration of the call.
+    unsafe {
+        SendInput(1, &raw const input, cbsize);
+    }
 }
 
 fn query_screen_size() -> (i32, i32) {
@@ -231,13 +411,17 @@ fn normalize_absolute(
 }
 
 fn send_mouse_input(dx: i32, dy: i32, flags: u32) {
+    send_mouse_input_with_data(dx, dy, 0, flags);
+}
+
+fn send_mouse_input_with_data(dx: i32, dy: i32, mouse_data: u32, flags: u32) {
     let input = INPUT {
         r#type: INPUT_MOUSE,
         Anonymous: INPUT_0 {
             mi: MOUSEINPUT {
                 dx,
                 dy,
-                mouseData: 0,
+                mouseData: mouse_data,
                 dwFlags: flags,
                 time: 0,
                 dwExtraInfo: 0,
@@ -306,6 +490,67 @@ mod tests {
         injector.set_left_button(false);
         assert!(!injector.last_pressure_down);
         injector.set_proximity(true);
+    }
+
+    #[test]
+    fn each_mouse_button_has_its_own_down_and_up_event() {
+        assert_eq!(
+            mouse_button_event(MouseButton::Right, true),
+            (MOUSEEVENTF_RIGHTDOWN, 0)
+        );
+        assert_eq!(
+            mouse_button_event(MouseButton::Right, false),
+            (MOUSEEVENTF_RIGHTUP, 0)
+        );
+        assert_eq!(
+            mouse_button_event(MouseButton::Middle, true),
+            (MOUSEEVENTF_MIDDLEDOWN, 0)
+        );
+    }
+
+    #[test]
+    fn the_side_buttons_are_told_apart_by_the_extra_data() {
+        assert_eq!(
+            mouse_button_event(MouseButton::Back, true),
+            (MOUSEEVENTF_XDOWN, u32::from(XBUTTON1))
+        );
+        assert_eq!(
+            mouse_button_event(MouseButton::Forward, false),
+            (MOUSEEVENTF_XUP, u32::from(XBUTTON2))
+        );
+    }
+
+    #[test]
+    fn keys_use_the_scan_codes_of_their_position_on_a_us_keyboard() {
+        assert_eq!(scan_code(Key::A), 0x1E);
+        assert_eq!(scan_code(Key::Q), 0x10);
+        assert_eq!(scan_code(Key::Z), 0x2C);
+        assert_eq!(scan_code(Key::Num1), 0x02);
+        assert_eq!(scan_code(Key::Num0), 0x0B);
+        assert_eq!(scan_code(Key::F1), 0x3B);
+        assert_eq!(scan_code(Key::F12), 0x58);
+        assert_eq!(scan_code(Key::Escape), 0x01);
+        assert_eq!(scan_code(Key::Space), 0x39);
+        assert_eq!(scan_code(Key::Ctrl), 0x1D);
+    }
+
+    #[test]
+    fn no_two_keys_share_a_scan_code_and_extended_flag() {
+        for (index, &key) in Key::ALL.iter().enumerate() {
+            for &other in Key::ALL.iter().skip(index + 1) {
+                let same = scan_code(key) == scan_code(other)
+                    && is_extended_key(key) == is_extended_key(other);
+                assert!(!same, "{key:?} / {other:?}");
+            }
+        }
+    }
+
+    #[test]
+    fn only_the_grey_keys_are_extended() {
+        assert!(is_extended_key(Key::Left));
+        assert!(is_extended_key(Key::Delete));
+        assert!(!is_extended_key(Key::A));
+        assert!(!is_extended_key(Key::Enter));
     }
 
     #[test]

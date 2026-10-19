@@ -32,6 +32,7 @@ pub fn run() {
         commands::set_config,
         commands::save_config,
         commands::reset_config,
+        commands::normalize_binding,
         commands::load_profile,
         commands::import_otd_profile,
         commands::export_profile,

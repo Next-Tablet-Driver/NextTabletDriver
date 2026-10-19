@@ -39,6 +39,11 @@ pub trait NextTabletDriver {
     fn get_physical_specs(&self) -> (f32, f32);
     /// Returns the USB identity of the device: `(VendorID, ProductID)`.
     fn get_vid_pid(&self) -> (u16, u16);
+    /// Returns how many buttons the pen has and how many keys the tablet has:
+    /// `(pen_buttons, tablet_keys)`. Unknown counts are reported as 0.
+    fn get_button_counts(&self) -> (u8, u8) {
+        (0, 0)
+    }
     /// Attempts to parse a raw USB packet into standard [`TabletData`].
     /// Returns `None` if the packet is malformed or empty.
     fn parse(&self, data: &[u8]) -> Option<TabletData>;

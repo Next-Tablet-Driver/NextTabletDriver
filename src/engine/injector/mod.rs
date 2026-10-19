@@ -33,6 +33,8 @@
 //!   user reports, linking actual stutters to slow injection calls, not as a
 //!   speculative optimization.
 
+use crate::core::input::{Key, MouseButton};
+
 /// What the polling loop needs from an OS input injector.
 ///
 /// The real [`Injector`] talks to the operating system. Having the loop depend on this trait
@@ -57,6 +59,10 @@ pub trait InputSink {
     fn move_relative(&mut self, dx: f32, dy: f32);
     /// Presses or releases the tip button.
     fn set_left_button(&mut self, is_down: bool);
+    /// Presses or releases a mouse button on behalf of a button binding.
+    fn set_mouse_button(&mut self, button: MouseButton, is_down: bool);
+    /// Presses or releases a keyboard key on behalf of a button binding.
+    fn set_key(&mut self, key: Key, is_down: bool);
 }
 
 impl InputSink for Injector {
@@ -83,6 +89,14 @@ impl InputSink for Injector {
 
     fn set_left_button(&mut self, is_down: bool) {
         Self::set_left_button(self, is_down);
+    }
+
+    fn set_mouse_button(&mut self, button: MouseButton, is_down: bool) {
+        Self::set_mouse_button(self, button, is_down);
+    }
+
+    fn set_key(&mut self, key: Key, is_down: bool) {
+        Self::set_key(self, key, is_down);
     }
 }
 
@@ -133,11 +147,15 @@ mod tests {
             }
             fn move_relative(&mut self, _dx: f32, _dy: f32) {}
             fn set_left_button(&mut self, _is_down: bool) {}
+            fn set_mouse_button(&mut self, _button: MouseButton, _is_down: bool) {}
+            fn set_key(&mut self, _key: Key, _is_down: bool) {}
         }
         let mut sink: Box<dyn InputSink> = Box::new(Nothing);
         sink.set_proximity(false);
         sink.move_absolute(1.0, 2.0, 0.1, 0.2, 3, 4, 5);
         sink.move_relative(1.0, 2.0);
         sink.set_left_button(true);
+        sink.set_mouse_button(MouseButton::Right, true);
+        sink.set_key(Key::A, true);
     }
 }

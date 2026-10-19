@@ -390,6 +390,10 @@ pub struct MappingConfig {
     /// Dynamic binding definitions mapping pen buttons to key/mouse events.
     #[serde(default = "default_button_bindings")]
     pub pen_button_bindings: Vec<String>,
+    /// Bindings for the keys on the tablet itself (`ExpressKeys`), first key first. A key with no
+    /// entry does nothing. See [`crate::core::input::Binding`] for the text format.
+    #[serde(default)]
+    pub aux_button_bindings: Vec<String>,
     /// Whether the application starts automatically when the system boots.
     #[serde(default = "default_false")]
     pub run_at_startup: bool,
@@ -439,6 +443,7 @@ impl Default for MappingConfig {
             tip_binding: default_tip_binding(),
             eraser_binding: default_eraser_binding(),
             pen_button_bindings: default_button_bindings(),
+            aux_button_bindings: Vec::new(),
             run_at_startup: false,
             system_tray_on_minimize: false,
             force_high_resolution_timer: true,
@@ -568,6 +573,11 @@ impl MappingConfig {
         } else if self.pen_button_bindings.len() > 32 {
             self.pen_button_bindings.truncate(32);
             corrections.push("pen_button_bindings was too long, truncated to 32".to_string());
+        }
+
+        if self.aux_button_bindings.len() > 32 {
+            self.aux_button_bindings.truncate(32);
+            corrections.push("aux_button_bindings was too long, truncated to 32".to_string());
         }
 
         if !self.pressure_curve.exponent.is_finite()
@@ -837,6 +847,30 @@ mod tests {
         assert_eq!(
             config.relative_config.y_sensitivity,
             defaults.relative_config.y_sensitivity
+        );
+    }
+
+    #[test]
+    fn a_settings_file_without_tablet_key_bindings_still_loads() {
+        let json = serde_json::to_string(&MappingConfig::default()).unwrap();
+        let mut value: serde_json::Value = serde_json::from_str(&json).unwrap();
+        value.as_object_mut().unwrap().remove("aux_button_bindings");
+        let config: MappingConfig = serde_json::from_value(value).unwrap();
+        assert!(config.aux_button_bindings.is_empty());
+    }
+
+    #[test]
+    fn repair_truncates_too_many_tablet_key_bindings() {
+        let mut config = MappingConfig {
+            aux_button_bindings: vec!["None".to_string(); 40],
+            ..Default::default()
+        };
+        let corrections = config.validate_and_repair();
+        assert_eq!(config.aux_button_bindings.len(), 32);
+        assert!(
+            corrections
+                .iter()
+                .any(|c| c.contains("aux_button_bindings"))
         );
     }
 

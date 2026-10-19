@@ -1,6 +1,7 @@
 //! The raw HID packet read/process loop that runs while this process owns
 //! the tablet device.
 
+use super::buttons::ButtonRouter;
 use super::sdk_bridge::publish_shm_state;
 use crate::core::config::models::{DriverMode, MappingConfig};
 use crate::drivers::{TabletData, TabletStatus};
@@ -34,8 +35,7 @@ pub(super) fn run_polling_loop(
 ) {
     let mut buf = [0u8; 64];
     let mut last_config_check = Instant::now();
-    let mut last_stats_update = Instant::now();
-    let mut last_packet_time: Option<(Instant, TabletStatus)> = None;
+    let mut state = PacketLoopState::new();
 
     loop {
         if shared.lifecycle.shutdown_requested.load(Ordering::Relaxed) {
@@ -66,8 +66,7 @@ pub(super) fn run_polling_loop(
                             injector,
                             filters,
                             local_config,
-                            &mut last_stats_update,
-                            &mut last_packet_time,
+                            &mut state,
                             shm_writer,
                         );
                     }
@@ -90,6 +89,8 @@ pub(super) fn run_polling_loop(
                 };
                 let frame = pipeline.process(&out, driver, local_config, filters, shared);
                 inject_frame(injector, &out, local_config, &frame);
+                // No report for a while: the pen is away, so none of its buttons can be held.
+                state.buttons.release_pen(injector);
                 *shared
                     .pipeline
                     .processed_frame
@@ -118,10 +119,13 @@ pub(super) fn run_polling_loop(
             }
             Err(e) => {
                 log::error!(target: "HID", "HID read error: {e}");
-                return;
+                break;
             }
         }
     }
+
+    // The loop ends on shutdown, reload or a read error: nothing may stay pressed.
+    state.buttons.release_all(injector);
 }
 
 /// Drives OS input injection from a processed frame.
@@ -194,8 +198,7 @@ fn process_packet<I: InputSink>(
     injector: &mut I,
     filters: &mut FilterPipeline,
     local_config: &MappingConfig,
-    last_stats_update: &mut Instant,
-    last_packet_time: &mut Option<(Instant, TabletStatus)>,
+    state: &mut PacketLoopState,
     shm_writer: Option<&ShmWriter>,
 ) {
     // Reading the clock is not free (a QueryPerformanceCounter call on Windows, around
@@ -206,7 +209,7 @@ fn process_packet<I: InputSink>(
     //   about 60 times per second, so it is only measured for the packet that will refresh
     //   them (`detailed`).
     let packet_start = Instant::now();
-    let detailed = packet_start.duration_since(*last_stats_update) > STATS_INTERVAL;
+    let detailed = packet_start.duration_since(state.last_stats_update) > STATS_INTERVAL;
     if let Some(mut data) = driver.parse(raw) {
         let parse_end = detailed.then(Instant::now);
         let parse_duration = parse_end.map(|end| end.duration_since(packet_start));
@@ -217,6 +220,7 @@ fn process_packet<I: InputSink>(
 
         let inject_start = detailed.then(Instant::now);
         inject_frame(injector, &data, local_config, &frame);
+        state.buttons.update(injector, &data, local_config);
         let inject_duration = inject_start.map(|start| start.elapsed());
 
         *shared
@@ -241,7 +245,7 @@ fn process_packet<I: InputSink>(
             );
         }
 
-        if let Some((last_time, last_status)) = last_packet_time {
+        if let Some((last_time, last_status)) = &state.last_packet_time {
             let is_curr_active = !matches!(
                 data.status,
                 TabletStatus::Disconnected | TabletStatus::OutOfRange
@@ -260,7 +264,7 @@ fn process_packet<I: InputSink>(
                 }
             }
         }
-        *last_packet_time = Some((now, data.status));
+        state.last_packet_time = Some((now, data.status));
 
         shared.pipeline.packet_count.fetch_add(1, Ordering::Relaxed);
 
@@ -270,7 +274,7 @@ fn process_packet<I: InputSink>(
             (detailed, parse_duration, inject_duration)
             && let Ok(mut stats) = shared.pipeline.stats.try_write()
         {
-            *last_stats_update = now;
+            state.last_stats_update = now;
             stats.total_packets = u64::from(shared.pipeline.packet_count.load(Ordering::Relaxed));
 
             let hr_ms = read_duration.as_secs_f32() * 1000.0;
@@ -307,6 +311,7 @@ fn process_packet<I: InputSink>(
 pub struct PacketLoopState {
     last_stats_update: Instant,
     last_packet_time: Option<(Instant, TabletStatus)>,
+    buttons: ButtonRouter,
 }
 
 impl PacketLoopState {
@@ -317,6 +322,7 @@ impl PacketLoopState {
         Self {
             last_stats_update: Instant::now(),
             last_packet_time: None,
+            buttons: ButtonRouter::new(),
         }
     }
 }
@@ -355,8 +361,7 @@ pub fn process_packet_for_bench<I: InputSink>(
         injector,
         filters,
         local_config,
-        &mut state.last_stats_update,
-        &mut state.last_packet_time,
+        state,
         None,
     );
 }
@@ -389,6 +394,7 @@ fn maybe_reload_config(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::core::input::{Key, MouseButton};
     use crate::drivers::parsers::ReportParser;
     use crate::drivers::parsers::fallback::FallbackParser;
 
@@ -416,6 +422,8 @@ mod tests {
             self.moves += 1;
         }
         fn set_left_button(&mut self, _is_down: bool) {}
+        fn set_mouse_button(&mut self, _button: MouseButton, _is_down: bool) {}
+        fn set_key(&mut self, _key: Key, _is_down: bool) {}
     }
 
     struct MockDriver;
@@ -452,8 +460,7 @@ mod tests {
             ..Default::default()
         };
 
-        let mut last_stats_update = Instant::now();
-        let mut last_packet_time = None;
+        let mut state = PacketLoopState::new();
 
         let raw_report = [0x02, 0x01, 0x50, 0x00, 0x60, 0x00, 0x80, 0x00];
         let driver = MockDriver;
@@ -469,8 +476,7 @@ mod tests {
             &mut injector,
             &mut filters,
             &local_config,
-            &mut last_stats_update,
-            &mut last_packet_time,
+            &mut state,
             None,
         );
 
@@ -497,8 +503,7 @@ mod tests {
             &mut injector,
             &mut filters,
             &local_config,
-            &mut last_stats_update,
-            &mut last_packet_time,
+            &mut state,
             None,
         );
 
@@ -530,11 +535,14 @@ mod tests {
         let report = [0x02, 0x01, 0x50, 0x00, 0x60, 0x00, 0x80, 0x00];
 
         // The stats were last refreshed long ago: this packet must refresh them.
-        let mut last_stats_update = Instant::now()
-            .checked_sub(Duration::from_millis(100))
-            .expect("instant");
-        let mut last_packet_time = None;
-        let mut run = |last_stats_update: &mut Instant| {
+        let long_ago = || {
+            Instant::now()
+                .checked_sub(Duration::from_millis(100))
+                .expect("instant")
+        };
+        let mut state = PacketLoopState::new();
+        state.last_stats_update = long_ago();
+        let mut run = |state: &mut PacketLoopState| {
             process_packet(
                 &report,
                 Instant::now(),
@@ -546,30 +554,27 @@ mod tests {
                 &mut injector,
                 &mut filters,
                 &config,
-                last_stats_update,
-                &mut last_packet_time,
+                state,
                 None,
             );
         };
 
-        run(&mut last_stats_update);
+        run(&mut state);
         let after_first = *shared.pipeline.stats.read().unwrap();
         assert_eq!(after_first.total_packets, 1);
         assert!(after_first.hid_read_ms > 0.4 && after_first.hid_read_ms < 0.6);
         assert!(after_first.max_parser_ms >= 0.0 && after_first.max_inject_ms >= 0.0);
 
         // Right after, the interval has not elapsed: the statistics are left alone.
-        run(&mut last_stats_update);
-        run(&mut last_stats_update);
+        run(&mut state);
+        run(&mut state);
         let after_more = *shared.pipeline.stats.read().unwrap();
         assert_eq!(after_more.total_packets, 1);
         assert_eq!(shared.pipeline.packet_count.load(Ordering::Relaxed), 3);
 
         // Once the interval has elapsed again, they are refreshed.
-        last_stats_update = Instant::now()
-            .checked_sub(Duration::from_millis(100))
-            .expect("instant");
-        run(&mut last_stats_update);
+        state.last_stats_update = long_ago();
+        run(&mut state);
         assert_eq!(shared.pipeline.stats.read().unwrap().total_packets, 4);
     }
 

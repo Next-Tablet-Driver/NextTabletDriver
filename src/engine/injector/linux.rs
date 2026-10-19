@@ -1,3 +1,4 @@
+use crate::core::input::{Key, MouseButton};
 use evdev::{
     AbsInfo, AbsoluteAxisCode, AttributeSet, BusType, InputEvent, InputId, KeyCode,
     RelativeAxisCode, UinputAbsSetup, uinput::VirtualDevice,
@@ -20,6 +21,9 @@ pub struct Injector {
     /// Some compositors handle relative events differently from tablet events,
     /// so we keep them on separate virtual devices.
     virtual_mouse: evdev::uinput::VirtualDevice,
+
+    /// A virtual keyboard used by button bindings that press keys.
+    virtual_keyboard: evdev::uinput::VirtualDevice,
 
     /// Tracks the previous state of the primary pen button (tip).
     last_pressure_down: bool,
@@ -140,6 +144,8 @@ impl Injector {
         mouse_keys.insert(KeyCode::BTN_LEFT);
         mouse_keys.insert(KeyCode::BTN_RIGHT);
         mouse_keys.insert(KeyCode::BTN_MIDDLE);
+        mouse_keys.insert(KeyCode::BTN_SIDE);
+        mouse_keys.insert(KeyCode::BTN_EXTRA);
 
         let mut rel_axes = AttributeSet::<RelativeAxisCode>::new();
         rel_axes.insert(RelativeAxisCode::REL_X);
@@ -157,10 +163,26 @@ impl Injector {
 
         log::info!(target: "Injector", "Virtual mouse device created: NextTabletDriver Virtual Mouse");
 
+        let mut keyboard_keys = AttributeSet::<KeyCode>::new();
+        for &key in Key::ALL {
+            keyboard_keys.insert(evdev_key(key));
+        }
+
+        let virtual_keyboard = create_uinput_device_builder()?
+            .name("NextTabletDriver Virtual Keyboard")
+            .input_id(InputId::new(BusType::BUS_USB, 0x0001, 0x0003, 1))
+            .with_keys(&keyboard_keys)
+            .map_err(setup("set keyboard keys"))?
+            .build()
+            .map_err(setup("create virtual keyboard device"))?;
+
+        log::info!(target: "Injector", "Virtual keyboard device created: NextTabletDriver Virtual Keyboard");
+
         let now = std::time::Instant::now();
         Ok(Self {
             virtual_tablet,
             virtual_mouse,
+            virtual_keyboard,
             last_pressure_down: false,
             last_proximity: None,
             remainder_x: 0.0,
@@ -398,5 +420,177 @@ impl Injector {
         }
 
         self.last_pressure_down = is_down;
+    }
+
+    /// Presses or releases a mouse button on behalf of a button binding.
+    pub fn set_mouse_button(&mut self, button: MouseButton, is_down: bool) {
+        let events = [
+            InputEvent::new(
+                evdev::EventType::KEY.0,
+                evdev_mouse_button(button).0,
+                i32::from(is_down),
+            ),
+            InputEvent::new(evdev::EventType::SYNCHRONIZATION.0, 0, 0),
+        ];
+
+        if let Err(e) = self.virtual_mouse.emit(&events) {
+            log::error!(target: "Injector", "Failed to emit mouse button event: {e}");
+        }
+    }
+
+    /// Presses or releases a keyboard key on behalf of a button binding.
+    pub fn set_key(&mut self, key: Key, is_down: bool) {
+        let events = [
+            InputEvent::new(
+                evdev::EventType::KEY.0,
+                evdev_key(key).0,
+                i32::from(is_down),
+            ),
+            InputEvent::new(evdev::EventType::SYNCHRONIZATION.0, 0, 0),
+        ];
+
+        if let Err(e) = self.virtual_keyboard.emit(&events) {
+            log::error!(target: "Injector", "Failed to emit key event: {e}");
+        }
+    }
+}
+
+/// The Linux button code of a mouse button.
+const fn evdev_mouse_button(button: MouseButton) -> KeyCode {
+    match button {
+        MouseButton::Left => KeyCode::BTN_LEFT,
+        MouseButton::Right => KeyCode::BTN_RIGHT,
+        MouseButton::Middle => KeyCode::BTN_MIDDLE,
+        MouseButton::Back => KeyCode::BTN_SIDE,
+        MouseButton::Forward => KeyCode::BTN_EXTRA,
+    }
+}
+
+/// The Linux key code of `key`. Linux names keys by their place on a US keyboard, which is
+/// how [`Key`] is defined, so there is a direct match for each one.
+const fn evdev_key(key: Key) -> KeyCode {
+    match key {
+        Key::A => KeyCode::KEY_A,
+        Key::B => KeyCode::KEY_B,
+        Key::C => KeyCode::KEY_C,
+        Key::D => KeyCode::KEY_D,
+        Key::E => KeyCode::KEY_E,
+        Key::F => KeyCode::KEY_F,
+        Key::G => KeyCode::KEY_G,
+        Key::H => KeyCode::KEY_H,
+        Key::I => KeyCode::KEY_I,
+        Key::J => KeyCode::KEY_J,
+        Key::K => KeyCode::KEY_K,
+        Key::L => KeyCode::KEY_L,
+        Key::M => KeyCode::KEY_M,
+        Key::N => KeyCode::KEY_N,
+        Key::O => KeyCode::KEY_O,
+        Key::P => KeyCode::KEY_P,
+        Key::Q => KeyCode::KEY_Q,
+        Key::R => KeyCode::KEY_R,
+        Key::S => KeyCode::KEY_S,
+        Key::T => KeyCode::KEY_T,
+        Key::U => KeyCode::KEY_U,
+        Key::V => KeyCode::KEY_V,
+        Key::W => KeyCode::KEY_W,
+        Key::X => KeyCode::KEY_X,
+        Key::Y => KeyCode::KEY_Y,
+        Key::Z => KeyCode::KEY_Z,
+        Key::Num0 => KeyCode::KEY_0,
+        Key::Num1 => KeyCode::KEY_1,
+        Key::Num2 => KeyCode::KEY_2,
+        Key::Num3 => KeyCode::KEY_3,
+        Key::Num4 => KeyCode::KEY_4,
+        Key::Num5 => KeyCode::KEY_5,
+        Key::Num6 => KeyCode::KEY_6,
+        Key::Num7 => KeyCode::KEY_7,
+        Key::Num8 => KeyCode::KEY_8,
+        Key::Num9 => KeyCode::KEY_9,
+        Key::F1 => KeyCode::KEY_F1,
+        Key::F2 => KeyCode::KEY_F2,
+        Key::F3 => KeyCode::KEY_F3,
+        Key::F4 => KeyCode::KEY_F4,
+        Key::F5 => KeyCode::KEY_F5,
+        Key::F6 => KeyCode::KEY_F6,
+        Key::F7 => KeyCode::KEY_F7,
+        Key::F8 => KeyCode::KEY_F8,
+        Key::F9 => KeyCode::KEY_F9,
+        Key::F10 => KeyCode::KEY_F10,
+        Key::F11 => KeyCode::KEY_F11,
+        Key::F12 => KeyCode::KEY_F12,
+        Key::F13 => KeyCode::KEY_F13,
+        Key::F14 => KeyCode::KEY_F14,
+        Key::F15 => KeyCode::KEY_F15,
+        Key::F16 => KeyCode::KEY_F16,
+        Key::F17 => KeyCode::KEY_F17,
+        Key::F18 => KeyCode::KEY_F18,
+        Key::F19 => KeyCode::KEY_F19,
+        Key::F20 => KeyCode::KEY_F20,
+        Key::F21 => KeyCode::KEY_F21,
+        Key::F22 => KeyCode::KEY_F22,
+        Key::F23 => KeyCode::KEY_F23,
+        Key::F24 => KeyCode::KEY_F24,
+        Key::Escape => KeyCode::KEY_ESC,
+        Key::Tab => KeyCode::KEY_TAB,
+        Key::Enter => KeyCode::KEY_ENTER,
+        Key::Space => KeyCode::KEY_SPACE,
+        Key::Backspace => KeyCode::KEY_BACKSPACE,
+        Key::Delete => KeyCode::KEY_DELETE,
+        Key::Insert => KeyCode::KEY_INSERT,
+        Key::Home => KeyCode::KEY_HOME,
+        Key::End => KeyCode::KEY_END,
+        Key::PageUp => KeyCode::KEY_PAGEUP,
+        Key::PageDown => KeyCode::KEY_PAGEDOWN,
+        Key::Up => KeyCode::KEY_UP,
+        Key::Down => KeyCode::KEY_DOWN,
+        Key::Left => KeyCode::KEY_LEFT,
+        Key::Right => KeyCode::KEY_RIGHT,
+        Key::Ctrl => KeyCode::KEY_LEFTCTRL,
+        Key::Shift => KeyCode::KEY_LEFTSHIFT,
+        Key::Alt => KeyCode::KEY_LEFTALT,
+        Key::Meta => KeyCode::KEY_LEFTMETA,
+        Key::Minus => KeyCode::KEY_MINUS,
+        Key::Equals => KeyCode::KEY_EQUAL,
+        Key::LeftBracket => KeyCode::KEY_LEFTBRACE,
+        Key::RightBracket => KeyCode::KEY_RIGHTBRACE,
+        Key::Backslash => KeyCode::KEY_BACKSLASH,
+        Key::Semicolon => KeyCode::KEY_SEMICOLON,
+        Key::Quote => KeyCode::KEY_APOSTROPHE,
+        Key::Backtick => KeyCode::KEY_GRAVE,
+        Key::Comma => KeyCode::KEY_COMMA,
+        Key::Period => KeyCode::KEY_DOT,
+        Key::Slash => KeyCode::KEY_SLASH,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn every_key_has_its_own_linux_code() {
+        for (index, &key) in Key::ALL.iter().enumerate() {
+            for &other in Key::ALL.iter().skip(index + 1) {
+                assert_ne!(evdev_key(key).0, evdev_key(other).0, "{key:?} / {other:?}");
+            }
+        }
+    }
+
+    #[test]
+    fn the_keys_use_the_codes_of_the_linux_input_header() {
+        assert_eq!(evdev_key(Key::A).0, 30);
+        assert_eq!(evdev_key(Key::Z).0, 44);
+        assert_eq!(evdev_key(Key::Escape).0, 1);
+        assert_eq!(evdev_key(Key::F13).0, 183);
+        assert_eq!(evdev_key(Key::Ctrl).0, 29);
+    }
+
+    #[test]
+    fn each_mouse_button_has_its_own_linux_code() {
+        assert_eq!(evdev_mouse_button(MouseButton::Left).0, 0x110);
+        assert_eq!(evdev_mouse_button(MouseButton::Right).0, 0x111);
+        assert_eq!(evdev_mouse_button(MouseButton::Middle).0, 0x112);
+        assert_eq!(evdev_mouse_button(MouseButton::Back).0, 0x113);
+        assert_eq!(evdev_mouse_button(MouseButton::Forward).0, 0x114);
     }
 }

@@ -69,6 +69,18 @@ impl NextTabletDriver for GenericNextTabletDriver {
         (self.vid, self.pid)
     }
 
+    fn get_button_counts(&self) -> (u8, u8) {
+        let specs = &self.config.specifications;
+        (
+            specs.pen.button_count.unwrap_or(0),
+            specs
+                .auxiliary_buttons
+                .as_ref()
+                .and_then(|aux| aux.button_count)
+                .unwrap_or(0),
+        )
+    }
+
     fn parse(&self, data: &[u8]) -> Option<TabletData> {
         #[cfg(target_os = "linux")]
         {
@@ -128,6 +140,24 @@ mod tests {
         assert_eq!(driver.get_specs(), (16000.0, 10000.0, 8191.0));
         assert_eq!(driver.get_physical_specs(), (160.0, 100.0));
         assert_eq!(driver.get_vid_pid(), (0x1234, 0x5678));
+    }
+
+    #[test]
+    fn a_tablet_without_keys_reports_the_pen_buttons_and_zero_keys() {
+        assert_eq!(driver(None).get_button_counts(), (2, 0));
+    }
+
+    #[test]
+    fn the_number_of_tablet_keys_comes_from_the_configuration() {
+        let with_keys = CONFIG.replace(
+            r#""Pen": { "MaxPressure": 8191, "ButtonCount": 2 }"#,
+            r#""Pen": { "MaxPressure": 8191, "ButtonCount": 3 },
+            "AuxiliaryButtons": { "ButtonCount": 6 }"#,
+        );
+        let config: TabletConfiguration = serde_json::from_str(&with_keys).unwrap();
+        let digitizer = config.digitizer_identifiers[0].clone();
+        let driver = GenericNextTabletDriver::new(config, &digitizer, 1, 2);
+        assert_eq!(driver.get_button_counts(), (3, 6));
     }
 
     #[test]
