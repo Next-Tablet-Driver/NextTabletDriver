@@ -26,6 +26,8 @@ export interface Config {
     tip_binding: string;
     eraser_binding: string;
     pen_button_bindings: string[];
+    /** Bindings of the keys on the tablet itself, first key first. */
+    aux_button_bindings: string[];
     run_at_startup: boolean;
     system_tray_on_minimize: boolean;
     force_high_resolution_timer: boolean;
@@ -84,6 +86,10 @@ export interface TabletStatus {
     height: number;
     max_x?: number;
     max_y?: number;
+    /** Number of buttons on the pen; 0 when the tablet description does not say. */
+    pen_button_count?: number;
+    /** Number of keys on the tablet; 0 when it has none or the description does not say. */
+    aux_button_count?: number;
 }
 
 export interface EngineMetrics {
@@ -118,6 +124,14 @@ export async function saveConfig(): Promise<void> {
 
 export async function getMetrics(): Promise<EngineMetrics> {
     return invoke<EngineMetrics>("get_metrics");
+}
+
+/**
+ * Checks a button binding with the driver and returns it in the plain spelling (`ctrl+z` becomes
+ * `Ctrl+Z`). Rejects with a readable message when the text is not a binding.
+ */
+export async function normalizeBinding(text: string): Promise<string> {
+    return invoke<string>("normalize_binding", { text });
 }
 
 export async function resetConfig(): Promise<void> {

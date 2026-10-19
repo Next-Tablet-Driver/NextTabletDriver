@@ -12,8 +12,8 @@ test.describe("Pen Settings screen", () => {
         await expect(app.content.getByLabel("Disable Tilt")).not.toBeChecked();
         await expect(app.content.getByRole("textbox").nth(0)).toHaveValue("Left Click");
         await expect(app.content.getByRole("textbox").nth(1)).toHaveValue("Disabled");
-        await expect(app.content.getByLabel("Pen Button 1")).toHaveValue("Right Click");
-        await expect(app.content.getByLabel("Pen Button 2")).toHaveValue("Middle Click");
+        await expect(app.content.getByLabel("Pen Button 1", { exact: true })).toHaveValue("Right Click");
+        await expect(app.content.getByLabel("Pen Button 2", { exact: true })).toHaveValue("Middle Click");
     });
 
     test("editing the tip threshold is saved", async ({ app }) => {
@@ -32,9 +32,41 @@ test.describe("Pen Settings screen", () => {
     });
 
     test("changing a pen button binding is saved without touching the others", async ({ app }) => {
-        await app.content.getByLabel("Pen Button 2").fill("Back");
+        await app.content.getByLabel("Pen Button 2", { exact: true }).fill("Back");
         const saved = await app.savedConfigWhere((config) => JSON.stringify(config.pen_button_bindings) === JSON.stringify(["Right Click", "Back"]));
         expect(saved.pen_button_bindings).toEqual(["Right Click", "Back"]);
+    });
+
+    test("lists one field per key of the tablet, with the saved bindings", async ({ app }) => {
+        await expect(app.content.getByText("Tablet Keys")).toBeVisible();
+        await expect(app.content.getByLabel("Tablet Key 1", { exact: true })).toHaveValue("Ctrl+Z");
+        await expect(app.content.getByLabel("Tablet Key 2", { exact: true })).toHaveValue("Space");
+        await expect(app.content.getByLabel("Tablet Key 4", { exact: true })).toHaveValue("None");
+        await expect(app.content.getByLabel("Tablet Key 5", { exact: true })).toHaveCount(0);
+    });
+
+    test("changing a tablet key binding is saved without touching the others", async ({ app }) => {
+        await app.content.getByLabel("Tablet Key 3", { exact: true }).fill("F5");
+        const saved = await app.savedConfigWhere((config) => JSON.stringify(config.aux_button_bindings) === JSON.stringify(["Ctrl+Z", "Space", "F5", "None"]));
+        expect(saved.aux_button_bindings).toEqual(["Ctrl+Z", "Space", "F5", "None"]);
+    });
+
+    test("recording a key combination binds it", async ({ app, page }) => {
+        await app.content.getByRole("button", { name: "Record Tablet Key 4" }).click();
+        await page.keyboard.down("Control");
+        await page.keyboard.press("KeyS");
+        await page.keyboard.up("Control");
+        await expect(app.content.getByLabel("Tablet Key 4", { exact: true })).toHaveValue("Ctrl+S");
+        const saved = await app.savedConfigWhere((config) => (config.aux_button_bindings as string[] | undefined)?.[3] === "Ctrl+S");
+        expect(saved.aux_button_bindings).toEqual(["Ctrl+Z", "Space", "None", "Ctrl+S"]);
+    });
+
+    test("a text that is not a binding is flagged with the driver's message", async ({ app }) => {
+        const field = app.content.getByLabel("Pen Button 1", { exact: true });
+        await field.fill("Banana");
+        await field.press("Tab");
+        await expect(app.content.getByRole("alert")).toContainText("Unknown key or button");
+        await expect(field).toHaveAttribute("aria-invalid", "true");
     });
 
     test("selecting a pressure curve highlights it and is saved", async ({ app }) => {

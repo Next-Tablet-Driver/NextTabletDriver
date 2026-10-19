@@ -27,6 +27,7 @@ const config: Config = {
     tip_binding: "Left Click",
     eraser_binding: "Disabled",
     pen_button_bindings: ["Right Click", "Middle Click"],
+    aux_button_bindings: ["Ctrl+Z", "Space", "None", "None"],
     run_at_startup: false,
     system_tray_on_minimize: true,
     force_high_resolution_timer: true,
@@ -184,7 +185,15 @@ const handlers = new Map<string, Handler>([
         height: 148,
         max_x: 44800,
         max_y: 29600,
+        pen_button_count: 2,
+        aux_button_count: 4,
     })],
+    ["normalize_binding", (args) => {
+        // The real check lives in the driver; this only stands in for it in the browser.
+        const text = String(args.text).trim();
+        if (/banana/i.test(text)) throw new Error(`Unknown key or button: '${text}'`);
+        return text.split("+").map((part) => (part.length === 1 ? part.toUpperCase() : part)).join("+");
+    }],
     ["get_config", () => config],
     [
         "set_config",
