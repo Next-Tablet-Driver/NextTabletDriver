@@ -40,9 +40,13 @@ The real tablet and the virtual one are both moving the cursor. The udev rules s
 
 On Windows, NextTabletDriver sends position and a left click only. Pressure and tilt are not passed to other programs. This is a current limitation of the Windows input method. On Linux, pressure and tilt work.
 
-## The pen buttons or the eraser do nothing
+## A pen button or a tablet key does nothing
 
-They are not forwarded to the system yet, on any platform. The settings for them are saved but have no effect. See [Known limitations](#known-limitations).
+- The binding may be **None**, which is the default for a pen button. Set it on the **Pen Settings** tab. See [Button mapping](button-mapping.md).
+- A red message under the field means the text is not a valid binding. Read the message, then fix the text or pick a preset.
+- Look at the **Console** for messages from `Buttons`. A binding that cannot be read is reported there each time you press the button.
+- The **Tablet Keys** section only appears when the tablet definition says that the tablet has keys. If your tablet has keys but no section, the definition is missing the key count. See [Adding a tablet](adding-a-tablet.md).
+- The **eraser** does nothing yet. See [Known limitations](#known-limitations).
 
 ## My settings are gone after a restart
 
@@ -74,7 +78,8 @@ These are things that do not work yet, or not fully. They are listed so that you
 | Area | What to expect | What you can do |
 | --- | --- | --- |
 | Pressure and tilt on Windows | Not sent to other programs. | Use position and click only (this is enough for osu!). On Linux they work. |
-| Pen side buttons and eraser | Not forwarded on any platform. The **Pen Settings** options *Eraser threshold*, *Disable tilt*, *Tip binding*, *Eraser binding* and *Pen button actions* are saved but not used. | Wait for a later version. |
+| Eraser, tip binding and tilt options | The eraser end is not forwarded. The **Pen Settings** options *Eraser threshold*, *Disable tilt*, *Tip binding* and *Eraser binding* are saved but not used. The tip always clicks the left mouse button. | Wait for a later version. |
+| Button mapping and the left button | A pen button bound to **Left Click** shares the left button with the tip. Releasing one while the other is held also releases the click. | Bind the pen buttons to other buttons or keys. |
 | Pressure curve on Windows | It only changes the pressure that programs receive, so it has no visible effect on Windows. | None needed. |
 | Relative mode | Sensitivity (10 px per mm) and reset time (100 ms) are fixed. There is no setting for them in the app. | Use absolute mode, or import settings from OpenTabletDriver (it brings in its sensitivity). |
 | Language | The language choice is saved, but the interface is in English only. | None. |
