@@ -1,6 +1,6 @@
 //! # Hawku Smoothing Plugin
 //!
-//! **Creator**: X9VoiD
+//! **Creator**: `X9VoiD`
 //!
 //! An implementation of the classic Hawku low-pass exponential smoothing filter.
 //! Uses a target threshold decay calculation to provide smooth, latency-adjustable tracking.
@@ -114,8 +114,8 @@ impl NextTabletPlugin for HawkuSmoothingPlugin {
         let dx = target_x - self.last_pos.0;
         let dy = target_y - self.last_pos.1;
 
-        self.last_pos.0 += dx * weight;
-        self.last_pos.1 += dy * weight;
+        self.last_pos.0 = dx.mul_add(weight, self.last_pos.0);
+        self.last_pos.1 = dy.mul_add(weight, self.last_pos.1);
         self.last_timestamp_ns = packet.timestamp_ns;
 
         if !self.last_pos.0.is_finite() || !self.last_pos.1.is_finite() {

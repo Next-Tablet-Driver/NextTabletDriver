@@ -62,10 +62,7 @@ pub fn get_config(state: State<'_, Arc<SharedState>>) -> MappingConfig {
 }
 
 #[tauri::command]
-pub fn set_config(
-    state: State<'_, Arc<SharedState>>,
-    new_config: MappingConfig,
-) -> Result<(), String> {
+pub fn set_config(state: State<'_, Arc<SharedState>>, new_config: MappingConfig) {
     let _ = next_tablet_driver::startup::set_run_at_startup(new_config.run_at_startup);
     next_tablet_driver::startup::set_fast_timer(new_config.force_high_resolution_timer);
 
@@ -73,19 +70,18 @@ pub fn set_config(
         .config
         .mapping
         .write()
-        .unwrap_or_reset("config_write_tauri") = new_config.clone();
+        .unwrap_or_reset("config_write_tauri") = new_config;
     state
         .config
         .version
         .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-    Ok(())
 }
 
 #[tauri::command]
 pub fn save_config(
     state: State<'_, Arc<SharedState>>,
     save_sender: State<'_, crossbeam_channel::Sender<MappingConfig>>,
-) -> Result<(), String> {
+) {
     let current = state
         .config
         .mapping
@@ -93,11 +89,10 @@ pub fn save_config(
         .unwrap_or_log("config_read_tauri")
         .clone();
     let _ = save_sender.try_send(current);
-    Ok(())
 }
 
 #[tauri::command]
-pub fn reset_config(state: State<'_, Arc<SharedState>>) -> Result<(), String> {
+pub fn reset_config(state: State<'_, Arc<SharedState>>) {
     *state
         .config
         .mapping
@@ -107,7 +102,6 @@ pub fn reset_config(state: State<'_, Arc<SharedState>>) -> Result<(), String> {
         .config
         .version
         .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-    Ok(())
 }
 
 #[tauri::command]
@@ -185,9 +179,7 @@ pub fn get_presets() -> Vec<PresetInfo> {
 
 #[tauri::command]
 pub fn get_current_profile_name() -> String {
-    next_tablet_driver::settings::load_session_meta()
-        .map(|meta| meta.profile_name)
-        .unwrap_or_else(|| "Default Profile".to_string())
+    next_tablet_driver::settings::load_session_meta().map_or_else(|| "Default Profile".to_string(), |meta| meta.profile_name)
 }
 
 #[tauri::command]

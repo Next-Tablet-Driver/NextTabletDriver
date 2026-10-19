@@ -1,6 +1,6 @@
 //! # Radial Follow Smoothing Plugin
 //!
-//! **Creator**: AbstractQbit
+//! **Creator**: `AbstractQbit`
 //!
 //! Smooths pen cursor movement within an inner and outer radial boundary using a soft-knee transition.
 
@@ -62,7 +62,7 @@ impl RadialFollowPlugin {
 
     fn knee_scaled(x: f64, kn_scale: f64) -> f64 {
         if kn_scale > 0.0001 {
-            kn_scale * Self::knee_func(x / kn_scale) + 1.0
+            kn_scale.mul_add(Self::knee_func(x / kn_scale), 1.0)
         } else if x > 0.0 {
             1.0
         } else {
@@ -81,7 +81,7 @@ impl RadialFollowPlugin {
     fn deriv_knee_scaled(x: f64, kn_scale: f64) -> f64 {
         let e = (x / kn_scale).exp();
         let tanh = e.tanh();
-        (e - e * (tanh * tanh)) / tanh
+        e.mul_add(-(tanh * tanh), e) / tanh
     }
 
     fn get_x_offset(kn_scale: f64) -> f64 {
@@ -113,9 +113,11 @@ impl RadialFollowPlugin {
         let scale_comp = Self::get_scale_comp(self.soft_knee_scale, x_offset);
 
         let leaked_fn = |x: f64| -> f64 {
-            Self::knee_scaled(x + x_offset, self.soft_knee_scale)
-                * (1.0 - self.smoothing_leak_coefficient)
-                + x * self.smoothing_leak_coefficient * scale_comp
+            (x * self.smoothing_leak_coefficient).mul_add(
+                scale_comp,
+                Self::knee_scaled(x + x_offset, self.soft_knee_scale)
+                    * (1.0 - self.smoothing_leak_coefficient),
+            )
         };
 
         let smoothed_fn =
@@ -136,14 +138,14 @@ impl RadialFollowPlugin {
 
         let dx = target_x - self.cursor_x;
         let dy = target_y - self.cursor_y;
-        let dist = (dx * dx + dy * dy).sqrt();
+        let dist = dx.hypot(dy);
 
-        if dist > 0.000001 {
+        if dist > 0.000_001 {
             let dist_to_move = self.sample_radial_curve(dist);
             let dir_x = dx / dist;
             let dir_y = dy / dist;
-            self.cursor_x += dir_x * dist_to_move;
-            self.cursor_y += dir_y * dist_to_move;
+            self.cursor_x = dir_x.mul_add(dist_to_move, self.cursor_x);
+            self.cursor_y = dir_y.mul_add(dist_to_move, self.cursor_y);
         }
 
         if !self.cursor_x.is_finite() || !self.cursor_y.is_finite() {
@@ -197,7 +199,7 @@ impl NextTabletPlugin for RadialFollowPlugin {
                         min: 0.0,
                         max: 1.0,
                         step: 0.01,
-                        unit: "".to_string(),
+                        unit: String::new(),
                         default: 0.95,
                     },
                 },
@@ -209,7 +211,7 @@ impl NextTabletPlugin for RadialFollowPlugin {
                         min: 0.0,
                         max: 100.0,
                         step: 0.1,
-                        unit: "".to_string(),
+                        unit: String::new(),
                         default: 1.0,
                     },
                 },
@@ -221,7 +223,7 @@ impl NextTabletPlugin for RadialFollowPlugin {
                         min: 0.0,
                         max: 1.0,
                         step: 0.01,
-                        unit: "".to_string(),
+                        unit: String::new(),
                         default: 0.0,
                     },
                 },

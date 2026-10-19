@@ -126,6 +126,20 @@ jobs:
         with:
           tool: nextest
 
+      # Every crate keeps its own copy of the lint policy (they have separate lockfiles, so a
+      # Cargo workspace table cannot be shared). Fail if a copy drops a rule.
+      - name: Check that every crate keeps the lint policy
+        run: |
+          set -e
+          for manifest in Cargo.toml sdk/Cargo.toml sdk/plugin_api/Cargo.toml src-tauri/Cargo.toml plugins/*/Cargo.toml; do
+            for rule in 'unwrap_used = "deny"' 'expect_used = "deny"' 'panic = "deny"' 'todo = "deny"' 'unimplemented = "deny"' 'exit = "deny"' 'pedantic = { level = "warn", priority = -1 }'; do
+              if ! grep -qF "$rule" "$manifest"; then
+                echo "::error file=$manifest::missing lint rule: $rule"
+                exit 1
+              fi
+            done
+          done
+
       - name: Check plugin API, plugins and the example plugin
         run: |
           set -e

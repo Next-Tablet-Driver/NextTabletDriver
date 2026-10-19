@@ -172,7 +172,7 @@ pub fn run() {
                     let path = id.trim_start_matches("profile|");
                     let state: tauri::State<'_, std::sync::Arc<next_tablet_driver::engine::state::SharedState>> = app.state();
                     if crate::commands::load_profile(state, path.to_string()).is_ok() {
-                        log::info!(target: "Tray", "Loaded profile from tray: {}", path);
+                        log::info!(target: "Tray", "Loaded profile from tray: {path}");
                         let _ = app.emit("profile-loaded", ());
                     }
                 }
@@ -200,7 +200,7 @@ pub fn run() {
         next_tablet_driver::startup::set_fast_timer(config.force_high_resolution_timer);
 
         // Create Shared State
-        let shared = next_tablet_driver::application::services::SharedStateFactory::create(config.clone(), is_first_run);
+        let shared = next_tablet_driver::application::services::SharedStateFactory::create(config, is_first_run);
 
         // Setup channels for threads
         let (tablet_sender, tablet_receiver) = crossbeam_channel::bounded(60);
@@ -246,7 +246,7 @@ pub fn run() {
 
         let app_handle_status = app.handle().clone();
         let shared_status = std::sync::Arc::clone(&shared);
-        let status_i_clone = status_i.clone();
+        let status_i_clone = status_i;
         
         std::thread::spawn(move || {
             let mut last_name = String::new();
@@ -269,15 +269,15 @@ pub fn run() {
             }
         });
 
-        let mode_absolute_i_clone = mode_absolute_i.clone();
-        let mode_relative_i_clone = mode_relative_i.clone();
+        let mode_absolute_i_clone = mode_absolute_i;
+        let mode_relative_i_clone = mode_relative_i;
         let shared_mode = std::sync::Arc::clone(&shared);
         
         std::thread::spawn(move || {
-            let mut last_mode = match shared_mode.config.mapping.read() {
-                Ok(guard) => guard.mode,
-                Err(_) => next_tablet_driver::core::config::models::DriverMode::Absolute,
-            };
+            let mut last_mode = shared_mode.config.mapping.read().map_or(
+                next_tablet_driver::core::config::models::DriverMode::Absolute,
+                |guard| guard.mode,
+            );
             
             loop {
                 let current_mode = match shared_mode.config.mapping.read() {
