@@ -147,7 +147,7 @@ impl NextTabletPlugin for HandSpeedPlugin {
                         min: 1024,
                         max: 65535,
                         step: 1,
-                        unit: "".to_string(),
+                        unit: String::new(),
                         default: 50550,
                     },
                 },
@@ -189,7 +189,7 @@ impl NextTabletPlugin for HandSpeedPlugin {
 
             let instant_speed = distance_mm / dt;
             self.smoothed_speed_mm_s =
-                self.smoothed_speed_mm_s * 0.85_f32 + instant_speed * 0.15_f32;
+                instant_speed.mul_add(0.15_f32, self.smoothed_speed_mm_s * 0.85_f32);
             self.total_distance_mm += distance_mm;
 
             if now.duration_since(self.last_flush) >= FLUSH_INTERVAL {

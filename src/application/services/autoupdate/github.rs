@@ -7,28 +7,42 @@ fn github_releases_list_url() -> String {
     format!("https://api.github.com/repos/{OWNER}/{REPO}/releases?per_page=30")
 }
 
+/// Errors produced while fetching the release history.
+#[derive(Debug, thiserror::Error)]
+pub enum UpdateError {
+    /// The request could not be completed.
+    #[error("Network error: {0}")]
+    Network(#[source] Box<ureq::Error>),
+    /// GitHub answered with a status other than 200.
+    #[error("GitHub API error: {0}")]
+    Status(u16),
+    /// The response body is not the expected JSON.
+    #[error("Failed to parse releases: {0}")]
+    Parse(#[source] std::io::Error),
+}
+
 /// Fetches the published release history from the GitHub API, most recent first.
 ///
 /// # Errors
 /// Returns an error if the network request fails, the GitHub API returns a
 /// non-200 status, or the response body cannot be parsed.
-pub fn fetch_releases() -> Result<Vec<Release>, String> {
+pub fn fetch_releases() -> Result<Vec<Release>, UpdateError> {
     fetch_releases_from(&github_releases_list_url())
 }
 
-fn fetch_releases_from(url: &str) -> Result<Vec<Release>, String> {
+fn fetch_releases_from(url: &str) -> Result<Vec<Release>, UpdateError> {
     let response = ureq::get(url)
         .set("User-Agent", "NextTabletDriver-AutoUpdate")
         .call()
-        .map_err(|e| format!("Network error: {e}"))?;
+        .map_err(|e| UpdateError::Network(Box::new(e)))?;
 
     if response.status() != 200 {
-        return Err(format!("GitHub API error: {}", response.status()));
+        return Err(UpdateError::Status(response.status()));
     }
 
     response
         .into_json::<Vec<Release>>()
-        .map_err(|e| format!("Failed to parse releases: {e}"))
+        .map_err(UpdateError::Parse)
 }
 
 #[cfg(test)]
@@ -90,7 +104,7 @@ mod tests {
         let error = fetch_releases_from(&serve_once("200 OK", "{ not a list"))
             .err()
             .unwrap();
-        assert!(error.starts_with("Failed to parse releases"), "{error}");
+        assert!(matches!(error, UpdateError::Parse(_)), "{error}");
     }
 
     #[test]
@@ -98,7 +112,7 @@ mod tests {
         let error = fetch_releases_from(&serve_once("204 No Content", ""))
             .err()
             .unwrap();
-        assert_eq!(error, "GitHub API error: 204");
+        assert!(matches!(error, UpdateError::Status(204)), "{error}");
     }
 
     #[test]
@@ -106,7 +120,7 @@ mod tests {
         let error = fetch_releases_from(&serve_once("500 Internal Server Error", "{}"))
             .err()
             .unwrap();
-        assert!(error.starts_with("Network error"), "{error}");
+        assert!(matches!(error, UpdateError::Network(_)), "{error}");
     }
 
     #[test]
@@ -119,7 +133,7 @@ mod tests {
         let error = fetch_releases_from(&format!("http://127.0.0.1:{free_port}/"))
             .err()
             .unwrap();
-        assert!(error.starts_with("Network error"), "{error}");
+        assert!(matches!(error, UpdateError::Network(_)), "{error}");
     }
 
     #[test]

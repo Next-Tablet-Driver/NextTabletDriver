@@ -57,6 +57,7 @@ pub(super) fn owner_iteration(shared_clone: &Arc<SharedState>, sender_clone: &Se
         Ok(injector) => injector,
         Err(e) => {
             log::error!(target: "Injector", "CRITICAL: Failed to initialise input injector: {e}");
+            let e = e.to_string();
             crate::application::telemetry::capture_event(
                 "engine_error",
                 Some(serde_json::json!({

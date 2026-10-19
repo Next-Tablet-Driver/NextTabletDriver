@@ -44,7 +44,7 @@ impl KalmanAxis {
             0.5_f32
         };
 
-        self.estimate += kalman_gain * (measurement - self.estimate);
+        self.estimate = f32::mul_add(kalman_gain, measurement - self.estimate, self.estimate);
         self.error_covariance = (1.0_f32 - kalman_gain) * predicted_covariance;
 
         if !self.estimate.is_finite() {
@@ -96,7 +96,7 @@ impl NextTabletPlugin for KalmanSmoothingPlugin {
                         min: 0.0001,
                         max: 1.0,
                         step: 0.001,
-                        unit: "".to_string(),
+                        unit: String::new(),
                         default: 0.005,
                     },
                 },
@@ -108,7 +108,7 @@ impl NextTabletPlugin for KalmanSmoothingPlugin {
                         min: 0.0001,
                         max: 1.0,
                         step: 0.005,
-                        unit: "".to_string(),
+                        unit: String::new(),
                         default: 0.05,
                     },
                 },

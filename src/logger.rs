@@ -116,6 +116,17 @@ impl Log for GlobalLogger {
     fn flush(&self) {}
 }
 
+/// Errors produced while installing the global logger.
+#[derive(Debug, thiserror::Error)]
+pub enum LoggerError {
+    /// The background worker thread could not be started.
+    #[error("Failed to spawn logger worker thread: {0}")]
+    Spawn(#[source] std::io::Error),
+    /// Another logger was already installed.
+    #[error("Logger initialization failed: {0}")]
+    Install(#[source] log::SetLoggerError),
+}
+
 /// Initializes the global logger.
 ///
 /// # Errors
@@ -123,7 +134,7 @@ impl Log for GlobalLogger {
 /// This function returns an error if:
 /// - It fails to spawn the background logger worker thread.
 /// - It fails to set the global logger instance.
-pub fn init() -> Result<(), String> {
+pub fn init() -> Result<(), LoggerError> {
     let (sender, receiver) = crossbeam_channel::bounded::<LogEntry>(LOG_QUEUE_CAPACITY);
 
     let spawn_result = thread::Builder::new()
@@ -189,14 +200,14 @@ pub fn init() -> Result<(), String> {
         });
 
     if let Err(e) = spawn_result {
-        return Err(format!("Failed to spawn logger worker thread: {e}"));
+        return Err(LoggerError::Spawn(e));
     }
 
     let logger = GlobalLogger { sender };
 
     log::set_boxed_logger(Box::new(logger))
         .map(|()| log::set_max_level(LevelFilter::Debug))
-        .map_err(|e| format!("Logger initialization failed: {e}"))
+        .map_err(LoggerError::Install)
 }
 
 #[cfg(test)]

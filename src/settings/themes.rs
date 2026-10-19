@@ -62,26 +62,81 @@ fn is_json_file(path: &Path) -> bool {
         .is_some_and(|e| e.eq_ignore_ascii_case("json"))
 }
 
-fn read_theme(path: &Path) -> Result<ThemeFile, String> {
+/// Errors produced while listing, importing or deleting a theme file.
+#[derive(Debug, thiserror::Error)]
+pub enum ThemeError {
+    /// The file name is not valid UTF-8.
+    #[error("Invalid theme file name")]
+    InvalidFileName,
+    /// The file name contains no character that can be used in a theme id.
+    #[error("Theme file name has no usable characters")]
+    NoUsableName,
+    /// The file is bigger than the accepted size.
+    #[error("{file_name} is larger than {max_kb} KB")]
+    TooLarge {
+        /// Name of the offending file.
+        file_name: String,
+        /// The size limit, in kilobytes.
+        max_kb: u64,
+    },
+    /// The file could not be read.
+    #[error("{file_name}: {source}")]
+    Read {
+        /// Name of the file.
+        file_name: String,
+        /// Why it could not be read.
+        #[source]
+        source: std::io::Error,
+    },
+    /// The file or the themes folder could not be inspected.
+    #[error(transparent)]
+    Io(#[from] std::io::Error),
+    /// The chosen file does not have the `.json` extension.
+    #[error("A theme must be a .json file")]
+    NotJsonFile,
+    /// The file is valid JSON but not a JSON object.
+    #[error("A theme file must contain a JSON object")]
+    NotAnObject,
+    /// The file is not valid JSON.
+    #[error("Not valid JSON: {0}")]
+    InvalidJson(#[source] serde_json::Error),
+    /// The copy into the themes folder failed.
+    #[error("Failed to save the theme: {0}")]
+    Save(#[source] std::io::Error),
+    /// No theme has this id.
+    #[error("No theme with id '{id}'")]
+    NotFound {
+        /// The id that was asked for.
+        id: String,
+    },
+    /// The theme file could not be removed.
+    #[error("Failed to delete the theme: {0}")]
+    Delete(#[source] std::io::Error),
+}
+
+fn read_theme(path: &Path) -> Result<ThemeFile, ThemeError> {
     let file_name = path
         .file_name()
         .and_then(|n| n.to_str())
-        .ok_or("Invalid theme file name")?
+        .ok_or(ThemeError::InvalidFileName)?
         .to_string();
     let stem = path
         .file_stem()
         .and_then(|s| s.to_str())
         .unwrap_or_default();
-    let id = theme_id_from_stem(stem).ok_or("Theme file name has no usable characters")?;
+    let id = theme_id_from_stem(stem).ok_or(ThemeError::NoUsableName)?;
 
-    let size = fs::metadata(path).map_err(|e| e.to_string())?.len();
+    let size = fs::metadata(path)?.len();
     if size > MAX_THEME_BYTES {
-        return Err(format!(
-            "{file_name} is larger than {} KB",
-            MAX_THEME_BYTES / 1024
-        ));
+        return Err(ThemeError::TooLarge {
+            file_name,
+            max_kb: MAX_THEME_BYTES / 1024,
+        });
     }
-    let content = fs::read_to_string(path).map_err(|e| format!("{file_name}: {e}"))?;
+    let content = fs::read_to_string(path).map_err(|source| ThemeError::Read {
+        file_name: file_name.clone(),
+        source,
+    })?;
     Ok(ThemeFile {
         id,
         file_name,
@@ -126,16 +181,16 @@ pub fn list_theme_files() -> Vec<ThemeFile> {
 /// overwritten: the copy gets a numeric suffix.
 ///
 /// # Errors
-/// Returns an error string if the file is not acceptable or cannot be copied.
-pub fn import_theme_file(source: &Path) -> Result<ThemeFile, String> {
+/// Returns an error if the file is not acceptable or cannot be copied.
+pub fn import_theme_file(source: &Path) -> Result<ThemeFile, ThemeError> {
     if !is_json_file(source) {
-        return Err("A theme must be a .json file".to_string());
+        return Err(ThemeError::NotJsonFile);
     }
     let imported = read_theme(source)?;
     match serde_json::from_str::<serde_json::Value>(&imported.content) {
         Ok(value) if value.is_object() => {}
-        Ok(_) => return Err("A theme file must contain a JSON object".to_string()),
-        Err(e) => return Err(format!("Not valid JSON: {e}")),
+        Ok(_) => return Err(ThemeError::NotAnObject),
+        Err(e) => return Err(ThemeError::InvalidJson(e)),
     }
 
     let dir = themes_dir();
@@ -148,8 +203,7 @@ pub fn import_theme_file(source: &Path) -> Result<ThemeFile, String> {
     }
 
     let file_name = format!("{id}.json");
-    fs::write(dir.join(&file_name), &imported.content)
-        .map_err(|e| format!("Failed to save the theme: {e}"))?;
+    fs::write(dir.join(&file_name), &imported.content).map_err(ThemeError::Save)?;
     Ok(ThemeFile {
         id,
         file_name,
@@ -162,10 +216,9 @@ pub fn import_theme_file(source: &Path) -> Result<ThemeFile, String> {
 /// The file is found by listing the themes folder, so the id is never turned into a path.
 ///
 /// # Errors
-/// Returns an error string if no theme has this id or the file cannot be removed.
-pub fn delete_theme_file(id: &str) -> Result<(), String> {
-    let target = fs::read_dir(themes_dir())
-        .map_err(|e| e.to_string())?
+/// Returns an error if no theme has this id or the file cannot be removed.
+pub fn delete_theme_file(id: &str) -> Result<(), ThemeError> {
+    let target = fs::read_dir(themes_dir())?
         .flatten()
         .map(|e| e.path())
         .find(|p| {
@@ -175,8 +228,8 @@ pub fn delete_theme_file(id: &str) -> Result<(), String> {
                     .and_then(theme_id_from_stem)
                     .is_some_and(|candidate| candidate == id)
         })
-        .ok_or_else(|| format!("No theme with id '{id}'"))?;
-    fs::remove_file(target).map_err(|e| format!("Failed to delete the theme: {e}"))
+        .ok_or_else(|| ThemeError::NotFound { id: id.to_string() })?;
+    fs::remove_file(target).map_err(ThemeError::Delete)
 }
 
 #[cfg(test)]
@@ -268,31 +321,31 @@ mod tests {
         let dir = TempDir::new("reject");
         let not_json = dir.0.join("a.json");
         fs::write(&not_json, "{ nope").unwrap();
-        assert!(
-            import_theme_file(&not_json)
-                .unwrap_err()
-                .contains("Not valid JSON")
-        );
+        assert!(matches!(
+            import_theme_file(&not_json).unwrap_err(),
+            ThemeError::InvalidJson(_)
+        ));
 
         let array = dir.0.join("b.json");
         fs::write(&array, "[]").unwrap();
-        assert!(
-            import_theme_file(&array)
-                .unwrap_err()
-                .contains("JSON object")
-        );
+        assert!(matches!(
+            import_theme_file(&array).unwrap_err(),
+            ThemeError::NotAnObject
+        ));
 
         let wrong_ext = dir.0.join("c.txt");
         fs::write(&wrong_ext, VALID).unwrap();
-        assert!(import_theme_file(&wrong_ext).unwrap_err().contains(".json"));
+        assert!(matches!(
+            import_theme_file(&wrong_ext).unwrap_err(),
+            ThemeError::NotJsonFile
+        ));
 
         let huge = dir.0.join("d.json");
         fs::write(&huge, vec![b' '; (MAX_THEME_BYTES + 1) as usize]).unwrap();
-        assert!(
-            import_theme_file(&huge)
-                .unwrap_err()
-                .contains("larger than")
-        );
+        assert!(matches!(
+            import_theme_file(&huge).unwrap_err(),
+            ThemeError::TooLarge { .. }
+        ));
         assert!(list_theme_files().is_empty());
     }
 
@@ -340,18 +393,18 @@ mod tests {
 
     #[test]
     fn a_theme_path_without_a_file_name_is_refused() {
-        assert_eq!(
+        assert!(matches!(
             read_theme(Path::new("..")).unwrap_err(),
-            "Invalid theme file name"
-        );
+            ThemeError::InvalidFileName
+        ));
     }
 
     #[test]
     fn a_theme_name_without_usable_characters_is_refused() {
-        assert_eq!(
+        assert!(matches!(
             read_theme(Path::new("!!!.json")).unwrap_err(),
-            "Theme file name has no usable characters"
-        );
+            ThemeError::NoUsableName
+        ));
     }
 
     #[test]
@@ -365,7 +418,10 @@ mod tests {
         let file = dir.join("binary.json");
         fs::write(&file, [0xFF, 0xFE, 0xFD]).unwrap();
         let error = read_theme(&file).unwrap_err();
-        assert!(error.starts_with("binary.json:"), "{error}");
+        assert!(
+            matches!(&error, ThemeError::Read { file_name, .. } if file_name == "binary.json"),
+            "{error}"
+        );
         let _ = fs::remove_dir_all(dir);
     }
 
@@ -392,7 +448,7 @@ mod tests {
         // `Themes` is a file, so the copy has nowhere to go.
         fs::write(dir.join("Themes"), "not a folder").unwrap();
         let error = import_theme_file(&source).unwrap_err();
-        assert!(error.starts_with("Failed to save the theme"), "{error}");
+        assert!(matches!(error, ThemeError::Save(_)), "{error}");
         let _ = fs::remove_dir_all(dir);
     }
 
@@ -410,7 +466,7 @@ mod tests {
         // A directory that looks like a theme file cannot be removed as a file.
         fs::create_dir_all(dir.join("Themes").join("neon.json")).unwrap();
         let error = delete_theme_file("neon").unwrap_err();
-        assert!(error.starts_with("Failed to delete the theme"), "{error}");
+        assert!(matches!(error, ThemeError::Delete(_)), "{error}");
         let _ = fs::remove_dir_all(dir);
     }
 }

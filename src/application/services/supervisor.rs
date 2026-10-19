@@ -30,9 +30,10 @@ impl ThreadSupervisor {
 
     /// The saver thread: waits `debounce` after a change, keeps only the latest configuration
     /// received meanwhile and hands it to `save`. Stops when every sender is gone.
-    fn spawn_saver_with<F>(receiver: Receiver<MappingConfig>, debounce: Duration, save: F)
+    fn spawn_saver_with<F, E>(receiver: Receiver<MappingConfig>, debounce: Duration, save: F)
     where
-        F: Fn(&MappingConfig) -> Result<(), String> + Send + 'static,
+        F: Fn(&MappingConfig) -> Result<(), E> + Send + 'static,
+        E: std::fmt::Display,
     {
         log::info!(target: "Config", "Spawning Background Saver thread");
         std::thread::spawn(move || {
@@ -70,7 +71,7 @@ mod tests {
         let (saved_tx, saved_rx) = bounded(8);
         ThreadSupervisor::spawn_saver_with(receiver, Duration::from_millis(150), move |cfg| {
             saved_tx.send(cfg.active_area.w).unwrap();
-            Ok(())
+            Ok::<(), std::io::Error>(())
         });
 
         for width in [10.0, 20.0, 30.0] {
@@ -87,7 +88,7 @@ mod tests {
         let (saved_tx, saved_rx) = bounded(8);
         ThreadSupervisor::spawn_saver_with(receiver, Duration::from_millis(20), move |cfg| {
             saved_tx.send(cfg.active_area.w).unwrap();
-            Ok(())
+            Ok::<(), std::io::Error>(())
         });
 
         sender.send(config(11.0)).unwrap();
@@ -124,7 +125,7 @@ mod tests {
         let (saved_tx, saved_rx) = bounded::<f32>(1);
         ThreadSupervisor::spawn_saver_with(receiver, Duration::from_millis(10), move |cfg| {
             let _ = saved_tx.send(cfg.active_area.w);
-            Ok(())
+            Ok::<(), std::io::Error>(())
         });
         drop(sender);
         // The closure (and with it `saved_tx`) is dropped when the thread ends, which is what

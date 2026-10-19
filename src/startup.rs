@@ -41,11 +41,16 @@ mod platform {
         format!("\"{}\" --autostart", exe.display())
     }
 
+    /// The `Run` registry key could not be opened.
+    #[derive(Debug, thiserror::Error)]
+    #[error("Cannot open the Run registry key (error {0})")]
+    struct OpenKeyError(u32);
+
     /// RAII wrapper so the registry key is always closed.
     struct RunKey(HKEY);
 
     impl RunKey {
-        fn open(access: u32, create: bool) -> Result<Self, String> {
+        fn open(access: u32, create: bool) -> Result<Self, OpenKeyError> {
             let subkey = to_wide(RUN_KEY);
             let mut key: HKEY = std::ptr::null_mut();
             let status = if create {
@@ -73,7 +78,7 @@ mod platform {
             if status == ERROR_SUCCESS {
                 Ok(Self(key))
             } else {
-                Err(format!("Cannot open the Run registry key (error {status})"))
+                Err(OpenKeyError(status))
             }
         }
     }

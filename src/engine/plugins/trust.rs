@@ -13,11 +13,13 @@
 //!
 //! Anything else is reported as *untrusted* and left on disk, unloaded.
 
+use super::error::TrustError;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
 use std::fmt::Write as _;
 use std::fs;
+use std::io::{Read, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
 
 /// Minisign public key (base64, second line of the `.pub` file) of the official plugin
@@ -67,8 +69,8 @@ impl TrustStore {
     /// Approves a library hash and persists the store.
     ///
     /// # Errors
-    /// Returns an error string if the store cannot be written; the approval is then not kept.
-    pub fn trust(&mut self, sha256: &str, file_name: &str) -> Result<(), String> {
+    /// Returns an error if the store cannot be written; the approval is then not kept.
+    pub fn trust(&mut self, sha256: &str, file_name: &str) -> Result<(), TrustError> {
         let previous = self
             .entries
             .insert(sha256.to_string(), file_name.to_string());
@@ -84,24 +86,24 @@ impl TrustStore {
     /// Forgets a library hash and persists the store.
     ///
     /// # Errors
-    /// Returns an error string if the store cannot be written.
-    pub fn revoke(&mut self, sha256: &str) -> Result<(), String> {
+    /// Returns an error if the store cannot be written.
+    pub fn revoke(&mut self, sha256: &str) -> Result<(), TrustError> {
         if self.entries.remove(sha256).is_some() {
             self.save()?;
         }
         Ok(())
     }
 
-    fn save(&self) -> Result<(), String> {
+    fn save(&self) -> Result<(), TrustError> {
         let json = format!("{:#}", serde_json::json!({ "trusted": &self.entries }));
         if let Some(parent) = self.path.parent() {
-            fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+            fs::create_dir_all(parent)?;
         }
         let tmp = self.path.with_extension("json.tmp");
-        fs::write(&tmp, json).map_err(|e| e.to_string())?;
+        fs::write(&tmp, json)?;
         fs::rename(&tmp, &self.path).map_err(|e| {
             let _ = fs::remove_file(&tmp);
-            e.to_string()
+            TrustError::from(e)
         })
     }
 }
@@ -111,9 +113,12 @@ impl TrustStore {
 /// # Errors
 /// Returns an I/O error if the file cannot be read.
 pub fn sha256_file(path: &Path) -> std::io::Result<String> {
-    let mut file = fs::File::open(path)?;
+    sha256_reader(&mut fs::File::open(path)?)
+}
+
+fn sha256_reader(reader: &mut impl Read) -> std::io::Result<String> {
     let mut hasher = Sha256::new();
-    std::io::copy(&mut file, &mut hasher)?;
+    std::io::copy(reader, &mut hasher)?;
     let digest = hasher.finalize();
     let mut hex = String::with_capacity(digest.len() * 2);
     for byte in digest {
@@ -122,8 +127,93 @@ pub fn sha256_file(path: &Path) -> std::io::Result<String> {
     Ok(hex)
 }
 
+/// A library file held open so the bytes that were checked are the bytes that get loaded.
+///
+/// Checking a file by path and then loading it by path leaves a gap: another process can
+/// swap the file in between, and the loader would run code that was never approved. Here the
+/// file is opened once and every check (hash, signature) reads through that same handle.
+/// - **Windows**: the handle is opened without write sharing, so nothing can modify or replace
+///   the file until it is dropped, and the loader opens the very same file.
+/// - **Linux**: the loader is given `/proc/self/fd/<n>`, so it maps the exact file that was
+///   checked even if the path is re-pointed to another file afterwards. A process allowed to
+///   write to the original file in place could still change it; that needs write access to a
+///   file the user approved, and a plugin runs with the user's rights anyway.
+pub struct PinnedLibrary {
+    file: fs::File,
+    path: PathBuf,
+}
+
+impl PinnedLibrary {
+    /// Opens `path` for verification and loading.
+    ///
+    /// # Errors
+    /// Returns an I/O error if the file cannot be opened.
+    pub fn open(path: &Path) -> std::io::Result<Self> {
+        let mut options = fs::OpenOptions::new();
+        options.read(true);
+        #[cfg(windows)]
+        {
+            use std::os::windows::fs::OpenOptionsExt;
+            options.share_mode(windows_sys::Win32::Storage::FileSystem::FILE_SHARE_READ);
+        }
+        Ok(Self {
+            file: options.open(path)?,
+            path: path.to_path_buf(),
+        })
+    }
+
+    /// Path of the library as the user sees it (used for messages and bookkeeping).
+    #[must_use]
+    pub fn path(&self) -> &Path {
+        &self.path
+    }
+
+    /// Path to give the dynamic loader so that it opens the file held by this handle.
+    #[must_use]
+    pub fn loader_path(&self) -> PathBuf {
+        #[cfg(target_os = "linux")]
+        {
+            use std::os::fd::AsRawFd;
+            PathBuf::from(format!("/proc/self/fd/{}", self.file.as_raw_fd()))
+        }
+        #[cfg(not(target_os = "linux"))]
+        {
+            self.path.clone()
+        }
+    }
+
+    /// Lowercase hex SHA-256 of the whole file.
+    ///
+    /// # Errors
+    /// Returns an I/O error if the file cannot be read.
+    pub fn sha256(&mut self) -> std::io::Result<String> {
+        self.file.seek(SeekFrom::Start(0))?;
+        sha256_reader(&mut self.file)
+    }
+
+    /// `true` if the file has a valid official `<library>.minisig` signature, checked on the
+    /// bytes of this handle. Always `false` when no official key was embedded at build time.
+    pub fn has_valid_official_signature(&mut self) -> bool {
+        self.has_valid_signature_with(OFFICIAL_PUBKEY)
+    }
+
+    fn has_valid_signature_with(&mut self, key: Option<&str>) -> bool {
+        let Some(key) = key else {
+            return false;
+        };
+        let mut bytes = Vec::new();
+        if self.file.seek(SeekFrom::Start(0)).is_err() || self.file.read_to_end(&mut bytes).is_err()
+        {
+            return false;
+        }
+        verify_signature_bytes(&self.path, &bytes, key)
+    }
+}
+
 /// Returns `true` if `library` has a `<library>.minisig` signature that verifies against the
 /// official key. Always `false` when no official key was embedded at build time.
+///
+/// This reads the file by path; to load the file afterwards use [`PinnedLibrary`] instead.
 #[must_use]
 pub fn has_valid_official_signature(library: &Path) -> bool {
     has_valid_signature_with(library, OFFICIAL_PUBKEY)
@@ -135,6 +225,10 @@ fn has_valid_signature_with(library: &Path, key: Option<&str>) -> bool {
 }
 
 fn verify_signature(library: &Path, pubkey_base64: &str) -> bool {
+    fs::read(library).is_ok_and(|bytes| verify_signature_bytes(library, &bytes, pubkey_base64))
+}
+
+fn verify_signature_bytes(library: &Path, bytes: &[u8], pubkey_base64: &str) -> bool {
     let mut sig_path = library.as_os_str().to_owned();
     sig_path.push(".minisig");
     let Ok(sig_text) = fs::read_to_string(PathBuf::from(sig_path)) else {
@@ -149,10 +243,7 @@ fn verify_signature(library: &Path, pubkey_base64: &str) -> bool {
     let Ok(mut verifier) = public_key.verify_stream(&signature) else {
         return false;
     };
-    let Ok(bytes) = fs::read(library) else {
-        return false;
-    };
-    verifier.update(&bytes);
+    verifier.update(bytes);
     verifier.finalize().is_ok()
 }
 
@@ -444,5 +535,40 @@ mod tests {
         let (library, key) = signed_library("with_key", b"plugin bytes");
         assert!(has_valid_signature_with(&library, Some(&key)));
         assert!(!has_valid_signature_with(&library, None));
+    }
+
+    #[test]
+    fn a_pinned_library_hashes_like_a_plain_read() {
+        let dir = temp_dir("pinned_hash");
+        let file = dir.join("filter.bin");
+        fs::write(&file, b"plugin bytes").unwrap();
+        let mut pinned = PinnedLibrary::open(&file).unwrap();
+        assert_eq!(pinned.sha256().unwrap(), sha256_file(&file).unwrap());
+        // Hashing twice must give the same answer: the cursor is rewound each time.
+        assert_eq!(pinned.sha256().unwrap(), sha256_file(&file).unwrap());
+    }
+
+    #[test]
+    fn a_pinned_library_checks_the_signature_on_its_own_bytes() {
+        let (library, key) = signed_library("pinned_sig", b"plugin bytes");
+        let mut pinned = PinnedLibrary::open(&library).unwrap();
+        assert!(pinned.has_valid_signature_with(Some(&key)));
+        assert!(!pinned.has_valid_signature_with(None));
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn a_pinned_library_cannot_be_rewritten_or_replaced_while_held() {
+        let dir = temp_dir("pinned_lock");
+        let file = dir.join("filter.dll");
+        fs::write(&file, b"approved").unwrap();
+        let pinned = PinnedLibrary::open(&file).unwrap();
+        assert!(fs::write(&file, b"evil").is_err());
+        let other = dir.join("other.dll");
+        fs::write(&other, b"evil").unwrap();
+        assert!(fs::rename(&other, &file).is_err());
+        assert!(fs::remove_file(&file).is_err());
+        drop(pinned);
+        assert_eq!(fs::read(&file).unwrap(), b"approved");
     }
 }

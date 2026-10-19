@@ -3,9 +3,10 @@
 //! Scans system and application directories for external plugins, manages the lifecycle
 //! of loaded shared libraries, and produces configured [`PluginInstance`]s for the filtering pipeline.
 
+use super::error::{DeletePluginError, TrustError};
 use super::instance::PluginInstance;
 use super::loader::{LoadedLibrary, PluginLoader};
-use super::trust::{self, TrustStore, UntrustedPlugin};
+use super::trust::{self, PinnedLibrary, TrustStore, UntrustedPlugin};
 use crate::core::config::models::MappingConfig;
 use crate::engine::state::LockRecoveryExt;
 use crate::filters::FilterPipeline;
@@ -109,8 +110,16 @@ impl PluginManager {
                 let path_display = path.display();
 
                 // Never execute a library the user has not approved: loading runs its
-                // initialisation code immediately.
-                let sha256 = match trust::sha256_file(&path) {
+                // initialisation code immediately. The file is opened once and both checked
+                // and loaded through that handle, so it cannot be swapped in between.
+                let mut pinned = match PinnedLibrary::open(&path) {
+                    Ok(pinned) => pinned,
+                    Err(e) => {
+                        log::warn!(target: "Plugins", "Cannot read plugin library {path_display}: {e}");
+                        continue;
+                    }
+                };
+                let sha256 = match pinned.sha256() {
                     Ok(hash) => hash,
                     Err(e) => {
                         log::warn!(target: "Plugins", "Cannot read plugin library {path_display}: {e}");
@@ -122,7 +131,7 @@ impl PluginManager {
                     .read()
                     .unwrap_or_log("plugin_trust")
                     .is_trusted(&sha256)
-                    || trust::has_valid_official_signature(&path);
+                    || pinned.has_valid_official_signature();
                 if !is_trusted {
                     log::warn!(
                         target: "Plugins",
@@ -135,7 +144,7 @@ impl PluginManager {
                     continue;
                 }
 
-                match PluginLoader::load(&path) {
+                match PluginLoader::load_pinned(&pinned) {
                     Ok(lib) => {
                         let id = lib.manifest.id.clone();
                         match discovered.entry(id) {
@@ -180,17 +189,16 @@ impl PluginManager {
     /// still matches the hash the user reviewed.
     ///
     /// # Errors
-    /// Returns an error string if no pending library has this hash (for instance because the
-    /// file changed since it was listed) or if the trust store cannot be written.
-    pub fn trust_plugin(&self, sha256: &str) -> Result<(), String> {
+    /// Returns [`TrustError::NotPending`] if no pending library has this hash (for instance
+    /// because the file changed since it was listed), or an I/O error if the trust store cannot
+    /// be written.
+    pub fn trust_plugin(&self, sha256: &str) -> Result<(), TrustError> {
         let file_name = self
             .untrusted_plugins()
             .into_iter()
             .find(|p| p.sha256 == sha256)
             .map(|p| p.file_name)
-            .ok_or_else(|| {
-                "This plugin is no longer pending approval (the file changed?)".to_string()
-            })?;
+            .ok_or(TrustError::NotPending)?;
         self.trust
             .write()
             .unwrap_or_log("plugin_trust")
@@ -202,9 +210,9 @@ impl PluginManager {
     /// Approves a library file that was just installed by the user through the app.
     ///
     /// # Errors
-    /// Returns an error string if the file cannot be hashed or the trust store cannot be written.
-    pub fn trust_installed_file(&self, path: &std::path::Path) -> Result<(), String> {
-        let sha256 = trust::sha256_file(path).map_err(|e| e.to_string())?;
+    /// Returns an error if the file cannot be hashed or the trust store cannot be written.
+    pub fn trust_installed_file(&self, path: &std::path::Path) -> Result<(), TrustError> {
+        let sha256 = trust::sha256_file(path)?;
         let file_name = path
             .file_name()
             .map_or_else(String::new, |n| n.to_string_lossy().into_owned());
@@ -241,13 +249,13 @@ impl PluginManager {
     /// Deletes a plugin's dynamic library file from disk and unloads it.
     ///
     /// # Errors
-    /// Returns an error string if the plugin is not loaded or if file deletion fails.
-    pub fn delete_plugin(&self, id: &str) -> Result<PathBuf, String> {
+    /// Returns an error if the plugin is not loaded or if file deletion fails.
+    pub fn delete_plugin(&self, id: &str) -> Result<PathBuf, DeletePluginError> {
         let (lib_path, _lib) = {
             let mut lock = self.loaded.write().unwrap_or_log("loaded_plugins");
             let lib = lock
                 .remove(id)
-                .ok_or_else(|| format!("Plugin '{id}' is not loaded"))?;
+                .ok_or_else(|| DeletePluginError::NotLoaded { id: id.to_string() })?;
             drop(lock);
             (lib.path.clone(), lib)
         };
@@ -266,10 +274,10 @@ impl PluginManager {
                     return Ok(lib_path);
                 }
             }
-            return Err(format!(
-                "Failed to delete plugin file at {}: {e}",
-                lib_path.display()
-            ));
+            return Err(DeletePluginError::Remove {
+                path: lib_path,
+                source: e,
+            });
         }
 
         self.reload();
@@ -305,6 +313,51 @@ mod tests {
     use super::*;
     use ntd_plugin_api::{PluginContext, PluginPacket};
 
+    /// End to end with a real plugin when one has been built (`cargo build` in
+    /// `plugins/radial_follow`): an approved library loads through the pinned handle.
+    #[test]
+    fn an_approved_real_library_loads_through_the_pinned_handle() {
+        let built = PathBuf::from("plugins/radial_follow/target/debug").join(if cfg!(windows) {
+            "radial_follow.dll"
+        } else {
+            "libradial_follow.so"
+        });
+        if !built.exists() {
+            return;
+        }
+        let nanos = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_or(0, |d| d.as_nanos());
+        let dir = std::env::temp_dir().join(format!("ntd_plugins_pinned_{nanos}"));
+        std::fs::create_dir_all(&dir).unwrap();
+        let installed = dir.join(format!("radial_follow.{LIB_EXTENSION}"));
+        std::fs::copy(&built, &installed).unwrap();
+
+        let manager = PluginManager::with_paths_and_store(
+            vec![dir.clone()],
+            TrustStore::load(dir.join("trusted_plugins.json")),
+        );
+        assert!(manager.loaded_manifests().is_empty());
+        manager.trust_installed_file(&installed).unwrap();
+        manager.reload();
+        let manifests = manager.loaded_manifests();
+        assert_eq!(manifests.len(), 1);
+        assert_eq!(
+            manifests.first().map(|m| m.id.as_str()),
+            Some("radial_follow")
+        );
+        assert!(manager.untrusted_plugins().is_empty());
+    }
+
+    #[test]
+    fn deleting_a_plugin_that_is_not_loaded_names_its_id() {
+        let manager =
+            PluginManager::with_paths_and_store(Vec::new(), TrustStore::load(PathBuf::new()));
+        let error = manager.delete_plugin("ghost").unwrap_err();
+        assert!(matches!(&error, DeletePluginError::NotLoaded { id } if id == "ghost"));
+        assert_eq!(error.to_string(), "Plugin 'ghost' is not loaded");
+    }
+
     #[test]
     fn test_untrusted_library_is_never_loaded() {
         let nanos = std::time::SystemTime::now()
@@ -329,7 +382,10 @@ mod tests {
         assert!(manager.loaded_manifests().is_empty());
 
         // Approving a hash that is not pending is refused.
-        assert!(manager.trust_plugin("0000").is_err());
+        assert!(matches!(
+            manager.trust_plugin("0000"),
+            Err(TrustError::NotPending)
+        ));
 
         // Approving the real hash moves it to the loader (which then rejects the fake binary).
         manager.trust_plugin(&first.sha256).unwrap();

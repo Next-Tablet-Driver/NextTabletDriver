@@ -1,6 +1,6 @@
 //! # Devocub Antichatter Plugin
 //!
-//! **Creator**: X9VoiD
+//! **Creator**: `X9VoiD`
 //!
 //! An implementation of the Devocub smoothing and prediction algorithm.
 //! Uses a latency-based weight curve combined with an antichatter curve and
@@ -92,7 +92,7 @@ impl NextTabletPlugin for DevocubAntichatterPlugin {
                         min: 0.5,
                         max: 20.0,
                         step: 0.1,
-                        unit: "".to_string(),
+                        unit: String::new(),
                         default: 3.0,
                     },
                 },
@@ -104,7 +104,7 @@ impl NextTabletPlugin for DevocubAntichatterPlugin {
                         min: 0.1,
                         max: 1000.0,
                         step: 1.0,
-                        unit: "".to_string(),
+                        unit: String::new(),
                         default: 1.0,
                     },
                 },
@@ -116,7 +116,7 @@ impl NextTabletPlugin for DevocubAntichatterPlugin {
                         min: -5.0,
                         max: 5.0,
                         step: 0.1,
-                        unit: "".to_string(),
+                        unit: String::new(),
                         default: 0.0,
                     },
                 },
@@ -128,7 +128,7 @@ impl NextTabletPlugin for DevocubAntichatterPlugin {
                         min: -5.0,
                         max: 10.0,
                         step: 0.1,
-                        unit: "".to_string(),
+                        unit: String::new(),
                         default: 1.0,
                     },
                 },
@@ -148,7 +148,7 @@ impl NextTabletPlugin for DevocubAntichatterPlugin {
                         min: 0.0,
                         max: 5.0,
                         step: 0.1,
-                        unit: "".to_string(),
+                        unit: String::new(),
                         default: 1.1,
                     },
                 },
@@ -160,7 +160,7 @@ impl NextTabletPlugin for DevocubAntichatterPlugin {
                         min: 0.1,
                         max: 5.0,
                         step: 0.1,
-                        unit: "".to_string(),
+                        unit: String::new(),
                         default: 1.0,
                     },
                 },
@@ -172,7 +172,7 @@ impl NextTabletPlugin for DevocubAntichatterPlugin {
                         min: 0.0,
                         max: 10.0,
                         step: 0.1,
-                        unit: "".to_string(),
+                        unit: String::new(),
                         default: 3.0,
                     },
                 },
@@ -184,7 +184,7 @@ impl NextTabletPlugin for DevocubAntichatterPlugin {
                         min: -5.0,
                         max: 5.0,
                         step: 0.1,
-                        unit: "".to_string(),
+                        unit: String::new(),
                         default: 0.3,
                     },
                 },
@@ -212,15 +212,15 @@ impl NextTabletPlugin for DevocubAntichatterPlugin {
             let cosh_val =
                 ((distance - self.prediction_offset_x) * self.prediction_sharpness).cosh();
             let prediction_mod = if cosh_val.abs() > 0.0001_f32 {
-                (1.0_f32 / cosh_val) * self.prediction_strength + self.prediction_offset_y
+                (1.0_f32 / cosh_val).mul_add(self.prediction_strength, self.prediction_offset_y)
             } else {
                 self.prediction_offset_y
             };
 
             self.prev_target_pos = (target_x, target_y);
             (
-                target_x + delta_x * prediction_mod,
-                target_y + delta_y * prediction_mod,
+                delta_x.mul_add(prediction_mod, target_x),
+                delta_y.mul_add(prediction_mod, target_y),
             )
         } else {
             (target_x, target_y)
@@ -253,8 +253,8 @@ impl NextTabletPlugin for DevocubAntichatterPlugin {
             0.0_f32
         };
 
-        self.current_pos.0 += delta_x * final_weight;
-        self.current_pos.1 += delta_y * final_weight;
+        self.current_pos.0 = delta_x.mul_add(final_weight, self.current_pos.0);
+        self.current_pos.1 = delta_y.mul_add(final_weight, self.current_pos.1);
 
         if !self.current_pos.0.is_finite() || !self.current_pos.1.is_finite() {
             self.current_pos = calc_target;

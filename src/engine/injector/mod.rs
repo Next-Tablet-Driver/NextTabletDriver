@@ -89,12 +89,12 @@ impl InputSink for Injector {
 #[cfg(windows)]
 pub mod windows;
 #[cfg(windows)]
-pub use windows::Injector;
+pub use windows::{Injector, InjectorError};
 
 #[cfg(target_os = "linux")]
 pub mod linux;
 #[cfg(target_os = "linux")]
-pub use linux::Injector;
+pub use linux::{Injector, InjectorError};
 
 #[cfg(test)]
 #[allow(clippy::float_cmp)]
