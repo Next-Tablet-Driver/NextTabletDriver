@@ -458,6 +458,7 @@ mod tests {
         TabletConfiguration {
             name: "Test Tablet".to_string(),
             specifications: Specifications {
+                auxiliary_buttons: None,
                 digitizer: DigitizerSpecs {
                     width: 100.0,
                     height: 100.0,

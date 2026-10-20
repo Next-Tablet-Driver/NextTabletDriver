@@ -33,6 +33,7 @@
 //! opens the real HID device at a time, and every other process mirrors its
 //! state instead.
 
+mod buttons;
 mod owner;
 mod polling;
 mod reader;

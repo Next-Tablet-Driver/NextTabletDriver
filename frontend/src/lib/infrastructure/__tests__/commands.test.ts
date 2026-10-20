@@ -38,6 +38,12 @@ describe("tauri commands", () => {
         expect(invokeMock).toHaveBeenCalledWith(command, { path: "C:/profiles/a.json" });
     });
 
+    it("normalizeBinding sends the text and returns the driver's spelling", async () => {
+        invokeMock.mockResolvedValueOnce("Ctrl+Z");
+        await expect(commands.normalizeBinding("ctrl+z")).resolves.toBe("Ctrl+Z");
+        expect(invokeMock).toHaveBeenCalledWith("normalize_binding", { text: "ctrl+z" });
+    });
+
     it("deletePlugin forwards the plugin id", async () => {
         await commands.deletePlugin("kalman");
         expect(invokeMock).toHaveBeenCalledWith("delete_plugin", { id: "kalman" });

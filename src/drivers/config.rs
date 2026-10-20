@@ -28,6 +28,16 @@ pub struct TabletConfiguration {
 pub struct Specifications {
     pub digitizer: DigitizerSpecs,
     pub pen: PenSpecs,
+    /// The keys on the tablet itself (`ExpressKeys`), when it has any.
+    pub auxiliary_buttons: Option<AuxiliarySpecs>,
+}
+
+/// Describes the keys on the tablet body.
+#[derive(Debug, Deserialize, Clone)]
+#[serde(rename_all = "PascalCase")]
+pub struct AuxiliarySpecs {
+    /// Number of keys.
+    pub button_count: Option<u8>,
 }
 
 /// Details the mapping area size and maximum raw values the HID descriptor can emit.

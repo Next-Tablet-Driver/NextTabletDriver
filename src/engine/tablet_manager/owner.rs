@@ -233,6 +233,7 @@ fn on_device_connected(
 ) {
     let size = driver.get_physical_specs();
     let (mw, mh, mp) = driver.get_specs();
+    let (pen_button_count, aux_button_count) = driver.get_button_counts();
 
     let new_device = crate::engine::state::DeviceState {
         name: driver.get_name().to_string(),
@@ -241,6 +242,8 @@ fn on_device_connected(
         physical_size: size,
         hardware_size: (mw, mh),
         max_pressure: mp,
+        pen_button_count,
+        aux_button_count,
     };
 
     *shared.device.write().unwrap_or_reset("device") = new_device.clone();

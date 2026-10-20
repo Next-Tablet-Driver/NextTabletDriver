@@ -10,6 +10,10 @@ pub struct TabletStatus {
     pub height: f32,
     pub max_x: f32,
     pub max_y: f32,
+    /// Number of buttons on the pen, 0 when unknown.
+    pub pen_button_count: u8,
+    /// Number of keys on the tablet body, 0 when it has none or when unknown.
+    pub aux_button_count: u8,
 }
 
 #[tauri::command]
@@ -22,6 +26,8 @@ pub fn get_tablet_status(state: State<'_, Arc<SharedState>>) -> TabletStatus {
         height: device.physical_size.1,
         max_x: device.hardware_size.0,
         max_y: device.hardware_size.1,
+        pen_button_count: device.pen_button_count,
+        aux_button_count: device.aux_button_count,
     }
 }
 
@@ -102,6 +108,15 @@ pub fn reset_config(state: State<'_, Arc<SharedState>>) {
         .config
         .version
         .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+}
+
+/// Checks a button binding typed or recorded in the interface and returns it in the plain
+/// format, so `ctrl + z` is stored as `Ctrl+Z`. The grammar lives in the core crate only.
+#[tauri::command]
+pub fn normalize_binding(text: String) -> Result<String, String> {
+    text.parse::<next_tablet_driver::core::input::Binding>()
+        .map(|binding| binding.to_string())
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]

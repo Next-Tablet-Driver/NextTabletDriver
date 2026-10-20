@@ -79,7 +79,8 @@ The easiest way is to copy a definition of another tablet from the same brand, a
 | `Digitizer.Width`, `Height` | The physical size of the drawing surface, in millimeters. |
 | `Digitizer.MaxX`, `MaxY` | The largest X and Y values the tablet reports. |
 | `Pen.MaxPressure` | The largest pressure value, such as 2047, 4095 or 8191. |
-| `Pen.ButtonCount` | Number of buttons on the pen. |
+| `Pen.ButtonCount` | Number of buttons on the pen. Sets how many rows **Button Actions** shows. |
+| `AuxiliaryButtons.ButtonCount` | Number of keys on the tablet itself. Sets how many rows **Tablet Keys** shows. Leave it out when there are none. |
 | `VendorID`, `ProductID` | The USB ID, in decimal. |
 | `InputReportLength` | The size, in bytes, of the pen reports. The driver uses it to tell tablets with the same ID apart. |
 | `ReportParser` | Which parser decodes the reports. See [Step 4](#step-4-write-a-parser). |

@@ -41,7 +41,7 @@ describe("BindingCard", () => {
 
 describe("ButtonActions", () => {
     it("lists one field per pen button", () => {
-        const { mapping } = fakeMapping({ pen_button_bindings: ["Right Click", "Middle Click", "None"] });
+        const { mapping } = fakeMapping({ pen_button_bindings: ["Right Click", "Middle Click", "None"], aux_button_bindings: [] });
         render(ButtonActions, { props: { mapping } });
         expect(screen.getByLabelText("Pen Button 1")).toHaveValue("Right Click");
         expect(screen.getByLabelText("Pen Button 2")).toHaveValue("Middle Click");
@@ -49,7 +49,7 @@ describe("ButtonActions", () => {
     });
 
     it("writes the new binding and marks the profile dirty", async () => {
-        const { mapping, markDirty, config } = fakeMapping({ pen_button_bindings: ["Right Click", "Middle Click"] });
+        const { mapping, markDirty, config } = fakeMapping({ pen_button_bindings: ["Right Click", "Middle Click"], aux_button_bindings: [] });
         render(ButtonActions, { props: { mapping } });
         await fireEvent.input(screen.getByLabelText("Pen Button 1"), { target: { value: "Back" } });
         expect(config?.pen_button_bindings).toEqual(["Back", "Middle Click"]);

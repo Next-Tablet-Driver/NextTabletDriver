@@ -92,7 +92,9 @@ On the **Pen Settings** tab, these options have an effect today:
 - **Disable pressure**: ignore pressure.
 - **Pressure curve**: reshape the pressure. Linear, exponential, or your own curve. This changes the pressure value that other programs receive, and that only happens on Linux (see the next section).
 
-The other options on this tab (eraser threshold, disable tilt, tip and eraser bindings, pen button actions) are saved but not used yet. See [Known limitations](troubleshooting.md#known-limitations).
+- **Button Actions** and **Tablet Keys**: decide what each pen button and each key on the tablet does. See [Button mapping](button-mapping.md).
+
+The other options on this tab (eraser threshold, disable tilt, tip and eraser bindings) are saved but not used yet. See [Known limitations](troubleshooting.md#known-limitations).
 
 ### Pressure and tilt
 

@@ -7,7 +7,7 @@ NextTabletDriver works on Linux with X11, Wayland and XWayland. It reads your ta
 Two things need permission on Linux:
 
 1. **Your tablet.** The driver reads it through a `hidraw` device file (`/dev/hidraw*`).
-2. **`/dev/uinput`.** The driver uses it to create the virtual pen and mouse. It is a feature of the Linux kernel, and the `uinput` kernel module must be loaded.
+2. **`/dev/uinput`.** The driver uses it to create the virtual pen, mouse and keyboard. It is a feature of the Linux kernel, and the `uinput` kernel module must be loaded.
 
 The file `scripts/99-nexttabletdriver.rules` gives your user both permissions. It is a *udev rules* file. udev is the Linux service that creates device files and sets who can use them. The rules also tell the system to ignore the real tablet, so the cursor does not move twice.
 
@@ -116,7 +116,7 @@ Start the driver with your tablet plugged in. Then list the input devices:
 cat /proc/bus/input/devices
 ```
 
-You should see **NextTabletDriver Virtual Pen** and **NextTabletDriver Virtual Mouse**. To watch the events as they happen:
+You should see **NextTabletDriver Virtual Pen**, **NextTabletDriver Virtual Mouse** and **NextTabletDriver Virtual Keyboard**. To watch the events as they happen:
 
 ```bash
 sudo libinput debug-events
