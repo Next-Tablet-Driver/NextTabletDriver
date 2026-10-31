@@ -89,11 +89,11 @@ Add `-Trust` to approve the files you just built (do this only for code you buil
 cargo build --release --manifest-path plugins/hawku_smoothing/Cargo.toml
 ```
 
-The library is in `plugins/hawku_smoothing/target/release/`. It is named `hawku_smoothing.dll` on Windows and `libhawku_smoothing.so` on Linux.
+The library is in `target/release/`. It is named `hawku_smoothing.dll` on Windows and `libhawku_smoothing.so` on Linux.
 
 ## Write your own plugin
 
 You can write a plugin in Rust, or in any language that can export C functions. The [Plugin development guide](plugin-development.md) explains how plugins work, how to test and debug them, and how to share them. It comes with two complete, tested examples:
 
-- [`sdk/examples/rust_plugin`](../sdk/examples/rust_plugin): a smoothing filter in Rust. Copy it to start.
-- [`sdk/examples/c_plugin`](../sdk/examples/c_plugin): a plugin in C.
+- [`apps/sdk/examples/rust_plugin`](../apps/sdk/examples/rust_plugin): a smoothing filter in Rust. Copy it to start.
+- [`apps/sdk/examples/c_plugin`](../apps/sdk/examples/c_plugin): a plugin in C.

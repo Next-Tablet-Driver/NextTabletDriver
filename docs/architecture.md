@@ -32,17 +32,17 @@ The desktop app is a thin shell around this engine. It adds a window (the user i
 | Path | What it is |
 | --- | --- |
 | `/` (`Cargo.toml`) | The core library, `next_tablet_driver`. All the engine code lives here. |
-| `src-tauri/` | The desktop app. A [Tauri](https://tauri.app) program that starts the engine and shows the interface. |
+| `apps/desktop/` | The desktop app. A [Tauri](https://tauri.app) program that starts the engine and shows the interface. |
 | `frontend/` | The interface. [Svelte](https://svelte.dev) 5, TypeScript and Vite. See [`frontend/README.md`](../frontend/README.md). |
-| `sdk/` | `ntd_sdk`, a library that lets other programs (games, tools) run the engine inside their own process. See [Integrations](integrations.md) and [`sdk/README.md`](../sdk/README.md). |
-| `sdk/plugin_api/` | `ntd_plugin_api`, the interface that plugins implement. See [Plugin development](plugin-development.md). |
+| `apps/sdk/` | `ntd_sdk`, a library that lets other programs (games, tools) run the engine inside their own process. See [Integrations](integrations.md) and [`apps/sdk/README.md`](../apps/sdk/README.md). |
+| `crates/ntd-plugin-api/` | `ntd_plugin_api`, the interface that plugins implement. See [Plugin development](plugin-development.md). |
 | `plugins/` | Source code of the five plugins we maintain. |
 | `tablets/OpenTabletDriver/` | A git submodule with tablet definitions from [OpenTabletDriver](https://github.com/OpenTabletDriver/OpenTabletDriver). |
 | `qa/` | Benchmarks, fuzzers and property tests. |
 | `packaging/`, `nix/`, `scripts/` | Packaging recipes, Nix modules, helper scripts, udev rules. |
 | `.github/` | CI workflows, issue and pull request templates, repository rules. |
 
-The root crate is not a Cargo workspace. `src-tauri`, `sdk`, `sdk/plugin_api` and each plugin are separate crates with their own `Cargo.lock`. The CI loops over them explicitly.
+The repository is one Cargo workspace with a single `Cargo.lock`. The root crate, `apps/desktop`, `apps/sdk`, `crates/ntd-plugin-api`, each plugin and the example plugin are its members, so `cargo build --workspace` builds all of them into one `target/` folder (the checks of the root crate use `-p next_tablet_driver`). The only crate outside it is `tools/ntd-recorder`, which keeps its own lockfile until it joins (roadmap P1.2).
 
 ## Life of a pen packet
 
@@ -86,15 +86,15 @@ The injector is called directly from the polling thread. This is a deliberate ch
 | Engine | `ThreadSupervisor::spawn_engine` | Detect, read, decode, process and inject. Restarted after one second if it panics. |
 | WebSocket | `spawn_websocket` | Serves live pen data to local clients. See [Integrations](integrations.md). |
 | Saver | `spawn_saver` | Writes the settings file 500 ms after the last change, so fast edits cause one write. |
-| Event bridge | `src-tauri/src/lib.rs` | Sends pen data to the interface at about 60 Hz. It does nothing when every window is hidden, so the tray mode costs almost no CPU. |
-| Tray watchers | `src-tauri/src/lib.rs` | Two small loops that update the tray menu when the tablet or the mode changes. |
+| Event bridge | `apps/desktop/src/lib.rs` | Sends pen data to the interface at about 60 Hz. It does nothing when every window is hidden, so the tray mode costs almost no CPU. |
+| Tray watchers | `apps/desktop/src/lib.rs` | Two small loops that update the tray menu when the tablet or the mode changes. |
 | Interface | Tauri | The webview that shows the Svelte app. |
 
 The threads share one `SharedState` (`engine::state`). It holds the current settings (`ConfigState`), the latest pen data and statistics (`PipelineState`), the connected device (`DeviceState`), the app life cycle (`LifecycleState`) and the plugin manager. Each part is behind a lock or an atomic. The code uses helper methods that recover from a poisoned lock instead of panicking.
 
 ## How the interface talks to the engine
 
-The interface runs in a webview and cannot touch the engine directly. It calls Tauri *commands* (`src-tauri/src/commands.rs`): `get_config`, `set_config`, `save_config`, `load_profile`, `get_available_plugins`, `install_plugin`, `list_themes`, and so on. The TypeScript side of each command is in `frontend/src/lib/infrastructure/tauri/commands.ts`.
+The interface runs in a webview and cannot touch the engine directly. It calls Tauri *commands* (`apps/desktop/src/commands.rs`): `get_config`, `set_config`, `save_config`, `load_profile`, `get_available_plugins`, `install_plugin`, `list_themes`, and so on. The TypeScript side of each command is in `frontend/src/lib/infrastructure/tauri/commands.ts`.
 
 - `set_config` replaces the settings in memory and increases a version number. The engine notices the new version in its loop and reloads its pipeline. Changes apply right away.
 - `save_config` sends the settings to the saver thread, which writes them to disk.

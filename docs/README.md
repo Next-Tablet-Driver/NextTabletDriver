@@ -36,7 +36,7 @@ More documentation lives next to the code:
 - [`.github/SUPPORT.md`](../.github/SUPPORT.md): where to get help.
 - [`frontend/README.md`](../frontend/README.md): the interface code.
 - [`qa/benches/README.md`](../qa/benches/README.md) and [`qa/fuzz/README.md`](../qa/fuzz/README.md): speed tests and fuzzing.
-- [`sdk/README.md`](../sdk/README.md): the two developer kits (plugin API and embedding SDK) and their examples.
+- [`apps/sdk/README.md`](../apps/sdk/README.md): the two developer kits (plugin API and embedding SDK) and their examples.
 
 ## How these docs are written
 

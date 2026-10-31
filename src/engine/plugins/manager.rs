@@ -313,11 +313,11 @@ mod tests {
     use super::*;
     use ntd_plugin_api::{PluginContext, PluginPacket};
 
-    /// End to end with a real plugin when one has been built (`cargo build` in
-    /// `plugins/radial_follow`): an approved library loads through the pinned handle.
+    /// End to end with a real plugin when one has been built (`cargo build -p radial_follow`):
+    /// an approved library loads through the pinned handle.
     #[test]
     fn an_approved_real_library_loads_through_the_pinned_handle() {
-        let built = PathBuf::from("plugins/radial_follow/target/debug").join(if cfg!(windows) {
+        let built = PathBuf::from("target/debug").join(if cfg!(windows) {
             "radial_follow.dll"
         } else {
             "libradial_follow.so"
@@ -396,8 +396,15 @@ mod tests {
 
     #[test]
     fn test_manager_pipeline_creation() {
-        let dev_dir = PathBuf::from("plugins/radial_follow/target/debug");
-        let manager = if dev_dir.is_dir() {
+        // The plugins are built into the workspace target directory, next to many other files:
+        // only scan it when the plugin this test is about is there.
+        let dev_dir = PathBuf::from("target/debug");
+        let radial = dev_dir.join(if cfg!(windows) {
+            "radial_follow.dll"
+        } else {
+            "libradial_follow.so"
+        });
+        let manager = if radial.exists() {
             PluginManager::with_paths(vec![dev_dir])
         } else {
             PluginManager::new()

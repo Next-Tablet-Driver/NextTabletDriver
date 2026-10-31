@@ -1,0 +1,19 @@
+[package]
+name = "simple_smoothing"
+version = "1.0.0"
+edition = "2024"
+publish = false
+description = "Example NextTabletDriver plugin: a simple smoothing filter"
+
+[lib]
+# A plugin is a dynamic library (.dll on Windows, .so on Linux).
+crate-type = ["cdylib"]
+
+[dependencies]
+# Inside this repository, the plugin API is a path dependency.
+# Outside it, use a git dependency and pin a commit, for example:
+#   ntd_plugin_api = { git = "https://github.com/Next-Tablet-Driver/NextTabletDriver", rev = "<commit>" }
+ntd_plugin_api = { path = "../../../../crates/ntd-plugin-api" }
+
+# `export_ntd_plugin!` uses serde_json, and `set_property` receives JSON text.
+serde_json = "1.0"

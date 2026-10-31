@@ -38,12 +38,6 @@ jobs:
         with:
           tool: cargo-deny
 
-      # The root crate is not a Cargo workspace: audit the lockfile of every crate.
+      # One workspace, one lockfile: a single run audits every crate.
       - name: Check every crate
-        run: |
-          set -e
-          for manifest in Cargo.toml src-tauri/Cargo.toml sdk/Cargo.toml sdk/plugin_api/Cargo.toml plugins/*/Cargo.toml sdk/examples/rust_plugin/Cargo.toml; do
-            echo "::group::$manifest"
-            cargo deny --manifest-path "$manifest" check advisories
-            echo "::endgroup::"
-          done
+        run: cargo deny check advisories

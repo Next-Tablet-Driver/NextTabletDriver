@@ -188,9 +188,9 @@ mod tests {
     #[test]
     fn test_load_radial_follow_plugin_if_present() {
         #[cfg(target_os = "windows")]
-        let dev_path = PathBuf::from("plugins/radial_follow/target/debug/radial_follow.dll");
+        let dev_path = PathBuf::from("target/debug/radial_follow.dll");
         #[cfg(not(target_os = "windows"))]
-        let dev_path = PathBuf::from("plugins/radial_follow/target/debug/libradial_follow.so");
+        let dev_path = PathBuf::from("target/debug/libradial_follow.so");
 
         let dll_path = if dev_path.exists() {
             dev_path

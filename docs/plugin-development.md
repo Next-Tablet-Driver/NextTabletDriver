@@ -10,7 +10,7 @@ If you only want to *use* plugins, read [Plugins](plugins.md) instead.
 | What you build | A `.dll` on Windows, a `.so` on Linux. |
 | Interface version | 1 |
 | Where it runs | Inside NextTabletDriver, for every packet, on the thread that reads the tablet. |
-| Start from | [`sdk/examples/rust_plugin`](../sdk/examples/rust_plugin) (Rust) or [`sdk/examples/c_plugin`](../sdk/examples/c_plugin) (C). Both are tested. |
+| Start from | [`apps/sdk/examples/rust_plugin`](../apps/sdk/examples/rust_plugin) (Rust) or [`apps/sdk/examples/c_plugin`](../apps/sdk/examples/c_plugin) (C). Both are tested. |
 
 ## What a plugin can and cannot do
 
@@ -36,7 +36,7 @@ Pressure and tilt that a plugin changes only reach other programs on Linux. On W
 
 You need Rust 1.99 or newer. `ntd_plugin_api` requires it.
 
-1. **Copy the template.** Copy the folder [`sdk/examples/rust_plugin`](../sdk/examples/rust_plugin) to a new place.
+1. **Copy the template.** Copy the folder [`apps/sdk/examples/rust_plugin`](../apps/sdk/examples/rust_plugin) to a new place.
 2. **Name it.** In `Cargo.toml`, change `name`. In `src/lib.rs`, change the manifest: a new `id`, `name`, `author` and `description`. If your folder is outside this repository, replace the dependency on `ntd_plugin_api` with a git dependency, as the comment in `Cargo.toml` shows, and pin a commit.
 3. **Test it.** Run `cargo test`. The template has tests that you can reuse.
 4. **Build it.** Run `cargo build --release`. The library is in `target/release/`: `simple_smoothing.dll` on Windows, `libsimple_smoothing.so` on Linux.
@@ -205,7 +205,7 @@ Other problems:
 
 ## Writing a plugin in another language
 
-The macro in `ntd_plugin_api` is only a convenience. The real interface is seven C functions. Any language that can export functions with the C calling convention can make a plugin: C, C++, Zig, Go (with `cgo`'s `c-shared` mode), Pascal, and more. The tested C example is [`sdk/examples/c_plugin`](../sdk/examples/c_plugin).
+The macro in `ntd_plugin_api` is only a convenience. The real interface is seven C functions. Any language that can export functions with the C calling convention can make a plugin: C, C++, Zig, Go (with `cgo`'s `c-shared` mode), Pascal, and more. The tested C example is [`apps/sdk/examples/c_plugin`](../apps/sdk/examples/c_plugin).
 
 Build for the same CPU type as the app (x64 or ARM64) and the same operating system.
 
@@ -307,7 +307,7 @@ cl /O2 /LD plugin.c /Fe:c_flip_x.dll
 cc -O2 -shared -fPIC plugin.c -o libc_flip_x.so
 ```
 
-See the [README of the example](../sdk/examples/c_plugin/README.md).
+See the [README of the example](../apps/sdk/examples/c_plugin/README.md).
 
 ## Share your plugin
 
@@ -322,10 +322,10 @@ See the [README of the example](../sdk/examples/c_plugin/README.md).
 
 ## Reference
 
-The Rust API is documented in the code of the [`ntd_plugin_api`](../sdk/plugin_api/src/lib.rs) crate. To read it as web pages:
+The Rust API is documented in the code of the [`ntd_plugin_api`](../crates/ntd-plugin-api/src/lib.rs) crate. To read it as web pages:
 
 ```bash
-cargo doc --manifest-path sdk/plugin_api/Cargo.toml --open
+cargo doc --manifest-path crates/ntd-plugin-api/Cargo.toml --open
 ```
 
 | Item | What it is |

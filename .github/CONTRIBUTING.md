@@ -48,9 +48,9 @@ The CI runs the same checks on your pull request, so run them first. [Developmen
 
 ```bash
 cargo fmt --all -- --check
-cargo clippy --workspace --all-targets --all-features -- -D warnings
-cargo nextest run --workspace --all-features
-cargo test --workspace --all-features --doc
+cargo clippy -p next_tablet_driver --all-targets --all-features -- -D warnings
+cargo nextest run -p next_tablet_driver --all-features
+cargo test -p next_tablet_driver --all-features --doc
 npm --prefix frontend ci
 npm --prefix frontend run lint
 npm --prefix frontend run check

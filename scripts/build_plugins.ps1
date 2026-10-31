@@ -72,7 +72,7 @@ foreach ($crate in $PluginCrates) {
     Write-Host "[$CrateName] Compiling in release mode..." -ForegroundColor Cyan -NoNewline
 
     if ($Clean) {
-        cargo clean --manifest-path $CargoFile 2>$null
+        cargo clean --manifest-path $CargoFile -p $CrateName 2>$null
     }
 
     $buildOutput = cargo build --release --manifest-path $CargoFile 2>&1
@@ -85,7 +85,8 @@ foreach ($crate in $PluginCrates) {
     Write-Host " [OK]" -ForegroundColor Green
 
     # Locate the compiled cdylib
-    $TargetRelease = Join-Path $crate.FullName "target\release"
+    # The plugins are members of the workspace: they build into its shared target folder.
+    $TargetRelease = Join-Path $RootDir "target\release"
     $DllFiles = Get-ChildItem -Path $TargetRelease -Filter "*.dll" -File | Where-Object {
         $_.Name -eq "$CrateName.dll"
     }

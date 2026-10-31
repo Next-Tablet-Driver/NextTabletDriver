@@ -8,10 +8,10 @@ rustPlatform.buildRustPackage {
 
   src = ../.;
 
-  # The Tauri app lives in src-tauri/ (it pulls the core crate in by path).
-  cargoRoot = "src-tauri";
-  buildAndTestSubdir = "src-tauri";
-  cargoLock.lockFile = ../src-tauri/Cargo.lock;
+  # The Tauri app lives in apps/desktop/ (it pulls the core crate in by path); the whole
+  # repository is one Cargo workspace with a single lockfile.
+  buildAndTestSubdir = "apps/desktop";
+  cargoLock.lockFile = ../Cargo.lock;
 
   # Svelte frontend, built by vite and embedded into the binary by Tauri.
   npmRoot = "frontend";

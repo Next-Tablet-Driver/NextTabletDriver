@@ -10,12 +10,12 @@ description = "Radial Follow Smoothing plugin (created by AbstractQbit)"
 crate-type = ["cdylib"]
 
 [dependencies]
-ntd_plugin_api = { path = "../../sdk/plugin_api" }
+ntd_plugin_api = { path = "../../crates/ntd-plugin-api" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
-# Same policy as the root crate and `sdk/plugin_api` (copied: each plugin is its own crate with
-# its own lockfile, so it cannot share a workspace table).
+# Same policy as the root crate and `crates/ntd-plugin-api` (copied until the shared
+# `[workspace.lints]` table exists, roadmap P1.6).
 [lints.rust]
 dead_code = "deny"
 

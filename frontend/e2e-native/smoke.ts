@@ -19,7 +19,7 @@ const DRIVER_URL = "http://127.0.0.1:4444";
 const STARTUP_TIMEOUT_MS = 90_000;
 
 const executable = process.platform === "win32" ? "app.exe" : "app";
-const application = resolve(process.argv[2] ?? `../src-tauri/target/debug/${executable}`);
+const application = resolve(process.argv[2] ?? `../target/debug/${executable}`);
 
 interface WebDriverResponse<T> {
     value: T;

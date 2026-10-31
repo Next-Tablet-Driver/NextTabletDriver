@@ -68,7 +68,7 @@ node frontend/node_modules/@tauri-apps/cli/tauri.js build --no-bundle \
   --config '{"bundle":{"createUpdaterArtifacts":false}}'
 ```
 
-The program is `src-tauri/target/release/app` (`app.exe` on Windows). The option `createUpdaterArtifacts: false` is needed on your computer because the update files must be signed with a private key that only the release process has. Use a Bash-like shell for the quotes, or escape them in PowerShell.
+The program is `target/release/app` (`app.exe` on Windows). The option `createUpdaterArtifacts: false` is needed on your computer because the update files must be signed with a private key that only the release process has. Use a Bash-like shell for the quotes, or escape them in PowerShell.
 
 To make installers, see [Releasing](releasing.md).
 
@@ -80,9 +80,9 @@ The CI runs these checks on every pull request. Run them before you push.
 
 ```bash
 cargo fmt --all -- --check
-cargo clippy --workspace --all-targets --all-features -- -D warnings
-cargo nextest run --workspace --all-features     # cargo install --locked cargo-nextest
-cargo test --workspace --all-features --doc
+cargo clippy -p next_tablet_driver --all-targets --all-features -- -D warnings
+cargo nextest run -p next_tablet_driver --all-features     # cargo install --locked cargo-nextest
+cargo test -p next_tablet_driver --all-features --doc
 ```
 
 We use [nextest](https://nexte.st) because a few tests touch things that belong to the whole process: the panic hook, the log level, and machine-wide names (a named pipe, a mutex and a shared-memory segment). `cargo nextest` runs each test in its own process, so they cannot disturb each other. **Close NextTabletDriver before you run the tests**, because the tests use the same machine-wide names.
@@ -90,13 +90,13 @@ We use [nextest](https://nexte.st) because a few tests touch things that belong 
 **The desktop app crate:**
 
 ```bash
-cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
+cargo clippy --manifest-path apps/desktop/Cargo.toml --all-targets -- -D warnings
 ```
 
-**The SDK, the plugin API, the plugins and the Rust example plugin.** These are separate crates (the repository is not a Cargo workspace), so check each one:
+**One crate on its own.** The commands above already cover the whole workspace (the desktop app, the SDK, the plugin API, the plugins and the Rust example plugin are members). To check a single member, for example after changing only a plugin:
 
 ```bash
-for manifest in sdk/plugin_api/Cargo.toml sdk/Cargo.toml plugins/*/Cargo.toml sdk/examples/rust_plugin/Cargo.toml; do
+for manifest in crates/ntd-plugin-api/Cargo.toml apps/sdk/Cargo.toml plugins/*/Cargo.toml apps/sdk/examples/rust_plugin/Cargo.toml; do
   cargo fmt --manifest-path "$manifest" -- --check
   cargo clippy --manifest-path "$manifest" --all-targets -- -D warnings
   cargo nextest run --manifest-path "$manifest" --no-tests=pass
@@ -106,8 +106,8 @@ done
 The CI also builds the two example plugins as real libraries, and checks that each one exports the seven functions that a plugin needs. On Linux you can do the same:
 
 ```bash
-cargo build --release --manifest-path sdk/examples/rust_plugin/Cargo.toml
-cc -std=c11 -O2 -Wall -Wextra -Werror -shared -fPIC sdk/examples/c_plugin/plugin.c -o libc_flip_x.so
+cargo build --release --manifest-path apps/sdk/examples/rust_plugin/Cargo.toml
+cc -std=c11 -O2 -Wall -Wextra -Werror -shared -fPIC apps/sdk/examples/c_plugin/plugin.c -o libc_flip_x.so
 nm -D --defined-only libc_flip_x.so | grep ntd_plugin_
 ```
 
@@ -131,24 +131,24 @@ When a test fails, run `npx playwright show-trace` on the file in `frontend/test
 **Documentation of the code.** Warnings are errors:
 
 ```bash
-RUSTDOCFLAGS="-D warnings -A rustdoc::private_intra_doc_links" cargo doc --workspace --no-deps --all-features
+RUSTDOCFLAGS="-D warnings -A rustdoc::private_intra_doc_links" cargo doc -p next_tablet_driver --no-deps --all-features
 ```
 
 **Dependency policy** (licenses, banned crates, sources, known security problems), with [cargo-deny](https://embarkstudios.github.io/cargo-deny/):
 
 ```bash
-cargo deny --manifest-path Cargo.toml check bans licenses sources
-cargo deny --manifest-path Cargo.toml check advisories
+cargo deny check bans licenses sources
+cargo deny check advisories
 ```
 
-Run it for each crate: `Cargo.toml`, `src-tauri/Cargo.toml`, `sdk/Cargo.toml`, `sdk/plugin_api/Cargo.toml`, `plugins/*/Cargo.toml` and `sdk/examples/rust_plugin/Cargo.toml`. The policy is in `deny.toml`.
+Run it once: the workspace has a single lockfile. The policy is in `deny.toml`.
 
 ### Test coverage
 
 The `Coverage` job measures how much of the production code the tests run, for Rust (without the test code itself) and for the frontend. It writes a report on the pull request. The build fails when coverage falls below the floors in `coverage-thresholds.json` (Rust, frontend, and the two together).
 
 ```bash
-cargo llvm-cov nextest --workspace --all-features --lcov --output-path lcov.info
+cargo llvm-cov nextest -p next_tablet_driver --all-features --lcov --output-path lcov.info
 npm --prefix frontend run test -- --run --coverage
 python scripts/coverage_gate.py --lcov lcov.info --frontend frontend/coverage/coverage-summary.json
 ```
@@ -180,10 +180,10 @@ If `cargo-nextest` is missing, the pre-push hook tells you how to install it.
 
 The commands, events and types the interface exchanges with the backend are described once, in Rust. `frontend/src/lib/infrastructure/tauri/bindings.ts` is generated from them with [tauri-specta](https://github.com/specta-rs/tauri-specta). Never edit it by hand.
 
-When you add or change a command (`src-tauri/src/commands.rs`, registered in `specta_builder()` in `src-tauri/src/lib.rs`), an event (`src-tauri/src/events.rs`) or a type they use (derive `specta::Type`, behind the `specta` feature for the core crate), regenerate the file:
+When you add or change a command (`apps/desktop/src/commands.rs`, registered in `specta_builder()` in `apps/desktop/src/lib.rs`), an event (`apps/desktop/src/events.rs`) or a type they use (derive `specta::Type`, behind the `specta` feature for the core crate), regenerate the file:
 
 ```bash
-UPDATE_BINDINGS=1 cargo test --manifest-path src-tauri/Cargo.toml --test bindings
+UPDATE_BINDINGS=1 cargo test --manifest-path apps/desktop/Cargo.toml --test bindings
 ```
 
 The CI runs the same test without the variable and fails when the committed file is out of date.
@@ -206,14 +206,14 @@ A pull request only runs the jobs that its files need. A first job, *Changed pat
 
 | Job | Runs when you change |
 | --- | --- |
-| Rust Quality Check | `src/`, `qa/`, `tablets/`, `resources/`, `sdk/plugin_api/`, the root `Cargo.toml` or `Cargo.lock`, the toolchain or lint files (`rust-toolchain.toml`, `clippy.toml`, `rustfmt.toml`, `.cargo/`) |
-| SDK, plugin API, plugins and examples | `sdk/`, `plugins/`, `src/`, `tablets/`, `resources/` (the SDK embeds the root crate), any `Cargo.toml`, the toolchain or lint files |
+| Rust Quality Check | `src/`, `qa/`, `tablets/`, `resources/`, `crates/ntd-plugin-api/`, the root `Cargo.toml` or `Cargo.lock`, the toolchain or lint files (`rust-toolchain.toml`, `clippy.toml`, `rustfmt.toml`, `.cargo/`) |
+| SDK, plugin API, plugins and examples | `apps/sdk/`, `crates/`, `plugins/`, `src/`, `tablets/`, `resources/` (the SDK embeds the root crate), the root `Cargo.lock` (the only lockfile), any `Cargo.toml`, the toolchain or lint files |
 | Frontend, E2E | `frontend/` |
-| Coverage | `src/`, `qa/`, `tablets/`, `resources/`, `sdk/plugin_api/`, the root `Cargo.*`, `frontend/`, `coverage-thresholds.json`, `scripts/coverage_gate.py`, the toolchain files |
-| Tauri build | `src-tauri/`, `frontend/`, and what the root crate is built from (`src/`, `tablets/`, `resources/`, `sdk/plugin_api/`, the root `Cargo.*`), the scripts the build uses (`scripts/assert-gui-subsystem.ps1`, `scripts/smoke-windows.ps1`, `scripts/99-nexttabletdriver.rules`), the toolchain files. It does **not** run for `qa/` |
+| Coverage | `src/`, `qa/`, `tablets/`, `resources/`, `crates/ntd-plugin-api/`, the root `Cargo.*`, `frontend/`, `coverage-thresholds.json`, `scripts/coverage_gate.py`, the toolchain files |
+| Tauri build | `apps/desktop/`, `frontend/`, and what the root crate is built from (`src/`, `tablets/`, `resources/`, `crates/ntd-plugin-api/`, the root `Cargo.*`), the scripts the build uses (`scripts/assert-gui-subsystem.ps1`, `scripts/smoke-windows.ps1`, `scripts/99-nexttabletdriver.rules`), the toolchain files. It does **not** run for `qa/` |
 | Dependency policy | any `Cargo.toml` or `Cargo.lock`, `deny.toml` |
 
-So a change only to the documentation, the licences or the issue templates runs none of them; a change only to a plugin runs only the SDK job; a change only to `src-tauri/` runs only the Tauri build. Changing `.github/workflows/ci.yml` runs everything.
+So a change only to the documentation, the licences or the issue templates runs none of them; a change only to a plugin runs only the SDK job; a change only to `apps/desktop/` runs only the Tauri build. Changing `.github/workflows/ci.yml` runs everything.
 
 A push to `main` and a manual run always run everything. A job that is skipped counts as passed. The single required check is **CI success**: it passes when every job that ran has passed.
 
@@ -222,7 +222,7 @@ The filter is the `changes` job in `.github/workflows/ci.yml`. If you add a fold
 | Job | What it checks |
 | --- | --- |
 | Rust Quality Check (Ubuntu, Windows) | Format, `cargo check`, Clippy, `cargo doc`, tests and doctests of the root crate. |
-| SDK, plugin API, plugins and examples | Format, Clippy and tests of the separate crates, the Rust example plugin included. It also builds both example plugins (Rust and C) and checks that each exports the seven plugin functions. |
+| SDK, plugin API, plugins and examples | Format, Clippy and tests of these workspace members, the Rust example plugin included. It also builds both example plugins (Rust and C) and checks that each exports the seven plugin functions. |
 | Frontend | Lint, types, unit tests and the production build. |
 | E2E (Playwright) | Every screen in a browser, with the fake backend. |
 | Coverage | The coverage floors. |

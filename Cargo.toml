@@ -12,6 +12,18 @@ keywords = ["tablet", "driver", "rust", "osu"]
 categories = ["hardware-support"]
 rust-version = "1.99.0"
 
+[workspace]
+members = [
+    ".",
+    "apps/desktop",
+    "apps/sdk",
+    "apps/sdk/examples/rust_plugin",
+    "crates/ntd-plugin-api",
+    "plugins/*",
+]
+# Temporary: its own lockfile until it joins the workspace (roadmap P1.2).
+exclude = ["tools/ntd-recorder"]
+
 [features]
 default = ["desktop"]
 # Everything that talks to the OS: HID polling thread and input injection.
@@ -43,7 +55,7 @@ regex = "1.13.1"
 sha2 = "0.10"
 minisign-verify = "0.2"
 libloading = "0.9"
-ntd_plugin_api = { path = "sdk/plugin_api" }
+ntd_plugin_api = { path = "crates/ntd-plugin-api" }
 
 # Windows
 [target.'cfg(windows)'.dependencies]

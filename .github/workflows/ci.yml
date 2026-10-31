@@ -69,14 +69,14 @@ jobs:
           # What the root crate is built from: sources, the tablet definitions and locales it
           # embeds, and the plugin API it depends on. Tests and benchmarks (qa/) are added only
           # for the jobs that run them.
-          built_from='^(src|tablets|resources)/|^sdk/plugin_api/|^Cargo\.(toml|lock)$'
+          built_from='^(src|tablets|resources)/|^crates/ntd-plugin-api/|^Cargo\.(toml|lock)$'
 
           # Rust quality check of the root crate.
           root=$(match "$built_from|^qa/|$common")
 
           # SDK, plugin API, plugins and examples. The SDK embeds the root crate, and this job also
           # checks the lint policy of every Cargo.toml.
-          sdk=$(match "^(sdk|plugins)/|^(src|tablets|resources)/|(^|/)Cargo\.toml$|$common")
+          sdk=$(match "^(apps/sdk|crates|plugins)/|^(src|tablets|resources)/|^Cargo\.lock$|(^|/)Cargo\.toml$|$common")
 
           # Frontend lint, types, unit tests and build; the E2E tests run on the same files. The
           # generated bindings are committed under frontend/, so they are covered.
@@ -86,7 +86,7 @@ jobs:
           coverage=$(match "$built_from|^qa/|^frontend/|^coverage-thresholds\.json$|^scripts/(test_)?coverage_gate\.py$|$common")
 
           # The desktop app: its own crate, everything it embeds, and the build scripts it uses.
-          tauri=$(match "$built_from|^(src-tauri|frontend)/|^scripts/(99-nexttabletdriver\.rules|assert-gui-subsystem\.ps1|smoke-windows\.ps1)$|$common")
+          tauri=$(match "$built_from|^(apps/desktop|frontend)/|^scripts/(99-nexttabletdriver\.rules|assert-gui-subsystem\.ps1|smoke-windows\.ps1)$|$common")
 
           # Dependency policy: any manifest or lockfile, and the policy itself.
           deps=$(match '(^|/)Cargo\.(toml|lock)$|^deny\.toml$|^\.github/workflows/ci\.yml$')
@@ -134,17 +134,17 @@ jobs:
         run: cargo fmt --all -- --check
 
       - name: Cargo check
-        run: cargo check --workspace --all-targets --all-features
+        run: cargo check -p next_tablet_driver --all-targets --all-features
 
       - name: Clippy
-        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+        run: cargo clippy -p next_tablet_driver --all-targets --all-features -- -D warnings
 
       - name: Documentation
         if: matrix.os == 'ubuntu-latest'
         env:
           # A few public docs link to private modules; everything else must be warning-free.
           RUSTDOCFLAGS: -D warnings -A rustdoc::private_intra_doc_links
-        run: cargo doc --workspace --no-deps --all-features
+        run: cargo doc -p next_tablet_driver --no-deps --all-features
 
       - name: Install cargo-nextest
         uses: taiki-e/install-action@v2
@@ -152,11 +152,11 @@ jobs:
           tool: nextest
 
       - name: Run tests
-        run: cargo nextest run --workspace --all-features --profile ci
+        run: cargo nextest run -p next_tablet_driver --all-features --profile ci
 
       # nextest does not run doctests.
       - name: Run doctests
-        run: cargo test --workspace --all-features --doc
+        run: cargo test -p next_tablet_driver --all-features --doc
 
       - name: Upload test report
         if: always()
@@ -166,8 +166,9 @@ jobs:
           path: target/nextest/ci/junit.xml
           if-no-files-found: ignore
 
-  # The root crate is not a Cargo workspace, so `--workspace` above never reaches the
-  # SDK, plugin API, bundled plugins or example plugin; check them explicitly.
+  # The jobs above are limited to the root crate (`-p next_tablet_driver`): the workspace also holds
+  # the desktop app, which needs the system libraries of the Tauri job. Check the SDK, the plugin
+  # API, the bundled plugins and the example plugin explicitly here.
   plugins:
     name: SDK, plugin API, plugins and examples
     needs: changes
@@ -193,15 +194,7 @@ jobs:
       - name: Rust cache
         uses: swatinem/rust-cache@v2
         with:
-          workspaces: |
-            sdk/plugin_api
-            sdk
-            plugins/devocub_antichatter
-            plugins/hand_speed
-            plugins/hawku_smoothing
-            plugins/kalman_smoothing
-            plugins/radial_follow
-            sdk/examples/rust_plugin
+          workspaces: ". -> target"
           save-if: ${{ github.ref == 'refs/heads/main' }}
 
       - name: Install cargo-nextest
@@ -209,12 +202,12 @@ jobs:
         with:
           tool: nextest
 
-      # Every crate keeps its own copy of the lint policy (they have separate lockfiles, so a
-      # Cargo workspace table cannot be shared). Fail if a copy drops a rule.
+      # Every crate still keeps its own copy of the lint policy until the shared
+      # `[workspace.lints]` table exists (roadmap P1.6). Fail if a copy drops a rule.
       - name: Check that every crate keeps the lint policy
         run: |
           set -e
-          for manifest in Cargo.toml sdk/Cargo.toml sdk/plugin_api/Cargo.toml src-tauri/Cargo.toml plugins/*/Cargo.toml; do
+          for manifest in Cargo.toml apps/sdk/Cargo.toml crates/ntd-plugin-api/Cargo.toml apps/desktop/Cargo.toml plugins/*/Cargo.toml; do
             for rule in 'unwrap_used = "deny"' 'expect_used = "deny"' 'panic = "deny"' 'todo = "deny"' 'unimplemented = "deny"' 'exit = "deny"' 'pedantic = { level = "warn", priority = -1 }'; do
               if ! grep -qF "$rule" "$manifest"; then
                 echo "::error file=$manifest::missing lint rule: $rule"
@@ -226,7 +219,7 @@ jobs:
       - name: Check plugin API, plugins and the example plugin
         run: |
           set -e
-          for manifest in sdk/plugin_api/Cargo.toml sdk/Cargo.toml plugins/*/Cargo.toml sdk/examples/rust_plugin/Cargo.toml; do
+          for manifest in crates/ntd-plugin-api/Cargo.toml apps/sdk/Cargo.toml plugins/*/Cargo.toml apps/sdk/examples/rust_plugin/Cargo.toml; do
             echo "::group::$manifest"
             cargo fmt --manifest-path "$manifest" -- --check
             cargo clippy --manifest-path "$manifest" --all-targets -- -D warnings
@@ -240,13 +233,13 @@ jobs:
       - name: Build the example plugins and check their exports
         run: |
           set -e
-          cargo build --release --manifest-path sdk/examples/rust_plugin/Cargo.toml
-          cc -std=c11 -O2 -Wall -Wextra -Werror -shared -fPIC sdk/examples/c_plugin/plugin.c -o "$RUNNER_TEMP/libc_flip_x.so"
+          cargo build --release --manifest-path apps/sdk/examples/rust_plugin/Cargo.toml
+          cc -std=c11 -O2 -Wall -Wextra -Werror -shared -fPIC apps/sdk/examples/c_plugin/plugin.c -o "$RUNNER_TEMP/libc_flip_x.so"
 
           # The seven functions that every plugin must export, in alphabetical order.
           expected="ntd_plugin_create ntd_plugin_destroy ntd_plugin_handshake ntd_plugin_manifest ntd_plugin_process ntd_plugin_reset ntd_plugin_set_property"
 
-          for library in sdk/examples/rust_plugin/target/release/libsimple_smoothing.so "$RUNNER_TEMP/libc_flip_x.so"; do
+          for library in target/release/libsimple_smoothing.so "$RUNNER_TEMP/libc_flip_x.so"; do
             actual=$(nm -D --defined-only "$library" | awk '{print $3}' | grep '^ntd_plugin_' | sort | paste -sd' ' -)
             echo "$library exports: $actual"
             if [ "$actual" != "$expected" ]; then
@@ -371,7 +364,7 @@ jobs:
         run: npm ci --prefix frontend
 
       - name: Rust coverage
-        run: cargo llvm-cov nextest --workspace --all-features --profile ci --lcov --output-path lcov.info
+        run: cargo llvm-cov nextest -p next_tablet_driver --all-features --profile ci --lcov --output-path lcov.info
 
       - name: Frontend coverage
         run: npm --prefix frontend run test -- --run --coverage
@@ -441,14 +434,9 @@ jobs:
         with:
           tool: cargo-deny
 
+      # One workspace, one lockfile: a single run covers every crate.
       - name: Check every crate
-        run: |
-          set -e
-          for manifest in Cargo.toml src-tauri/Cargo.toml sdk/Cargo.toml sdk/plugin_api/Cargo.toml plugins/*/Cargo.toml sdk/examples/rust_plugin/Cargo.toml; do
-            echo "::group::$manifest"
-            cargo deny --manifest-path "$manifest" check bans licenses sources
-            echo "::endgroup::"
-          done
+        run: cargo deny check bans licenses sources
 
   # Compiles the whole desktop app (frontend + Rust) without bundling, so a broken
   # release build is caught on every PR instead of on the day of a tag.
@@ -484,7 +472,7 @@ jobs:
       - name: Rust cache
         uses: swatinem/rust-cache@v2
         with:
-          workspaces: "src-tauri -> target"
+          workspaces: ". -> target"
           save-if: ${{ github.ref == 'refs/heads/main' }}
 
       - name: Setup Node
@@ -499,14 +487,14 @@ jobs:
 
       - name: Clippy (Tauri crate)
         if: startsWith(matrix.os, 'ubuntu')
-        run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
+        run: cargo clippy --manifest-path apps/desktop/Cargo.toml --all-targets -- -D warnings
 
       # The TypeScript bindings are generated from the Rust commands, events and types. Fails when
       # the committed file differs from what the code generates; regenerate it with
-      # `UPDATE_BINDINGS=1 cargo test --manifest-path src-tauri/Cargo.toml --test bindings`.
+      # `UPDATE_BINDINGS=1 cargo test -p app --test bindings`.
       - name: Bindings are up to date
         if: startsWith(matrix.os, 'ubuntu')
-        run: cargo test --manifest-path src-tauri/Cargo.toml --test bindings
+        run: cargo test -p app --test bindings
 
       - name: Build app (no bundle)
         # The updater artifacts need the signing key, which is only available on releases.
@@ -520,7 +508,7 @@ jobs:
       - name: Verify the app does not open a console window
         if: runner.os == 'Windows'
         shell: pwsh
-        run: ./scripts/assert-gui-subsystem.ps1 src-tauri/target/debug/app.exe
+        run: ./scripts/assert-gui-subsystem.ps1 target/debug/app.exe
 
       # Smoke test of the app that was just built. Linux: driven through tauri-driver (WebDriver),
       # nothing is mocked, the Rust backend and the webview are the ones that ship. Windows: the
@@ -549,7 +537,7 @@ jobs:
       - name: Smoke test the real app (Windows, startup and window)
         if: runner.os == 'Windows'
         shell: pwsh
-        run: ./scripts/smoke-windows.ps1 src-tauri/target/debug/app.exe
+        run: ./scripts/smoke-windows.ps1 target/debug/app.exe
 
   # Single required status check: the branch ruleset only has to know this name, so
   # adding or renaming jobs above never requires touching the ruleset.

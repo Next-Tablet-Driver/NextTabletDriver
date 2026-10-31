@@ -5,11 +5,11 @@
 
 "area: backend":
   - changed-files:
-      - any-glob-to-any-file: ["src/**", "src-tauri/**", "Cargo.toml", "Cargo.lock"]
+      - any-glob-to-any-file: ["src/**", "apps/desktop/**", "Cargo.toml", "Cargo.lock"]
 
 "area: plugins":
   - changed-files:
-      - any-glob-to-any-file: ["plugins/**", "sdk/**"]
+      - any-glob-to-any-file: ["plugins/**", "apps/sdk/**", "crates/ntd-plugin-api/**"]
 
 "area: tablets":
   - changed-files:

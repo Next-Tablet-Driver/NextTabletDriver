@@ -1542,8 +1542,8 @@ just the application.
 | | |
 |---|---|
 | **Current phase** | Phase 1: Workspace, quality, CI, contribution rules |
-| **Last completed task** | GATE 0 |
-| **Next task** | P1.1 |
+| **Last completed task** | P1.1 |
+| **Next task** | P1.2 |
 | **v1 bridge release** | not started (P7.5a) |
 | **Last updated** | 2026-10-31 |
 
@@ -1645,12 +1645,21 @@ Goal: be able to detect any regression **before** touching the architecture (§7
 Goal: one workspace and the whole quality policy in place, **with no behaviour change** (§7,
 phase 1; §12, §13, §14).
 
-- [ ] **P1.1** Create the workspace and move the applications
+- [x] **P1.1** Create the workspace and move the applications (branch `chore/v3-phase-1`)
   - Depends on: GATE 0
   - Done when: `[workspace]` at the root; `src-tauri` → `apps/desktop`, `sdk` → `apps/sdk`,
     `sdk/plugin_api` → `crates/ntd-plugin-api`, official plugins are members; **one**
     `Cargo.lock`; `cargo build --workspace` and `cargo test --workspace` green; pure move diff
     (`git diff -M`).
+  - Notes: the root crate stays at the root (it becomes the crates of §4 in phase 2). The single
+    `Cargo.lock` starts from the desktop app's lockfile, so the 495 crates it shipped keep their
+    exact versions (55 are added for tests, benchmarks and plugins). `tools/ntd-recorder` stays
+    outside until P1.2. The release profile is now the workspace one for every member (the SDK's was
+    identical; the desktop app and the plugins now get LTO and `strip`). The CI, the hooks and the
+    docs keep the scope they had: `-p next_tablet_driver` replaces `--workspace` for the root
+    crate, because the workspace also holds the desktop app (needs the Tauri system libraries, and
+    its dependencies break the root crate's doctests when unified). Run the tests with
+    `cargo nextest`: plain `cargo test` shares process-wide state between tests.
 - [ ] **P1.2** Bring `tools/ntd-recorder` into the workspace
   - Depends on: P1.1
   - Done when: its separate `Cargo.lock` is deleted.
