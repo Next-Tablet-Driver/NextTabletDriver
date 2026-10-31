@@ -1,3 +1,5 @@
+//! Entry point of the desktop app. It only starts [`app_lib::run`].
+
 // Always a GUI program on Windows, debug builds included: a console-subsystem binary opens a
 // terminal window next to the app whenever it is launched outside a terminal.
 #![windows_subsystem = "windows"]

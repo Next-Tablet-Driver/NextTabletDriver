@@ -38,6 +38,7 @@ use std::time::{Duration, Instant};
 /// which versions the separate inter-process shared-memory layout.
 pub const NTD_SDK_ABI_VERSION: u32 = 1;
 
+/// Success: the call did what it was asked.
 pub const NTD_OK: i32 = 0;
 /// `ntd_init` only: the HID API itself failed to initialise (no supported
 /// backend, missing permissions, ...).
@@ -80,28 +81,54 @@ const _: () = assert!(
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
 pub struct NtdState {
+    /// A pen is detected. This is not the same as "a tablet is plugged in".
     pub is_connected: bool,
+    /// Pen status code: 0 no supported tablet, 1 out of range, 2 hover, 3 contact, 4 active, 5
+    /// eraser, 6 pen, 7 touch, 8 aux, 9 rotation, 10 tool, 11 mouse.
     pub status: u8,
+    /// Horizontal position inside the active area, from 0 to 1.
     pub u: f32,
+    /// Vertical position inside the active area, from 0 to 1.
     pub v: f32,
+    /// Horizontal position on screen in pixels (absolute mode), or movement since the last packet
+    /// (relative mode).
     pub screen_x: f32,
+    /// Vertical position on screen in pixels (absolute mode), or movement since the last packet
+    /// (relative mode).
     pub screen_y: f32,
+    /// Pressure, from 0 to 8191.
     pub pressure: i32,
+    /// Horizontal tilt, in degrees.
     pub tilt_x: i32,
+    /// Vertical tilt, in degrees.
     pub tilt_y: i32,
+    /// Bits of the pen buttons that are pressed.
     pub buttons: u8,
+    /// The tip counts as touching.
     pub is_down: bool,
+    /// The eraser end of the pen is in use.
     pub eraser: bool,
+    /// Name of the tablet as UTF-8 bytes; `device_name_len` is the number of valid bytes.
     pub device_name: [u8; 64],
+    /// Number of valid bytes in `device_name`.
     pub device_name_len: u32,
+    /// USB vendor ID of the tablet.
     pub vid: u16,
+    /// USB product ID of the tablet.
     pub pid: u16,
+    /// Current mode: 0 absolute, 1 relative.
     pub mode: u8,
+    /// Left edge of the active area, in millimetres.
     pub active_area_x: f32,
+    /// Top edge of the active area, in millimetres.
     pub active_area_y: f32,
+    /// Width of the active area, in millimetres.
     pub active_area_w: f32,
+    /// Height of the active area, in millimetres.
     pub active_area_h: f32,
+    /// Rotation of the active area, in degrees.
     pub active_area_rotation: f32,
+    /// Increases every time the settings change.
     pub config_version: u32,
 }
 

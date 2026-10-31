@@ -1,3 +1,6 @@
+//! Build script of the desktop app: generates the Tauri context, and gives test executables the
+//! Windows manifest they need to start.
+
 fn main() {
     tauri_build::build();
 

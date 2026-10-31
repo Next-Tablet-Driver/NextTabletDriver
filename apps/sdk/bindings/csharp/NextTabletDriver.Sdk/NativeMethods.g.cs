@@ -82,28 +82,100 @@ namespace NextTabletDriver.Sdk
     [StructLayout(LayoutKind.Sequential)]
     public unsafe partial struct NtdState
     {
+        /// <summary>
+        ///  A pen is detected. This is not the same as "a tablet is plugged in".
+        /// </summary>
         [MarshalAs(UnmanagedType.U1)] public bool is_connected;
+        /// <summary>
+        ///  Pen status code: 0 no supported tablet, 1 out of range, 2 hover, 3 contact, 4 active, 5
+        ///  eraser, 6 pen, 7 touch, 8 aux, 9 rotation, 10 tool, 11 mouse.
+        /// </summary>
         public byte status;
+        /// <summary>
+        ///  Horizontal position inside the active area, from 0 to 1.
+        /// </summary>
         public float u;
+        /// <summary>
+        ///  Vertical position inside the active area, from 0 to 1.
+        /// </summary>
         public float v;
+        /// <summary>
+        ///  Horizontal position on screen in pixels (absolute mode), or movement since the last packet
+        ///  (relative mode).
+        /// </summary>
         public float screen_x;
+        /// <summary>
+        ///  Vertical position on screen in pixels (absolute mode), or movement since the last packet
+        ///  (relative mode).
+        /// </summary>
         public float screen_y;
+        /// <summary>
+        ///  Pressure, from 0 to 8191.
+        /// </summary>
         public int pressure;
+        /// <summary>
+        ///  Horizontal tilt, in degrees.
+        /// </summary>
         public int tilt_x;
+        /// <summary>
+        ///  Vertical tilt, in degrees.
+        /// </summary>
         public int tilt_y;
+        /// <summary>
+        ///  Bits of the pen buttons that are pressed.
+        /// </summary>
         public byte buttons;
+        /// <summary>
+        ///  The tip counts as touching.
+        /// </summary>
         [MarshalAs(UnmanagedType.U1)] public bool is_down;
+        /// <summary>
+        ///  The eraser end of the pen is in use.
+        /// </summary>
         [MarshalAs(UnmanagedType.U1)] public bool eraser;
+        /// <summary>
+        ///  Name of the tablet as UTF-8 bytes; `device_name_len` is the number of valid bytes.
+        /// </summary>
         public fixed byte device_name[64];
+        /// <summary>
+        ///  Number of valid bytes in `device_name`.
+        /// </summary>
         public uint device_name_len;
+        /// <summary>
+        ///  USB vendor ID of the tablet.
+        /// </summary>
         public ushort vid;
+        /// <summary>
+        ///  USB product ID of the tablet.
+        /// </summary>
         public ushort pid;
+        /// <summary>
+        ///  Current mode: 0 absolute, 1 relative.
+        /// </summary>
         public byte mode;
+        /// <summary>
+        ///  Left edge of the active area, in millimetres.
+        /// </summary>
         public float active_area_x;
+        /// <summary>
+        ///  Top edge of the active area, in millimetres.
+        /// </summary>
         public float active_area_y;
+        /// <summary>
+        ///  Width of the active area, in millimetres.
+        /// </summary>
         public float active_area_w;
+        /// <summary>
+        ///  Height of the active area, in millimetres.
+        /// </summary>
         public float active_area_h;
+        /// <summary>
+        ///  Rotation of the active area, in degrees.
+        /// </summary>
         public float active_area_rotation;
+        /// <summary>
+        ///  Increases every time the settings change.
+        /// </summary>
         public uint config_version;
     }
 

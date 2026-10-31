@@ -21,6 +21,9 @@
  */
 #define NTD_SDK_ABI_VERSION 1
 
+/**
+ * Success: the call did what it was asked.
+ */
 #define NTD_OK 0
 
 /**
@@ -78,28 +81,100 @@
  * processes).
  */
 typedef struct NtdState {
+  /**
+   * A pen is detected. This is not the same as "a tablet is plugged in".
+   */
   bool is_connected;
+  /**
+   * Pen status code: 0 no supported tablet, 1 out of range, 2 hover, 3 contact, 4 active, 5
+   * eraser, 6 pen, 7 touch, 8 aux, 9 rotation, 10 tool, 11 mouse.
+   */
   uint8_t status;
+  /**
+   * Horizontal position inside the active area, from 0 to 1.
+   */
   float u;
+  /**
+   * Vertical position inside the active area, from 0 to 1.
+   */
   float v;
+  /**
+   * Horizontal position on screen in pixels (absolute mode), or movement since the last packet
+   * (relative mode).
+   */
   float screen_x;
+  /**
+   * Vertical position on screen in pixels (absolute mode), or movement since the last packet
+   * (relative mode).
+   */
   float screen_y;
+  /**
+   * Pressure, from 0 to 8191.
+   */
   int32_t pressure;
+  /**
+   * Horizontal tilt, in degrees.
+   */
   int32_t tilt_x;
+  /**
+   * Vertical tilt, in degrees.
+   */
   int32_t tilt_y;
+  /**
+   * Bits of the pen buttons that are pressed.
+   */
   uint8_t buttons;
+  /**
+   * The tip counts as touching.
+   */
   bool is_down;
+  /**
+   * The eraser end of the pen is in use.
+   */
   bool eraser;
+  /**
+   * Name of the tablet as UTF-8 bytes; `device_name_len` is the number of valid bytes.
+   */
   uint8_t device_name[64];
+  /**
+   * Number of valid bytes in `device_name`.
+   */
   uint32_t device_name_len;
+  /**
+   * USB vendor ID of the tablet.
+   */
   uint16_t vid;
+  /**
+   * USB product ID of the tablet.
+   */
   uint16_t pid;
+  /**
+   * Current mode: 0 absolute, 1 relative.
+   */
   uint8_t mode;
+  /**
+   * Left edge of the active area, in millimetres.
+   */
   float active_area_x;
+  /**
+   * Top edge of the active area, in millimetres.
+   */
   float active_area_y;
+  /**
+   * Width of the active area, in millimetres.
+   */
   float active_area_w;
+  /**
+   * Height of the active area, in millimetres.
+   */
   float active_area_h;
+  /**
+   * Rotation of the active area, in degrees.
+   */
   float active_area_rotation;
+  /**
+   * Increases every time the settings change.
+   */
   uint32_t config_version;
 } NtdState;
 

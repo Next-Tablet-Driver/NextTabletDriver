@@ -6,12 +6,19 @@ use serde::{Deserialize, Serialize};
 /// One pen packet, about 60 times per second while a window is visible.
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type, tauri_specta::Event)]
 pub struct TabletEvent {
+    /// Pen status as text, for example `Hover` or `Contact`.
     pub status: String,
+    /// Horizontal position, in raw units of the tablet sensor.
     pub x: u32,
+    /// Vertical position, in raw units of the tablet sensor.
     pub y: u32,
+    /// Raw pressure, from 0 up to the maximum pressure of the tablet.
     pub pressure: u16,
+    /// Distance of the pen above the surface, as the tablet reports it.
     pub hover_distance: u8,
+    /// Horizontal tilt of the pen, in degrees.
     pub tilt_x: i8,
+    /// Vertical tilt of the pen, in degrees.
     pub tilt_y: i8,
 }
 
@@ -19,9 +26,13 @@ pub struct TabletEvent {
 /// reads `get_logs` instead).
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type, tauri_specta::Event)]
 pub struct LogEvent {
+    /// Formatted timestamp of the log line.
     pub time: String,
+    /// Level of the log line: `INFO`, `DEBUG`, `WARN` or `ERROR`.
     pub level: String,
+    /// Module or subsystem that wrote the log line.
     pub group: String,
+    /// Text of the log line.
     pub message: String,
 }
 

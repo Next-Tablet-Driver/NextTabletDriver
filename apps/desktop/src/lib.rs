@@ -1,3 +1,6 @@
+//! Desktop shell of `NextTabletDriver`: a Tauri program that starts the engine, shows the interface,
+//! and bridges the interface to the engine through commands and events.
+
 use next_tablet_driver::engine::state::LockRecoveryExt;
 use tauri::Manager;
 use tauri::menu::{CheckMenuItem, Menu, MenuItem, Submenu};
@@ -56,6 +59,8 @@ pub fn specta_builder() -> tauri_specta::Builder<tauri::Wry> {
         ])
 }
 
+/// Starts the application: the logger, the tray icon, the engine threads and the Tauri event loop.
+/// Returns when the application exits.
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 #[allow(
     clippy::print_stderr,
