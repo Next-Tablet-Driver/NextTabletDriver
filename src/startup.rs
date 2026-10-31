@@ -430,6 +430,7 @@ pub fn set_fast_timer(enable: bool) {
     }
 }
 
+/// Does nothing: only Windows needs a finer timer resolution.
 #[cfg(not(windows))]
 pub const fn set_fast_timer(_enable: bool) {}
 

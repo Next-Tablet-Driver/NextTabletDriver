@@ -1,3 +1,5 @@
+//! Linux injection through virtual `/dev/uinput` devices (an absolute pen and a relative mouse).
+
 use crate::core::input::{Key, MouseButton};
 use evdev::{
     AbsInfo, AbsoluteAxisCode, AttributeSet, BusType, InputEvent, InputId, KeyCode,
@@ -12,6 +14,7 @@ const ABS_MAX: i32 = 32767;
 /// Individual tablets may have different maximums, but we normalize to this range.
 const PRESSURE_MAX: i32 = 8191;
 
+/// Sends the processed pen frames to the kernel as events of two `/dev/uinput` devices.
 pub struct Injector {
     /// The virtual tablet device for absolute coordinate injection.
     /// Registered as a pen digitizer in the kernel via `/dev/uinput`.
@@ -272,6 +275,7 @@ impl Injector {
         );
     }
 
+    /// Reports the pen entering or leaving the tablet range, only when the state changes.
     pub fn set_proximity(&mut self, in_proximity: bool) {
         if Some(in_proximity) == self.last_proximity {
             return;
@@ -301,7 +305,10 @@ impl Injector {
     /// * `u` / `v` - Normalized UV coordinates in [0.0, 1.0] from the pipeline.
     /// * `pressure` - Normalized pressure.
     /// * `tilt_x` / `tilt_y` - Absolute tilt values.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "implements the `InputSink` method of the same signature"
+    )]
     pub fn move_absolute(
         &mut self,
         target_x: f32,

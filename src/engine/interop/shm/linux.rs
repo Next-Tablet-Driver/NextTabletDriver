@@ -23,7 +23,7 @@ fn segment_mode() -> Mode {
 /// this mapping (never `shm_unlink`ed here) so the next process to open the
 /// same name sees the last published contents, matching the Windows side's
 /// persistence behavior.
-pub struct Mapping {
+pub(super) struct Mapping {
     view: NonNull<c_void>,
     size: usize,
 }
@@ -36,7 +36,7 @@ unsafe impl Send for Mapping {}
 unsafe impl Sync for Mapping {}
 
 impl Mapping {
-    pub const fn as_ptr(&self) -> *mut c_void {
+    pub(super) const fn as_ptr(&self) -> *mut c_void {
         self.view.as_ptr()
     }
 }
@@ -72,7 +72,7 @@ fn map_fd<F: AsFd>(fd: F, size: usize) -> Option<Mapping> {
 
 /// Creates (or takes over) the well-known shared memory object, sized to
 /// hold one `ShmSegment`.
-pub fn create_mapping(size: usize) -> Option<Mapping> {
+pub(super) fn create_mapping(size: usize) -> Option<Mapping> {
     let fd = shm_open(SEGMENT_NAME, OFlag::O_CREAT | OFlag::O_RDWR, segment_mode()).ok()?;
     ftruncate(&fd, size.try_into().ok()?).ok()?;
     map_fd(fd, size)
@@ -81,7 +81,7 @@ pub fn create_mapping(size: usize) -> Option<Mapping> {
 /// Opens the well-known shared memory object if it already exists; never
 /// creates it. Used by readers, which should never bring the segment into
 /// existence themselves; only the current HID owner publishes into it.
-pub fn open_mapping(size: usize) -> Option<Mapping> {
+pub(super) fn open_mapping(size: usize) -> Option<Mapping> {
     let fd = shm_open(SEGMENT_NAME, OFlag::O_RDWR, segment_mode()).ok()?;
     map_fd(fd, size)
 }

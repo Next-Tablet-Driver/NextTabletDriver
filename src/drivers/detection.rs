@@ -60,7 +60,13 @@ const fn expected_wire_report_len(input_report_length: usize) -> usize {
 /// read path goes through `expected_wire_report_len` instead, since it
 /// compares against actual bytes read off the wire rather than an OS-level
 /// capability.
-#[cfg_attr(not(windows), allow(unused_variables))]
+#[cfg_attr(
+    not(windows),
+    allow(
+        unused_variables,
+        reason = "the OS-level report length query only exists on Windows"
+    )
+)]
 fn confirm_report_length(
     device: &HidDevice,
     path: &CStr,
