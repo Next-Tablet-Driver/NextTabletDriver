@@ -68,3 +68,5 @@ jobs:
       # Fails a pull request that adds a dependency with a known vulnerability.
       - name: Review the dependency changes
         uses: actions/dependency-review-action@2031cfc080254a8a887f58cffee85186f0e49e48 # v4
+        with:
+          config-file: ./.github/dependency-review-config.yml
