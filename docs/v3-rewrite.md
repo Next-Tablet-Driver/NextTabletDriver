@@ -24,6 +24,9 @@
 9. [Ce qu'il ne faut PAS faire](#9-ce-quil-ne-faut-pas-faire)
 10. [Checklist de PR](#10-checklist-de-pr)
 11. [Problèmes trouvés en dehors de l'architecture](#11-problèmes-trouvés-en-dehors-de-larchitecture)
+12. [Qualité de code](#12-qualité-de-code)
+13. [CI/CD](#13-cicd)
+14. [Contributions, IA et AGENTS.md](#14-contributions-ia-et-agentsmd)
 
 ---
 
@@ -257,11 +260,7 @@ crossbeam-channel = "0.5"
 hidapi = "2.6.3"
 # … une seule version de chaque dépendance pour tout le workspace
 
-[workspace.lints.rust]
-unsafe_code = "deny"           # surchargé à "allow" UNIQUEMENT dans hid, output, interop, plugin-host, plugin-api
-
-[workspace.lints.clippy]
-# reprendre la politique actuelle de clippy.toml / Cargo.toml
+# Les lints complets sont dans §12.3.
 ```
 
 Chaque crate : `[lints] workspace = true` et `serde.workspace = true`, etc.
@@ -373,6 +372,10 @@ Chaque phase = plusieurs petites PR. **Critère de sortie** obligatoire avant la
 - Créer le `[workspace]`, fusionner les trois `Cargo.lock`, introduire `[workspace.dependencies]`
   et `[workspace.lints]`.
 - Déplacer `src-tauri` → `apps/desktop`, `sdk` → `apps/sdk`, `sdk/plugin_api` → `crates/ntd-plugin-api`.
+- Mettre en place la politique de qualité (§12) et la CI (§13). Les nouveaux lints `deny` vont
+  faire apparaître du code existant non conforme : le corriger dans des PR dédiées, **sans**
+  changer de comportement, crate par crate.
+- Écrire `AGENTS.md` et la politique de contribution (§14).
 - **Sortie** : un seul lockfile, `cargo build --workspace` et `cargo test --workspace` verts,
   aucun changement de comportement.
 
@@ -646,10 +649,34 @@ avec un fake dans `ntd-test-support`.
 83. **NE PAS** contourner une règle de ce document en disant qu'elle « ne s'applique pas vraiment ici ».
     Demander.
 84. **NE PAS** déclarer une tâche terminée sans avoir lancé `cargo fmt --check`, `cargo clippy --workspace
-    --all-targets`, `cargo test --workspace`, et côté frontend `npm run check`, `npm run lint`, `npm test`.
+    --all-targets --locked`, `cargo test --workspace`, `cargo xtask lint-style`, `cargo machete`,
+    `typos`, et côté frontend `npm run check`, `npm run lint`, `npm test`.
 85. **NE PAS** produire de gros commits « refactor everything ». Une PR = une intention.
 86. **NE PAS** laisser de `TODO` sans issue liée, ni de code commenté « au cas où ».
 87. **NE PAS** inclure d'identifiant de modèle IA dans les commits, le code ou la documentation.
+88. **NE PAS** ouvrir de pull request en tant qu'agent, même si on te le demande. Tu prépares la
+    branche et la description ; un humain ouvre la PR (§14.3).
+
+### 9.12 Qualité de code et commentaires
+
+89. **NE PAS** dépasser 100 caractères par ligne dans un fichier `.rs`, commentaires et chaînes
+    compris (§12.1).
+90. **NE PAS** écrire de commentaire qui paraphrase le code (`// incrémente i`, `// retourne le
+    résultat`). Un commentaire explique un **pourquoi** : un choix, une contrainte matérielle,
+    un invariant, un piège (§12.2).
+91. **NE PAS** décorer les commentaires : pas de bannières (`// =====`, `// -----`, `/*****/`), pas
+    d'emojis, pas d'ASCII art, pas de titres de section en majuscules, pas de signature ni de date.
+92. **NE PAS** laisser de code commenté. L'historique Git le garde.
+93. **NE PAS** écrire `#[allow(...)]` sans `reason = "..."`. La raison est le commentaire.
+94. **NE PAS** utiliser `println!`, `eprintln!`, `print!` ni `dbg!`. Tout passe par `log`.
+95. **NE PAS** utiliser `unreachable!()` : renvoyer une erreur, ou restructurer le code pour que
+    le cas n'existe pas dans les types.
+96. **NE PAS** écrire de bloc `unsafe` sans commentaire `// SAFETY:` qui prouve l'invariant.
+97. **NE PAS** déclarer un élément `pub` sans doc `///`, ni une fonction publique qui renvoie
+    `Result` sans section `# Errors`, ni une fonction qui peut paniquer sans `# Panics`.
+98. **NE PAS** déclarer de dépendance inutilisée (cargo-machete échoue).
+99. **NE PAS** rétrograder un lint de `deny` à `warn` ou `allow` au niveau du workspace sans
+    décision des mainteneurs, consignée dans la PR et dans la `reason`.
 
 ---
 
@@ -666,6 +693,10 @@ avec un fake dans `ntd-test-support`.
       `cargo deny check` verts.
 - [ ] `npm run check`, `npm run lint`, `npm test`, `npm run e2e` verts.
 - [ ] Documentation (`docs/`) à jour si le comportement visible change.
+- [ ] Aucune ligne de plus de 100 caractères, aucun commentaire décoratif ou paraphrasant (§12).
+- [ ] `cargo machete` et `typos` verts (§13).
+- [ ] La description dit **quoi**, **pourquoi**, **comment c'est testé**, et si une IA a écrit
+      une part significative du code (§14).
 
 ---
 
@@ -683,3 +714,319 @@ Ces points sont à traiter **dès la phase 0**, indépendamment de la refonte :
 2. **Licence des descripteurs `tablets/OpenTabletDriver`** : vérifier la licence d'origine et sa
    compatibilité avec la licence MIT du projet, et ajouter l'attribution requise.
 3. **Double dépendance d'icônes** dans `frontend/package.json` (`@lucide/svelte` et `lucide-svelte`).
+
+---
+
+## 12. Qualité de code
+
+Ces règles s'appliquent à tout le code Rust du workspace. Elles sont **vérifiées par la CI** :
+une règle qu'aucun outil ne vérifie finit toujours par ne plus être respectée.
+
+### 12.1 Largeur de ligne : 100 caractères, strict
+
+- `rustfmt.toml` : `max_width = 100` (déjà le cas en v2).
+- **Limite de rustfmt** : sur la toolchain stable, rustfmt ne coupe ni les commentaires ni les
+  chaînes longues (`wrap_comments`, `comment_width` et `error_on_line_overflow` sont instables).
+  Clippy n'a pas de lint de longueur de ligne. Une vérification dédiée
+  (`cargo xtask lint-style`, §12.5) fait donc échouer la CI dès qu'une ligne de `.rs` dépasse
+  100 caractères, commentaires et chaînes compris.
+- Une chaîne trop longue se découpe avec `concat!` ou une continuation `\` en fin de ligne. On ne
+  la contourne pas avec un `#[rustfmt::skip]`.
+- Éditeur : `.vscode/settings.json` garde `"editor.rulers": [80, 100]` (déjà le cas). 80 est un
+  repère visuel, 100 est la limite. `.editorconfig` ajoute `max_line_length = 100` pour `[*.rs]`.
+
+`rustfmt.toml` cible (options stables uniquement) :
+
+```toml
+edition = "2024"
+max_width = 100
+newline_style = "Unix"
+use_field_init_shorthand = true
+use_try_shorthand = true
+```
+
+### 12.2 Commentaires
+
+**Principe** : le code dit **quoi**, le commentaire dit **pourquoi**. Si un commentaire répète ce
+que le code dit, on le supprime. Si le code n'est pas clair sans commentaire, on renomme ou on
+découpe d'abord, et on commente seulement ce qui reste.
+
+Un commentaire est justifié quand il explique :
+- un **choix** entre plusieurs options (« canal borné plutôt que non borné : on préfère perdre un
+  rapport que d'accumuler de la latence ») ;
+- une **contrainte matérielle ou externe** (« la Intuos Pro envoie la pression sur 13 bits ; les
+  3 bits hauts sont du bruit ») ;
+- un **invariant** que les types n'expriment pas ;
+- un **piège** (« ne pas déplacer cet appel avant `flush` : Windows perd l'événement ») ;
+- la preuve d'un bloc `unsafe` (`// SAFETY:`, obligatoire).
+
+Interdits :
+- la paraphrase (`// boucle sur les rapports`, `// crée le parser`) ;
+- les décorations : bannières `// ======`, `// ------`, `/*******/`, titres en majuscules,
+  emojis, ASCII art, signatures, dates ;
+- le code commenté ;
+- les `TODO` sans issue : la seule forme acceptée est `// TODO(#123): ...`.
+
+```rust
+// Mauvais
+// ===== PARSING =====
+// On récupère la pression
+let pressure = u16::from_le_bytes([r[6], r[7]]) & 0x1FFF; // masque 🎯
+
+// Bon
+// Les 3 bits hauts portent l'état du bouton latéral sur ce modèle,
+// pas la pression : voir les golden files intuos_pro_*.
+let pressure = u16::from_le_bytes([r[6], r[7]]) & 0x1FFF;
+```
+
+**Documentation publique obligatoire** (`missing_docs = "deny"`) :
+- chaque élément `pub` a un commentaire `///` court et factuel : ce que c'est, pas comment c'est
+  implémenté ;
+- chaque fonction publique qui renvoie `Result` a une section `# Errors`
+  (`missing_errors_doc = "deny"`) ;
+- chaque fonction publique qui peut paniquer a une section `# Panics`
+  (`missing_panics_doc = "deny"`), ce qui devrait être rare vu §9.3 ;
+- chaque crate a un `//!` en tête de `lib.rs` qui dit sa responsabilité et ce qu'il ne fait pas.
+
+`unreachable_pub = "deny"` complète cette règle : un élément qui n'est pas réellement exporté
+s'écrit `pub(crate)` et n'a donc pas besoin de doc publique.
+
+### 12.3 Cargo.toml strict
+
+Les lints sont définis **une seule fois** dans `[workspace.lints]` du `Cargo.toml` racine ; chaque
+crate a `[lints] workspace = true` et rien d'autre.
+
+```toml
+[workspace.lints.rust]
+unsafe_code = "deny"
+missing_docs = "deny"
+unreachable_pub = "deny"
+dead_code = "deny"
+
+[workspace.lints.rustdoc]
+broken_intra_doc_links = "deny"
+
+[workspace.lints.clippy]
+# Groupes : tout est bloquant.
+all = { level = "deny", priority = -1 }
+pedantic = { level = "deny", priority = -1 }
+nursery = { level = "deny", priority = -1 }
+cargo = { level = "deny", priority = -1 }
+
+# Gestion d'erreurs : aucune donnée externe ne doit pouvoir faire paniquer le pilote.
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+indexing_slicing = "deny"
+unreachable = "deny"
+todo = "deny"
+unimplemented = "deny"
+exit = "deny"
+lossy_float_literal = "deny"
+
+# Sorties : tout passe par `log`.
+print_stdout = "deny"
+print_stderr = "deny"
+dbg_macro = "deny"
+
+# unsafe et FFI.
+undocumented_unsafe_blocks = "deny"
+multiple_unsafe_ops_per_block = "deny"
+uninit_assumed_init = "deny"
+uninit_vec = "deny"
+cast_ptr_alignment = "deny"
+ptr_as_ptr = "deny"
+fn_to_numeric_cast_any = "deny"
+
+# Documentation.
+missing_errors_doc = "deny"
+missing_panics_doc = "deny"
+
+# Tout #[allow] doit porter sa justification : #[allow(lint, reason = "...")].
+allow_attributes_without_reason = "deny"
+
+# Exceptions, reprises de la v2.
+# Les rapports HID mélangent u8/u16/i16/f32 : les conversions sont voulues et bornées.
+cast_precision_loss = "allow"
+cast_possible_truncation = "allow"
+cast_sign_loss = "allow"
+# x/y, tilt_x/tilt_y : les noms proches sont le vocabulaire du domaine.
+similar_names = "allow"
+# Les parsers sont de longs `match` plats sur les octets ; les découper nuit à la lecture.
+too_many_lines = "allow"
+assert_is_empty = "allow"
+# Les doublons de versions sont gérés par cargo-deny (bans), avec une liste d'exceptions revue.
+multiple_crate_versions = "allow"
+```
+
+Points d'attention :
+- **`unsafe_code`** : `deny` (et pas `forbid`) pour que les crates FFI autorisés (`ntd-hid`,
+  `ntd-output`, `ntd-interop`, `ntd-plugin-host`, `ntd-plugin-api`) puissent mettre
+  `#![allow(unsafe_code, reason = "...")]` à la racine du module concerné. `cargo xtask
+  lint-style` échoue si ce `allow` apparaît dans un autre crate.
+- **`clippy::cargo`** impose des métadonnées complètes : chaque crate hérite de
+  `[workspace.package]` (`license.workspace = true`, `repository.workspace = true`…) et déclare
+  sa propre `description`. Les versions wildcard (`"*"`) sont interdites.
+- **`nursery` en `deny`** : ces lints évoluent entre versions de Rust. La toolchain reste donc
+  **figée** dans `rust-toolchain.toml`, et une montée de version est une PR à part qui corrige
+  les nouveaux lints.
+- **Tests** : `clippy.toml` garde `allow-unwrap-in-tests`, `allow-expect-in-tests`,
+  `allow-panic-in-tests` et `allow-indexing-slicing-in-tests`. Un test qui panique, c'est un
+  test qui échoue, et c'est le comportement voulu.
+- Toutes les commandes cargo de la CI utilisent `--locked`.
+
+### 12.4 Gestion d'erreurs
+
+- Un enum d'erreur `thiserror` par crate (`TabletError`, `PipelineError`, `EngineError`…). Les
+  erreurs d'un crate bas s'emballent dans celui du dessus via `#[from]`, sans perdre la source.
+- `?` partout. Une conversion `Option` → `Result` s'écrit `.ok_or(Erreur::Variante)`, jamais
+  `.unwrap()`.
+- Les seuls `expect` tolérés hors tests sont des invariants internes, avec
+  `#[allow(clippy::expect_used, reason = "invariant : ...")]`. La raison est relue en review.
+
+### 12.5 `cargo xtask lint-style`
+
+Une tâche dans `xtask/` vérifie ce que rustfmt et clippy ne savent pas vérifier. Elle tourne en CI
+et en local :
+- lignes de plus de 100 caractères dans les `.rs` (hors fichiers générés) ;
+- commentaires décoratifs : bannières (`//` suivi de 4 `=`, `-`, `*` ou `#`, ou plus), emojis ;
+- `TODO`/`FIXME` sans `(#numéro)` ;
+- `#![allow(unsafe_code` hors des crates autorisés ;
+- `#[rustfmt::skip]` sans commentaire de justification juste au-dessus.
+
+---
+
+## 13. CI/CD
+
+### 13.1 Principes
+
+- **Une seule check requise** sur `main` : `ci-success`, qui dépend de tous les jobs. On peut ainsi
+  ajouter des jobs sans toucher aux règles de protection de branche.
+- **CI par crate touché** : un job `plan` calcule les crates modifiés par la PR et leurs
+  dépendants (`cargo metadata` + `git diff` sur la base). Lints, tests et builds ne tournent que
+  sur ceux-là. On fait une **CI complète** sur `main`, sur les tags, et dès qu'un fichier global
+  change (`Cargo.toml` racine, `Cargo.lock`, `rust-toolchain.toml`, `clippy.toml`, `rustfmt.toml`,
+  `deny.toml`, `.github/**`).
+- `RUSTFLAGS="-D warnings"`, `--locked` partout, `concurrency` avec `cancel-in-progress` sur les PR.
+- Actions **épinglées par SHA**, `permissions: contents: read` par défaut. Les droits d'écriture
+  ne sont donnés qu'aux jobs de release.
+- Les secrets de signature ne sont accessibles que dans un **environnement GitHub `release`**
+  protégé (reviewers requis), jamais dans les jobs de PR.
+
+### 13.2 `ci.yml` : tests et qualité (PR, push sur `main`)
+
+| Job | Contenu |
+|---|---|
+| `plan` | Crates touchés, ou exécution complète |
+| `fmt` | `cargo fmt --all --check` |
+| `style` | `cargo xtask lint-style` (§12.5) |
+| `typos` | `crate-ci/typos` sur le code, les commentaires et `docs/` (config `typos.toml`, exclusions : `tablets/`, fichiers générés) |
+| `machete` | `cargo machete` : aucune dépendance inutilisée |
+| `clippy` | `cargo clippy --locked --all-targets --all-features` sur les crates touchés |
+| `clippy-release` | idem avec `--release` (code derrière `cfg(not(debug_assertions))`) |
+| `doc` | `cargo doc --no-deps` avec `RUSTDOCFLAGS=-D warnings` |
+| `test` | `cargo nextest run` + doctests, matrice Windows x64 et Linux x64 |
+| `golden` | golden files des parsers (§7, phase 0) |
+| `bindings` | `cargo xtask gen-ts && git diff --exit-code` |
+| `coverage` | `cargo llvm-cov` + seuils de `coverage-thresholds.json` (exécution complète) |
+| `bench` | benchmark de latence comparé à la référence, sur `main` et sur les PR étiquetées `perf` |
+| `frontend` | `npm run check`, `lint`, `test`, `build` |
+| `e2e` | Playwright |
+| `build` | build des applications : Windows x64, Windows ARM64, Linux x64, Linux ARM64 |
+| `ci-success` | agrège tous les jobs ci-dessus |
+
+### 13.3 `security.yml` : sécurité (PR, `main`, et chaque jour)
+
+- `cargo deny check` : advisories, licences, bans (doublons), sources. Une seule exécution grâce au
+  lockfile unique, au lieu d'un audit par lockfile comme en v2.
+- `npm audit --omit=dev` sur `frontend/`.
+- CodeQL (existe déjà).
+- `actions/dependency-review-action` sur les PR.
+- Secret scanning et push protection activés dans les réglages du dépôt.
+
+### 13.4 `prerelease.yml` : pré-release (tag `v3.0.0-beta.N` / `-rc.N`)
+
+1. Vérifier que le tag pointe sur un commit de `main` dont la CI est verte, et que la version des
+   `Cargo.toml` et de `tauri.conf.json` correspond au tag.
+2. Construire la matrice Windows x64/ARM64 et Linux x64/ARM64.
+3. Signer, puis **vérifier la signature avec la clé publique réellement embarquée** dans
+   `tauri.conf.json`. Le job échoue si la clé est absente ou factice (§11).
+4. Publier une **GitHub pre-release** avec les sommes SHA-256.
+5. Publier le manifeste du **canal bêta**. Attention : l'endpoint actuel
+   `releases/latest/download/latest.json` ignore les pre-releases, donc le canal bêta a besoin
+   de son propre endpoint stable. Les utilisateurs s'y abonnent avec une option « recevoir les
+   bêtas » dans les paramètres.
+
+### 13.5 `release.yml` : release (tag `vX.Y.Z`)
+
+Mêmes étapes que la pré-release, plus :
+- publication en `latest` et mise à jour de `latest.json` (canal stable) ;
+- notes de version générées à partir des titres de PR (déjà normalisés par `pr-title.yml`) ;
+- publication winget (`winget-release.yml` existe).
+
+---
+
+## 14. Contributions, IA et AGENTS.md
+
+### 14.1 `AGENTS.md`
+
+- **`AGENTS.md` à la racine**, court : ce qu'est le projet, la disposition du workspace (§4.1),
+  les commandes à lancer avant de rendre une tâche (§9, règle 84), et un renvoi vers ce
+  document, avec la mention que §9 est normatif. Ajouter `CLAUDE.md` en lien symbolique vers
+  `AGENTS.md` pour que tous les outils lisent le même fichier.
+- **Un `AGENTS.md` par zone sensible**, avec les détails propres à la zone :
+  - `crates/ntd-tablets/AGENTS.md` : ajouter une tablette, golden files, ne jamais supprimer un
+    masque sans `git blame` ;
+  - `crates/ntd-plugin-api/AGENTS.md` : stabilité de l'ABI, `repr(C)`, versionnage ;
+  - `crates/ntd-engine/AGENTS.md` : règles du chemin chaud (§9.4) ;
+  - `crates/ntd-ipc/AGENTS.md` : régénérer les bindings, ne jamais éditer `bindings.ts`.
+- Si un mainteneur dit autre chose que `AGENTS.md`, on suit le mainteneur, **sauf** pour la
+  règle 14.3.
+
+### 14.2 Politique d'utilisation de l'IA
+
+- L'auteur d'une PR est responsable de **chaque ligne**, quel que soit l'outil qui l'a écrite.
+  Avant d'ouvrir la PR, il a lu tout le diff, lancé le code, et sait répondre aux questions de
+  review sans demander à un modèle.
+- La description dit si une IA a écrit une part significative du code ou de la description.
+  Supprimer cette mention d'une description rédigée par un agent est un motif de fermeture.
+- Les mainteneurs peuvent fermer sans review une PR qu'ils estiment générée et non vérifiée.
+- On ne rouvre pas une PR fermée et on ne la recrée pas à l'identique : on en discute d'abord.
+
+### 14.3 Les agents n'ouvrent pas de PR
+
+Un agent IA prépare la branche, les commits et le texte de la description. Il n'ouvre **jamais**
+la pull request lui-même, même si on le lui demande : c'est un humain qui l'ouvre, après avoir
+relu. Un agent ne pousse jamais sur `main`.
+
+### 14.4 Critères de fermeture sans review
+
+Une PR peut être fermée sans review complète si :
+- la description est vide, répète seulement le titre, ou ne dit pas comment le changement a été
+  testé ;
+- elle mélange des changements sans rapport (reformatage de code non touché, lockfile modifié
+  sans raison, fichiers générés sans le changement qui les justifie) ;
+- elle modifie un parser sans golden files, ou change un comportement visible sans capture ;
+- elle duplique une PR ouverte sans dire en quoi elle diffère ;
+- l'auteur ne sait pas expliquer son changement ;
+- elle cache ou retire la mention d'usage de l'IA (§14.2) ;
+- la CI échoue et l'auteur ne la corrige pas, ou ne répond plus à la review.
+
+### 14.5 Modèle de description de PR
+
+`.github/pull_request_template.md` :
+
+```markdown
+## Quoi
+
+## Pourquoi
+
+## Impact (utilisateurs, latence, formats persistants, ABI, contrat IPC)
+
+## Comment c'est testé
+
+## Limites connues
+
+## Usage de l'IA
+<!-- Aucun / partiel (préciser quoi) / majoritaire -->
+```
