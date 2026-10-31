@@ -1545,8 +1545,8 @@ just the application.
 | | |
 |---|---|
 | **Current phase** | Phase 1: Workspace, quality, CI, contribution rules |
-| **Last completed task** | P1.19 |
-| **Next task** | P1.20 |
+| **Last completed task** | P1.20 |
+| **Next task** | GATE 1 |
 | **v1 bridge release** | not started (P7.5a) |
 | **Last updated** | 2026-10-31 |
 
@@ -1831,11 +1831,16 @@ phase 1; §12, §13, §14).
   - Notes: `CLAUDE.md` is a git symlink (mode 120000) to `AGENTS.md`. On Windows with
     `core.symlinks=false` git writes it as a one-line text file; Linux and macOS get a real symlink.
     The per-area `AGENTS.md` files of §14.1 come with the crates they describe (phase 2 onward).
-- [ ] **P1.20** Contribution: language, AI policy, review, closing criteria, PR template
-  (§14.2 to §14.6)
+- [x] **P1.20** Contribution: language, AI policy, review, closing criteria, PR template
+  (§14.2 to §14.6) (branch `chore/v3-phase-1`)
   - Depends on: —
   - Done when: `.github/CONTRIBUTING.md` and `.github/pull_request_template.md` are up to date and
     in English.
+  - Notes: `CONTRIBUTING.md` gained Language, AI-assisted contributions (including that an agent
+    never opens the PR), Review and merge, and the closing criteria; its check list is the current
+    one, and its licence paragraph now says the parsers are LGPL-3.0. The PR template is the §14.6
+    one (What, Why, Impact, How it was tested, Known limitations, AI usage, Roadmap) plus the
+    checklist.
 - [ ] **GATE 1**
   - Done when: P1.1 to P1.20 are `[x]`; CI green; golden files, latency (within +5 %) and E2E
     identical to phase 0.
