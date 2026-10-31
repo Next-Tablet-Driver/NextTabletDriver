@@ -29,7 +29,7 @@ vi.mock("@tauri-apps/api/window", () => {
   };
 });
 
-import { windowControls } from "../window";
+import { windowControls } from "../tauri/window";
 
 function setTauri(enabled: boolean): void {
   if (enabled) window.__TAURI_INTERNALS__ = {};

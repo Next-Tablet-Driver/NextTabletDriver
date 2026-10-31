@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { log } from "../infrastructure/log";
   interface Props {
     profileName?: string;
   }
@@ -18,10 +19,15 @@
     clearTimeout(submenuTimeout);
   }
 
-  import { invoke } from "@tauri-apps/api/core";
-  import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
-  import { confirm, message } from "@tauri-apps/plugin-dialog";
-  import { exportProfile, loadProfile, importOtdProfile } from "../infrastructure/tauri/commands";
+  import {
+    exportProfile,
+    getCoreVersion,
+    getPresets,
+    importOtdProfile,
+    loadProfile,
+    resetConfig,
+    saveConfig,
+  } from "../infrastructure/tauri/commands";
   import { os } from "../infrastructure/os";
   import { onMount } from "svelte";
   import DropdownMenu from "./ui/DropdownMenu.svelte";
@@ -63,9 +69,9 @@
   onMount(() => {
     void (async (): Promise<void> => {
       try {
-        presets = await invoke<{ name: string; path: string }[]>("get_presets");
+        presets = await getPresets();
       } catch (e) {
-        console.error("Failed to load presets:", e);
+        log.error("Failed to load presets:", e);
       }
     })();
   });
@@ -102,7 +108,7 @@
                   profileName = path.split(/[\\/]/).pop() ?? profileName;
                 } catch (err: unknown) {
                   const errMsg = err instanceof Error ? err.message : String(err);
-                  await message(`Failed to load settings: ${errMsg}`);
+                  await os.message(`Failed to load settings: ${errMsg}`);
                 }
               }
             })();
@@ -110,7 +116,7 @@
         >
         <DropdownItem
           onclick={() => {
-            void invoke("save_config");
+            void saveConfig();
             closeMenu();
           }}><Save size={16} />Save Settings</DropdownItem
         >
@@ -126,7 +132,7 @@
                   await exportProfile(path);
                 } catch (err: unknown) {
                   const errMsg = err instanceof Error ? err.message : String(err);
-                  await message(`Failed to save settings as: ${errMsg}`);
+                  await os.message(`Failed to save settings as: ${errMsg}`);
                 }
               }
             })();
@@ -136,12 +142,12 @@
           onclick={() => {
             void (async (): Promise<void> => {
               try {
-                await invoke("reset_config");
+                await resetConfig();
                 profileName = "Default Profile";
                 window.dispatchEvent(new CustomEvent("reload-config"));
               } catch (err: unknown) {
                 const errMsg = err instanceof Error ? err.message : String(err);
-                await message(`Failed to reset config: ${errMsg}`);
+                await os.message(`Failed to reset config: ${errMsg}`);
               }
               closeMenu();
             })();
@@ -160,7 +166,7 @@
                   await exportProfile(path);
                 } catch (err: unknown) {
                   const errMsg = err instanceof Error ? err.message : String(err);
-                  await message(`Failed to export: ${errMsg}`);
+                  await os.message(`Failed to export: ${errMsg}`);
                 }
               }
             })();
@@ -181,7 +187,7 @@
                   profileName = path.split(/[\\/]/).pop() ?? profileName;
                 } catch (err: unknown) {
                   const errMsg = err instanceof Error ? err.message : String(err);
-                  await message(`Failed to import: ${errMsg}`);
+                  await os.message(`Failed to import: ${errMsg}`);
                 }
               }
             })();
@@ -202,7 +208,7 @@
                   profileName = path.split(/[\\/]/).pop() ?? profileName;
                 } catch (err: unknown) {
                   const errMsg = err instanceof Error ? err.message : String(err);
-                  await message(`Failed to import OTD settings: ${errMsg}`);
+                  await os.message(`Failed to import OTD settings: ${errMsg}`);
                 }
               }
             })();
@@ -229,12 +235,12 @@
                     onclick={() => {
                       void (async (): Promise<void> => {
                         try {
-                          await invoke("load_profile", { path: preset.path });
+                          await loadProfile(preset.path);
                           profileName = preset.name;
                           window.dispatchEvent(new CustomEvent("reload-config"));
                         } catch (err: unknown) {
                           const errMsg = err instanceof Error ? err.message : String(err);
-                          await message(`Failed to load preset: ${errMsg}`);
+                          await os.message(`Failed to load preset: ${errMsg}`);
                         }
                         closeMenu();
                       })();
@@ -267,7 +273,7 @@
         <DropdownItem
           onclick={() => {
             closeMenu();
-            new WebviewWindow("debugger", {
+            os.openWindow("debugger", {
               url: "index.html?view=debugger",
               title: "Debugger",
               width: 600,
@@ -284,7 +290,7 @@
         <DropdownItem
           onclick={() => {
             closeMenu();
-            new WebviewWindow("performance", {
+            os.openWindow("performance", {
               url: "index.html?view=performance",
               title: "Input Lag Analysis",
               width: 500,
@@ -332,9 +338,9 @@
               <DropdownItem
                 onclick={() => {
                   void (async (): Promise<void> => {
-                    const ver = await invoke("get_core_version");
+                    const ver = await getCoreVersion();
                     void os.openUrl(
-                      `https://github.com/Next-Tablet-Driver/NextTabletDriver/issues/new?template=bug_report.yml&ntd_version=${String(ver)}`,
+                      `https://github.com/Next-Tablet-Driver/NextTabletDriver/issues/new?template=bug_report.yml&ntd_version=${ver}`,
                     );
                     closeMenu();
                   })();
@@ -356,10 +362,9 @@
             void (async (): Promise<void> => {
               closeMenu();
               try {
-                const { check } = await import("@tauri-apps/plugin-updater");
-                const update = await check();
+                const update = await os.checkForUpdate();
                 if (update !== null) {
-                  const yes = await confirm(
+                  const yes = await os.confirm(
                     `Update v${update.version} is available! Do you want to download and install it now?`,
                   );
                   if (yes) {
@@ -367,10 +372,10 @@
                     await os.relaunch();
                   }
                 } else {
-                  await message("You are already on the latest version.");
+                  await os.message("You are already on the latest version.");
                 }
               } catch (err) {
-                await message(`Failed to check for updates: ${String(err)}`);
+                await os.message(`Failed to check for updates: ${String(err)}`);
               }
             })();
           }}><RefreshCcw size={16} />Check for Update</DropdownItem

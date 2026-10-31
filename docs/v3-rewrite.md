@@ -1545,8 +1545,8 @@ just the application.
 | | |
 |---|---|
 | **Current phase** | Phase 1: Workspace, quality, CI, contribution rules |
-| **Last completed task** | P1.12 |
-| **Next task** | P1.13 |
+| **Last completed task** | P1.13 |
+| **Next task** | P1.14 |
 | **v1 bridge release** | not started (P7.5a) |
 | **Last updated** | 2026-10-31 |
 
@@ -1761,10 +1761,18 @@ phase 1; §12, §13, §14).
     TypeScript strict options 15 errors (`design-tokens.test.ts` 4, `ReleaseCard.svelte` 4,
     `Filters.svelte` 3, `mapping-state.svelte.ts` 2, `Select.svelte` 1, `tauri-mock.ts` 1);
     `svelte-check` 0; Prettier would reformat 115 files.
-- [ ] **P1.13** Fix frontend warnings (several PRs)
+- [x] **P1.13** Fix frontend warnings (several PRs) (branch `chore/v3-phase-1`)
   - Depends on: P1.12
   - Done when: zero ESLint, `svelte-check` and TypeScript warnings; Prettier applied; no behaviour
     change (E2E identical); `infrastructure/log.ts` is the only place using `console`.
+  - Notes: 51 ESLint warnings and 15 strict TypeScript errors to 0; unit tests (263) and E2E (65)
+    unchanged. Prettier was applied in its own commit (114 files, formatting only). Only
+    `infrastructure/tauri/` and `infrastructure/os.ts` import `@tauri-apps/*` now: `events.ts` and
+    `window.ts` moved into `tauri/`, and `os.ts` gained `confirm`, `message`, `checkForUpdate` and
+    `openWindow`. Raw `invoke("...")` calls in `MenuBar` and `Release` became the typed commands
+    (`saveConfig`, `resetConfig`, `loadProfile`, `getCoreVersion`, `getPresets`, `getReleases`).
+    `noUncheckedIndexedAccess` and `noImplicitOverride` are in `tsconfig.app.json`, so
+    `tsconfig.strict.json` is gone. `no-console` stays off for the tests and the Node smoke script.
 - [ ] **P1.14** Switch the frontend rules to errors
   - Depends on: P1.13
   - Done when: `eslint --max-warnings 0`, `svelte-check --fail-on-warnings` and

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { log } from "../infrastructure/log";
   import { onMount } from "svelte";
   import { Download, Star, Tag } from "@lucide/svelte";
   import StatCard from "../features/credits/StatCard.svelte";
@@ -59,7 +60,7 @@
           totalStars = repoData.stargazers_count;
         }
       } catch (e) {
-        console.error("Failed to fetch GitHub stats:", e);
+        log.error("Failed to fetch GitHub stats:", e);
       } finally {
         loading = false;
       }

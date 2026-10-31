@@ -1,3 +1,4 @@
+import { log } from "../../infrastructure/log";
 import {
   getConfig,
   setConfig,
@@ -73,7 +74,7 @@ export class MappingState {
         this.isLoaded = true;
       }, 50);
     } catch (e) {
-      console.error("Failed to load config", e);
+      log.error("Failed to load config", e);
     }
   }
 
@@ -130,7 +131,7 @@ export class MappingState {
           show_osu_playfield: showOsuPlayfield,
           mode: driverMode,
         };
-        setConfig(updated).catch(console.error);
+        setConfig(updated).catch(log.error);
 
         const updatedStr = JSON.stringify(updated);
         if (updatedStr !== this.historyStack[this.historyIndex]) {
@@ -172,7 +173,7 @@ export class MappingState {
           show_osu_playfield: this.showOsuPlayfield,
           mode: this.driverMode,
         };
-        setConfig(updated).catch(console.error);
+        setConfig(updated).catch(log.error);
 
         const updatedStr = JSON.stringify(updated);
         if (updatedStr !== this.historyStack[this.historyIndex]) {
@@ -214,20 +215,23 @@ export class MappingState {
 
   async save(): Promise<void> {
     if (this.isDirty) {
-      await saveConfig().catch(console.error);
-      this.savedConfigStr = this.historyStack[this.historyIndex];
+      await saveConfig().catch(log.error);
+      const current = this.historyStack[this.historyIndex];
+      if (current !== undefined) this.savedConfigStr = current;
       this.isDirty = false;
     }
   }
 
   private applyHistoryConfig(): void {
-    const historicalConfig = JSON.parse(this.historyStack[this.historyIndex]) as Config;
+    const raw = this.historyStack[this.historyIndex];
+    if (raw === undefined) return;
+    const historicalConfig = JSON.parse(raw) as Config;
     this.config = historicalConfig;
 
     this.isLoaded = false;
     this.applyToState(historicalConfig);
 
-    setConfig(historicalConfig).catch(console.error);
+    setConfig(historicalConfig).catch(log.error);
     this.isDirty = this.historyStack[this.historyIndex] !== this.savedConfigStr;
 
     setTimeout(() => {

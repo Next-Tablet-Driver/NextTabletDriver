@@ -1,7 +1,8 @@
 <script lang="ts">
+  import { log } from "../../infrastructure/log";
   import { onMount } from "svelte";
   import { getTabletStatus } from "../../infrastructure/tauri/commands";
-  import { events } from "../../infrastructure/events";
+  import { events } from "../../infrastructure/tauri/events";
   import type { MappingState } from "./mapping-state.svelte";
   import Title from "../../components/ui/Title.svelte";
   import Checkbox from "../../components/ui/Checkbox.svelte";
@@ -52,7 +53,7 @@
             tabletMaxY = tabletStatus.max_y ?? tabletMaxY;
           }
         } catch (e) {
-          console.warn("Could not load tablet data", e);
+          log.warn("Could not load tablet data", e);
         }
       };
 

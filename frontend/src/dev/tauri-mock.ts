@@ -79,7 +79,8 @@ function makeLogs(): LogEntry[] {
     });
   }
   // The same line twice within the same second, as a busy driver produces.
-  logs.splice(1, 0, { ...logs[0] });
+  const first = logs[0];
+  if (first !== undefined) logs.splice(1, 0, { ...first });
   return logs;
 }
 

@@ -119,7 +119,8 @@
         ? 0
         : (currentIndex + direction + enabledOptions.length) % enabledOptions.length;
 
-    value = enabledOptions[nextIndex].value;
+    const next = enabledOptions[nextIndex];
+    if (next !== undefined) value = next.value;
   }
 </script>
 

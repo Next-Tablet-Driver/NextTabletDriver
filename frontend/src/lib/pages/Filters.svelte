@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { log } from "../infrastructure/log";
   import { onMount } from "svelte";
   import { Box } from "@lucide/svelte";
   import type { MappingState } from "../features/mapping/mapping-state.svelte";
@@ -33,15 +34,19 @@
       const res = await getAvailablePlugins();
       plugins = res;
       untrusted = await getUntrustedPlugins();
-      if (plugins.length > 0 && activePluginId === null) {
-        activePluginId = plugins[0].id;
-      } else if (plugins.length > 0 && plugins.find((p) => p.id === activePluginId) === undefined) {
-        activePluginId = plugins[0].id;
-      } else if (plugins.length === 0) {
+      const first = plugins[0];
+      if (first !== undefined && activePluginId === null) {
+        activePluginId = first.id;
+      } else if (
+        first !== undefined &&
+        plugins.find((p) => p.id === activePluginId) === undefined
+      ) {
+        activePluginId = first.id;
+      } else if (first === undefined) {
         activePluginId = null;
       }
     } catch (e: unknown) {
-      console.error("Failed to fetch plugins", e);
+      log.error("Failed to fetch plugins", e);
       fetchError = String(e);
     }
   }
@@ -79,10 +84,8 @@
 
   function getProperty(id: string, propKey: string, defaultValue: PropertyValue): PropertyValue {
     const settings = getPluginSettings(id);
-    if (propKey in settings.properties) {
-      return settings.properties[propKey];
-    }
-    return defaultValue;
+    const value = settings.properties[propKey];
+    return value !== undefined ? value : defaultValue;
   }
 
   function resetToDefaults(id: string): void {
@@ -107,7 +110,7 @@
         await loadPluginsData();
       }
     } catch (e) {
-      console.error(e);
+      log.error(e);
     }
   }
 
@@ -115,7 +118,7 @@
     try {
       plugins = await reloadPlugins();
     } catch (e) {
-      console.error(e);
+      log.error(e);
     }
   }
 
@@ -123,7 +126,7 @@
     try {
       await openPluginsFolder();
     } catch (e) {
-      console.error(e);
+      log.error(e);
     }
   }
 
@@ -133,7 +136,7 @@
         await loadPluginsData();
       }
     } catch (e) {
-      console.error(e);
+      log.error(e);
     }
   }
 
@@ -142,7 +145,7 @@
       await deletePlugin(id);
       await loadPluginsData();
     } catch (e) {
-      console.error(e);
+      log.error(e);
     }
   }
 </script>

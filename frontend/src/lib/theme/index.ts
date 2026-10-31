@@ -1,3 +1,4 @@
+import { log } from "../infrastructure/log";
 /**
  * Theming entry point.
  *
@@ -20,7 +21,7 @@ export async function refreshUserThemes(): Promise<void> {
       files.map((f) => ({ id: f.id, fileName: f.file_name, content: f.content })),
     );
   } catch (e) {
-    console.error("Failed to load user themes:", e);
+    log.error("Failed to load user themes:", e);
     themeStore.setUserThemes([]);
   }
 }

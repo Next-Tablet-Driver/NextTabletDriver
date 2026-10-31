@@ -1,6 +1,7 @@
 <script lang="ts">
+  import { log } from "../../infrastructure/log";
   import { onMount } from "svelte";
-  import { windowControls, type Monitor } from "../../infrastructure/window";
+  import { windowControls, type Monitor } from "../../infrastructure/tauri/window";
   import type { MappingState } from "./mapping-state.svelte";
   import Title from "../../components/ui/Title.svelte";
   import Checkbox from "../../components/ui/Checkbox.svelte";
@@ -56,7 +57,7 @@
           ];
         }
       } catch (e) {
-        console.warn("Could not load display data", e);
+        log.warn("Could not load display data", e);
       }
     })();
   });

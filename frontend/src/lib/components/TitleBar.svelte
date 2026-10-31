@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { windowControls } from "../infrastructure/window";
-  import { check, type Update } from "@tauri-apps/plugin-updater";
-  import { os } from "../infrastructure/os";
+  import { log } from "../infrastructure/log";
+  import { windowControls } from "../infrastructure/tauri/window";
+  import { os, type Update } from "../infrastructure/os";
   import { onMount } from "svelte";
   import { Minus, RefreshCcw, Square, X } from "@lucide/svelte";
   import iconUrl from "../../assets/icon.png";
@@ -36,13 +36,13 @@
   onMount(() => {
     void (async (): Promise<void> => {
       try {
-        const u = await check();
+        const u = await os.checkForUpdate();
         if (u !== null) {
           updateObj = u;
           updateAvailable = true;
         }
       } catch (e) {
-        console.error("Failed to check for updates:", e);
+        log.error("Failed to check for updates:", e);
       }
     })();
   });
@@ -72,7 +72,7 @@
       });
       await os.relaunch();
     } catch (e) {
-      console.error("Update installation failed:", e);
+      log.error("Update installation failed:", e);
       isUpdating = false;
     }
   }

@@ -14,7 +14,6 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "check:strict": "svelte-check --tsconfig ./tsconfig.strict.json",
     "build:audit": "vite build && npx open-cli stats.html",
     "tauri": "tauri"
   },

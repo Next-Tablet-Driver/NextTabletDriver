@@ -47,8 +47,8 @@ function declaredCustomProperties(): Set<string> {
   const declared = new Set<string>();
   for (const file of STYLED) {
     const text = read(file);
-    for (const m of text.matchAll(/(?<![\w-])(--[a-z0-9-]+)\s*:/g)) declared.add(m[1]);
-    for (const m of text.matchAll(/style:(--[a-z0-9-]+)/g)) declared.add(m[1]);
+    for (const m of text.matchAll(/(?<![\w-])(--[a-z0-9-]+)\s*:/g)) declared.add(m[1] ?? "");
+    for (const m of text.matchAll(/style:(--[a-z0-9-]+)/g)) declared.add(m[1] ?? "");
   }
   return declared;
 }
@@ -61,7 +61,7 @@ function usedCustomProperties(): { file: string; name: string }[] {
     (f) => !rel(f).includes("/__tests__/") && !rel(f).startsWith("dev/"),
   )) {
     for (const m of read(file).matchAll(/var\(\s*(--[a-z0-9-]+)/g))
-      used.push({ file: rel(file), name: m[1] });
+      used.push({ file: rel(file), name: m[1] ?? "" });
   }
   return used;
 }
@@ -131,7 +131,7 @@ describe("design tokens", () => {
       const block = new RegExp(String.raw`:root\.theme-${themeId}\s*\{([^}]*)\}`).exec(themesCss);
       const names = new Set<string>();
       for (const m of (block?.[1] ?? "").matchAll(/(--[a-z0-9-]+|color-scheme)\s*:/g))
-        names.add(m[1]);
+        names.add(m[1] ?? "");
       return names;
     }
 

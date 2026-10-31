@@ -1,6 +1,6 @@
 <script lang="ts">
   import { ArrowUpRight } from "@lucide/svelte";
-  import { open as openUrl } from "@tauri-apps/plugin-shell";
+  import { os } from "../../infrastructure/os";
 
   interface Release {
     tag_name: string;
@@ -46,7 +46,7 @@
       let match;
       while ((match = userRegex.exec(text)) !== null) {
         const user = match[1];
-        if (!users.includes(user)) {
+        if (user !== undefined && !users.includes(user)) {
           users.push(user);
         }
       }
@@ -102,10 +102,11 @@
       if (match.index > lastIndex) {
         parts.push({ type: "text", content: text.substring(lastIndex, match.index) });
       }
-      if ((match[1] as string | undefined) !== undefined) {
-        parts.push(processUrlMatch(match[1]));
-      } else if ((match[2] as string | undefined) !== undefined) {
-        parts.push({ type: "user", content: match[2] });
+      const [, urlPart, userPart] = match;
+      if (urlPart !== undefined) {
+        parts.push(processUrlMatch(urlPart));
+      } else if (userPart !== undefined) {
+        parts.push({ type: "user", content: userPart });
       }
       lastIndex = regex.lastIndex;
     }
@@ -142,7 +143,7 @@
                   href={part.content}
                   onclick={(e) => {
                     e.preventDefault();
-                    void openUrl(part.content);
+                    void os.openUrl(part.content);
                   }}
                 >
                   {part.display}
@@ -153,7 +154,7 @@
                   href={`https://github.com/${part.content}`}
                   onclick={(e) => {
                     e.preventDefault();
-                    void openUrl(`https://github.com/${part.content}`);
+                    void os.openUrl(`https://github.com/${part.content}`);
                   }}>@{part.content}</a
                 >
               {:else}
@@ -175,7 +176,7 @@
             href={`https://github.com/${user}`}
             onclick={(e) => {
               e.preventDefault();
-              void openUrl(`https://github.com/${user}`);
+              void os.openUrl(`https://github.com/${user}`);
             }}
           >
             <img
@@ -202,7 +203,7 @@
           href={url}
           onclick={(e) => {
             e.preventDefault();
-            void openUrl(url);
+            void os.openUrl(url);
           }}
         >
           <!-- <GitCommit size={14} /> -->
@@ -214,7 +215,7 @@
         href={`https://github.com/Next-Tablet-Driver/NextTabletDriver/releases/tag/${release.tag_name}`}
         onclick={(e) => {
           e.preventDefault();
-          void openUrl(
+          void os.openUrl(
             `https://github.com/Next-Tablet-Driver/NextTabletDriver/releases/tag/${release.tag_name}`,
           );
         }}

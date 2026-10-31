@@ -10,7 +10,6 @@
     TriangleAlert,
     Globe,
   } from "@lucide/svelte";
-  import { confirm } from "@tauri-apps/plugin-dialog";
   import type { MappingState } from "../../features/mapping/mapping-state.svelte";
   import { deleteTheme, importTheme, openThemesFolder } from "../../infrastructure/tauri/commands";
   import { os } from "../../infrastructure/os";
@@ -89,7 +88,7 @@
     if (entry === undefined) return;
     const name = entry.definition?.metadata.name ?? entry.fileName;
     if (
-      !(await confirm(
+      !(await os.confirm(
         `Delete the theme "${name}"? The file will be removed from the themes folder.`,
       ))
     )

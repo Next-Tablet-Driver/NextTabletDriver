@@ -22,6 +22,7 @@ import {
   type MappingConfig_Serialize,
   type PluginManifest_Serialize,
   type PropertyDescriptor_Serialize,
+  type Release_Serialize,
 } from "./bindings";
 
 export type {
@@ -44,6 +45,8 @@ export type PropertyValue = PluginPropertyValue;
 export type PluginPropertyKind = PropertyKind;
 export type PropertyDescriptor = PropertyDescriptor_Serialize;
 export type PluginManifest = PluginManifest_Serialize;
+/** A GitHub release of the project. */
+export type Release = Release_Serialize;
 
 type Result<T, E> = { status: "ok"; data: T } | { status: "error"; error: E };
 
@@ -127,6 +130,11 @@ export async function getLogs(): Promise<LogEntry[]> {
 export async function clearLogs(): Promise<void> {
   if (outsideTauri()) return;
   return commands.clearLogs();
+}
+
+/** Fetches the releases of the project from GitHub. Rejects with a message when GitHub is unreachable. */
+export async function getReleases(): Promise<Release[]> {
+  return unwrap(commands.getReleases());
 }
 
 export async function getAvailablePlugins(): Promise<PluginManifest[]> {

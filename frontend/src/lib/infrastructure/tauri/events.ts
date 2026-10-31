@@ -1,5 +1,6 @@
+import { log } from "../log";
 import type { UnlistenFn } from "@tauri-apps/api/event";
-import { events as backendEvents, type LogEvent, type TabletEvent } from "./tauri/bindings";
+import { events as backendEvents, type LogEvent, type TabletEvent } from "./bindings";
 
 /**
  * Event Abstraction Layer
@@ -24,7 +25,7 @@ async function subscribe(
     }
     return undefined;
   } catch (e) {
-    console.error(`Failed to subscribe to ${label} events:`, e);
+    log.error(`Failed to subscribe to ${label} events:`, e);
     return undefined;
   }
 }

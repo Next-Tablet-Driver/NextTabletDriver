@@ -1,7 +1,7 @@
 <script lang="ts">
+  import { log } from "./lib/infrastructure/log";
   import { onMount, type Component } from "svelte";
   import { refreshUserThemes, themeStore } from "./lib/theme";
-  import { confirm, message } from "@tauri-apps/plugin-dialog";
   import TitleBar from "./lib/components/TitleBar.svelte";
   import MenuBar from "./lib/components/MenuBar.svelte";
   import TabBar from "./lib/components/TabBar.svelte";
@@ -21,7 +21,7 @@
     getCurrentProfileName,
     type TabletStatus,
   } from "./lib/infrastructure/tauri/commands";
-  import { events } from "./lib/infrastructure/events";
+  import { events } from "./lib/infrastructure/tauri/events";
   import { os } from "./lib/infrastructure/os";
   import { MappingState } from "./lib/features/mapping/mapping-state.svelte";
 
@@ -95,10 +95,9 @@
         unlistenUpdates = await events.onNavigateToUpdates(() => {
           void (async (): Promise<void> => {
             try {
-              const { check } = await import("@tauri-apps/plugin-updater");
-              const update = await check();
+              const update = await os.checkForUpdate();
               if (update !== null) {
-                const yes = await confirm(
+                const yes = await os.confirm(
                   `Update v${update.version} is available! Do you want to download and install it now?`,
                 );
                 if (yes) {
@@ -106,15 +105,15 @@
                   await os.relaunch();
                 }
               } else {
-                await message("You are already on the latest version.");
+                await os.message("You are already on the latest version.");
               }
             } catch (err) {
-              await message(`Failed to check for updates: ${String(err)}`);
+              await os.message(`Failed to check for updates: ${String(err)}`);
             }
           })();
         });
       } catch (e) {
-        console.error("Failed to call Tauri commands:", e);
+        log.error("Failed to call Tauri commands:", e);
       }
     })();
 

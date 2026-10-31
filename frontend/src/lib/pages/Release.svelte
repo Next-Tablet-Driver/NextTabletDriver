@@ -1,14 +1,7 @@
 <script lang="ts">
-  import { invoke } from "@tauri-apps/api/core";
+  import { getReleases, type Release } from "../infrastructure/tauri/commands";
   import { onMount } from "svelte";
   import ReleaseCard from "../features/release/ReleaseCard.svelte";
-
-  interface Release {
-    tag_name: string;
-    name: string | null;
-    body: string | null;
-    published_at: string | null;
-  }
 
   let releases = $state<Release[]>([]);
   let loading = $state(true);
@@ -17,7 +10,7 @@
   onMount(() => {
     void (async (): Promise<void> => {
       try {
-        releases = await invoke<Release[]>("get_releases");
+        releases = await getReleases();
       } catch (e) {
         error = e as string;
       } finally {

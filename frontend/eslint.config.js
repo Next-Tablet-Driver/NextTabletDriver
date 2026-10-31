@@ -197,8 +197,8 @@ export default tseslint.config(
     rules: { "no-restricted-imports": "off" },
   },
   {
-    // The frontend's only logger.
-    files: ["src/lib/infrastructure/log.ts"],
+    // The frontend's only logger, the tests that watch the console, and the Node smoke script.
+    files: ["src/lib/infrastructure/log.ts", "**/__tests__/**", "**/*.test.ts", "e2e-native/**"],
     rules: { "no-console": "off" },
   },
 

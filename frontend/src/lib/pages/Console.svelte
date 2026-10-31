@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { log } from "../infrastructure/log";
   import { onMount, onDestroy } from "svelte";
   import { getLogs, clearLogs, type LogEntry } from "../infrastructure/tauri/commands";
 
@@ -22,7 +23,7 @@
       const newLogs = await getLogs();
       allLogs = newLogs;
     } catch (e) {
-      console.error("Failed to fetch logs:", e);
+      log.error("Failed to fetch logs:", e);
     }
   }
 
@@ -38,15 +39,15 @@
   });
 
   const filteredLogs = $derived(
-    allLogs.filter((log) => {
-      const lvl = log.level.toUpperCase();
+    allLogs.filter((entry) => {
+      const lvl = entry.level.toUpperCase();
       if (lvl === "INFO" && !filters.Info) return false;
       if (lvl === "WARN" && !filters.Warn) return false;
       if (lvl === "ERROR" && !filters.Error) return false;
       if (lvl === "DEBUG" && !filters.Debug) return false;
 
       if (searchQuery.trim().length > 0) {
-        return log.search_text.includes(searchQuery.trim().toLowerCase());
+        return entry.search_text.includes(searchQuery.trim().toLowerCase());
       }
       return true;
     }),
@@ -61,7 +62,7 @@
       await clearLogs();
       allLogs = [];
     } catch (e) {
-      console.error(e);
+      log.error(e);
     }
   }
 
@@ -72,7 +73,7 @@
     try {
       await navigator.clipboard.writeText(text);
     } catch (e) {
-      console.error(e);
+      log.error(e);
     }
   }
 

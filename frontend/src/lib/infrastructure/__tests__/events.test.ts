@@ -5,7 +5,7 @@ vi.mock("@tauri-apps/api/event", () => ({
   listen: (...a: unknown[]) => listenMock(...a) as unknown,
 }));
 
-import { events } from "../events";
+import { events } from "../tauri/events";
 
 describe("events abstraction layer", () => {
   beforeEach(() => {

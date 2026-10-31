@@ -1,8 +1,0 @@
-{
-  "extends": "./tsconfig.app.json",
-  "compilerOptions": {
-    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.strict.tsbuildinfo",
-    "noUncheckedIndexedAccess": true,
-    "noImplicitOverride": true
-  }
-}

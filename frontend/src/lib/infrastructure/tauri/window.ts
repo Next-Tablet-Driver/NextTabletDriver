@@ -1,3 +1,4 @@
+import { log } from "../log";
 import {
   getCurrentWindow,
   availableMonitors,
@@ -19,7 +20,7 @@ export const windowControls = {
         await getCurrentWindow().minimize();
       }
     } catch (e) {
-      console.error("Failed to minimize window:", e);
+      log.error("Failed to minimize window:", e);
     }
   },
 
@@ -29,7 +30,7 @@ export const windowControls = {
         await getCurrentWindow().hide();
       }
     } catch (e) {
-      console.error("Failed to hide window:", e);
+      log.error("Failed to hide window:", e);
     }
   },
 
@@ -39,7 +40,7 @@ export const windowControls = {
         await getCurrentWindow().toggleMaximize();
       }
     } catch (e) {
-      console.error("Failed to toggle maximize:", e);
+      log.error("Failed to toggle maximize:", e);
     }
   },
 
@@ -51,7 +52,7 @@ export const windowControls = {
         window.close();
       }
     } catch (e) {
-      console.error("Failed to close window:", e);
+      log.error("Failed to close window:", e);
     }
   },
 
@@ -74,7 +75,7 @@ export const windowControls = {
         },
       ];
     } catch (e) {
-      console.error("Failed to get monitors:", e);
+      log.error("Failed to get monitors:", e);
       return [];
     }
   },
