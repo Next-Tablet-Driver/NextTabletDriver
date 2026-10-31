@@ -1,10 +1,15 @@
 # cargo-deny policy: https://embarkstudios.github.io/cargo-deny/
-# Run locally with: cargo deny check   (once per crate: --manifest-path <crate>/Cargo.toml)
-# CI runs `bans licenses sources` in ci.yml and `advisories` in security.yml.
+# Run locally with: cargo deny check   (one workspace, one lockfile: a single run covers every crate)
+# CI runs the whole `cargo deny check` in security.yml.
 
 [advisories]
 version = 2
 yanked = "deny"
+ignore = [
+    # `fxhash` is unmaintained and has no replacement release; it is a dependency of
+    # `display-info`, which we use to read the screen layout. Revisit when `display-info` moves off it.
+    { id = "RUSTSEC-2025-0057", reason = "unmaintained, no safe upgrade; pulled in by display-info" },
+]
 
 [licenses]
 version = 2
