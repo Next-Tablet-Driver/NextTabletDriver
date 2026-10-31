@@ -28,6 +28,7 @@
 13. [CI/CD](#13-cicd)
 14. [Contributions, IA et AGENTS.md](#14-contributions-ia-et-agentsmd)
 15. [Outils internes](#15-outils-internes)
+16. [Plateformes cibles](#16-plateformes-cibles)
 
 ---
 
@@ -40,6 +41,7 @@
 | Réécrire d'un coup (big bang) ? | **Non. Migration progressive** | Environ 30 parsers de tablettes et un pipeline sensible à la latence : la parité ne se réécrit pas d'un coup. |
 | Garder le frontend ? | **Oui** | Svelte 5 + TS + tests + design system + E2E : la base est saine. |
 | Changer quelque chose côté frontend ? | **Oui, la couche de données** | Types écrits à la main, `Config` fourre-tout, chaînes magiques, `invoke` hors couche. |
+| Quelles plateformes ? | **Windows, Linux, macOS ; x64, x86 32 bits, ARM** | Pas tout en 3.0 : la v3 livre d'abord Windows et Linux, mais l'architecture prévoit la place de chaque plateforme (§16). |
 | Combien de crates ? | **Une douzaine, pas plus** | Assez pour imposer le sens des dépendances, pas assez pour devenir de la bureaucratie. |
 
 ---
@@ -151,6 +153,8 @@ crates/
   ntd-output/              # injection d'entrées OS (SendInput / uinput)
   ntd-interop/             # shm, lock, protocole de commandes inter-process
   ntd-settings/            # profils, préférences, thèmes, import OTD
+  ntd-platform/            # intégration OS hors HID/injection : démarrage auto, instance
+                           # unique, priorité des threads, timer haute résolution (§16.4)
   ntd-engine/              # runtime : threads, état, boutons, orchestration
   ntd-services/            # websocket, autoupdate, télémétrie, supervisor
   ntd-ipc/                 # DTO du contrat frontend + génération des types TS
@@ -183,6 +187,7 @@ xtask/                     # tâches de dev (types TS, lint-style, plan CI)
 | `ntd-output` | `engine/injector/*` | core | OS (injection) |
 | `ntd-interop` | `engine/interop/*` | core | shm, verrous OS |
 | `ntd-settings` | `settings/*` | core | fichiers (chemins **injectés**) |
+| `ntd-platform` | démarrage auto, instance unique, priorité de thread et timer (aujourd'hui éparpillés dans `startup.rs`, `application/`, `engine/`) | core | OS |
 | `ntd-engine` | `engine/tablet_manager/*`, `engine/state` | core, tablets, hid, pipeline, plugin-host, output, interop, settings | threads |
 | `ntd-services` | `application/services/*`, `application/telemetry/*` | engine, settings | réseau |
 | `ntd-ipc` | DTO implicites de `src-tauri/src/commands.rs` + `frontend/.../tauri/commands.ts` | core, settings (types) | **Aucune** |
@@ -406,7 +411,12 @@ Dans l'ordre : `ntd-core` → `ntd-tablets` → `ntd-pipeline`.
 avec un fake dans `ntd-test-support`.
 
 - `ntd-settings` reçoit `Paths` en paramètre ; plus aucune fonction `get_*_dir()` globale.
-- **Sortie** : la feature `desktop` n'existe plus ; `apps/sdk` ne dépend plus de `ntd-engine`.
+- Créer `ntd-platform` et donner à chaque adaptateur OS (`ntd-hid`, `ntd-output`, `ntd-interop`,
+  `ntd-platform`) la structure `windows` / `linux` / `macos` de §16.3, avec le module `macos`
+  qui renvoie `Unsupported`.
+- **Sortie** : la feature `desktop` n'existe plus ; `apps/sdk` ne dépend plus de `ntd-engine` ;
+  le workspace compile (`cargo check`) sur toutes les cibles de §16.2, y compris celles qui ne
+  sont pas encore implémentées.
 
 ### Phase 4 — Le moteur
 
@@ -699,6 +709,31 @@ avec un fake dans `ntd-test-support`.
 105. **NE PAS** supprimer une entrée du corpus fuzz qui a fait planter le code : elle devient un
      test de régression.
 
+### 9.13 Plateformes et architectures
+
+106. **NE PAS** supposer 64 bits. Pas de `usize`/`isize` dans les formats persistants, l'ABI des
+     plugins, le protocole interop ou le contrat IPC : utiliser `u32`/`u64` explicites. Pas de
+     `as usize` sur un `u64` : `usize::try_from`.
+107. **NE PAS** écrire `cfg(not(windows))` pour dire « Linux ». Toujours `cfg(target_os = "...")`
+     explicite, et un OS non géré tombe dans une branche qui renvoie `Unsupported`, jamais dans
+     une branche silencieuse ou vide.
+108. **NE PAS** mettre de code spécifique à un OS hors de `ntd-hid`, `ntd-output`, `ntd-interop`,
+     `ntd-platform` et `apps/desktop`.
+109. **NE PAS** lire des octets HID ou réseau avec `from_ne_bytes`, `transmute` ou un cast de
+     pointeur. Toujours `from_le_bytes` / `from_be_bytes` explicite.
+110. **NE PAS** utiliser d'intrinsèques SIMD ou d'instructions propres à une architecture sans
+     version portable équivalente, testée sur toutes les cibles.
+111. **NE PAS** charger un plugin compilé pour une autre cible : le manifeste déclare son target
+     triple et le host refuse un plugin qui ne correspond pas.
+112. **NE PAS** annoncer (README, site, notes de version) une plateforme de niveau 3 comme
+     supportée.
+113. **NE PAS** laisser une plateforme de niveau 3 cesser de compiler : `check-targets` est une
+     check bloquante.
+114. **NE PAS** supposer Windows dans le frontend (barre de titre, raccourcis `Ctrl`, emplacement
+     des boutons de fenêtre) : passer par `infrastructure/os.ts`, qui expose la plateforme.
+115. **NE PAS** promettre le 32 bits sur macOS : il n'existe plus (macOS ne lance plus
+     d'applications 32 bits depuis 10.15).
+
 ---
 
 ## 10. Checklist de PR
@@ -988,7 +1023,8 @@ Conséquences et règles :
 | `bench` | benchmark de latence comparé à la référence, sur `main` et sur les PR étiquetées `perf` |
 | `frontend` | `npm run check`, `lint`, `test`, `build` |
 | `e2e` | Playwright |
-| `build` | build des applications : Windows x64, Windows ARM64, Linux x64, Linux ARM64 |
+| `build` | build des applications sur les cibles de niveau 1 et 2 (§16.2) |
+| `check-targets` | `cargo clippy` sur les cibles de niveau 3 (§16.2) : elles doivent compiler même si elles ne sont pas encore implémentées |
 | `ci-success` | agrège tous les jobs ci-dessus |
 
 Hors `ci.yml`, un workflow `toolchain-beta.yml` planifié chaque semaine lance clippy et les tests
@@ -1223,4 +1259,184 @@ plutôt qu'en Python : une seule langue pour les outils, et il réutilise `cargo
 
 Les jobs `clippy`, `test` et `build` lisent cette sortie et passent `-p <crate>` pour chaque
 crate. Le script a ses propres tests unitaires (graphe de dépendances factice).
+
+---
+
+## 16. Plateformes cibles
+
+### 16.1 Objectif
+
+À terme, NextTabletDriver doit fonctionner de façon **stable** sur **Windows, Linux et macOS**,
+sur toutes les architectures courantes de chacun : x86_64 (Intel/AMD 64 bits), x86 32 bits, ARM
+64 bits et, sur Linux, ARM 32 bits ; sur macOS, Intel et Apple Silicon.
+
+**Ce n'est pas l'objectif de la 3.0.** La v2 ne gère que Windows et Linux (`cfg(windows)` et
+`cfg(target_os = "linux")` dans `engine/injector`, `engine/interop`…), et le support d'une
+nouvelle plateforme est un vrai travail (permissions, injection, packaging). La refonte doit
+en revanche **préparer** ce travail : chaque nouvelle plateforme doit être une implémentation à
+ajouter dans des emplacements déjà prévus, pas une refonte de plus.
+
+### 16.2 Matrice et niveaux de support
+
+| Plateforme | Target Rust | Niveau en 3.0 | Ensuite |
+|---|---|---|---|
+| Windows x64 | `x86_64-pc-windows-msvc` | **1** | — |
+| Linux x64 | `x86_64-unknown-linux-gnu` | **1** | — |
+| Windows ARM64 | `aarch64-pc-windows-msvc` | **2** | 1 |
+| Linux ARM64 | `aarch64-unknown-linux-gnu` | **2** | 1 |
+| macOS Apple Silicon | `aarch64-apple-darwin` | 3 | 2, puis 1 |
+| macOS Intel | `x86_64-apple-darwin` | 3 | 2 (binaire universel avec Apple Silicon) |
+| Windows x86 32 bits | `i686-pc-windows-msvc` | 3 | 2 |
+| Linux x86 32 bits | `i686-unknown-linux-gnu` | 3 | 2 |
+| Linux ARM 32 bits | `armv7-unknown-linux-gnueabihf` | 3 | 2 |
+
+Hors périmètre : macOS 32 bits (il n'existe plus) et Windows ARM 32 bits (abandonné par
+Microsoft).
+
+Définition des niveaux :
+- **Niveau 1** : fonctionnalités complètes, tests et `ntd-tester` en CI sur un runner natif,
+  publiée dans chaque release, bugs bloquants pour une release.
+- **Niveau 2** : fonctionnalités complètes, build et tests en CI (runner natif, ou émulation
+  QEMU / `cross` pour l'ARM 32 bits et l'x86 32 bits sous Linux), publiée en release avec la
+  mention « expérimental ».
+- **Niveau 3** : **préparée, pas implémentée**. Le workspace compile pour cette cible (`cargo
+  clippy --target …` bloquant en CI), les modules OS existent et renvoient
+  `PlatformError::Unsupported`. Rien n'est publié.
+
+Une plateforme passe au niveau supérieur par une décision explicite, quand elle remplit les
+critères ; jamais « parce que ça compile ».
+
+### 16.3 Ce que la refonte doit préparer dès maintenant
+
+**Structure des adaptateurs OS.** Chaque crate qui touche l'OS (`ntd-hid`, `ntd-output`,
+`ntd-interop`, `ntd-platform`) a la même forme :
+
+```
+src/
+  lib.rs          # trait public + choix de l'implémentation selon target_os
+  windows.rs
+  linux.rs
+  macos.rs        # en 3.0 : renvoie PlatformError::Unsupported
+  unsupported.rs  # tout autre OS : erreur explicite, compile quand même
+```
+
+```rust
+#[cfg(target_os = "windows")]
+mod windows;
+#[cfg(target_os = "windows")]
+pub use windows::Backend;
+
+#[cfg(target_os = "linux")]
+mod linux;
+#[cfg(target_os = "linux")]
+pub use linux::Backend;
+
+#[cfg(target_os = "macos")]
+mod macos;
+#[cfg(target_os = "macos")]
+pub use macos::Backend;
+
+#[cfg(not(any(target_os = "windows", target_os = "linux", target_os = "macos")))]
+mod unsupported;
+#[cfg(not(any(target_os = "windows", target_os = "linux", target_os = "macos")))]
+pub use unsupported::Backend;
+```
+
+**Capacités plutôt que suppositions.** Les plateformes n'offrent pas toutes la même chose
+(injection de la pression, de l'inclinaison, souris absolue). Les traits exposent des capacités :
+
+```rust
+pub struct OutputCapabilities {
+    pub absolute_pointer: bool,
+    pub pressure: bool,
+    pub tilt: bool,
+    pub relative_pointer: bool,
+}
+
+pub trait OutputSink {
+    fn capabilities(&self) -> OutputCapabilities;
+    // ...
+}
+```
+
+Le moteur et le frontend lisent ces capacités : le frontend masque ou désactive une option non
+disponible au lieu de l'afficher sans effet.
+
+**Indépendance vis-à-vis de l'architecture** :
+- types à largeur fixe dans tout ce qui est sérialisé ou traverse une frontière (règle 106) ;
+- octets lus avec un ordre explicite (règle 109) ;
+- tous les `Atomic*` utilisés doivent exister sur toutes les cibles de §16.2 : vérifier
+  `cfg(target_has_atomic = "64")` avant d'utiliser `AtomicU64` dans un crate partagé ;
+- la CI de niveau 3 attrape ces problèmes tôt, avant même qu'une plateforme soit implémentée.
+
+**Plugins et SDK** :
+- l'ABI de `ntd-plugin-api` n'utilise que des types à largeur fixe et `repr(C)` : la même ABI
+  vaut pour 32 et 64 bits ;
+- le manifeste d'un plugin déclare son target triple ; le host refuse un plugin d'une autre
+  cible (règle 111). Le format de distribution d'un plugin prévoit **plusieurs binaires** (un par
+  cible) dès la 3.0, même si on n'en publie que deux ;
+- `apps/sdk` et ses bindings (C, C#) sont construits par cible, avec le même nommage d'artefacts
+  que l'application.
+
+**Descripteurs de tablettes** : le schéma de `ntd-codegen` (§15.1) prévoit un champ optionnel par
+OS pour les cas où l'interface ou la collection HID à ouvrir diffère selon le système.
+
+**Mise à jour et packaging** :
+- le manifeste d'update (`latest.json` et les canaux bêta/nightly) utilise les clés de
+  plateforme de l'updater Tauri (`windows-x86_64`, `linux-aarch64`, `darwin-aarch64`…) ; le
+  script qui le génère prend la liste des cibles en entrée au lieu de la coder en dur ;
+- les noms d'artefacts suivent un seul format : `NextTabletDriver_<version>_<os>_<arch>.<ext>`.
+
+**Frontend** : `infrastructure/os.ts` expose la plateforme (OS, architecture) et les capacités ;
+les composants qui en dépendent (`TitleBar.svelte`, raccourcis clavier, menus) ne testent
+jamais l'OS eux-mêmes (règle 114).
+
+### 16.4 `ntd-platform`
+
+Petit crate pour l'intégration système qui n'est ni HID ni injection, et qui est aujourd'hui
+éparpillée :
+
+| Fonction | Windows | Linux | macOS (plus tard) |
+|---|---|---|---|
+| Démarrage automatique | registre `Run` | `.desktop` dans `~/.config/autostart` | LaunchAgent |
+| Instance unique | mutex nommé | socket ou verrou de fichier | socket ou verrou de fichier |
+| Priorité du thread de polling | `SetThreadPriority` | `sched_setscheduler` | QoS de thread |
+| Timer haute résolution (`force_high_resolution_timer`) | `timeBeginPeriod` | sans objet | sans objet |
+| Dossiers (config, plugins, logs) | via `directories`, passés en `Paths` (§4.4) | idem | idem |
+
+### 16.5 Points de vigilance par plateforme (pour plus tard)
+
+Ces points ne sont **pas** à traiter en 3.0, mais l'architecture ne doit pas les rendre
+difficiles.
+
+**macOS** :
+- **Permissions** : la lecture HID demande l'autorisation « Surveillance de l'entrée » et
+  l'injection demande « Accessibilité ». L'application doit détecter leur absence et guider
+  l'utilisateur, ce qui suppose des erreurs typées `PermissionDenied` dès maintenant dans
+  `ntd-hid` et `ntd-output`.
+- **Saisie exclusive** : pour que le pilote système ne déplace pas aussi le curseur, il faut
+  ouvrir la tablette en mode exclusif (IOKit). `HidBackend` doit donc accepter une option
+  « exclusif » dès la 3.0, même si seule une plateforme l'utilise.
+- **Signature et notarisation** obligatoires (compte Apple Developer, Hardened Runtime). Le
+  Hardened Runtime bloque le chargement de bibliothèques signées par d'autres que nous :
+  charger des plugins tiers demande l'entitlement `com.apple.security.cs.disable-library-validation`.
+  À décider explicitement au moment du portage, et la vérification minisign (§8) reste
+  obligatoire dans tous les cas.
+- **Mémoire partagée** : les noms POSIX `shm_open` sont limités à 31 caractères sur macOS ;
+  `ntd-interop` ne doit pas supposer des noms plus longs.
+- **Interface** : boutons de fenêtre à gauche, barre de menus globale, raccourcis `Cmd`.
+- **Binaire universel** (Intel + Apple Silicon) plutôt que deux téléchargements.
+
+**Linux** :
+- règles udev pour l'accès à `hidraw` et `uinput` sans root, à fournir dans les paquets ;
+- X11 et Wayland : l'injection par `uinput` fonctionne sur les deux, mais la détection des écrans
+  diffère et doit passer par un trait ;
+- formats de paquets par architecture (deb, rpm, AppImage), WebKitGTK disponible sur chaque cible.
+
+**32 bits (Windows x86, Linux x86, ARM 32 bits)** :
+- vérifier que Tauri, WebView2 (Windows x86) et WebKitGTK sont disponibles pour la cible ;
+- mémoire plus limitée : pas de tampons dimensionnés « large » par défaut dans le pipeline.
+
+**Windows ARM64** : vérifier que chaque plugin officiel et le SDK sont bien publiés pour ARM64,
+et pas seulement l'application.
 
