@@ -82,7 +82,7 @@ jobs:
       # tauri-action builds the bundles, signs the updater artifacts, creates the draft
       # release for the tag and merges this platform into `latest.json`.
       - name: Build and upload bundles
-        uses: tauri-apps/tauri-action@v0
+        uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
