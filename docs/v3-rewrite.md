@@ -1545,8 +1545,8 @@ just the application.
 | | |
 |---|---|
 | **Current phase** | Phase 3: Extract the I/O adapters |
-| **Last completed task** | P3.1 |
-| **Next task** | P3.2 |
+| **Last completed task** | P3.2 |
+| **Next task** | P3.3 |
 | **v1 bridge release** | not started (P7.5a) |
 | **Last updated** | 2026-10-31 |
 
@@ -2000,10 +2000,29 @@ Goal: every OS access behind a trait, with a fake and room for each platform (§
     crate use it as a dev-dependency (the polling tests dropped their private recorder), and the
     coverage gate does not count it. `HidDevice` takes `&self`, as `hidapi` does, so the polling
     loop can borrow it.
-- [ ] **P3.2** `ntd-platform` (§16.4)
+- [x] **P3.2** `ntd-platform` (§16.4) (branch `chore/v3-phase-3`)
   - Depends on: P3.1
   - Done when: autostart, single instance, thread priority and high-resolution timer live in this
     crate, with the `windows` / `linux` / `macos` / `unsupported` structure.
+  - Notes: `crates/ntd-platform` has `windows.rs` and `linux.rs` (each with a folder of the
+    modules `autostart`, `lock`, `priority` and, for Windows, `timer`), `macos.rs` and
+    `unsupported.rs` (every call says `Unsupported`; the crate was checked for
+    `x86_64-unknown-linux-gnu` and, for `unsupported.rs`, `x86_64-unknown-uefi`; macOS itself is
+    not built here). The two lock files were moved with `git mv` from `engine/interop/lock/`,
+    the autostart and timer code was cut out of `startup.rs`, the priority code out of
+    `tablet_manager/owner.rs`. "Single instance" is the named, machine-wide, non-blocking lock
+    that already exists as the HID owner lock: there is no other single-instance guard in the
+    application today, and none was added (a second desktop launch still becomes a reader).
+    `ntd_platform::NamedLock::HidOwner` keeps the exact legacy names
+    (`Local\NextTabletDriver_HidOwner`, `ntd_hid_owner.lock`) so an old SDK and a new app still
+    elect one owner together; `engine::interop::lock` is now a wrapper that P3.5 moves. The crate
+    never looks for folders: `startup.rs` builds `UserPaths` (home, config) with `directories`
+    and passes it in (§4.4, third inversion). Errors are typed (`PlatformError`) and the caller
+    logs them. One behaviour change: disabling the timer resolution no longer reports
+    `STATUS_TIMER_RESOLUTION_NOT_SET` as a failure (`timeEndPeriod` had already cancelled the
+    request, so the old code logged a spurious warning every time). `startup.rs` keeps the
+    hardware report (`log_system_hardware`), which is not in the list of this task. The
+    `lint-style` list of crates that may use `unsafe` gained `crates/ntd-platform/`.
 - [ ] **P3.3** `ntd-hid`
   - Depends on: P3.1
   - Done when: `HidBackend` trait with an "exclusive" option and a `PermissionDenied` error; the
