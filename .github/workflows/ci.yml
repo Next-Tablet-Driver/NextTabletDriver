@@ -255,6 +255,33 @@ jobs:
       - name: Golden files
         run: cargo test --locked -p next_tablet_driver --test golden
 
+  codegen:
+    name: Generated tablet tables
+    needs: plan
+    if: >-
+      contains(fromJson(needs.plan.outputs.crates), 'ntd-codegen') ||
+      contains(fromJson(needs.plan.outputs.crates), 'ntd-tablets') ||
+      contains(fromJson(needs.plan.outputs.crates), 'next_tablet_driver')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          submodules: recursive
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          toolchain: stable
+      - uses: swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
+        with:
+          key: codegen
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      # Validates tablets/ and regenerates crates/ntd-tablets/src/generated/; any diff means the
+      # committed tables are stale.
+      - name: Regenerate
+        run: cargo run --locked -p ntd-codegen
+      - name: Fail on any difference
+        run: git diff --exit-code -- crates/ntd-tablets/src/generated
+
   bindings:
     name: TypeScript bindings
     needs: plan
@@ -570,6 +597,7 @@ jobs:
       - doc
       - test
       - golden
+      - codegen
       - bindings
       - bench
       - example-plugins

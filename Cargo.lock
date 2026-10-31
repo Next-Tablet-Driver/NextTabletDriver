@@ -2599,6 +2599,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "ntd-codegen"
+version = "0.1.0"
+dependencies = [
+ "base64 0.23.1",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+]
+
+[[package]]
 name = "ntd-core"
 version = "0.1.0"
 dependencies = [
@@ -2622,7 +2632,6 @@ dependencies = [
 name = "ntd-tablets"
 version = "0.1.0"
 dependencies = [
- "include_dir",
  "log",
  "ntd-core",
  "serde",

@@ -26,6 +26,9 @@ Cargo.lock linguist-generated=true
 # Mark tablet configurations as generated/data to not skew language stats towards JSON
 tablets/** linguist-generated=true
 
+# Written by tools/ntd-codegen
+crates/ntd-tablets/src/generated/** linguist-generated=true
+
 # Ignore IDE / editor configs
 .editorconfig linguist-generated=true
 

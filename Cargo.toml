@@ -22,6 +22,7 @@ members = [
     "crates/ntd-plugin-api",
     "crates/ntd-tablets",
     "plugins/*",
+    "tools/ntd-codegen",
     "tools/ntd-recorder",
     "xtask",
 ]
