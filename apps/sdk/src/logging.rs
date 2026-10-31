@@ -22,6 +22,7 @@ impl Log for StderrLogger {
         metadata.level() <= log::max_level()
     }
 
+    #[allow(clippy::print_stderr, reason = "this logger exists to write to stderr")]
     fn log(&self, record: &Record) {
         if self.enabled(record.metadata()) {
             eprintln!(

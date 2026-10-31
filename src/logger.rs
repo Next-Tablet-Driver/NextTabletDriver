@@ -135,6 +135,10 @@ pub enum LoggerError {
 /// This function returns an error if:
 /// - It fails to spawn the background logger worker thread.
 /// - It fails to set the global logger instance.
+#[allow(
+    clippy::print_stdout,
+    reason = "debug builds also echo the log to the terminal from the logger thread"
+)]
 pub fn init() -> Result<(), LoggerError> {
     let (sender, receiver) = crossbeam_channel::bounded::<LogEntry>(LOG_QUEUE_CAPACITY);
 

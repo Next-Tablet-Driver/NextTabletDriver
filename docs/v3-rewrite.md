@@ -983,6 +983,9 @@ too_many_lines = "allow"
 assert_is_empty = "allow"
 # Duplicate versions are handled by cargo-deny (bans) with a reviewed exception list.
 multiple_crate_versions = "allow"
+# Contradicts `unreachable_pub`: an item used only inside its crate is `pub(crate)`, even in a
+# private module.
+redundant_pub_crate = "allow"
 ```
 
 Notes:

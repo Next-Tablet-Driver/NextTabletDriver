@@ -57,6 +57,10 @@ pub fn specta_builder() -> tauri_specta::Builder<tauri::Wry> {
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
+#[allow(
+    clippy::print_stderr,
+    reason = "when the application cannot start, the log may not be readable yet"
+)]
 pub fn run() {
     // Delay initialization on autostart to allow network and WebView2 to be ready
     if std::env::args().any(|arg| arg == "--autostart") {

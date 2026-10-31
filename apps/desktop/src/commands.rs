@@ -1,3 +1,12 @@
+#![allow(
+    clippy::needless_pass_by_value,
+    reason = "Tauri passes `State` and the command arguments by value; the `#[command]` signature requires it"
+)]
+#![allow(
+    clippy::unreachable,
+    reason = "emitted by the `#[tauri::command]` macro for async commands"
+)]
+
 use next_tablet_driver::engine::state::{LockRecoveryExt, SharedState};
 use std::sync::Arc;
 use tauri::State;

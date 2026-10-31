@@ -1,4 +1,4 @@
-//! Example NextTabletDriver plugin: a simple smoothing filter.
+//! Example `NextTabletDriver` plugin: a simple smoothing filter.
 //!
 //! Each packet moves the position only part of the way from the previous position to the new
 //! one. A higher `strength` gives a smoother but slower cursor.
@@ -58,6 +58,10 @@ impl NextTabletPlugin for SimpleSmoothing {
     }
 
     /// Runs for every packet. Keep it short: no allocation, no locks, no I/O.
+    #[allow(
+        clippy::suboptimal_flops,
+        reason = "plain arithmetic keeps the example readable"
+    )]
     fn process(&mut self, packet: &mut PluginPacket, _context: &PluginContext) {
         if let Some((last_u, last_v)) = self.last {
             let follow = 1.0 - self.strength;
