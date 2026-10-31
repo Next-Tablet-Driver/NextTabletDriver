@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { Settings as SettingsIcon } from "lucide-svelte";
+    import { Settings as SettingsIcon } from "@lucide/svelte";
     import type { MappingState } from "../../features/mapping/mapping-state.svelte";
     import Checkbox from "../../components/ui/Checkbox.svelte";
 

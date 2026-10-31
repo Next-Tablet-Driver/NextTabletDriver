@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { Activity } from "lucide-svelte";
+    import { Activity } from "@lucide/svelte";
     import type { MappingState } from "../../features/mapping/mapping-state.svelte";
     import Button from "../../components/ui/Button.svelte";
 

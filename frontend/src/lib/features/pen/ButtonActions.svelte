@@ -13,8 +13,8 @@
     onMount(() => {
         void getTabletStatus()
             .then((status) => {
-                penButtonCount = status.pen_button_count ?? 0;
-                auxButtonCount = status.aux_button_count ?? 0;
+                penButtonCount = status.pen_button_count;
+                auxButtonCount = status.aux_button_count;
             })
             // Outside the app (tests, plain browser) there is no tablet to ask.
             .catch(() => undefined);

@@ -28,6 +28,7 @@ const OFFICIAL_PUBKEY: Option<&str> = option_env!("NTD_PLUGIN_PUBKEY");
 
 /// A plugin library found on disk that is not trusted and was therefore not loaded.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 pub struct UntrustedPlugin {
     /// File name of the library inside the plugins directory.
     pub file_name: String,

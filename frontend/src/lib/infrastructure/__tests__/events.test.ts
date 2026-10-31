@@ -45,7 +45,7 @@ describe("events abstraction layer", () => {
         const callback = vi.fn();
         await events[method](callback);
         expect(listenMock.mock.calls[0]?.[0]).toBe(eventName);
-        (listenMock.mock.calls[0]?.[1] as () => void)();
+        (listenMock.mock.calls[0]?.[1] as (e: { payload: null }) => void)({ payload: null });
         expect(callback).toHaveBeenCalledOnce();
     });
 

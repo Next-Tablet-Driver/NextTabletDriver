@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { Trash2, Copy, Download } from "lucide-svelte";
+    import { Trash, Copy, Download } from "@lucide/svelte";
     import Button from "../../components/ui/Button.svelte";
     
     const { clearConsole, copyVisible, exportAll, filteredCount, totalCount } = $props();
@@ -8,7 +8,7 @@
 <div class="console-footer">
     <div class="footer-actions">
         <Button onclick={clearConsole}>
-            <Trash2 size={14} /> Clear Console
+            <Trash size={14} /> Clear Console
         </Button>
         <Button onclick={copyVisible}>
             <Copy size={14} /> Copy Visible

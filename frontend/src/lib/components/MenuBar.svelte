@@ -29,7 +29,7 @@
   import DropdownSeparator from "./ui/DropdownSeparator.svelte";
 
   // Lucide Icons
-  import { Folder, Smartphone, Info, FileUp, FileDown, RotateCcw, Save, List, BugPlay, Bug, ChartNoAxesCombined, Link, RefreshCcw} from "lucide-svelte";
+  import { Folder, Smartphone, Info, FileUp, FileDown, RotateCcw, Save, List, BugPlay, Bug, ChartNoAxesCombined, Link, RefreshCcw} from "@lucide/svelte";
 
   let presets = $state<{name: string, path: string}[]>([]);
   let openSubmenu = $state<string | null>(null);

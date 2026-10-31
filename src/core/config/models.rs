@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 ///
 /// All spatial coordinates in this struct are in **millimeters**.
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 pub struct ActiveArea {
     /// Horizontal offset from the center of the tablet surface.
     pub x: f32,
@@ -75,6 +76,7 @@ impl Default for ActiveArea {
 /// All coordinates in this struct are in absolute virtual **pixels**
 /// spanning across all connected displays.
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 pub struct TargetArea {
     /// Horizontal pixel offset from the top-left of the virtual desktop.
     pub x: f32,
@@ -99,6 +101,7 @@ impl Default for TargetArea {
 
 /// Determines how pen movement translates to cursor movement.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 pub enum DriverMode {
     /// Maps specific points on the tablet to specific points on the screen.
     /// Primarily used for drawing and osu!.
@@ -193,6 +196,7 @@ impl<'de> Deserialize<'de> for ThemePreference {
 
 /// Settings specific to [`DriverMode::Relative`] operation.
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 pub struct RelativeConfig {
     /// Pixels per millimeter on the horizontal axis.
     pub x_sensitivity: f32,
@@ -256,6 +260,7 @@ const fn default_ws_hz() -> u32 {
 /// Configuration for the embedded WebSocket server.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[allow(clippy::struct_excessive_bools)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 pub struct WebSocketConfig {
     /// Whether the WebSocket server is enabled.
     #[serde(default = "default_false")]
@@ -294,20 +299,41 @@ impl Default for WebSocketConfig {
     }
 }
 
+/// The shape of a plugin property value as the frontend sees it.
+///
+/// Only used to describe [`DynamicPluginSettings::properties`] in the generated TypeScript: at
+/// runtime the values are `serde_json::Value`, and a plugin only ever stores one of these three
+/// kinds.
+#[cfg(feature = "specta")]
+#[derive(Serialize, specta::Type)]
+#[serde(untagged)]
+#[allow(dead_code)]
+pub enum PluginPropertyValue {
+    Number(f64),
+    Bool(bool),
+    Text(String),
+}
+
 /// Configuration settings for an individual dynamic plugin.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 pub struct DynamicPluginSettings {
     /// Whether the plugin is enabled in the filtering pipeline.
     #[serde(default = "default_false")]
     pub enabled: bool,
     /// Key-value bag of configuration property values serialized as JSON values.
     #[serde(default)]
+    #[cfg_attr(
+        feature = "specta",
+        specta(type = std::collections::HashMap<String, PluginPropertyValue>)
+    )]
     pub properties: std::collections::HashMap<String, serde_json::Value>,
 }
 
 /// Determines how normalized pressure input `[0, 1]` is reshaped before being
 /// reported to the OS/game.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 pub enum PressureCurveType {
     /// Reported pressure equals input pressure (identity curve).
     #[default]
@@ -328,6 +354,7 @@ fn default_curve_points() -> Vec<(f32, f32)> {
 
 /// Configuration for the pressure response curve.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 pub struct PressureCurveConfig {
     /// Which curve shape to apply.
     #[serde(default)]
@@ -358,6 +385,7 @@ impl Default for PressureCurveConfig {
 /// to facilitate serde compatibility for adding new fields to older config files.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[allow(clippy::struct_excessive_bools)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 pub struct MappingConfig {
     /// The active tracking mode (Absolute or Relative).
     #[serde(default)]
@@ -420,6 +448,7 @@ pub struct MappingConfig {
     pub pressure_curve: PressureCurveConfig,
     /// User interface theme preference.
     #[serde(default)]
+    #[cfg_attr(feature = "specta", specta(type = String))]
     pub theme: ThemePreference,
     /// User interface language preference.
     #[serde(default = "default_language")]

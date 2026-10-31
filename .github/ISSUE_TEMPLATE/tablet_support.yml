@@ -26,6 +26,15 @@ body:
     validations:
       required: true
   - type: textarea
+    id: capture
+    attributes:
+      label: "Capture (.ntdcap)"
+      description: |
+        Record your tablet with `ntd-recorder` (see the "Adding a tablet" guide in `docs`) and drag the `.ntdcap` file here. It holds no personal data. Without it, we can only guess at your tablet's reports.
+      placeholder: "Drag and drop the .ntdcap file here"
+    validations:
+      required: true
+  - type: textarea
     id: description
     attributes:
       label: "Additional Information"

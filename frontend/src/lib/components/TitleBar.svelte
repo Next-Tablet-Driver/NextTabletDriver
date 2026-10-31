@@ -3,7 +3,7 @@
   import { check, type Update } from "@tauri-apps/plugin-updater";
   import { os } from "../infrastructure/os";
   import { onMount } from "svelte";
-  import { Minus, RefreshCcw, Square, X } from "lucide-svelte";
+  import { Minus, RefreshCcw, Square, X } from "@lucide/svelte";
   import iconUrl from "../../assets/icon.png";
   import Button from "./ui/Button.svelte";
 

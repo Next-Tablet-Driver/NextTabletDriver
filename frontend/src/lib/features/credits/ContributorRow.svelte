@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { ExternalLink, Link } from "lucide-svelte";
+    import { ExternalLink, Link } from "@lucide/svelte";
 
     interface Contributor {
         login: string;

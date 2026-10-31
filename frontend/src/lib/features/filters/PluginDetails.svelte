@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { Activity, Settings2, Waves, Trash2, Info, RefreshCw } from "lucide-svelte";
+    import { Activity, Settings2, WavesHorizontal, Trash, Info, RefreshCw } from "@lucide/svelte";
     import type { PluginManifest, DynamicPluginSettings, PropertyValue } from "../../infrastructure/tauri/commands";
     import Checkbox from "../../components/ui/Checkbox.svelte";
     import Button from "../../components/ui/Button.svelte";
@@ -27,7 +27,7 @@
     function getIcon(pluginId: string): typeof Activity {
         if (pluginId.toLowerCase().includes("antichatter")) return Activity;
         if (pluginId.toLowerCase().includes("kalman")) return Settings2;
-        if (pluginId.toLowerCase().includes("handspeed")) return Waves;
+        if (pluginId.toLowerCase().includes("handspeed")) return WavesHorizontal;
         return Activity;
     }
 
@@ -54,7 +54,7 @@
                 onchange={() => { togglePlugin(activePlugin.id); }}
             />
             <Button onclick={() => { handleDelete(activePlugin.id); }} variant="danger-ghost">
-                <Trash2 size={12} /> Delete this plugin
+                <Trash size={12} /> Delete this plugin
             </Button>
         </div>
     </div>

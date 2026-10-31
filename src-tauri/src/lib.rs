@@ -1,13 +1,59 @@
 use next_tablet_driver::engine::state::LockRecoveryExt;
+use tauri::Manager;
 use tauri::menu::{CheckMenuItem, Menu, MenuItem, Submenu};
 use tauri::tray::TrayIconBuilder;
-use tauri::{Emitter, Manager};
+use tauri_specta::Event;
 
 mod commands;
+pub mod events;
 
 #[tauri::command]
+#[specta::specta]
 fn get_core_version() -> String {
     format!("v{}", next_tablet_driver::VERSION)
+}
+
+/// Every command and event the frontend can use. The TypeScript bindings are generated from this
+/// list, so a command that is not here has no typed function on the frontend.
+#[must_use]
+pub fn specta_builder() -> tauri_specta::Builder<tauri::Wry> {
+    tauri_specta::Builder::<tauri::Wry>::new()
+        .commands(tauri_specta::collect_commands![
+            get_core_version,
+            commands::get_tablet_status,
+            commands::get_metrics,
+            commands::get_config,
+            commands::set_config,
+            commands::save_config,
+            commands::reset_config,
+            commands::normalize_binding,
+            commands::load_profile,
+            commands::import_otd_profile,
+            commands::export_profile,
+            commands::get_presets,
+            commands::get_current_profile_name,
+            commands::get_logs,
+            commands::clear_logs,
+            commands::get_releases,
+            commands::get_available_plugins,
+            commands::reload_plugins,
+            commands::open_plugins_folder,
+            commands::install_plugin,
+            commands::get_untrusted_plugins,
+            commands::trust_plugin,
+            commands::delete_plugin,
+            commands::open_themes_folder,
+            commands::list_themes,
+            commands::import_theme,
+            commands::delete_theme
+        ])
+        .events(tauri_specta::collect_events![
+            events::TabletEvent,
+            events::LogEvent,
+            events::DeviceChanged,
+            events::ProfileLoaded,
+            events::NavigateToUpdates
+        ])
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -19,40 +65,14 @@ pub fn run() {
 
     let _ = next_tablet_driver::logger::init();
 
+    let specta_builder = specta_builder();
+
     let result = tauri::Builder::default()
     .plugin(tauri_plugin_shell::init())
     .plugin(tauri_plugin_process::init())
     .plugin(tauri_plugin_updater::Builder::new().build())
     .plugin(tauri_plugin_dialog::init())
-    .invoke_handler(tauri::generate_handler![
-        get_core_version,
-        commands::get_tablet_status,
-        commands::get_metrics,
-        commands::get_config,
-        commands::set_config,
-        commands::save_config,
-        commands::reset_config,
-        commands::normalize_binding,
-        commands::load_profile,
-        commands::import_otd_profile,
-        commands::export_profile,
-        commands::get_presets,
-        commands::get_current_profile_name,
-        commands::get_logs,
-        commands::clear_logs,
-        commands::get_releases,
-        commands::get_available_plugins,
-        commands::reload_plugins,
-        commands::open_plugins_folder,
-        commands::install_plugin,
-        commands::get_untrusted_plugins,
-        commands::trust_plugin,
-        commands::delete_plugin,
-        commands::open_themes_folder,
-        commands::list_themes,
-        commands::import_theme,
-        commands::delete_theme
-    ])
+    .invoke_handler(specta_builder.invoke_handler())
     .on_window_event(|window, event| {
         if let tauri::WindowEvent::CloseRequested { api, .. } = event {
             let state: tauri::State<'_, std::sync::Arc<next_tablet_driver::engine::state::SharedState>> = window.state();
@@ -63,7 +83,9 @@ pub fn run() {
             }
         }
     })
-    .setup(|app| {
+    .setup(move |app| {
+        specta_builder.mount_events(app);
+
         // Load Configuration early for Tray
         let config_service = next_tablet_driver::application::services::ConfigService::load();
         let config = config_service.config.clone();
@@ -156,7 +178,7 @@ pub fn run() {
                         
                         let save_sender: tauri::State<'_, crossbeam_channel::Sender<next_tablet_driver::core::config::models::MappingConfig>> = app.state();
                         let _ = save_sender.try_send(config_clone);
-                        let _ = app.emit("profile-loaded", ());
+                        let _ = events::ProfileLoaded.emit(app);
                     }
                 } else if id == "open_plugins" {
                     let state: tauri::State<'_, std::sync::Arc<next_tablet_driver::engine::state::SharedState>> = app.state();
@@ -167,14 +189,14 @@ pub fn run() {
                     if let Some(window) = app.get_webview_window("main") {
                         let _ = window.show();
                         let _ = window.set_focus();
-                        let _ = window.emit("navigate-to-updates", ());
+                        let _ = events::NavigateToUpdates.emit(app);
                     }
                 } else if id.starts_with("profile|") {
                     let path = id.trim_start_matches("profile|");
                     let state: tauri::State<'_, std::sync::Arc<next_tablet_driver::engine::state::SharedState>> = app.state();
                     if crate::commands::load_profile(state, path.to_string()).is_ok() {
                         log::info!(target: "Tray", "Loaded profile from tray: {path}");
-                        let _ = app.emit("profile-loaded", ());
+                        let _ = events::ProfileLoaded.emit(app);
                     }
                 }
             })
@@ -230,16 +252,16 @@ pub fn run() {
                     
                     if any_visible {
                         // Map the complex TabletData to a simple serializable struct for Svelte
-                        let payload = serde_json::json!({
-                            "status": frame.status.as_str(),
-                            "x": frame.x,
-                            "y": frame.y,
-                            "pressure": frame.pressure,
-                            "hover_distance": frame.hover_distance,
-                            "tilt_x": frame.tilt_x,
-                            "tilt_y": frame.tilt_y,
-                        });
-                        let _ = app_handle.emit("tablet-event", payload);
+                        let payload = events::TabletEvent {
+                            status: frame.status.as_str().to_owned(),
+                            x: frame.x,
+                            y: frame.y,
+                            pressure: frame.pressure,
+                            hover_distance: frame.hover_distance,
+                            tilt_x: frame.tilt_x,
+                            tilt_y: frame.tilt_y,
+                        };
+                        let _ = payload.emit(&app_handle);
                     }
                 }
             }
@@ -264,7 +286,7 @@ pub fn run() {
                         let _ = status_i_clone.set_text(&current_name);
                     }
                     last_name = current_name;
-                    let _ = app_handle_status.emit("device-changed", ());
+                    let _ = events::DeviceChanged.emit(&app_handle_status);
                 }
                 std::thread::sleep(std::time::Duration::from_millis(500));
             }

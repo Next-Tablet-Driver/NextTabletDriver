@@ -16,6 +16,7 @@ pub const MAX_THEME_FILES: usize = 100;
 
 /// A theme file as handed to the frontend.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 pub struct ThemeFile {
     /// Stable id derived from the file name; what `custom:<id>` refers to.
     pub id: String,

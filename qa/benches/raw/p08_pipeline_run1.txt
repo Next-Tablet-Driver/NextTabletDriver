@@ -1,0 +1,62 @@
+   Compiling next_tablet_driver v3.0.0 (C:\Users\iswea\Documents\Developpement\01 - Projects\Rust\NextTabletDriver)
+    Finished `bench` profile [optimized] target(s) in 39.77s
+     Running qa\benches\pipeline.rs (target\release\deps\pipeline-d8b6a9337947988a.exe)
+Gnuplot not found, using plotters backend
+Benchmarking pipeline/absolute/cold/no_filters/linear
+Benchmarking pipeline/absolute/cold/no_filters/linear: Warming up for 3.0000 s
+Benchmarking pipeline/absolute/cold/no_filters/linear: Collecting 100 samples in estimated 5.4027 s (1100 iterations)
+Benchmarking pipeline/absolute/cold/no_filters/linear: Analyzing
+pipeline/absolute/cold/no_filters/linear
+                        time:   [104.63 µs 106.71 µs 108.92 µs]
+Found 2 outliers among 100 measurements (2.00%)
+  2 (2.00%) high mild
+
+Benchmarking pipeline/absolute/warm/no_filters/linear
+Benchmarking pipeline/absolute/warm/no_filters/linear: Warming up for 3.0000 s
+Benchmarking pipeline/absolute/warm/no_filters/linear: Collecting 100 samples in estimated 5.3352 s (1000 iterations)
+Benchmarking pipeline/absolute/warm/no_filters/linear: Analyzing
+pipeline/absolute/warm/no_filters/linear
+                        time:   [179.03 µs 183.89 µs 189.07 µs]
+Found 1 outliers among 100 measurements (1.00%)
+  1 (1.00%) high mild
+
+Benchmarking pipeline/relative/warm/no_filters/linear
+Benchmarking pipeline/relative/warm/no_filters/linear: Warming up for 3.0000 s
+Benchmarking pipeline/relative/warm/no_filters/linear: Collecting 100 samples in estimated 5.4757 s (1000 iterations)
+Benchmarking pipeline/relative/warm/no_filters/linear: Analyzing
+pipeline/relative/warm/no_filters/linear
+                        time:   [185.54 µs 189.63 µs 193.96 µs]
+Found 4 outliers among 100 measurements (4.00%)
+  3 (3.00%) high mild
+  1 (1.00%) high severe
+
+Benchmarking pipeline/absolute/warm/pressure/linear
+Benchmarking pipeline/absolute/warm/pressure/linear: Warming up for 3.0000 s
+Benchmarking pipeline/absolute/warm/pressure/linear: Collecting 100 samples in estimated 5.2222 s (1000 iterations)
+Benchmarking pipeline/absolute/warm/pressure/linear: Analyzing
+pipeline/absolute/warm/pressure/linear
+                        time:   [189.50 µs 193.25 µs 197.29 µs]
+                        thrpt:  [5.0687 Kelem/s 5.1748 Kelem/s 5.2771 Kelem/s]
+Found 5 outliers among 100 measurements (5.00%)
+  4 (4.00%) high mild
+  1 (1.00%) high severe
+Benchmarking pipeline/absolute/warm/pressure/exponential
+Benchmarking pipeline/absolute/warm/pressure/exponential: Warming up for 3.0000 s
+Benchmarking pipeline/absolute/warm/pressure/exponential: Collecting 100 samples in estimated 5.2200 s (1000 iterations)
+Benchmarking pipeline/absolute/warm/pressure/exponential: Analyzing
+pipeline/absolute/warm/pressure/exponential
+                        time:   [182.45 µs 185.62 µs 188.99 µs]
+                        thrpt:  [5.2914 Kelem/s 5.3873 Kelem/s 5.4810 Kelem/s]
+Found 4 outliers among 100 measurements (4.00%)
+  4 (4.00%) high mild
+Benchmarking pipeline/absolute/warm/pressure/custom_32_points
+Benchmarking pipeline/absolute/warm/pressure/custom_32_points: Warming up for 3.0000 s
+Benchmarking pipeline/absolute/warm/pressure/custom_32_points: Collecting 100 samples in estimated 5.1186 s (1000 iterations)
+Benchmarking pipeline/absolute/warm/pressure/custom_32_points: Analyzing
+pipeline/absolute/warm/pressure/custom_32_points
+                        time:   [192.41 µs 197.88 µs 204.34 µs]
+                        thrpt:  [4.8939 Kelem/s 5.0535 Kelem/s 5.1973 Kelem/s]
+Found 4 outliers among 100 measurements (4.00%)
+  2 (2.00%) high mild
+  2 (2.00%) high severe
+

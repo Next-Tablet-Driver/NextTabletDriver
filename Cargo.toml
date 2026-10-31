@@ -3,7 +3,7 @@ name = "next_tablet_driver"
 authors = ["iSweat <https://github.com/iSweat-exe>"]
 description = "Tablet Driver for Osu! and Drawing"
 repository = "https://github.com/Next-Tablet-Driver/NextTabletDriver"
-version = "2.0.0"
+version = "3.0.0"
 publish = false
 edition = "2024"
 license = "MIT"
@@ -17,11 +17,15 @@ default = ["desktop"]
 # Everything that talks to the OS: HID polling thread and input injection.
 # Disabled by the SDK, which embeds the pure processing pipeline only.
 desktop = ["dep:display-info"]
+# Derives `specta::Type` on the types the desktop shell exchanges with the frontend, so their
+# TypeScript definitions are generated from Rust (roadmap P0.9).
+specta = ["dep:specta", "ntd_plugin_api/specta"]
 
 [dependencies]
 # Windows & Linux
 hidapi = "2.6.3"
 display-info = { version = "0.5.9", optional = true }
+specta = { version = "=2.0.0-rc.26", optional = true, features = ["derive", "serde_json"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 base64 = "0.23.1"
@@ -60,6 +64,10 @@ proptest = "1"
 [[test]]
 name = "transform_properties"
 path = "qa/tests/transform_properties.rs"
+
+[[test]]
+name = "golden"
+path = "qa/tests/golden.rs"
 
 [[bench]]
 name = "pipeline"

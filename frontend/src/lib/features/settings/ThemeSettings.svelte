@@ -1,6 +1,6 @@
 <script lang="ts">
     import { onMount } from "svelte";
-    import { Palette, FolderOpen, Download, RefreshCw, Trash2, Copy, TriangleAlert, Globe } from "lucide-svelte";
+    import { Palette, FolderOpen, Download, RefreshCw, Trash, Copy, TriangleAlert, Globe } from "@lucide/svelte";
     import { confirm } from "@tauri-apps/plugin-dialog";
     import type { MappingState } from "../../features/mapping/mapping-state.svelte";
     import { deleteTheme, importTheme, openThemesFolder } from "../../infrastructure/tauri/commands";
@@ -125,7 +125,7 @@
                 <Button onclick={() => { void openThemesFolder(); }}><FolderOpen size={16} /> Open Themes Folder</Button>
                 <Button onclick={() => { void handleCopyTemplate(); }}><Copy size={16} /> Copy as template</Button>
                 {#if selectedUserTheme !== undefined}
-                    <Button onclick={() => { void handleDelete(); }} variant="danger-ghost"><Trash2 size={16} /> Delete</Button>
+                    <Button onclick={() => { void handleDelete(); }} variant="danger-ghost"><Trash size={16} /> Delete</Button>
                 {/if}
                 <Button onclick={() => { void os.openUrl(THEMES_REPOSITORY); }}><Globe size={16} /> Browse Online Themes</Button>
             </div>

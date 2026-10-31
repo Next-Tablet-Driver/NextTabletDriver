@@ -4,7 +4,7 @@
 
 rustPlatform.buildRustPackage {
   pname = "next-tablet-driver";
-  version = "2.0.0";
+  version = "3.0.0";
 
   src = ../.;
 
@@ -19,7 +19,7 @@ rustPlatform.buildRustPackage {
     src = ../frontend;
     # Update this hash whenever frontend/package-lock.json changes: `nix build .#default`
     # fails with the expected hash, paste it here.
-    hash = "sha256-yRTdFSGC4PAow5Rv0vh0QWiFUdkNOg1fxD6kMWu1OPo=";
+    hash = "sha256-Env3czQvCMnxpzkdAdpa1ch/eB3Ca26U16H9hO+g/KE=";
   };
 
   nativeBuildInputs = with pkgs; [

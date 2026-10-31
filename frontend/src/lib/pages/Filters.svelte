@@ -1,6 +1,6 @@
 <script lang="ts">
     import { onMount } from "svelte";
-    import { Box } from "lucide-svelte";
+    import { Box } from "@lucide/svelte";
     import type { MappingState } from "../features/mapping/mapping-state.svelte";
     import { getAvailablePlugins, reloadPlugins, openPluginsFolder, installPlugin, deletePlugin, getUntrustedPlugins, trustPlugin, type UntrustedPlugin, type PluginManifest, type DynamicPluginSettings, type PropertyValue } from "../infrastructure/tauri/commands";
     
@@ -41,7 +41,7 @@
     const activePlugin = $derived(plugins.find(p => p.id === activePluginId));
     
     function getPluginSettings(id: string): DynamicPluginSettings {
-        if (mapping.config?.plugins?.[id] === undefined) {
+        if (mapping.config?.plugins[id] === undefined) {
             return { enabled: false, properties: {} };
         }
         return mapping.config.plugins[id];
@@ -49,7 +49,6 @@
     
     function ensurePluginSettings(id: string): DynamicPluginSettings {
         if (mapping.config === null) throw new Error("Config missing");
-        mapping.config.plugins ??= {};
         mapping.config.plugins[id] ??= { enabled: false, properties: {} };
         return mapping.config.plugins[id];
     }
@@ -83,7 +82,7 @@
                 else if (prop.kind.type === 'Int') settings.properties[prop.id] = prop.kind.config.default;
                 else if (prop.kind.type === 'String') settings.properties[prop.id] = prop.kind.config.default;
                 else if (prop.kind.type === 'Bool') settings.properties[prop.id] = prop.kind.config.default;
-                else settings.properties[prop.id] = (prop.kind as Extract<typeof prop.kind, { type: 'Choice' }>).config.default_index;
+                else settings.properties[prop.id] = prop.kind.config.default_index;
             }
             mapping.markDirty();
         }

@@ -1,8 +1,11 @@
-import { getConfig, setConfig, saveConfig, type Config } from '../../infrastructure/tauri/commands';
+import { getConfig, setConfig, saveConfig, type Config, type DriverMode } from '../../infrastructure/tauri/commands';
 import { untrack } from 'svelte';
 
 const HISTORY_MAX_SIZE = 50;
 const DEBOUNCE_SAVE_MS = 1500;
+
+/** Floats arrive as `null` when the backend holds a NaN, which a valid profile never does. */
+const finite = (value: number | null): number => value ?? 0;
 
 export class MappingState {
     config: Config | null = $state(null);
@@ -24,7 +27,7 @@ export class MappingState {
     edgeSnapping = $state(true);
     forceAspectRatio = $state(true);
     showOsuPlayfield = $state(true);
-    driverMode = $state("Absolute");
+    driverMode = $state<DriverMode>("Absolute");
 
     private historyStack: string[] = [];
     private historyIndex = -1;
@@ -62,16 +65,16 @@ export class MappingState {
     }
 
     private applyToState(cfg: Config): void {
-        this.targetW = cfg.target_area.w;
-        this.targetH = cfg.target_area.h;
-        this.targetX = cfg.target_area.x;
-        this.targetY = cfg.target_area.y;
+        this.targetW = finite(cfg.target_area.w);
+        this.targetH = finite(cfg.target_area.h);
+        this.targetX = finite(cfg.target_area.x);
+        this.targetY = finite(cfg.target_area.y);
 
-        this.tabletW = cfg.active_area.w;
-        this.tabletH = cfg.active_area.h;
-        this.tabletX = cfg.active_area.x;
-        this.tabletY = cfg.active_area.y;
-        this.tabletRotation = cfg.active_area.rotation;
+        this.tabletW = finite(cfg.active_area.w);
+        this.tabletH = finite(cfg.active_area.h);
+        this.tabletX = finite(cfg.active_area.x);
+        this.tabletY = finite(cfg.active_area.y);
+        this.tabletRotation = finite(cfg.active_area.rotation);
 
         this.edgeSnapping = cfg.display_snapping;
         this.forceAspectRatio = cfg.lock_aspect_ratio;

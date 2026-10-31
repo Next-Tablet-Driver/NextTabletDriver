@@ -45,7 +45,11 @@
       connected: false,
       name: "No Tablet Detected",
       width: 0,
-      height: 0
+      height: 0,
+      max_x: null,
+      max_y: null,
+      pen_button_count: 0,
+      aux_button_count: 0
   });
   
   const mapping = new MappingState();
