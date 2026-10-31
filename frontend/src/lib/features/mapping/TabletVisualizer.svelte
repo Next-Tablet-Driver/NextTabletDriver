@@ -43,9 +43,11 @@
       const updateTabletData = async (): Promise<void> => {
         try {
           const tabletStatus = await getTabletStatus();
-          if (tabletStatus.width > 0 && tabletStatus.height > 0) {
-            physW = tabletStatus.width;
-            physH = tabletStatus.height;
+          const width = tabletStatus.width ?? 0;
+          const height = tabletStatus.height ?? 0;
+          if (width > 0 && height > 0) {
+            physW = width;
+            physH = height;
             tabletMaxX = tabletStatus.max_x ?? tabletMaxX;
             tabletMaxY = tabletStatus.max_y ?? tabletMaxY;
           }

@@ -145,6 +145,6 @@ export default tseslint.config(
 
   // ─── Ignores ──────────────────────────────────────────────────────────────────
   {
-    ignores: ['build/', '.svelte-kit/', 'dist/', 'public/', 'vite.config.ts', 'vite.config.js', 'vite.config.d.ts', 'svelte.config.js', 'eslint.config.js'],
+    ignores: ['build/', '.svelte-kit/', 'dist/', 'public/', 'src/lib/infrastructure/tauri/bindings.ts', 'vite.config.ts', 'vite.config.js', 'vite.config.d.ts', 'svelte.config.js', 'eslint.config.js'],
   },
 );

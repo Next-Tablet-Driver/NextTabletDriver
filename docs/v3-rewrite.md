@@ -1542,8 +1542,8 @@ just the application.
 | | |
 |---|---|
 | **Current phase** | Phase 0: Safety nets |
-| **Last completed task** | P0.9 |
-| **Next task** | P0.10 |
+| **Last completed task** | P0.10 |
+| **Next task** | GATE 0 |
 | **v1 bridge release** | not started (P7.5a) |
 | **Last updated** | 2026-10-31 |
 
@@ -1627,7 +1627,7 @@ Goal: be able to detect any regression **before** touching the architecture (§7
   - Done when: the 26 current commands and 5 events have types and typed functions generated from
     Rust in `frontend/src/lib/infrastructure/tauri/bindings.ts`, **with no behaviour change**; a CI
     job regenerates and fails on any diff.
-- [ ] **P0.10** The frontend uses the generated bindings
+- [x] **P0.10** The frontend uses the generated bindings (PR: to be linked)
   - Depends on: P0.9
   - Done when: `commands.ts` and `events.ts` have no hand-written DTO interface left;
     `npm run check`, `npm test`, `npm run e2e` green.

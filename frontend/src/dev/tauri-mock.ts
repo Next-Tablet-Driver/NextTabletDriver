@@ -17,6 +17,7 @@ const config: Config = {
     lock_aspect_ratio: true,
     show_osu_playfield: true,
     mode: "Absolute",
+    relative_config: { x_sensitivity: 10, y_sensitivity: 10, rotation: 0, reset_time_ms: 100 },
     plugins: {
         kalman_smoothing: { enabled: true, properties: { process_noise: 0.5, latency: 4 } },
     },

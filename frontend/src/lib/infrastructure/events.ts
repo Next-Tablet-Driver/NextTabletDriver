@@ -1,100 +1,53 @@
-import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import type { UnlistenFn } from "@tauri-apps/api/event";
+import { events as backendEvents, type LogEvent, type TabletEvent } from "./tauri/bindings";
 
 /**
  * Event Abstraction Layer
- * Wraps Tauri events for testing and cross-platform consistency.
+ * Wraps the backend's events for testing and cross-platform consistency. The event names and
+ * payload types come from `tauri/bindings.ts`, generated from the Rust code.
  */
 
-export interface TabletEventData {
-    status: string;
-    x: number;
-    y: number;
-    pressure: number;
-    hover_distance: number;
-    tilt_x: number;
-    tilt_y: number;
-}
+export type TabletEventData = TabletEvent;
+export type LogEventData = LogEvent;
 
-export interface LogEventData {
-    time: string;
-    level: string;
-    group: string;
-    message: string;
+const insideTauri = (): boolean => typeof window !== "undefined" && window.__TAURI_INTERNALS__ !== undefined;
+
+/** Calls `register` inside Tauri; logs and returns `undefined` otherwise or on failure. */
+async function subscribe(label: string, register: () => Promise<UnlistenFn>): Promise<UnlistenFn | undefined> {
+    try {
+        if (insideTauri()) {
+            return await register();
+        }
+        return undefined;
+    } catch (e) {
+        console.error(`Failed to subscribe to ${label} events:`, e);
+        return undefined;
+    }
 }
 
 export const events = {
-    /** 
-     * Subscribes to real-time tablet packets (approx 60Hz)
-     */
-    async onTabletEvent(callback: (data: TabletEventData) => void): Promise<UnlistenFn | undefined> {
-        try {
-            if (typeof window !== "undefined" && window.__TAURI_INTERNALS__ !== undefined) {
-                return await listen<TabletEventData>("tablet-event", (event) => { callback(event.payload); });
-            }
-            return undefined;
-        } catch (e) {
-            console.error("Failed to subscribe to tablet events:", e);
-            return undefined;
-        }
+    /** Subscribes to real-time tablet packets (approx 60Hz) */
+    onTabletEvent(callback: (data: TabletEventData) => void): Promise<UnlistenFn | undefined> {
+        return subscribe("tablet", () => backendEvents.tabletEvent.listen((event) => { callback(event.payload); }));
     },
 
-    /** 
-     * Subscribes to new application logs 
-     */
-    async onLogEvent(callback: (data: LogEventData) => void): Promise<UnlistenFn | undefined> {
-        try {
-            if (typeof window !== "undefined" && window.__TAURI_INTERNALS__ !== undefined) {
-                return await listen<LogEventData>("log-event", (event) => { callback(event.payload); });
-            }
-            return undefined;
-        } catch (e) {
-            console.error("Failed to subscribe to log events:", e);
-            return undefined;
-        }
+    /** Subscribes to new application logs */
+    onLogEvent(callback: (data: LogEventData) => void): Promise<UnlistenFn | undefined> {
+        return subscribe("log", () => backendEvents.logEvent.listen((event) => { callback(event.payload); }));
     },
 
-    /** 
-     * Subscribes to device hot-plug (connect/disconnect) events
-     */
-    async onDeviceChanged(callback: () => void): Promise<UnlistenFn | undefined> {
-        try {
-            if (typeof window !== "undefined" && window.__TAURI_INTERNALS__ !== undefined) {
-                return await listen("device-changed", () => { callback(); });
-            }
-            return undefined;
-        } catch (e) {
-            console.error("Failed to subscribe to device changed events:", e);
-            return undefined;
-        }
+    /** Subscribes to device hot-plug (connect/disconnect) events */
+    onDeviceChanged(callback: () => void): Promise<UnlistenFn | undefined> {
+        return subscribe("device changed", () => backendEvents.deviceChanged.listen(() => { callback(); }));
     },
 
-    /** 
-     * Subscribes to profile loaded events
-     */
-    async onProfileLoaded(callback: () => void): Promise<UnlistenFn | undefined> {
-        try {
-            if (typeof window !== "undefined" && window.__TAURI_INTERNALS__ !== undefined) {
-                return await listen("profile-loaded", () => { callback(); });
-            }
-            return undefined;
-        } catch (e) {
-            console.error("Failed to subscribe to profile loaded events:", e);
-            return undefined;
-        }
+    /** Subscribes to profile loaded events */
+    onProfileLoaded(callback: () => void): Promise<UnlistenFn | undefined> {
+        return subscribe("profile loaded", () => backendEvents.profileLoaded.listen(() => { callback(); }));
     },
 
-    /**
-     * Subscribes to navigate-to-updates events from Tray
-     */
-    async onNavigateToUpdates(callback: () => void): Promise<UnlistenFn | undefined> {
-        try {
-            if (typeof window !== "undefined" && window.__TAURI_INTERNALS__ !== undefined) {
-                return await listen("navigate-to-updates", () => { callback(); });
-            }
-            return undefined;
-        } catch (e) {
-            console.error("Failed to subscribe to navigate-to-updates events:", e);
-            return undefined;
-        }
-    }
+    /** Subscribes to navigate-to-updates events from Tray */
+    onNavigateToUpdates(callback: () => void): Promise<UnlistenFn | undefined> {
+        return subscribe("navigate-to-updates", () => backendEvents.navigateToUpdates.listen(() => { callback(); }));
+    },
 };

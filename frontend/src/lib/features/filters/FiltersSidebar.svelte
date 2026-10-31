@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { Plus, Folder, RefreshCw, Activity, Settings2, Waves } from "@lucide/svelte";
+    import { Plus, Folder, RefreshCw, Activity, Settings2, WavesHorizontal } from "@lucide/svelte";
     import type { PluginManifest, DynamicPluginSettings } from "../../infrastructure/tauri/commands";
     import Button from "../../components/ui/Button.svelte";
 
@@ -15,10 +15,10 @@
     }>();
 
     function getIcon(pluginId: string): Component {
-        if (pluginId.toLowerCase().includes("antichatter")) return Activity as unknown as Component;
-        if (pluginId.toLowerCase().includes("kalman")) return Settings2 as unknown as Component;
-        if (pluginId.toLowerCase().includes("handspeed")) return Waves as unknown as Component;
-        return Activity as unknown as Component;
+        if (pluginId.toLowerCase().includes("antichatter")) return Activity;
+        if (pluginId.toLowerCase().includes("kalman")) return Settings2;
+        if (pluginId.toLowerCase().includes("handspeed")) return WavesHorizontal;
+        return Activity;
     }
 </script>
 

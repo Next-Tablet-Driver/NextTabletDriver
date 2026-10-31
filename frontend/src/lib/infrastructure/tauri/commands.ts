@@ -1,129 +1,80 @@
-import { invoke } from "@tauri-apps/api/core";
+/**
+ * The backend's commands, as plain functions.
+ *
+ * The types and the command names come from `bindings.ts`, which is generated from the Rust code
+ * (see docs/development.md). This file adds no type of its own: it only keeps the calls simple
+ * (a failed command throws its message) and tolerates running outside Tauri.
+ */
+import {
+    commands,
+    type ActiveArea,
+    type DriverMode,
+    type EngineMetrics,
+    type LogEntry,
+    type TabletStatus,
+    type PluginPropertyValue,
+    type PresetInfo,
+    type PropertyKind,
+    type TargetArea,
+    type ThemeFile,
+    type UntrustedPlugin,
+    type DynamicPluginSettings_Serialize,
+    type MappingConfig_Serialize,
+    type PluginManifest_Serialize,
+    type PropertyDescriptor_Serialize,
+} from "./bindings";
 
-export interface Area {
-    w: number;
-    h: number;
-    x: number;
-    y: number;
+export type { ActiveArea, DriverMode, EngineMetrics, LogEntry, PresetInfo, TabletStatus, ThemeFile, UntrustedPlugin };
+
+/** The mapping and application settings, as the backend returns them. */
+export type Config = MappingConfig_Serialize;
+/** A rectangle on the screen. */
+export type Area = TargetArea;
+export type DynamicPluginSettings = DynamicPluginSettings_Serialize;
+export type PropertyValue = PluginPropertyValue;
+export type PluginPropertyKind = PropertyKind;
+export type PropertyDescriptor = PropertyDescriptor_Serialize;
+export type PluginManifest = PluginManifest_Serialize;
+
+type Result<T, E> = { status: "ok"; data: T } | { status: "error"; error: E };
+
+/**
+ * Turns a command's `Result` back into a promise that rejects with the backend's message, which
+ * is how the interface has always handled a failed command.
+ */
+async function unwrap<T>(call: Promise<Result<T, string>>): Promise<T> {
+    const result = await call;
+    if (result.status === "error") {
+        // eslint-disable-next-line @typescript-eslint/only-throw-error -- callers read the message itself
+        throw result.error;
+    }
+    return result.data;
 }
 
-export interface ActiveArea extends Area {
-    rotation: number;
-}
-
-export interface Config {
-    target_area: Area;
-    active_area: ActiveArea;
-    display_snapping: boolean;
-    lock_aspect_ratio: boolean;
-    show_osu_playfield: boolean;
-    mode: string;
-    plugins?: Record<string, DynamicPluginSettings>;
-    tip_threshold: number;
-    eraser_threshold: number;
-    disable_pressure: boolean;
-    disable_tilt: boolean;
-    tip_binding: string;
-    eraser_binding: string;
-    pen_button_bindings: string[];
-    /** Bindings of the keys on the tablet itself, first key first. */
-    aux_button_bindings: string[];
-    run_at_startup: boolean;
-    system_tray_on_minimize: boolean;
-    force_high_resolution_timer: boolean;
-    websocket: {
-        enabled: boolean;
-        port: number;
-        polling_rate_hz: number;
-        send_coordinates: boolean;
-        send_pressure: boolean;
-        send_tilt: boolean;
-        send_status: boolean;
-    };
-    pressure_curve: {
-        curve_type: 'Linear' | 'Exponential' | 'Custom';
-        exponent: number;
-        points: [number, number][];
-    };
-    theme: string;
-    language: string;
-}
-
-export type PropertyValue = number | boolean | string;
-
-export interface DynamicPluginSettings {
-    enabled: boolean;
-    properties: Record<string, PropertyValue>;
-}
-
-export type PluginPropertyKind = 
-    | { type: 'Float' | 'Int', config: { min: number, max: number, step: number, default: number, unit?: string } }
-    | { type: 'Bool', config: { default: boolean } }
-    | { type: 'String', config: { default: string } }
-    | { type: 'Choice', config: { options: string[], default_index: number } };
-
-export interface PropertyDescriptor {
-    id: string;
-    name: string;
-    tooltip: string | null;
-    kind: PluginPropertyKind;
-}
-
-export interface PluginManifest {
-    id: string;
-    name: string;
-    version: string;
-    author: string;
-    description: string;
-    icon: string | null;
-    properties: PropertyDescriptor[];
-}
-
-export interface TabletStatus {
-    connected: boolean;
-    name: string;
-    width: number;
-    height: number;
-    max_x?: number;
-    max_y?: number;
-    /** Number of buttons on the pen; 0 when the tablet description does not say. */
-    pen_button_count?: number;
-    /** Number of keys on the tablet; 0 when it has none or the description does not say. */
-    aux_button_count?: number;
-}
-
-export interface EngineMetrics {
-    hz: number;
-    last_packet_count: number;
-}
-
-export interface PresetInfo {
-    name: string;
-    path: string;
-}
+const outsideTauri = (): boolean => typeof window !== "undefined" && window.__TAURI_INTERNALS__ === undefined;
 
 export async function getCoreVersion(): Promise<string> {
-    return invoke<string>("get_core_version");
+    return commands.getCoreVersion();
 }
 
 export async function getTabletStatus(): Promise<TabletStatus> {
-    return invoke<TabletStatus>("get_tablet_status");
+    return commands.getTabletStatus();
 }
 
 export async function getConfig(): Promise<Config> {
-    return invoke<Config>("get_config");
+    return commands.getConfig();
 }
 
 export async function setConfig(newConfig: Config): Promise<void> {
-    return invoke<undefined>("set_config", { newConfig });
+    return commands.setConfig(newConfig);
 }
 
 export async function saveConfig(): Promise<void> {
-    return invoke<undefined>("save_config");
+    return commands.saveConfig();
 }
 
 export async function getMetrics(): Promise<EngineMetrics> {
-    return invoke<EngineMetrics>("get_metrics");
+    return commands.getMetrics();
 }
 
 /**
@@ -131,107 +82,86 @@ export async function getMetrics(): Promise<EngineMetrics> {
  * `Ctrl+Z`). Rejects with a readable message when the text is not a binding.
  */
 export async function normalizeBinding(text: string): Promise<string> {
-    return invoke<string>("normalize_binding", { text });
+    return unwrap(commands.normalizeBinding(text));
 }
 
 export async function resetConfig(): Promise<void> {
-    return invoke<undefined>("reset_config");
+    return commands.resetConfig();
 }
 
 export async function loadProfile(path: string): Promise<void> {
-    return invoke<undefined>("load_profile", { path });
+    await unwrap(commands.loadProfile(path));
 }
 
 export async function importOtdProfile(path: string): Promise<void> {
-    return invoke<undefined>("import_otd_profile", { path });
+    await unwrap(commands.importOtdProfile(path));
 }
 
 export async function exportProfile(path: string): Promise<void> {
-    return invoke<undefined>("export_profile", { path });
+    await unwrap(commands.exportProfile(path));
 }
 
 export async function getPresets(): Promise<PresetInfo[]> {
-    return invoke<PresetInfo[]>("get_presets");
+    return commands.getPresets();
 }
 
 export async function getCurrentProfileName(): Promise<string> {
-    return invoke<string>("get_current_profile_name");
-}
-
-export interface LogEntry {
-    time: string;
-    level: string;
-    group: string;
-    message: string;
-    search_text: string;
+    return commands.getCurrentProfileName();
 }
 
 export async function getLogs(): Promise<LogEntry[]> {
-    if (typeof window !== "undefined" && window.__TAURI_INTERNALS__ === undefined) return [];
-    return invoke<LogEntry[]>("get_logs");
+    if (outsideTauri()) return [];
+    return commands.getLogs();
 }
 
 export async function clearLogs(): Promise<void> {
-    if (typeof window !== "undefined" && window.__TAURI_INTERNALS__ === undefined) return;
-    return invoke<undefined>("clear_logs");
+    if (outsideTauri()) return;
+    return commands.clearLogs();
 }
 
 export async function getAvailablePlugins(): Promise<PluginManifest[]> {
-    return invoke<PluginManifest[]>("get_available_plugins");
+    return commands.getAvailablePlugins();
 }
 
 export async function reloadPlugins(): Promise<PluginManifest[]> {
-    return invoke<PluginManifest[]>("reload_plugins");
+    return commands.reloadPlugins();
 }
 
 export async function openPluginsFolder(): Promise<void> {
-    return invoke<undefined>("open_plugins_folder");
+    await unwrap(commands.openPluginsFolder());
 }
 
 /** Opens a native picker + confirmation in the backend. Resolves to `false` if cancelled. */
 export async function installPlugin(): Promise<boolean> {
-    return invoke<boolean>("install_plugin");
-}
-
-/** A plugin library found in the plugins folder that is not trusted and was not loaded. */
-export interface UntrustedPlugin {
-    file_name: string;
-    sha256: string;
+    return unwrap(commands.installPlugin());
 }
 
 export async function getUntrustedPlugins(): Promise<UntrustedPlugin[]> {
-    return invoke<UntrustedPlugin[]>("get_untrusted_plugins");
+    return commands.getUntrustedPlugins();
 }
 
 /** Asks the user (natively) to trust the plugin with this hash. Resolves to `false` if declined. */
 export async function trustPlugin(sha256: string): Promise<boolean> {
-    return invoke<boolean>("trust_plugin", { sha256 });
+    return unwrap(commands.trustPlugin(sha256));
 }
 
 export async function deletePlugin(id: string): Promise<void> {
-    return invoke<undefined>("delete_plugin", { id });
-}
-
-/** A user theme file as read by the backend (validated by the frontend, see `lib/theme`). */
-export interface ThemeFile {
-    id: string;
-    file_name: string;
-    content: string;
+    await unwrap(commands.deletePlugin(id));
 }
 
 export async function listThemes(): Promise<ThemeFile[]> {
-    return invoke<ThemeFile[]>("list_themes");
+    return commands.listThemes();
 }
 
 /** Opens a native file picker and imports the chosen theme. Resolves to `null` if cancelled. */
 export async function importTheme(): Promise<ThemeFile | null> {
-    return invoke<ThemeFile | null>("import_theme");
+    return unwrap(commands.importTheme());
 }
 
 export async function deleteTheme(id: string): Promise<void> {
-    return invoke<undefined>("delete_theme", { id });
+    await unwrap(commands.deleteTheme(id));
 }
 
 export async function openThemesFolder(): Promise<void> {
-    return invoke<undefined>("open_themes_folder");
+    await unwrap(commands.openThemesFolder());
 }
