@@ -15,8 +15,63 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  # Decides which jobs a pull request needs, from the files it changes. A change to the docs runs
+  # none of them; a change to the frontend does not build the Rust code. Pushes to main and manual
+  # runs always run everything. A skipped job counts as passed in `ci-success`.
+  changes:
+    name: Changed paths
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      rust: ${{ steps.filter.outputs.rust }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+      native: ${{ steps.filter.outputs.native }}
+      deps: ${{ steps.filter.outputs.deps }}
+    steps:
+      - name: Decide what to run
+        id: filter
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          PR: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          emit() { echo "$1=$2" >> "$GITHUB_OUTPUT"; }
+          all() { for k in rust frontend native deps; do emit "$k" true; done; }
+
+          if [ "$EVENT" != "pull_request" ]; then
+            all
+            exit 0
+          fi
+
+          files=$(gh api "repos/$REPO/pulls/$PR/files" --paginate --jq '.[].filename')
+          if [ -z "$files" ]; then
+            all
+            exit 0
+          fi
+
+          # Files that cannot change what the code does: documentation, licences, templates.
+          code=$(echo "$files" | grep -Ev '\.md$|^docs/|^licenses/|^LICENSE$|^\.github/(ISSUE_TEMPLATE/|CODEOWNERS|labeler\.yml|pull_request_template\.md)' || true)
+          echo "Files that can change the code:"; echo "${code:-<none>}"
+
+          match() { if echo "$code" | grep -Eq "$1"; then echo true; else echo false; fi; }
+          ci='^\.github/workflows/ci\.yml$'
+          rust=$(match "^(src|src-tauri|sdk|plugins|qa|tools|tablets|packaging|scripts)/|(^|/)Cargo\.(toml|lock)$|^(rust-toolchain|clippy|rustfmt|deny)\.toml$|^coverage-thresholds\.json$|^\.cargo/|$ci")
+          frontend=$(match "^(frontend|resources)/|$ci")
+          deps=$(match "(^|/)Cargo\.(toml|lock)$|^deny\.toml$|$ci")
+
+          native=false
+          if [ "$rust" = true ] || [ "$frontend" = true ]; then native=true; fi
+
+          emit rust "$rust"; emit frontend "$frontend"; emit native "$native"; emit deps "$deps"
+
   rust:
     name: Rust Quality Check (${{ matrix.os }})
+    needs: changes
+    if: needs.changes.outputs.rust == 'true'
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -89,6 +144,8 @@ jobs:
   # SDK, plugin API, bundled plugins or example plugin; check them explicitly.
   plugins:
     name: SDK, plugin API, plugins and examples
+    needs: changes
+    if: needs.changes.outputs.rust == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -174,6 +231,8 @@ jobs:
 
   frontend:
     name: Frontend (lint, types, tests, build)
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -206,6 +265,8 @@ jobs:
   # failures are kept as an artifact.
   e2e:
     name: E2E (Playwright)
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -244,6 +305,8 @@ jobs:
   # named-pipe, mutex and shared-memory code of the engine is compiled and tested.
   coverage:
     name: Coverage
+    needs: changes
+    if: needs.changes.outputs.native == 'true'
     runs-on: windows-latest
     permissions:
       contents: read
@@ -340,6 +403,8 @@ jobs:
   # checked by security.yml: a new advisory must not fail unrelated pull requests.
   deny:
     name: Dependency policy (cargo-deny)
+    needs: changes
+    if: needs.changes.outputs.deps == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -363,6 +428,8 @@ jobs:
   # release build is caught on every PR instead of on the day of a tag.
   tauri:
     name: Tauri build (${{ matrix.os }})
+    needs: changes
+    if: needs.changes.outputs.native == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -463,12 +530,13 @@ jobs:
   ci-success:
     name: CI success
     if: always()
-    needs: [rust, plugins, frontend, e2e, coverage, deny, tauri]
+    needs: [changes, rust, plugins, frontend, e2e, coverage, deny, tauri]
     runs-on: ubuntu-latest
     steps:
-      - name: Require every job to have succeeded
+      - name: Require every job that ran to have succeeded
         env:
           NEEDS: ${{ toJSON(needs) }}
         run: |
           echo "$NEEDS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
-          echo "$NEEDS" | jq -e 'all(.[]; .result == "success")' > /dev/null
+          # A job skipped because its files did not change counts as passed.
+          echo "$NEEDS" | jq -e 'all(.[]; .result == "success" or .result == "skipped")' > /dev/null

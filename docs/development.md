@@ -202,7 +202,19 @@ If you change `frontend/package-lock.json`, update the npm hash in `nix/default.
 
 ## The CI
 
-Every pull request runs these jobs. The single required check is **CI success**: it passes when all of them pass.
+A pull request only runs the jobs that its files need. A first job, *Changed paths*, reads the list of changed files and decides:
+
+| You change | Jobs that run |
+| --- | --- |
+| Only documentation, licences or issue templates | None. **CI success** passes at once. |
+| Only `frontend/` or `resources/` | Frontend, E2E, Coverage, Tauri build |
+| Rust code (`src/`, `src-tauri/`, `sdk/`, `plugins/`, `qa/`, `tools/`, `tablets/`, `packaging/`, `scripts/`) or a Rust config file | Rust Quality Check, SDK and plugins, Coverage, Tauri build |
+| A `Cargo.toml` or `Cargo.lock` | The Rust jobs above, and Dependency policy |
+| `.github/workflows/ci.yml` | Everything |
+
+A push to `main` and a manual run always run everything. A job that is skipped counts as passed. The single required check is **CI success**: it passes when every job that ran has passed.
+
+The filter is the `changes` job in `.github/workflows/ci.yml`. If you add a folder that holds code, add it there, or its changes will not trigger the jobs.
 
 | Job | What it checks |
 | --- | --- |
