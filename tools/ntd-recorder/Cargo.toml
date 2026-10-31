@@ -13,7 +13,7 @@ keywords.workspace = true
 categories.workspace = true
 
 [dependencies]
-hidapi = { workspace = true }
+ntd-hid = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 

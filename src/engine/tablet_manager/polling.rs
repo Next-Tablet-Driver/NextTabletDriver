@@ -8,6 +8,7 @@ use crate::engine::interop::shm::ShmWriter;
 use crate::engine::state::SharedState;
 use crossbeam_channel::Sender;
 use ntd_core::config::models::{DriverMode, MappingConfig};
+use ntd_core::hid::HidDevice;
 use ntd_core::output::OutputSink;
 use ntd_core::sync::{LockRecoveryExt, WriteRecoverExt};
 use ntd_pipeline::FilterPipeline;
@@ -28,7 +29,7 @@ use std::time::{Duration, Instant};
         struct would only move the list"
 )]
 pub(super) fn run_polling_loop(
-    device: &hidapi::HidDevice,
+    device: &dyn HidDevice,
     driver: &dyn ntd_tablets::NextTabletDriver,
     shared: &Arc<SharedState>,
     tablet_sender: &Sender<TabletData>,
@@ -55,7 +56,7 @@ pub(super) fn run_polling_loop(
         }
 
         let read_start = Instant::now();
-        match device.read_timeout(&mut buf, 500) {
+        match device.read_timeout(&mut buf, Duration::from_millis(500)) {
             // Reduced from 1000 to 500 for faster shutdown check
             Ok(len) if len > 0 => {
                 let read_duration = read_start.elapsed();

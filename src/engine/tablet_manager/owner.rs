@@ -29,7 +29,7 @@ use std::time::{Duration, Instant};
 /// for config-write commands from readers.
 pub(super) fn owner_iteration(shared_clone: &Arc<SharedState>, sender_clone: &Sender<TabletData>) {
     let hid_init_start = Instant::now();
-    let hid_api = match hidapi::HidApi::new() {
+    let mut hid_backend = match ntd_hid::Backend::new() {
         Ok(api) => {
             *shared_clone
                 .lifecycle
@@ -129,7 +129,7 @@ pub(super) fn owner_iteration(shared_clone: &Arc<SharedState>, sender_clone: &Se
             break;
         }
 
-        if let Some((device, driver, vid, pid)) = detect_tablet(&hid_api) {
+        if let Some((device, driver, vid, pid)) = detect_tablet(&mut hid_backend) {
             log::info!(target: "HID", "Device connected: {vid:04x}:{pid:04x}");
             on_device_connected(shared_clone, driver.as_ref(), vid, pid, &mut local_config);
             let mut local_config_version = shared_clone.config.version.load(Ordering::Relaxed);
@@ -146,7 +146,7 @@ pub(super) fn owner_iteration(shared_clone: &Arc<SharedState>, sender_clone: &Se
                 {
                     break;
                 }
-                match device.read_timeout(&mut drain_buf, 10) {
+                match device.read_timeout(&mut drain_buf, Duration::from_millis(10)) {
                     Ok(0) | Err(_) => break,
                     Ok(_) => (),
                 }
@@ -154,7 +154,7 @@ pub(super) fn owner_iteration(shared_clone: &Arc<SharedState>, sender_clone: &Se
             pipeline.reset_relative();
 
             run_polling_loop(
-                &device,
+                device.as_ref(),
                 driver.as_ref(),
                 shared_clone,
                 sender_clone,

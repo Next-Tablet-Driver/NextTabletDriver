@@ -35,6 +35,7 @@ const UNSAFE_ALLOWED: &[&str] = &[
     "src/",
     "apps/sdk/",
     "apps/desktop/",
+    "crates/ntd-hid/",
     "crates/ntd-plugin-api/",
     "crates/ntd-platform/",
 ];

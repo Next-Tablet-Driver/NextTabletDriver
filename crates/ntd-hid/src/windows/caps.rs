@@ -21,7 +21,7 @@ const HIDP_STATUS_SUCCESS: NTSTATUS = 0x0011_0000_u32.cast_signed();
 /// Queries the OS-reported `InputReportByteLength` for a HID device path.
 /// Returns `None` if the path can't be opened or the capability query fails.
 #[must_use]
-pub fn query_input_report_byte_length(path: &CStr) -> Option<usize> {
+pub(super) fn query_input_report_byte_length(path: &CStr) -> Option<usize> {
     // SAFETY: `path` is a NUL-terminated device path from hidapi's device
     // enumeration. Opened with zero access rights, sufficient for a
     // capability query and non-conflicting with any handle another
@@ -78,10 +78,6 @@ fn query_caps(handle: HANDLE) -> Option<usize> {
 }
 
 #[cfg(test)]
-#[allow(
-    clippy::float_cmp,
-    reason = "the tests compare floats that are exact by construction or copied unchanged"
-)]
 mod tests {
     use super::*;
 

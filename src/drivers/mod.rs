@@ -8,8 +8,6 @@
 pub mod config_loader;
 /// Detection of the connected tablet among the HID devices.
 pub mod detection;
-#[cfg(windows)]
-pub mod hid_caps;
 
 pub use config_loader::load_configurations;
 pub use detection::detect_tablet;

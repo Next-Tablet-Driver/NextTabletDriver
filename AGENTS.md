@@ -28,6 +28,7 @@ crates/           `ntd-core` (pure types and maths), `ntd-tablets` (definitions 
                   `ntd-pipeline` (processing stages and the `Filter` trait),
                   `ntd-test-support` (fakes of HID, output and clock: dev-dependency only),
                   `ntd-platform` (autostart, named locks, thread priority, timer),
+                  `ntd-hid` (the real HID backend: the only crate that uses `hidapi`),
                   `ntd-plugin-api` (the plugin ABI); the tablet tables of
                   `ntd-tablets` are generated, never edited (`cargo run --locked -p ntd-codegen`)
 plugins/          the official plugins (workspace members)

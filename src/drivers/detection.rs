@@ -1,10 +1,9 @@
 use crate::drivers::config_loader::INDEXED_CONFIGS;
-use hidapi::{HidApi, HidDevice};
+use ntd_core::hid::{HidBackend, HidDevice, HidDeviceInfo, HidError, OpenOptions};
 use ntd_tablets::NextTabletDriver;
 use ntd_tablets::config::{DigitizerIdentifier, TabletConfiguration};
 use ntd_tablets::generic::GenericNextTabletDriver;
 use std::collections::HashMap;
-use std::ffi::CStr;
 use std::time::{Duration, Instant};
 
 fn get_expected_interface(
@@ -47,9 +46,9 @@ const fn expected_wire_report_len(input_report_length: usize) -> usize {
 
 /// Confirms a candidate's declared report length against the real device.
 ///
-/// On Windows, prefers the OS-reported `InputReportByteLength` via
-/// `HidP_GetCaps`, which is a static device capability, not a data sample,
-/// so it works even for tablets that stay silent until the pen approaches.
+/// When the backend can tell it (on Windows the OS-reported `InputReportByteLength` via
+/// `HidP_GetCaps`), prefers that static device capability to a data sample, so it works even for
+/// tablets that stay silent until the pen approaches.
 /// This mirrors the static `device.InputReportLength` match that
 /// `OpenTabletDriver` performs in `Driver.cs`: a direct equality against the
 /// JSON-declared `input_report_length`, with no report-ID-byte adjustment,
@@ -60,36 +59,27 @@ const fn expected_wire_report_len(input_report_length: usize) -> usize {
 /// read path goes through `expected_wire_report_len` instead, since it
 /// compares against actual bytes read off the wire rather than an OS-level
 /// capability.
-#[cfg_attr(
-    not(windows),
-    allow(
-        unused_variables,
-        reason = "the OS-level report length query only exists on Windows"
-    )
-)]
 fn confirm_report_length(
-    device: &HidDevice,
-    path: &CStr,
+    backend: &mut dyn HidBackend,
+    info: &HidDeviceInfo,
+    device: &dyn HidDevice,
     input_report_length: usize,
     config_name: &str,
 ) -> bool {
-    #[cfg(windows)]
-    if let Some(len) = crate::drivers::hid_caps::query_input_report_byte_length(path) {
+    if let Some(len) = backend.input_report_length(info) {
         log::debug!(
             target: "Detect",
-            "{config_name} | HidP_GetCaps: InputReportByteLength = {len} (expected \
-                {input_report_length})"
+            "{config_name} | Static report length = {len} (expected {input_report_length})"
         );
         return len == input_report_length;
     }
 
-    #[cfg(windows)]
-    log::debug!(target: "Detect", "{config_name} | HidP_GetCaps unavailable, falling back to live \
+    log::debug!(target: "Detect", "{config_name} | No static report length, falling back to live \
         sample");
 
     let expected_wire_len = expected_wire_report_len(input_report_length);
     let mut sample = [0u8; 64];
-    let result = device.read_timeout(&mut sample, 750);
+    let result = device.read_timeout(&mut sample, Duration::from_millis(750));
     log::debug!(
         target: "Detect",
         "{config_name} | Live sample: {result:?} (expected {expected_wire_len} bytes)"
@@ -113,12 +103,12 @@ fn confirm_report_length(
 /// unlike the report-length live-sample fallback, it works immediately and
 /// does not require the pen to be in proximity.
 fn confirm_device_strings(
-    device: &HidDevice,
+    device: &dyn HidDevice,
     device_strings: &HashMap<u8, String>,
     config_name: &str,
 ) -> bool {
     for (&index, pattern) in device_strings {
-        let value = match device.get_indexed_string(i32::from(index)) {
+        let value = match device.indexed_string(index) {
             Ok(Some(s)) => s,
             Ok(None) => {
                 log::debug!(
@@ -162,7 +152,7 @@ fn confirm_device_strings(
 /// Sends a candidate's feature/output init reports to wake it into the
 /// expected mode. Returns `false` on the first failure.
 fn send_init_reports(
-    device: &HidDevice,
+    device: &dyn HidDevice,
     digitizer: &DigitizerIdentifier,
     config_name: &str,
 ) -> bool {
@@ -216,12 +206,21 @@ use std::sync::Mutex;
 
 static WARNED_UNSUPPORTED: Mutex<Option<HashSet<(u16, u16)>>> = Mutex::new(None);
 
+/// A detected tablet: the open device, its driver, and its vendor and product IDs.
+pub type DetectedTablet = (Box<dyn HidDevice>, Box<dyn NextTabletDriver>, u16, u16);
+
 /// Looks for a supported tablet among the connected HID devices and opens it. Returns the device,
 /// its driver and its vendor and product IDs, or `None` when no supported tablet is connected.
 #[must_use]
-pub fn detect_tablet(api: &HidApi) -> Option<(HidDevice, Box<dyn NextTabletDriver>, u16, u16)> {
+pub fn detect_tablet(backend: &mut dyn HidBackend) -> Option<DetectedTablet> {
     let global_start = Instant::now();
-    let devices: Vec<_> = api.device_list().collect();
+    let devices = match backend.enumerate() {
+        Ok(devices) => devices,
+        Err(e) => {
+            log::warn!(target: "Detect", "HID enumeration failed: {e}");
+            return None;
+        }
+    };
     let enum_duration = global_start.elapsed();
 
     if enum_duration > Duration::from_millis(500) {
@@ -237,15 +236,16 @@ pub fn detect_tablet(api: &HidApi) -> Option<(HidDevice, Box<dyn NextTabletDrive
     let index = &*INDEXED_CONFIGS;
 
     for device_info in devices {
-        let vid = device_info.vendor_id();
-        let pid = device_info.product_id();
+        let vid = device_info.vendor_id;
+        let pid = device_info.product_id;
 
         if !index.contains_key(&(vid, pid)) {
             let m_str = device_info
-                .manufacturer_string()
+                .manufacturer
+                .as_deref()
                 .unwrap_or("")
                 .to_lowercase();
-            let p_str = device_info.product_string().unwrap_or("").to_lowercase();
+            let p_str = device_info.product.as_deref().unwrap_or("").to_lowercase();
             let is_known_vid_or_pid = INDEXED_CONFIGS.keys().any(|&(v, p)| v == vid || p == pid);
             let is_tablet_brand = is_known_vid_or_pid
                 || m_str.contains("tablet")
@@ -271,8 +271,8 @@ pub fn detect_tablet(api: &HidApi) -> Option<(HidDevice, Box<dyn NextTabletDrive
                 };
 
                 if is_new_entry {
-                    let manufacturer = device_info.manufacturer_string().unwrap_or("<Unknown>");
-                    let product = device_info.product_string().unwrap_or("<Unknown>");
+                    let manufacturer = device_info.manufacturer.as_deref().unwrap_or("<Unknown>");
+                    let product = device_info.product.as_deref().unwrap_or("<Unknown>");
 
                     log::warn!(
                         target: "Detect",
@@ -301,8 +301,8 @@ pub fn detect_tablet(api: &HidApi) -> Option<(HidDevice, Box<dyn NextTabletDrive
             let mut fallback: Option<(&TabletConfiguration, &DigitizerIdentifier)> = None;
 
             for (config, digitizer) in matches {
-                let interface = device_info.interface_number();
-                let path = device_info.path();
+                let interface = device_info.interface_number;
+                let path = &device_info.path;
 
                 if let Some(expected) = get_expected_interface(config, digitizer)
                     && expected != interface
@@ -322,26 +322,32 @@ pub fn detect_tablet(api: &HidApi) -> Option<(HidDevice, Box<dyn NextTabletDrive
 
                 let open_start = Instant::now();
 
-                match api.open_path(path) {
+                match backend.open(&device_info, OpenOptions::default()) {
                     Ok(device) => {
                         let open_duration = open_start.elapsed();
                         let init_start = Instant::now();
 
-                        if !send_init_reports(&device, digitizer, &config.name) {
+                        if !send_init_reports(device.as_ref(), digitizer, &config.name) {
                             log::debug!(target: "Detect", "Initialization failed for {}, skipping \
                                 device", config.name);
                             continue;
                         }
 
                         if disambiguate {
-                            let strings_confirmed = digitizer
-                                .device_strings
-                                .as_ref()
-                                .is_none_or(|ds| confirm_device_strings(&device, ds, &config.name));
+                            let strings_confirmed =
+                                digitizer.device_strings.as_ref().is_none_or(|ds| {
+                                    confirm_device_strings(device.as_ref(), ds, &config.name)
+                                });
 
                             let length_confirmed = strings_confirmed
                                 && digitizer.input_report_length.is_none_or(|expected_len| {
-                                    confirm_report_length(&device, path, expected_len, &config.name)
+                                    confirm_report_length(
+                                        backend,
+                                        &device_info,
+                                        device.as_ref(),
+                                        expected_len,
+                                        &config.name,
+                                    )
                                 });
 
                             if !strings_confirmed || !length_confirmed {
@@ -404,11 +410,7 @@ pub fn detect_tablet(api: &HidApi) -> Option<(HidDevice, Box<dyn NextTabletDrive
                         ));
                     }
                     Err(e) => {
-                        let err_str = e.to_string().to_lowercase();
-                        if err_str.contains("permission")
-                            || err_str.contains("denied")
-                            || err_str.contains("access")
-                        {
+                        if e == HidError::PermissionDenied {
                             log::error!(
                                 target: "Detect",
                                 "PERMISSION DENIED: Could not open tablet '{}' at path {:?} \
@@ -441,31 +443,29 @@ pub fn detect_tablet(api: &HidApi) -> Option<(HidDevice, Box<dyn NextTabletDrive
             // tablet stays silent until the pen approaches). Fall back to
             // the first candidate that opened and initialized successfully
             // rather than failing detection outright.
-            if let Some((config, digitizer)) = fallback {
-                let path = device_info.path();
-                if let Ok(device) = api.open_path(path)
-                    && send_init_reports(&device, digitizer, &config.name)
-                {
-                    log::warn!(
-                        target: "Detect",
-                        "{:04x}:{:04x} | No candidate confirmed via report length, falling back to \
-                            '{}'",
+            if let Some((config, digitizer)) = fallback
+                && let Ok(device) = backend.open(&device_info, OpenOptions::default())
+                && send_init_reports(device.as_ref(), digitizer, &config.name)
+            {
+                log::warn!(
+                    target: "Detect",
+                    "{:04x}:{:04x} | No candidate confirmed via report length, falling back to \
+                        '{}'",
+                    vid,
+                    pid,
+                    config.name
+                );
+                return Some((
+                    device,
+                    Box::new(GenericNextTabletDriver::new(
+                        config.clone(),
+                        digitizer,
                         vid,
                         pid,
-                        config.name
-                    );
-                    return Some((
-                        device,
-                        Box::new(GenericNextTabletDriver::new(
-                            config.clone(),
-                            digitizer,
-                            vid,
-                            pid,
-                        )),
-                        vid,
-                        pid,
-                    ));
-                }
+                    )),
+                    vid,
+                    pid,
+                ));
             }
         }
     }
@@ -479,6 +479,7 @@ mod tests {
         Attributes, DigitizerIdentifier, DigitizerSpecs, PenSpecs, Specifications,
         TabletConfiguration,
     };
+    use ntd_test_support::{FakeHidBackend, FakeHidHandle, fake_tablet_info};
 
     fn make_test_config(attr: Option<Attributes>) -> TabletConfiguration {
         TabletConfiguration {
@@ -581,5 +582,60 @@ mod tests {
 
         #[cfg(not(target_os = "linux"))]
         assert_eq!(expected_wire_report_len(10), 11);
+    }
+
+    // The XP-Pen Star G640 and its second variant share 28bd:0914 and differ by the length of
+    // their input reports (14 and 12).
+    const G640: (u16, u16) = (0x28bd, 0x0914);
+
+    fn plugged_g640(report_length: Option<usize>) -> (FakeHidBackend, FakeHidHandle) {
+        let backend = FakeHidBackend::new();
+        let tablet = backend.plug(fake_tablet_info(G640.0, G640.1));
+        tablet.set_input_report_length(report_length);
+        (backend, tablet)
+    }
+
+    #[test]
+    fn the_candidate_whose_report_length_matches_the_device_is_chosen() {
+        for (length, name) in [
+            (12, "XP-Pen Star G640 (Variant 2)"),
+            (14, "XP-Pen Star G640"),
+        ] {
+            let (mut backend, tablet) = plugged_g640(Some(length));
+            let (_, driver, vid, pid) = detect_tablet(&mut backend).unwrap();
+            assert_eq!((vid, pid), G640);
+            assert_eq!(driver.get_name(), name);
+            // The tablet was woken up with its init report.
+            assert!(!tablet.written().is_empty());
+        }
+    }
+
+    #[test]
+    fn without_a_confirmed_length_the_first_candidate_that_initialised_is_used() {
+        // No static length and nothing to read: neither candidate can be confirmed.
+        let (mut backend, _tablet) = plugged_g640(None);
+        let (_, driver, ..) = detect_tablet(&mut backend).unwrap();
+        assert!(driver.get_name().starts_with("XP-Pen Star G640"));
+    }
+
+    #[test]
+    fn a_device_that_no_definition_names_is_ignored_and_never_opened() {
+        let mut backend = FakeHidBackend::new();
+        let _unknown = backend.plug(fake_tablet_info(0xdead, 0xbeef));
+        assert!(detect_tablet(&mut backend).is_none());
+        assert!(backend.opens().is_empty());
+    }
+
+    #[test]
+    fn a_refused_open_gives_no_tablet() {
+        let (mut backend, _tablet) = plugged_g640(Some(12));
+        backend.deny_permission(true);
+        assert!(detect_tablet(&mut backend).is_none());
+        assert!(!backend.opens().is_empty());
+    }
+
+    #[test]
+    fn nothing_plugged_gives_no_tablet() {
+        assert!(detect_tablet(&mut FakeHidBackend::new()).is_none());
     }
 }

@@ -1,0 +1,28 @@
+[package]
+name = "ntd-hid"
+version = "0.1.0"
+description = "The HID backend of NextTabletDriver: the only crate that talks to hidapi"
+publish = false
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+ntd-core = { workspace = true }
+
+[target.'cfg(any(windows, target_os = "linux"))'.dependencies]
+hidapi = { workspace = true }
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { workspace = true, features = ["Win32_Foundation", "Win32_Devices_HumanInterfaceDevice", "Win32_Storage_FileSystem", "Win32_Security"] }
+
+[dev-dependencies]
+ntd-test-support = { workspace = true }
+
+[lints]
+workspace = true

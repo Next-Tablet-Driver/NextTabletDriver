@@ -24,6 +24,10 @@ pub struct HidDeviceInfo {
     pub manufacturer: Option<String>,
     /// The product string, when the device has one.
     pub product: Option<String>,
+    /// The serial number string, when the device has one.
+    pub serial_number: Option<String>,
+    /// The device release number (`bcdDevice`).
+    pub release_number: u16,
 }
 
 /// How to open a device.
@@ -81,6 +85,12 @@ pub trait HidDevice: Send {
     /// # Errors
     /// The error of the backend.
     fn indexed_string(&self, index: u8) -> Result<Option<String>, HidError>;
+
+    /// Reads the HID report descriptor of the interface.
+    ///
+    /// # Errors
+    /// [`HidError::Unsupported`] when the backend cannot read it, or the error of the backend.
+    fn report_descriptor(&self) -> Result<Vec<u8>, HidError>;
 }
 
 /// The HID subsystem: finds interfaces and opens them.
@@ -101,6 +111,13 @@ pub trait HidBackend: Send {
         info: &HidDeviceInfo,
         options: OpenOptions,
     ) -> Result<Box<dyn HidDevice>, HidError>;
+
+    /// The length of the input reports of the interface, when the system can tell it without
+    /// reading any (a static capability, so it works for a tablet that stays silent until the pen
+    /// comes close). `None` when the backend has no such query or it fails.
+    fn input_report_length(&mut self, _info: &HidDeviceInfo) -> Option<usize> {
+        None
+    }
 }
 
 #[cfg(test)]

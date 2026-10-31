@@ -15,7 +15,7 @@
 mod capture;
 
 use capture::{Capture, DeviceInfo, InterfaceInfo, Report, StepInfo, serial_hint, to_hex};
-use hidapi::{HidApi, HidDevice};
+use ntd_hid::{Backend, HidBackend, HidDevice, HidDeviceInfo, OpenOptions};
 use std::io::{BufRead, Write};
 use std::path::PathBuf;
 use std::process::ExitCode;
@@ -98,21 +98,21 @@ fn main() -> ExitCode {
 }
 
 /// Distinct (VID, PID) pairs with a display name, in a stable order.
-fn devices(api: &HidApi) -> Vec<(u16, u16, String)> {
+fn devices(backend: &mut dyn HidBackend) -> Result<Vec<(u16, u16, String)>> {
     let mut found: Vec<(u16, u16, String)> = Vec::new();
-    for d in api.device_list() {
-        let key = (d.vendor_id(), d.product_id());
+    for d in backend.enumerate()? {
+        let key = (d.vendor_id, d.product_id);
         if !found.iter().any(|(v, p, _)| (*v, *p) == key) {
             let name = format!(
                 "{} {}",
-                d.manufacturer_string().unwrap_or("?"),
-                d.product_string().unwrap_or("?")
+                d.manufacturer.as_deref().unwrap_or("?"),
+                d.product.as_deref().unwrap_or("?")
             );
             found.push((key.0, key.1, name));
         }
     }
     found.sort_by_key(|(v, p, _)| (*v, *p));
-    found
+    Ok(found)
 }
 
 fn print_devices(all: &[(u16, u16, String)]) {
@@ -122,8 +122,8 @@ fn print_devices(all: &[(u16, u16, String)]) {
 }
 
 fn list() -> Result<()> {
-    let api = HidApi::new()?;
-    print_devices(&devices(&api));
+    let mut backend = Backend::new()?;
+    print_devices(&devices(&mut backend)?);
     Ok(())
 }
 
@@ -141,11 +141,11 @@ fn ask(prompt: &str) -> Result<String> {
     Ok(line.trim().to_owned())
 }
 
-fn pick_device(api: &HidApi, wanted: Option<(u16, u16)>) -> Result<(u16, u16)> {
+fn pick_device(backend: &mut dyn HidBackend, wanted: Option<(u16, u16)>) -> Result<(u16, u16)> {
     if let Some(ids) = wanted {
         return Ok(ids);
     }
-    let all = devices(api);
+    let all = devices(backend)?;
     print_devices(&all);
     let choice: usize = ask("Number of your tablet: ")?.parse()?;
     let (v, p, _) = all.get(choice.wrapping_sub(1)).ok_or("no such device")?;
@@ -164,62 +164,53 @@ fn record(args: &[String]) -> Result<()> {
         }
     }
 
-    let api = HidApi::new()?;
-    let (vid, pid) = pick_device(&api, ids)?;
-    let infos: Vec<_> = api
-        .device_list()
-        .filter(|d| d.vendor_id() == vid && d.product_id() == pid)
+    let mut backend = Backend::new()?;
+    let (vid, pid) = pick_device(&mut backend, ids)?;
+    let infos: Vec<HidDeviceInfo> = backend
+        .enumerate()?
+        .into_iter()
+        .filter(|d| d.vendor_id == vid && d.product_id == pid)
         .collect();
     let first = infos.first().ok_or("device not found")?;
 
     let mut cap = Capture::new(DeviceInfo {
         vendor_id: vid,
         product_id: pid,
-        manufacturer: first.manufacturer_string().map(str::to_owned),
-        product: first.product_string().map(str::to_owned),
-        serial_hint: first.serial_number().and_then(serial_hint),
-        release_number: first.release_number(),
+        manufacturer: first.manufacturer.clone(),
+        product: first.product.clone(),
+        serial_hint: first.serial_number.as_deref().and_then(serial_hint),
+        release_number: first.release_number,
     });
 
     println!(
         "Close NextTabletDriver and any other tablet driver first, or the tablet cannot be read."
     );
-    let mut open: Vec<(usize, HidDevice)> = Vec::new();
+    let mut open: Vec<(usize, Box<dyn HidDevice>)> = Vec::new();
     for info in &infos {
         let index = cap.interfaces.len();
-        match api.open_path(info.path()) {
+        match backend.open(info, OpenOptions::default()) {
             Ok(dev) => {
-                let mut buf = vec![0_u8; 4096];
-                let descriptor_hex = dev
-                    .get_report_descriptor(&mut buf)
-                    .ok()
-                    .and_then(|n| buf.get(..n))
-                    .map(to_hex);
-                dev.set_blocking_mode(false)?;
+                let descriptor_hex = dev.report_descriptor().ok().map(|d| to_hex(&d));
                 // Some interfaces open fine but refuse reads (the OS keeps them for itself).
-                if let Err(e) = dev.read(&mut [0_u8; 1024]) {
+                if let Err(e) = dev.read_timeout(&mut [0_u8; 1024], Duration::ZERO) {
                     eprintln!(
                         "skipped interface {} (usage {:04x}:{:04x}): cannot read it ({e})",
-                        info.interface_number(),
-                        info.usage_page(),
-                        info.usage()
+                        info.interface_number, info.usage_page, info.usage
                     );
                     continue;
                 }
                 cap.interfaces.push(InterfaceInfo {
                     index,
-                    interface_number: info.interface_number(),
-                    usage_page: info.usage_page(),
-                    usage: info.usage(),
+                    interface_number: info.interface_number,
+                    usage_page: info.usage_page,
+                    usage: info.usage,
                     descriptor_hex,
                 });
                 open.push((index, dev));
             }
             Err(e) => eprintln!(
                 "skipped interface {} (usage {:04x}:{:04x}): {e}",
-                info.interface_number(),
-                info.usage_page(),
-                info.usage()
+                info.interface_number, info.usage_page, info.usage
             ),
         }
     }
@@ -238,7 +229,7 @@ fn record(args: &[String]) -> Result<()> {
         while Instant::now() < deadline {
             let mut idle = true;
             for (index, dev) in &open {
-                let n = dev.read(&mut buf)?;
+                let n = dev.read_timeout(&mut buf, Duration::ZERO)?;
                 if n > 0 {
                     idle = false;
                     cap.reports.push(Report {

@@ -19,6 +19,7 @@ members = [
     "apps/sdk",
     "apps/sdk/examples/rust_plugin",
     "crates/ntd-core",
+    "crates/ntd-hid",
     "crates/ntd-pipeline",
     "crates/ntd-platform",
     "crates/ntd-plugin-api",
@@ -49,6 +50,7 @@ categories = ["hardware-support"]
 # In this repository
 next_tablet_driver = { path = ".", default-features = false }
 ntd-core = { path = "crates/ntd-core" }
+ntd-hid = { path = "crates/ntd-hid" }
 ntd-pipeline = { path = "crates/ntd-pipeline" }
 ntd-platform = { path = "crates/ntd-platform" }
 ntd_plugin_api = { path = "crates/ntd-plugin-api" }
@@ -169,7 +171,7 @@ specta = ["dep:specta", "ntd-core/specta", "ntd_plugin_api/specta"]
 
 [dependencies]
 # Windows & Linux
-hidapi = { workspace = true }
+ntd-hid = { workspace = true }
 display-info = { workspace = true, optional = true }
 specta = { workspace = true, optional = true, features = ["serde_json"] }
 serde = { workspace = true }

@@ -21,6 +21,7 @@ use next_tablet_driver::engine::interop::shm::{
 };
 use next_tablet_driver::engine::state::SharedState;
 use ntd_core::config::models::{ActiveArea, DriverMode, MappingConfig};
+use ntd_core::hid::HidDevice;
 use ntd_core::sync::{LockRecoveryExt, WriteRecoverExt};
 use ntd_pipeline::FilterPipeline;
 use ntd_pipeline::{Pipeline, ProcessedFrame};
@@ -328,7 +329,7 @@ fn owner_iteration(shared: &Arc<SharedState>, is_owner: &Arc<AtomicBool>) {
     let _owner_flag_guard = OwnerFlagGuard(is_owner);
 
     let hid_init_start = Instant::now();
-    let hid_api = match hidapi::HidApi::new() {
+    let mut hid_backend = match ntd_hid::Backend::new() {
         Ok(api) => {
             *shared
                 .lifecycle
@@ -380,7 +381,7 @@ fn owner_iteration(shared: &Arc<SharedState>, is_owner: &Arc<AtomicBool>) {
             break;
         }
 
-        if let Some((device, driver, vid, pid)) = detect_tablet(&hid_api) {
+        if let Some((device, driver, vid, pid)) = detect_tablet(&mut hid_backend) {
             log::info!(target: "EngineLoop", "Device connected: {vid:04x}:{pid:04x}");
             on_device_connected(shared, driver.as_ref(), vid, pid, &mut local_config);
             let mut local_config_version = shared.config.version.load(Ordering::Relaxed);
@@ -393,7 +394,7 @@ fn owner_iteration(shared: &Arc<SharedState>, is_owner: &Arc<AtomicBool>) {
                 if shared.lifecycle.shutdown_requested.load(Ordering::Relaxed) {
                     break;
                 }
-                match device.read_timeout(&mut drain_buf, 10) {
+                match device.read_timeout(&mut drain_buf, Duration::from_millis(10)) {
                     Ok(0) | Err(_) => break,
                     Ok(_) => (),
                 }
@@ -401,7 +402,7 @@ fn owner_iteration(shared: &Arc<SharedState>, is_owner: &Arc<AtomicBool>) {
             pipeline.reset_relative();
 
             run_polling_loop(
-                &device,
+                device.as_ref(),
                 driver.as_ref(),
                 shared,
                 &mut pipeline,
@@ -494,7 +495,7 @@ fn on_disconnected(shared: &Arc<SharedState>) {
         struct would only move the list"
 )]
 fn run_polling_loop(
-    device: &hidapi::HidDevice,
+    device: &dyn HidDevice,
     driver: &dyn ntd_tablets::NextTabletDriver,
     shared: &Arc<SharedState>,
     pipeline: &mut Pipeline,
@@ -512,7 +513,7 @@ fn run_polling_loop(
             break;
         }
 
-        match device.read_timeout(&mut buf, 500) {
+        match device.read_timeout(&mut buf, Duration::from_millis(500)) {
             Ok(len) if len > 0 => {
                 if let Err(e) = panic::catch_unwind(panic::AssertUnwindSafe(|| {
                     if let Some(slice) = buf.get(..len) {

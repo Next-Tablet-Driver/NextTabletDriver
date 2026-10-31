@@ -21,7 +21,7 @@ next_tablet_driver = { workspace = true }
 ntd-core = { workspace = true }
 ntd-pipeline = { workspace = true }
 ntd-tablets = { workspace = true }
-hidapi = { workspace = true }
+ntd-hid = { workspace = true }
 log = { workspace = true }
 
 [build-dependencies]

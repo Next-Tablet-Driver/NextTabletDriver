@@ -2549,7 +2549,6 @@ dependencies = [
  "directories",
  "display-info",
  "evdev",
- "hidapi",
  "include_dir",
  "interprocess",
  "libc",
@@ -2559,6 +2558,7 @@ dependencies = [
  "minisign-verify 0.2.5",
  "nix 0.31.3",
  "ntd-core",
+ "ntd-hid",
  "ntd-pipeline",
  "ntd-platform",
  "ntd-tablets",
@@ -2623,6 +2623,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "ntd-hid"
+version = "0.1.0"
+dependencies = [
+ "hidapi",
+ "ntd-core",
+ "ntd-test-support",
+ "windows-sys 0.61.2",
+]
+
+[[package]]
 name = "ntd-pipeline"
 version = "0.1.0"
 dependencies = [
@@ -2650,7 +2660,7 @@ dependencies = [
 name = "ntd-recorder"
 version = "0.1.0"
 dependencies = [
- "hidapi",
+ "ntd-hid",
  "serde",
  "serde_json",
 ]
@@ -2687,10 +2697,10 @@ version = "1.1.0"
 dependencies = [
  "cbindgen",
  "csbindgen",
- "hidapi",
  "log",
  "next_tablet_driver",
  "ntd-core",
+ "ntd-hid",
  "ntd-pipeline",
  "ntd-tablets",
 ]

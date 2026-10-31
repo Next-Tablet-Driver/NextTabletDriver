@@ -7,7 +7,7 @@
 //! ## Architecture Overview
 //!
 //! The driver operates as a pipeline with the following stages: [`drivers`] scans the USB
-//! bus for supported devices using `hidapi` and runs a high-frequency polling loop,
+//! bus for supported devices through `ntd-hid` and runs a high-frequency polling loop,
 //! [`ntd_tablets::parsers`] decodes the vendor-specific byte arrays into a standardized
 //! [`ntd_tablets::TabletData`] structure, [`ntd_pipeline`] applies optional processing such as
 //! antichatter (smoothing) or telemetry collection, [`ntd_core::math`] maps physical tablet

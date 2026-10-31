@@ -16,6 +16,8 @@ pub fn fake_tablet_info(vendor_id: u16, product_id: u16) -> HidDeviceInfo {
         path: format!("fake:{vendor_id:04x}:{product_id:04x}"),
         manufacturer: Some("Fake".to_string()),
         product: Some("Fake tablet".to_string()),
+        serial_number: None,
+        release_number: 0,
     }
 }
 
@@ -27,6 +29,8 @@ struct DeviceState {
     written: Vec<Vec<u8>>,
     features: Vec<Vec<u8>>,
     strings: HashMap<u8, String>,
+    report_descriptor: Vec<u8>,
+    input_report_length: Option<usize>,
 }
 
 struct Plugged {
@@ -153,6 +157,22 @@ impl FakeHidHandle {
             .insert(index, value.into());
     }
 
+    /// Sets the HID report descriptor that `report_descriptor` returns.
+    pub fn set_report_descriptor(&self, descriptor: impl Into<Vec<u8>>) {
+        self.state
+            .lock()
+            .unwrap_or_log("fake hid device")
+            .report_descriptor = descriptor.into();
+    }
+
+    /// Sets the static input report length that the backend reports for this device.
+    pub fn set_input_report_length(&self, length: Option<usize>) {
+        self.state
+            .lock()
+            .unwrap_or_log("fake hid device")
+            .input_report_length = length;
+    }
+
     /// The output reports written to the device, oldest first.
     #[must_use]
     pub fn written(&self) -> Vec<Vec<u8>> {
@@ -205,6 +225,18 @@ impl HidBackend for FakeHidBackend {
         drop(world);
         Ok(Box::new(FakeHidDevice { state }))
     }
+
+    fn input_report_length(&mut self, info: &HidDeviceInfo) -> Option<usize> {
+        let world = self.world.lock().unwrap_or_log("fake hid world");
+        let state = world
+            .devices
+            .iter()
+            .find(|d| d.info.path == info.path)
+            .map(|d| Arc::clone(&d.state))?;
+        drop(world);
+        let state = state.lock().unwrap_or_log("fake hid device");
+        state.input_report_length
+    }
 }
 
 /// A device opened from a [`FakeHidBackend`].
@@ -249,6 +281,10 @@ impl HidDevice for FakeHidDevice {
 
     fn indexed_string(&self, index: u8) -> Result<Option<String>, HidError> {
         Ok(self.connected()?.strings.get(&index).cloned())
+    }
+
+    fn report_descriptor(&self) -> Result<Vec<u8>, HidError> {
+        Ok(self.connected()?.report_descriptor.clone())
     }
 }
 
@@ -362,5 +398,21 @@ mod tests {
             backend.open(&fake_tablet_info(9, 9), OpenOptions::default()),
             Err(HidError::NotFound)
         ));
+    }
+
+    #[test]
+    fn the_descriptor_and_the_static_report_length_are_what_the_test_set() {
+        let mut backend = FakeHidBackend::new();
+        let tablet = backend.plug(fake_tablet_info(1, 2));
+        let info = fake_tablet_info(1, 2);
+        assert_eq!(backend.input_report_length(&info), None);
+
+        tablet.set_report_descriptor([0x06, 0x0a, 0xff]);
+        tablet.set_input_report_length(Some(12));
+        let device = open_one(&mut backend, OpenOptions::default());
+
+        assert_eq!(device.report_descriptor(), Ok(vec![0x06, 0x0a, 0xff]));
+        assert_eq!(backend.input_report_length(&info), Some(12));
+        assert_eq!(backend.input_report_length(&fake_tablet_info(9, 9)), None);
     }
 }

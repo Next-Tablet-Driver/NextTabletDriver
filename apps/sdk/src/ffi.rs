@@ -236,15 +236,15 @@ pub extern "C" fn ntd_init() -> i32 {
         }
 
         // Synchronous feasibility probe: if we're about to become the HID
-        // owner, validate `HidApi::new()` succeeds on this system *before*
+        // owner, validate `Backend::new()` succeeds on this system *before*
         // returning, so a caller sees a broken HID backend immediately
         // instead of only discovering it later by polling `NtdState`. The
-        // background thread performs its own `HidApi::new()` once it
+        // background thread performs its own `Backend::new()` once it
         // starts (needed regardless, since every automatic retry after a
         // crash re-initialises from scratch) rather than reusing this one.
         let hid_owner = try_acquire_hid_owner();
         if hid_owner.is_some()
-            && let Err(e) = hidapi::HidApi::new()
+            && let Err(e) = ntd_hid::Backend::new()
         {
             log::error!(target: "Ffi", "CRITICAL: Failed to initialise HID API: {e}");
             return NTD_ERR_HID_INIT_FAILED;
