@@ -5,5 +5,4 @@
 //! to transform raw HID data into screen coordinates, and injects the resulting
 //! virtual events into the operating system.
 
-pub mod state;
 pub mod tablet_manager;

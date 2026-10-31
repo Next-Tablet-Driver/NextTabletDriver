@@ -85,6 +85,7 @@ dependencies = [
  "ntd-platform",
  "ntd-plugin-host",
  "ntd-settings",
+ "ntd-state",
  "ntd_plugin_api",
  "serde",
  "serde_json",
@@ -2544,7 +2545,6 @@ checksum = "650eef8c711430f1a879fdd01d4745a7deea475becfb90269c06775983bbf086"
 name = "next_tablet_driver"
 version = "3.0.0"
 dependencies = [
- "base64 0.23.1",
  "cargo-husky",
  "chrono",
  "criterion",
@@ -2563,10 +2563,10 @@ dependencies = [
  "ntd-platform",
  "ntd-plugin-host",
  "ntd-settings",
+ "ntd-state",
  "ntd-tablets",
  "ntd-test-support",
  "proptest",
- "regex",
  "serde",
  "serde_json",
  "specta",
@@ -2626,9 +2626,14 @@ dependencies = [
 name = "ntd-hid"
 version = "0.1.0"
 dependencies = [
+ "base64 0.23.1",
  "hidapi",
+ "log",
  "ntd-core",
+ "ntd-tablets",
  "ntd-test-support",
+ "regex",
+ "serde_json",
  "windows-sys 0.61.2",
 ]
 
@@ -2723,6 +2728,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "ntd-state"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "ntd-core",
+ "ntd-pipeline",
+ "ntd-plugin-host",
+ "ntd-tablets",
+]
+
+[[package]]
 name = "ntd-tablets"
 version = "0.1.0"
 dependencies = [
@@ -2755,7 +2771,6 @@ dependencies = [
  "cbindgen",
  "csbindgen",
  "log",
- "next_tablet_driver",
  "ntd-core",
  "ntd-hid",
  "ntd-interop",
@@ -2763,6 +2778,7 @@ dependencies = [
  "ntd-platform",
  "ntd-plugin-host",
  "ntd-settings",
+ "ntd-state",
  "ntd-tablets",
 ]
 

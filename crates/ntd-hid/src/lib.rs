@@ -11,6 +11,14 @@
 
 pub use ntd_core::hid::{HidBackend, HidDevice, HidDeviceInfo, HidError, OpenOptions};
 
+/// Loading of the tablet definitions, including the local `tablets` folder.
+pub mod config_loader;
+/// Detection of the connected tablet among the HID devices.
+pub mod detection;
+
+pub use config_loader::load_configurations;
+pub use detection::detect_tablet;
+
 #[cfg(any(windows, target_os = "linux"))]
 mod hidapi_backend;
 

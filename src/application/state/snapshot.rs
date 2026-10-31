@@ -1,6 +1,6 @@
-use crate::engine::state::SharedState;
 use ntd_core::config::models::MappingConfig;
 use ntd_core::sync::LockRecoveryExt;
+use ntd_state::SharedState;
 use ntd_tablets::TabletData;
 
 /// An immutable, lock-free snapshot of the application state for a single UI frame.
@@ -29,7 +29,7 @@ pub struct UiSnapshot {
     /// Whether this is the first run of the application.
     pub is_first_run: bool,
     /// State of the input engine.
-    pub engine_status: crate::engine::state::EngineStatus,
+    pub engine_status: ntd_state::EngineStatus,
 }
 
 impl UiSnapshot {

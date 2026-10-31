@@ -45,9 +45,9 @@ pub mod bench_support {
     pub use super::polling::{PacketLoopState, process_packet_for_bench};
 }
 
-use crate::engine::state::SharedState;
 use crossbeam_channel::Sender;
 use ntd_interop::lock::try_acquire_hid_owner;
+use ntd_state::SharedState;
 use ntd_tablets::TabletData;
 use std::any::Any;
 use std::panic;

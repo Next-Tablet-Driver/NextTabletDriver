@@ -3,11 +3,6 @@
 //! This module adapts `ntd-platform` to the application (it finds the user's folders and logs a
 //! failure of the timer request) and reports the hardware at startup. The OS calls themselves
 //! (registry, `.desktop` file, timer resolution) live in `ntd-platform`.
-#![allow(
-    unsafe_code,
-    reason = "the memory query of Windows through windows-sys"
-)]
-
 use directories::UserDirs;
 use ntd_platform::{PlatformError, UserPaths};
 use std::env;
@@ -43,70 +38,6 @@ pub fn set_fast_timer(enable: bool) {
     }
 }
 
-/// Queries the operating system for the total amount of physical memory (RAM) in bytes.
-///
-/// On Windows, queries `GlobalMemoryStatusEx`.
-#[cfg(windows)]
-#[must_use]
-pub fn get_memory_info() -> Option<u64> {
-    use windows_sys::Win32::System::SystemInformation::{GlobalMemoryStatusEx, MEMORYSTATUSEX};
-    let mut mem_status = MEMORYSTATUSEX {
-        dwLength: std::mem::size_of::<MEMORYSTATUSEX>() as u32,
-        dwMemoryLoad: 0,
-        ullTotalPhys: 0,
-        ullAvailPhys: 0,
-        ullTotalPageFile: 0,
-        ullAvailPageFile: 0,
-        ullTotalVirtual: 0,
-        ullAvailVirtual: 0,
-        ullAvailExtendedVirtual: 0,
-    };
-    // SAFETY: mem_status is valid, dwLength is initialized, and GlobalMemoryStatusEx is a safe
-    // Win32 query.
-    let success = unsafe { GlobalMemoryStatusEx(&raw mut mem_status) };
-    if success != 0 {
-        Some(mem_status.ullTotalPhys)
-    } else {
-        None
-    }
-}
-
-/// Queries the operating system for the total amount of physical memory (RAM) in bytes.
-///
-/// On Linux, parses `/proc/meminfo`.
-#[cfg(not(windows))]
-#[must_use]
-pub fn get_memory_info() -> Option<u64> {
-    #[cfg(target_os = "linux")]
-    {
-        if let Ok(content) = std::fs::read_to_string("/proc/meminfo") {
-            for line in content.lines() {
-                if line.starts_with("MemTotal:") {
-                    let parts: Vec<&str> = line.split_whitespace().collect();
-                    if let Some(kb) = parts.get(1).and_then(|s| s.parse::<u64>().ok()) {
-                        return Some(kb * 1024); // KB to Bytes
-                    }
-                }
-            }
-        }
-    }
-    None
-}
-
-/// Reads `/etc/os-release` to extract the system's human-readable distribution name.
-#[cfg(target_os = "linux")]
-fn get_linux_distro() -> Option<String> {
-    if let Ok(release) = std::fs::read_to_string("/etc/os-release") {
-        for line in release.lines() {
-            if line.starts_with("PRETTY_NAME=") {
-                let name = line.trim_start_matches("PRETTY_NAME=").trim_matches('"');
-                return Some(name.to_string());
-            }
-        }
-    }
-    None
-}
-
 /// Gathers and logs detailed OS, CPU, Hostname, Username and physical memory (RAM) specifications.
 pub fn log_system_hardware() {
     let os = std::env::consts::OS;
@@ -116,29 +47,13 @@ pub fn log_system_hardware() {
         std::env::var("PROCESSOR_IDENTIFIER").unwrap_or_else(|_| "Unknown".to_string());
     let num_processors =
         std::env::var("NUMBER_OF_PROCESSORS").unwrap_or_else(|_| "Unknown".to_string());
-    let hostname = std::env::var(if os == "windows" {
-        "COMPUTERNAME"
-    } else {
-        "HOSTNAME"
-    })
-    .unwrap_or_else(|_| {
-        #[cfg(target_os = "linux")]
-        {
-            std::fs::read_to_string("/etc/hostname")
-                .map_or_else(|_| "Unknown".to_string(), |s| s.trim().to_string())
-        }
-        #[cfg(not(target_os = "linux"))]
-        {
-            "Unknown".to_string()
-        }
-    });
-
-    let total_ram = get_memory_info();
+    let system = ntd_platform::system_info();
+    let hostname = system.hostname.unwrap_or_else(|| "Unknown".to_string());
+    let total_ram = system.total_memory_bytes;
 
     log::info!(target: "Tracking", "OS: {os} | Architecture: {arch}");
 
-    #[cfg(target_os = "linux")]
-    if let Some(distro) = get_linux_distro() {
+    if let Some(distro) = system.distribution {
         log::info!(target: "Tracking", "Distribution: {distro}");
     }
 

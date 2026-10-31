@@ -1,24 +1,20 @@
 //! Runs this process as the HID owner: detects and polls the real device,
 //! publishes live state into the shared segment, and listens for
 //! config-write commands from reader processes.
-#![allow(
-    unsafe_code,
-    reason = "Win32 thread priority calls through windows-sys"
-)]
 
 use super::polling::run_polling_loop;
 use super::sdk_bridge::DesktopCommandHandler;
-use crate::drivers::detect_tablet;
-use crate::engine::state::SharedState;
 use crossbeam_channel::Sender;
 use ntd_core::config::models::MappingConfig;
 use ntd_core::sync::{LockRecoveryExt, WriteRecoverExt};
+use ntd_hid::detect_tablet;
 use ntd_interop::command::CommandListener;
 use ntd_interop::protocol::CommandHandler;
 use ntd_interop::shm::ShmWriter;
 use ntd_output::Injector;
 use ntd_pipeline::FilterPipeline;
 use ntd_pipeline::Pipeline;
+use ntd_state::SharedState;
 use ntd_tablets::TabletData;
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
@@ -36,7 +32,7 @@ pub(super) fn owner_iteration(shared_clone: &Arc<SharedState>, sender_clone: &Se
                 .lifecycle
                 .engine_status
                 .write()
-                .unwrap_or_reset("engine_status") = crate::engine::state::EngineStatus::Running;
+                .unwrap_or_reset("engine_status") = ntd_state::EngineStatus::Running;
             api
         }
         Err(e) => {
@@ -53,8 +49,7 @@ pub(super) fn owner_iteration(shared_clone: &Arc<SharedState>, sender_clone: &Se
                 .lifecycle
                 .engine_status
                 .write()
-                .unwrap_or_reset("engine_status") =
-                crate::engine::state::EngineStatus::Failed(error_str);
+                .unwrap_or_reset("engine_status") = ntd_state::EngineStatus::Failed(error_str);
             return;
         }
     };
@@ -76,7 +71,7 @@ pub(super) fn owner_iteration(shared_clone: &Arc<SharedState>, sender_clone: &Se
                 .lifecycle
                 .engine_status
                 .write()
-                .unwrap_or_reset("engine_status") = crate::engine::state::EngineStatus::Failed(e);
+                .unwrap_or_reset("engine_status") = ntd_state::EngineStatus::Failed(e);
             return;
         }
     };
@@ -230,7 +225,7 @@ fn on_device_connected(
     let (mw, mh, mp) = driver.get_specs();
     let (pen_button_count, aux_button_count) = driver.get_button_counts();
 
-    let new_device = crate::engine::state::DeviceState {
+    let new_device = ntd_state::DeviceState {
         name: driver.get_name().to_string(),
         vid,
         pid,
@@ -283,7 +278,7 @@ fn on_device_connected(
 /// coordinate parameters to prevent incorrect pointer inputs.
 fn on_disconnected(shared: &Arc<SharedState>) {
     log::info!(target: "HID", "Device disconnected, resetting shared state");
-    *shared.device.write().unwrap_or_reset("device") = crate::engine::state::DeviceState::default();
+    *shared.device.write().unwrap_or_reset("device") = ntd_state::DeviceState::default();
     *shared
         .pipeline
         .tablet_data
@@ -298,8 +293,8 @@ fn on_disconnected(shared: &Arc<SharedState>) {
 )]
 mod tests {
     use super::*;
-    use crate::engine::state::EngineStatus;
     use crossbeam_channel::bounded;
+    use ntd_state::EngineStatus;
     use ntd_tablets::NextTabletDriver;
 
     struct StubDriver;

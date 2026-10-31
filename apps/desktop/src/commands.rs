@@ -8,7 +8,7 @@
     reason = "emitted by the `#[tauri::command]` macro for async commands"
 )]
 
-use next_tablet_driver::engine::state::SharedState;
+use ntd_state::SharedState;
 
 use ntd_core::sync::LockRecoveryExt;
 use std::sync::Arc;

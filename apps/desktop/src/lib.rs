@@ -87,10 +87,8 @@ pub fn run() {
         .invoke_handler(specta_builder.invoke_handler())
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                let state: tauri::State<
-                    '_,
-                    std::sync::Arc<next_tablet_driver::engine::state::SharedState>,
-                > = window.state();
+                let state: tauri::State<'_, std::sync::Arc<ntd_state::SharedState>> =
+                    window.state();
                 let config = state
                     .config
                     .mapping
@@ -232,19 +230,15 @@ pub fn run() {
                             let _ = window.set_focus();
                         }
                     } else if id == "reload" {
-                        let state: tauri::State<
-                            '_,
-                            std::sync::Arc<next_tablet_driver::engine::state::SharedState>,
-                        > = app.state();
+                        let state: tauri::State<'_, std::sync::Arc<ntd_state::SharedState>> =
+                            app.state();
                         state
                             .config
                             .reload_requested
                             .store(true, std::sync::atomic::Ordering::Release);
                     } else if id == "mode_absolute" || id == "mode_relative" {
-                        let state: tauri::State<
-                            '_,
-                            std::sync::Arc<next_tablet_driver::engine::state::SharedState>,
-                        > = app.state();
+                        let state: tauri::State<'_, std::sync::Arc<ntd_state::SharedState>> =
+                            app.state();
                         let mut mapping_config = state
                             .config
                             .mapping
@@ -273,10 +267,8 @@ pub fn run() {
                             let _ = events::ProfileLoaded.emit(app);
                         }
                     } else if id == "open_plugins" {
-                        let state: tauri::State<
-                            '_,
-                            std::sync::Arc<next_tablet_driver::engine::state::SharedState>,
-                        > = app.state();
+                        let state: tauri::State<'_, std::sync::Arc<ntd_state::SharedState>> =
+                            app.state();
                         let _ = crate::commands::open_plugins_folder(state);
                     } else if id == "open_themes" {
                         let paths: tauri::State<'_, ntd_settings::Paths> = app.state();
@@ -289,10 +281,8 @@ pub fn run() {
                         }
                     } else if id.starts_with("profile|") {
                         let path = id.trim_start_matches("profile|");
-                        let state: tauri::State<
-                            '_,
-                            std::sync::Arc<next_tablet_driver::engine::state::SharedState>,
-                        > = app.state();
+                        let state: tauri::State<'_, std::sync::Arc<ntd_state::SharedState>> =
+                            app.state();
                         if crate::commands::load_profile(state, path.to_string()).is_ok() {
                             log::info!(target: "Tray", "Loaded profile from tray: {path}");
                             let _ = events::ProfileLoaded.emit(app);

@@ -38,6 +38,7 @@ The desktop app is a thin shell around this engine. It adds a window (the user i
 | `crates/ntd-core/` | `ntd-core`, the pure types and maths (button bindings, coordinate transforms, `MappingConfig`). It does no input or output. |
 | `crates/ntd-tablets/` | `ntd-tablets`, the tablet definitions, the report parsers and the packet types. It does no input or output. |
 | `crates/ntd-plugin-api/` | `ntd_plugin_api`, the interface that plugins implement (ABI v3). See [Plugin development](plugin-development.md). |
+| `crates/ntd-state/` | `ntd-state`, `SharedState`: the thread-safe state that the engine threads, the interface and the SDK read and write. |
 | `crates/ntd-plugin-host/` | `ntd-plugin-host`, which loads the plugins: trust and signature checks before the library is opened, ABI and target checks, instances, and the filters that run them. A plugin that fails is disabled. |
 | `plugins/` | Source code of the five plugins we maintain. |
 | `tablets/OpenTabletDriver/` | A git submodule with tablet definitions from [OpenTabletDriver](https://github.com/OpenTabletDriver/OpenTabletDriver). |
@@ -45,7 +46,7 @@ The desktop app is a thin shell around this engine. It adds a window (the user i
 | `packaging/`, `nix/`, `scripts/` | Packaging recipes, Nix modules, helper scripts, udev rules. |
 | `.github/` | CI workflows, issue and pull request templates, repository rules. |
 
-The repository is one Cargo workspace with a single `Cargo.lock`. The root crate, `apps/desktop`, `apps/sdk`, `crates/ntd-pipeline`, `crates/ntd-test-support`, `crates/ntd-platform`, `crates/ntd-hid`, `crates/ntd-output`, `crates/ntd-interop`, `crates/ntd-settings`, `crates/ntd-plugin-api`, `crates/ntd-plugin-host`, each plugin and the example plugin are its members, so `cargo build --workspace` builds all of them into one `target/` folder (the checks of the root crate use `-p next_tablet_driver`). `tools/ntd-recorder` and `tools/ntd-codegen` are members too.
+The repository is one Cargo workspace with a single `Cargo.lock`. The root crate, `apps/desktop`, `apps/sdk`, `crates/ntd-pipeline`, `crates/ntd-test-support`, `crates/ntd-platform`, `crates/ntd-hid`, `crates/ntd-output`, `crates/ntd-interop`, `crates/ntd-settings`, `crates/ntd-plugin-api`, `crates/ntd-plugin-host`, `crates/ntd-state`, each plugin and the example plugin are its members, so `cargo build --workspace` builds all of them into one `target/` folder (the checks of the root crate use `-p next_tablet_driver`). `tools/ntd-recorder` and `tools/ntd-codegen` are members too.
 
 ## Life of a pen packet
 
@@ -136,7 +137,7 @@ Code that only makes sense on one system is behind `#[cfg(windows)]` or `#[cfg(t
 - `drivers::hid_caps` (Windows only: asks the OS for the real report length)
 - `startup`: autostart (registry on Windows, a desktop entry on Linux) and the high-resolution timer (Windows only)
 
-There is no Cargo feature to switch input injection off. The SDK links the root crate for its state and tablet detection and runs its own engine loop, which never injects input; it stops depending on the root crate when the engine is extracted (roadmap P4.1).
+There is no Cargo feature to switch input injection off. The SDK does not depend on the root crate: it uses `ntd-state` and `ntd-hid` and runs its own engine loop, which never injects input.
 
 ## Safety rules in the code
 

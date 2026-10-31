@@ -1,8 +1,8 @@
 //! Public event-capture API used throughout the app to record anonymous usage events.
 
 use super::{TelemetryMessage, TelemetryService, send_message};
-use crate::engine::state::{EngineStatus, SharedState};
 use ntd_core::sync::LockRecoveryExt;
+use ntd_state::{EngineStatus, SharedState};
 use serde_json::{Value, json};
 use std::sync::atomic::Ordering;
 use std::time::Duration;
@@ -56,7 +56,7 @@ pub fn capture_event_dedup(
 pub fn capture_app_closed(shared: &SharedState) {
     let session_duration_secs = super::SESSION_START.elapsed().as_secs();
     let total_packets_processed = shared.pipeline.packet_count.load(Ordering::Relaxed);
-    // A `vid` of 0 means the default/disconnected `DeviceState` (see `engine::state`),
+    // A `vid` of 0 means the default/disconnected `DeviceState` (see `ntd_state`),
     // which is more robust than comparing against its display name.
     let tablet_connected = shared.device.read().unwrap_or_log("device").vid != 0;
     let engine_failed = matches!(

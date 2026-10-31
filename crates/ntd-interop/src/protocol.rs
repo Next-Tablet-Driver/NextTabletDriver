@@ -274,7 +274,7 @@ impl Response {
 /// Implemented by whatever owns the real `SharedState` on the HID-owner side.
 ///
 /// Kept as a trait so `engine::interop::command` doesn't need to depend on
-/// `engine::state` itself. The desktop app and the SDK's embedded engine
+/// `ntd_state` itself. The desktop app and the SDK's embedded engine
 /// loop each provide their own implementation that applies the write through
 /// the exact same validation/config path a local caller would use.
 pub trait CommandHandler: Send + Sync {

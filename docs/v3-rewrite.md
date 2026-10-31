@@ -207,11 +207,12 @@ xtask/                     # dev tasks (TS types, lint-style, CI plan)
 | `ntd-interop` | `engine/interop/*` | core | shm, OS locks |
 | `ntd-settings` | `settings/*` | core | files (paths **injected**) |
 | `ntd-platform` | autostart, single instance, thread priority and timer (today scattered across `startup.rs`, `application/`, `engine/`) | core | OS |
-| `ntd-engine` | `engine/tablet_manager/*`, `engine/state` | core, tablets, hid, pipeline, plugin-host, output, interop, settings, platform | threads |
+| `ntd-engine` | `engine/tablet_manager/*` | core, tablets, hid, pipeline, plugin-host, output, interop, settings, platform | threads |
 | `ntd-services` | `application/services/*`, `application/telemetry/*` | engine, settings | network |
 | `ntd-ipc` | implicit DTOs of `src-tauri/src/commands.rs` + `frontend/.../tauri/commands.ts` | core, settings (types) | **None** |
 | `apps/desktop` | `src-tauri` | engine, services, ipc, platform | Tauri |
-| `apps/sdk` | `sdk` | core, tablets, hid, pipeline | through its dependencies |
+| `ntd-state` | `engine/state` | core, tablets, pipeline, plugin-host | none |
+| `apps/sdk` | `sdk` | core, tablets, hid, pipeline, state, interop, plugin-host, settings, platform | through its dependencies |
 
 ### 4.3 Graph (arrows **always point down**)
 
@@ -2128,16 +2129,20 @@ Goal: every OS access behind a trait, with a fake and room for each platform (§
     example are rebuilt for v3; `bindings.ts` gained `target`. Not done: no third-party signing
     key is embedded in local builds (`NTD_PLUGIN_PUBKEY`, release pipeline), and publishing
     `ntd-plugin-api` to crates.io waits for the release phase.
-- [ ] **P3.8** Remove the `desktop` feature
+- [x] **P3.8** Remove the `desktop` feature
   - Depends on: P3.3, P3.4, P3.5
   - Done when: the feature no longer exists; `apps/sdk` depends only on `ntd-core`,
     `ntd-tablets`, `ntd-hid`, `ntd-pipeline`.
-  - Notes (partial, box left open): the `desktop` feature is gone (`ntd-output` and
-    `tablet_manager` are always built; `apps/desktop` and the SDK no longer name it). The SDK
-    still depends on the root crate for `SharedState`, `EngineStatus`, `DeviceState` and
-    `detect_tablet`, plus `ntd-interop`, `ntd-settings`, `ntd-platform` and `ntd-plugin-host`:
-    cutting that needs the state and detection moved out of the root crate, which §4 puts in
-    `ntd-engine` (P4.1). Decided with the maintainer to defer that part to P4.1.
+  - Notes: the `desktop` feature is gone (`ntd-output` and `tablet_manager` are always built).
+    `apps/sdk` no longer depends on the root crate, so it no longer links `ntd-output`:
+    `src/drivers/{detection,config_loader}.rs` moved to `ntd-hid` (§4.2 already listed the
+    detection there) and `src/engine/state.rs` moved to the new `crates/ntd-state` (`git mv`;
+    `SharedState` holds the `PluginManager`, so it cannot live in `ntd-pipeline`, which
+    `ntd-plugin-host` depends on). `ntd-state` is not in §4.1: P4.1 may fold it into
+    `ntd-engine`, as long as the SDK does not depend on the engine (rule 19). The SDK's
+    dependencies are the four crates of the roadmap plus what its own engine loop needs:
+    `ntd-state`, `ntd-interop`, `ntd-plugin-host`, `ntd-settings` and `ntd-platform`.
+    `base64` and `regex` left the root crate with the detection.
 - [ ] **P3.9** CI `check-targets` job (§16.2)
   - Depends on: P3.2, P3.3, P3.4, P3.5
   - Done when: `cargo clippy` passes on every tier 3 target, and the job is blocking.
@@ -2153,6 +2158,14 @@ Goal: every OS access behind a trait, with a fake and room for each platform (§
 - [ ] **GATE 3**
   - Done when: P3.1 to P3.9 are `[x]`; no OS-specific code outside the allowed crates (rule 108);
     golden files, latency and E2E identical.
+  - Notes (box left open): checked on 2026-10-31. Golden files (in `nextest`) and the 65 E2E
+    tests pass; latency was not measured (`bench` only compiles, §13.1). P3.9 is waiting for its
+    first green run on GitHub. Rule 108: `startup.rs` and `owner.rs` no longer hold OS code (the
+    system information moved to `ntd-platform`). Two places still match `grep target_os`: the
+    Linux report-id quirk in `ntd-tablets/src/generic.rs` (a parser: rules 80 and 103), and
+    `ntd-plugin-host` (`dlopen` of a pinned file, the `.dll`/`.so` extension), which rule 108 does
+    not list although rule 27 allows its `unsafe`. A maintainer has to decide whether to add
+    `ntd-plugin-host` to rule 108 and how to treat the parser quirk.
 
 ---
 

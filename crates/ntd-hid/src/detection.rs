@@ -1,4 +1,4 @@
-use crate::drivers::config_loader::INDEXED_CONFIGS;
+use crate::config_loader::INDEXED_CONFIGS;
 use ntd_core::hid::{HidBackend, HidDevice, HidDeviceInfo, HidError, OpenOptions};
 use ntd_tablets::NextTabletDriver;
 use ntd_tablets::config::{DigitizerIdentifier, TabletConfiguration};

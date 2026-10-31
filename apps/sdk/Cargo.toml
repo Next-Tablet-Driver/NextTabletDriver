@@ -17,7 +17,6 @@ name = "ntd_sdk"
 crate-type = ["cdylib", "staticlib"]
 
 [dependencies]
-next_tablet_driver = { workspace = true }
 ntd-core = { workspace = true }
 ntd-pipeline = { workspace = true }
 ntd-tablets = { workspace = true }
@@ -26,6 +25,7 @@ ntd-interop = { workspace = true }
 ntd-platform = { workspace = true }
 ntd-settings = { workspace = true }
 ntd-plugin-host = { workspace = true }
+ntd-state = { workspace = true }
 log = { workspace = true }
 
 [build-dependencies]

@@ -1,6 +1,6 @@
-use crate::engine::state::{ConfigState, LifecycleState, PipelineState, SharedState};
 use ntd_core::config::models::MappingConfig;
 use ntd_settings::Paths;
+use ntd_state::{ConfigState, LifecycleState, PipelineState, SharedState};
 use std::sync::Arc;
 use std::sync::RwLock;
 
@@ -18,7 +18,7 @@ impl SharedStateFactory {
                 ..ConfigState::new()
             },
             pipeline: PipelineState::new(),
-            device: RwLock::new(crate::engine::state::DeviceState::default()),
+            device: RwLock::new(ntd_state::DeviceState::default()),
             lifecycle: LifecycleState {
                 is_first_run: RwLock::new(is_first_run),
                 ..LifecycleState::new()

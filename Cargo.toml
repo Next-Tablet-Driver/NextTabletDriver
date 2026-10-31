@@ -23,6 +23,7 @@ members = [
     "crates/ntd-interop",
     "crates/ntd-pipeline",
     "crates/ntd-settings",
+    "crates/ntd-state",
     "crates/ntd-platform",
     "crates/ntd-output",
     "crates/ntd-plugin-api",
@@ -60,6 +61,7 @@ ntd-output = { path = "crates/ntd-output" }
 ntd-pipeline = { path = "crates/ntd-pipeline" }
 ntd-platform = { path = "crates/ntd-platform" }
 ntd-settings = { path = "crates/ntd-settings" }
+ntd-state = { path = "crates/ntd-state" }
 ntd_plugin_api = { path = "crates/ntd-plugin-api" }
 ntd-plugin-host = { path = "crates/ntd-plugin-host" }
 ntd-tablets = { path = "crates/ntd-tablets" }
@@ -181,7 +183,6 @@ ntd-output = { workspace = true }
 specta = { workspace = true, optional = true, features = ["serde_json"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
-base64 = { workspace = true }
 directories = { workspace = true }
 log = { workspace = true }
 thiserror = { workspace = true }
@@ -191,12 +192,12 @@ include_dir = { workspace = true }
 tungstenite = { workspace = true }
 ureq = { workspace = true, features = ["json"] }
 uuid = { workspace = true, features = ["v4", "serde"] }
-regex = { workspace = true }
 ntd-core = { workspace = true }
 ntd-plugin-host = { workspace = true }
 ntd-pipeline = { workspace = true }
 ntd-platform = { workspace = true }
 ntd-settings = { workspace = true }
+ntd-state = { workspace = true }
 ntd-tablets = { workspace = true }
 
 # Windows

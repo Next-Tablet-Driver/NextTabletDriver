@@ -39,7 +39,6 @@
 use criterion::{Criterion, Throughput, criterion_group};
 use crossbeam_channel::bounded;
 use next_tablet_driver::application::state::UiSnapshot;
-use next_tablet_driver::engine::state::SharedState;
 use next_tablet_driver::engine::tablet_manager::bench_support::{
     PacketLoopState, process_packet_for_bench,
 };
@@ -48,6 +47,7 @@ use ntd_core::input::{Key, MouseButton};
 use ntd_core::output::OutputSink;
 use ntd_pipeline::FilterPipeline;
 use ntd_pipeline::Pipeline;
+use ntd_state::SharedState;
 use ntd_tablets::{NextTabletDriver, TabletData, TabletStatus};
 use std::hint::black_box;
 use std::sync::Arc;

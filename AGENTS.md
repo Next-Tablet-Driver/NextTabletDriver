@@ -32,7 +32,8 @@ crates/           `ntd-core` (pure types and maths), `ntd-tablets` (definitions 
                   `ntd-output` (input injection), `ntd-interop` (shared memory, command socket,
                   owner lock), `ntd-settings` (profiles and preferences, from an injected `Paths`),
                   `ntd-plugin-api` (the plugin ABI v3), `ntd-plugin-host` (loading, trust,
-                  ABI and target checks); the tablet tables of
+                  ABI and target checks), `ntd-state` (`SharedState`, read by the engine,
+                  the interface and the SDK); the tablet tables of
                   `ntd-tablets` are generated, never edited (`cargo run --locked -p ntd-codegen`)
 plugins/          the official plugins (workspace members)
 tools/            `ntd-recorder` (captures a tablet), `ntd-codegen` (tablet tables), more to come

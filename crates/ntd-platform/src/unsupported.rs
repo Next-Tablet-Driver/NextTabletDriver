@@ -7,7 +7,7 @@
     reason = "the same signatures as the other systems, where these calls do real work"
 )]
 
-use crate::{NamedLock, PlatformError, UserPaths};
+use crate::{NamedLock, PlatformError, SystemInfo, UserPaths};
 
 /// A lock that is never taken.
 pub(crate) struct LockHandle;
@@ -30,4 +30,8 @@ pub(crate) fn raise_current_thread_priority() -> Result<(), PlatformError> {
 
 pub(crate) fn set_high_resolution_timer(_enable: bool) -> Result<(), PlatformError> {
     Ok(())
+}
+
+pub(crate) fn system_info() -> SystemInfo {
+    SystemInfo::default()
 }

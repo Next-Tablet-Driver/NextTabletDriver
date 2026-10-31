@@ -169,7 +169,7 @@ mod tests {
 
     #[test]
     fn disk_loading_reports_files_that_cannot_be_read_or_parsed() {
-        crate::test_support::evaluate_log_arguments();
+        log::set_max_level(log::LevelFilter::Trace);
         let dir = TempDir::new("unreadable");
         fs::write(dir.0.join("binary.json"), [0xFF, 0xFE, 0xFD]).unwrap();
         fs::write(dir.0.join("broken.json"), "{ nope").unwrap();
@@ -181,7 +181,7 @@ mod tests {
 
     #[test]
     fn smoke_the_whole_catalogue_loads_with_logging_enabled() {
-        crate::test_support::evaluate_log_arguments();
+        log::set_max_level(log::LevelFilter::Trace);
         assert!(load_configurations().len() > 100);
         assert!(!INDEXED_CONFIGS.is_empty());
     }

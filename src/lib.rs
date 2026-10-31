@@ -6,7 +6,7 @@
 //!
 //! ## Architecture Overview
 //!
-//! The driver operates as a pipeline with the following stages: [`drivers`] scans the USB
+//! The driver operates as a pipeline with the following stages: [`ntd_hid`] scans the USB
 //! bus for supported devices through `ntd-hid` and runs a high-frequency polling loop,
 //! [`ntd_tablets::parsers`] decodes the vendor-specific byte arrays into a standardized
 //! [`ntd_tablets::TabletData`] structure, [`ntd_pipeline`] applies optional processing such as
@@ -24,7 +24,8 @@
 //!
 //! ## Key Modules
 //! *   **[`ntd_core`]**: Core configuration models and mathematical transforms (own crate).
-//! *   **[`drivers`]**: Protocol definitions and hardware-specific parsers.
+//! *   **[`ntd_hid`]**: The HID backend and the detection of the connected tablet (own crate).
+//! *   **[`ntd_state`]**: The state shared by the engine threads and the interface (own crate).
 //! *   **[`engine`]**: The execution core that links the UI, drivers, and OS.
 //! *   **[`ntd_pipeline`]**: The processing stages and the filter chain (own crate).
 //! *   **[`i18n`]**: Internationalization support.
@@ -34,7 +35,6 @@
 
 /// Application layer: services, the state the interface reads, and telemetry.
 pub mod application;
-pub mod drivers;
 pub mod engine;
 pub mod i18n;
 /// Logging to a file and to the in-memory buffer behind the console.

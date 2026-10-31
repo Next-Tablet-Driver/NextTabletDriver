@@ -2,12 +2,12 @@
 //! SHM/command layer, so other processes (another SDK-embedded game, or a
 //! second desktop instance) can mirror or drive this tablet's state.
 
-use crate::engine::state::SharedState;
 use ntd_core::config::models::{ActiveArea, DriverMode, MappingConfig};
 use ntd_core::sync::{LockRecoveryExt, WriteRecoverExt};
 use ntd_interop::protocol::{CommandHandler, DEVICE_NAME_CAPACITY, SdkPublicState};
 use ntd_interop::shm::ShmWriter;
 use ntd_pipeline::ProcessedFrame;
+use ntd_state::SharedState;
 use ntd_tablets::{TabletData, TabletStatus};
 use std::sync::Arc;
 use std::sync::atomic::Ordering;

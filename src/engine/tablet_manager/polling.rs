@@ -3,7 +3,6 @@
 
 use super::buttons::ButtonRouter;
 use super::sdk_bridge::publish_shm_state;
-use crate::engine::state::SharedState;
 use crossbeam_channel::Sender;
 use ntd_core::config::models::{DriverMode, MappingConfig};
 use ntd_core::hid::HidDevice;
@@ -13,6 +12,7 @@ use ntd_interop::shm::ShmWriter;
 use ntd_output::Injector;
 use ntd_pipeline::FilterPipeline;
 use ntd_pipeline::{Pipeline, ProcessedFrame};
+use ntd_state::SharedState;
 use ntd_tablets::{TabletData, TabletStatus};
 use std::panic;
 use std::sync::Arc;

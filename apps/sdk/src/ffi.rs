@@ -21,12 +21,12 @@
 )]
 
 use crate::engine_loop;
-use next_tablet_driver::engine::state::SharedState;
 use ntd_core::config::models::{ActiveArea, DriverMode};
 use ntd_core::sync::LockRecoveryExt;
 use ntd_interop::command::send_command;
 use ntd_interop::lock::try_acquire_hid_owner;
 use ntd_interop::protocol::{DEVICE_NAME_CAPACITY, Request, Response};
+use ntd_state::SharedState;
 use std::panic::{self, AssertUnwindSafe};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard, OnceLock};

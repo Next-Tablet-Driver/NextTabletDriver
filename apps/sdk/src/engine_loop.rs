@@ -12,9 +12,8 @@
 //! by `ntd-interop`, exactly as documented there: this loop becomes
 //! either the HID owner or a reader of whichever process already is one.
 
-use next_tablet_driver::drivers::detect_tablet;
+use ntd_hid::detect_tablet;
 
-use next_tablet_driver::engine::state::SharedState;
 use ntd_core::config::models::{ActiveArea, DriverMode, MappingConfig};
 use ntd_core::hid::HidDevice;
 use ntd_core::sync::{LockRecoveryExt, WriteRecoverExt};
@@ -24,6 +23,7 @@ use ntd_interop::protocol::{CommandHandler, DEVICE_NAME_CAPACITY, SdkPublicState
 use ntd_interop::shm::{ShmReader, ShmWriter};
 use ntd_pipeline::FilterPipeline;
 use ntd_pipeline::{Pipeline, ProcessedFrame};
+use ntd_state::SharedState;
 use ntd_tablets::{TabletData, TabletStatus};
 use std::panic;
 use std::sync::Arc;
@@ -334,8 +334,7 @@ fn owner_iteration(shared: &Arc<SharedState>, is_owner: &Arc<AtomicBool>) {
                 .lifecycle
                 .engine_status
                 .write()
-                .unwrap_or_reset("engine_status") =
-                next_tablet_driver::engine::state::EngineStatus::Running;
+                .unwrap_or_reset("engine_status") = ntd_state::EngineStatus::Running;
             api
         }
         Err(e) => {
@@ -344,8 +343,7 @@ fn owner_iteration(shared: &Arc<SharedState>, is_owner: &Arc<AtomicBool>) {
                 .lifecycle
                 .engine_status
                 .write()
-                .unwrap_or_reset("engine_status") =
-                next_tablet_driver::engine::state::EngineStatus::Failed(e.to_string());
+                .unwrap_or_reset("engine_status") = ntd_state::EngineStatus::Failed(e.to_string());
             return;
         }
     };
@@ -440,7 +438,7 @@ fn on_device_connected(
     let (mw, mh, mp) = driver.get_specs();
     let (pen_button_count, aux_button_count) = driver.get_button_counts();
 
-    let new_device = next_tablet_driver::engine::state::DeviceState {
+    let new_device = ntd_state::DeviceState {
         name: driver.get_name().to_string(),
         vid,
         pid,
@@ -475,8 +473,7 @@ fn on_device_connected(
 
 fn on_disconnected(shared: &Arc<SharedState>) {
     log::info!(target: "EngineLoop", "Device disconnected, resetting shared state");
-    *shared.device.write().unwrap_or_reset("device_state") =
-        next_tablet_driver::engine::state::DeviceState::default();
+    *shared.device.write().unwrap_or_reset("device_state") = ntd_state::DeviceState::default();
     *shared
         .pipeline
         .tablet_data

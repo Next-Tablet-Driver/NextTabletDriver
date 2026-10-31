@@ -32,6 +32,7 @@ ntd-platform = { workspace = true }
 ntd-settings = { workspace = true, features = ["specta"] }
 ntd_plugin_api = { workspace = true }
 ntd-plugin-host = { workspace = true }
+ntd-state = { workspace = true }
 crossbeam-channel = { workspace = true }
 tauri-plugin-dialog = { workspace = true }
 tauri-plugin-process = { workspace = true }

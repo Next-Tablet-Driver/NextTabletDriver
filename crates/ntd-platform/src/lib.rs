@@ -7,7 +7,8 @@
 //! - **named locks**: a machine-wide, non-blocking lock that the OS releases when its owner dies
 //!   ([`try_acquire_lock`]);
 //! - **thread priority**: raise the polling thread ([`raise_current_thread_priority`]);
-//! - **timer resolution**: ask Windows for a finer timer ([`set_high_resolution_timer`]).
+//! - **timer resolution**: ask Windows for a finer timer ([`set_high_resolution_timer`]);
+//! - **system information**: memory, distribution and host name ([`system_info`]).
 //!
 //! Each system has its own file (`windows.rs`, `linux.rs`, `macos.rs`); any other target builds
 //! with `unsupported.rs`, whose functions say [`PlatformError::Unsupported`]. Nothing here knows
@@ -143,6 +144,23 @@ pub fn set_high_resolution_timer(enable: bool) -> Result<(), PlatformError> {
     os::set_high_resolution_timer(enable)
 }
 
+/// What the machine is, for the log at startup. A field the system cannot tell is `None`.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct SystemInfo {
+    /// The installed physical memory, in bytes.
+    pub total_memory_bytes: Option<u64>,
+    /// The human-readable name of the Linux distribution.
+    pub distribution: Option<String>,
+    /// The name of the computer.
+    pub hostname: Option<String>,
+}
+
+/// Asks the system what the machine is.
+#[must_use]
+pub fn system_info() -> SystemInfo {
+    os::system_info()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -168,6 +186,15 @@ mod tests {
             "permission denied"
         );
         assert_eq!(PlatformError::Os("boom".into()).to_string(), "boom");
+    }
+
+    #[test]
+    fn the_system_tells_its_memory_when_it_can() {
+        if cfg!(any(windows, target_os = "linux")) {
+            assert!(system_info().total_memory_bytes.is_some());
+        } else {
+            assert_eq!(system_info(), SystemInfo::default());
+        }
     }
 
     #[test]

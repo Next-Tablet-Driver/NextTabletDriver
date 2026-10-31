@@ -1,6 +1,6 @@
-use crate::engine::state::SharedState;
 use crossbeam_channel::{Receiver, Sender};
 use ntd_core::config::models::MappingConfig;
+use ntd_state::SharedState;
 use std::sync::Arc;
 use std::time::Duration;
 
