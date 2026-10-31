@@ -89,9 +89,10 @@ A profile is a saved set of settings, for example one for osu! and one for drawi
 On the **Pen Settings** tab, these options have an effect today:
 
 - **Tip threshold**: how hard you press before the pen counts as touching, as a percentage of the maximum pressure.
-- **Disable pressure**: ignore pressure.
-- **Pressure curve**: reshape the pressure. Linear, exponential, or your own curve. This changes the pressure value that other programs receive, and that only happens on Linux (see the next section).
+- **Disable pressure**: the pen reports full pressure whenever it touches the tablet. The pen still has to touch to count as down.
+- **Pressure curve**: reshape the pressure. Linear, exponential, or your own curve. With **Custom**, drag the points on the graph, click the graph to add one, and double-click a point to remove it. The curve changes the pressure that other programs receive, so it matters when Windows Ink is on, or on Linux.
 
+- The **Drawing** tab turns on Windows Ink, so drawing programs get pressure and tilt. Leave it off for osu!. See [Drawing](drawing.md).
 - **Button Actions** and **Tablet Keys**: decide what each pen button and each key on the tablet does. See [Button mapping](button-mapping.md).
 
 The other options on this tab (eraser threshold, disable tilt, tip and eraser bindings) are saved but not used yet. See [Known limitations](troubleshooting.md#known-limitations).
@@ -102,9 +103,9 @@ The other options on this tab (eraser threshold, disable tilt, tip and eraser bi
 | --- | --- | --- |
 | Cursor position | Yes | Yes |
 | Click when the tip touches | Yes (left mouse button) | Yes |
-| Pressure and tilt reach other apps | No | Yes |
+| Pressure and tilt reach other apps | Only with Windows Ink | Yes |
 
-On Windows, NextTabletDriver acts like a mouse. It still reads pressure and tilt, and it shows them in the app, but drawing programs do not receive them. This is fine for osu!, which only needs position and a click.
+By default on Windows, NextTabletDriver acts like a mouse. It still reads pressure and tilt, and it shows them in the app, but other programs do not receive them. This is the best choice for osu!, which only needs position and a click. For drawing, turn on Windows Ink on the **Drawing** tab. See [Drawing](drawing.md).
 
 ## Filters (plugins)
 
@@ -117,7 +118,7 @@ Two things to know. Filters only work in absolute mode. And when you add a filte
 | Setting | What it does |
 | --- | --- |
 | **Run at startup** | Starts NextTabletDriver in the background when you sign in. It starts hidden, in the tray. |
-| **System Tray when Minimize** | Closing the window hides the app in the tray instead of quitting. Choose **Quit** in the tray menu to exit. |
+| **System Tray when Minimize** | Minimizing the window hides the app in the tray instead of the taskbar. Closing the window always quits the app. To bring the window back, double-click the tray icon. |
 | **Force High Resolution Timer** | Windows only. Asks Windows for a 0.5 ms timer to reduce delay. On by default. |
 | **Theme** | Change the colors. See [Themes](themes.md). |
 | **Language** | The choice is saved, but the interface is in English only for now. |

@@ -38,8 +38,9 @@ pub fn log_mapping_config(config: &MappingConfig, prefix: &str) {
     );
     log::info!(
         target: "Tracking",
-        "General -> Lock Aspect Ratio: {} | Show Playfield: {}",
+        "General -> Lock Aspect Ratio: {} | Show Playfield: {} | Windows Ink: {}",
         config.lock_aspect_ratio,
-        config.show_osu_playfield
+        config.show_osu_playfield,
+        config.windows_ink
     );
 }

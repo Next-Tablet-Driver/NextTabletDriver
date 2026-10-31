@@ -10,21 +10,23 @@
     }
 </script>
 
-<div class="card">
-    <div class="card-title">{type === 'tip' ? 'Tip Binding' : 'Eraser Binding'}</div>
+<div class="binding">
+    <p class="title">{type === 'tip' ? 'Tip Binding' : 'Eraser Binding'}</p>
     <div class="binding-input">
         {#if mapping.config !== null}
             {#if type === 'tip'}
-                <input 
-                    oninput={updateConfig} 
-                    type="text" 
-                    bind:value={mapping.config.tip_binding} 
+                <input
+                    aria-label="Tip binding"
+                    oninput={updateConfig}
+                    type="text"
+                    bind:value={mapping.config.tip_binding}
                 />
             {:else}
-                <input 
-                    oninput={updateConfig} 
-                    type="text" 
-                    bind:value={mapping.config.eraser_binding} 
+                <input
+                    aria-label="Eraser binding"
+                    oninput={updateConfig}
+                    type="text"
+                    bind:value={mapping.config.eraser_binding}
                 />
             {/if}
         {/if}
@@ -33,16 +35,16 @@
 </div>
 
 <style>
-    .card {
+    .binding {
         display: flex;
         flex-direction: column;
-        gap: var(--space-4);
+        gap: var(--space-1-5);
     }
-    
-    .card-title {
-        font-size: var(--font-md);
-        font-weight: var(--font-weight-bold);
-        color: var(--text-muted);
+
+    .title {
+        margin: 0;
+        color: var(--text-main);
+        font-size: var(--font-base);
     }
 
     .binding-input {
@@ -52,10 +54,16 @@
         border: var(--border-width) solid var(--border);
         border-radius: var(--radius-md);
         overflow: hidden;
+        transition: border-color var(--transition-normal) var(--ease-emphasized);
+    }
+
+    .binding-input:focus-within {
+        border-color: var(--input-border-focus);
     }
 
     .binding-input input {
         flex: 1;
+        min-width: 0;
         background: transparent;
         border: none;
         color: var(--text-muted);
@@ -68,5 +76,4 @@
     .binding-input input:focus {
         color: var(--text-active);
     }
-
 </style>

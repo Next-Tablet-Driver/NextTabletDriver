@@ -24,6 +24,7 @@
 
 <style>
     .console-footer {
+        font-variant-numeric: tabular-nums;
         display: flex;
         justify-content: space-between;
         align-items: center;

@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/svelte";
 import TabBar from "../TabBar.svelte";
 
-const LABELS = ["Output", "Filters", "Pen Settings", "Console", "Settings", "Release", "Credits"];
+const LABELS = ["Output", "Filters", "Pen Settings", "Drawing", "Console", "Settings", "Release", "Credits"];
 
 describe("TabBar", () => {
     it("lists every page of the app, in order", () => {

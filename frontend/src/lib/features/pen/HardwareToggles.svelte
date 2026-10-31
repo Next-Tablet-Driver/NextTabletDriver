@@ -9,32 +9,27 @@
     }
 </script>
 
-<div class="card">
-    <div class="card-title">Hardware Toggles</div>
-    <div class="flex-column">
-        {#if mapping.config !== null}
-            <Checkbox label="Disable Pressure" onchange={updateConfig} bind:checked={mapping.config.disable_pressure} />
-            <Checkbox label="Disable Tilt" onchange={updateConfig} bind:checked={mapping.config.disable_tilt} />
-        {/if}
+{#if mapping.config !== null}
+    <div class="checkbox-row">
+        <Checkbox
+            label="Disable Pressure"
+            onchange={updateConfig}
+            tooltip="The pen reports full pressure whenever it touches the tablet."
+            bind:checked={mapping.config.disable_pressure}
+        />
+        <Checkbox
+            label="Disable Tilt"
+            onchange={updateConfig}
+            tooltip="Ignore the angle of the pen."
+            bind:checked={mapping.config.disable_tilt}
+        />
     </div>
-</div>
+{/if}
 
 <style>
-    .card {
+    .checkbox-row {
         display: flex;
-        flex-direction: column;
+        flex-wrap: wrap;
         gap: var(--space-4);
-    }
-    
-    .card-title {
-        font-size: var(--font-md);
-        font-weight: var(--font-weight-bold);
-        color: var(--text-muted);
-    }
-
-    .flex-column {
-        display: flex;
-        flex-direction: column;
-        gap: var(--space-2);
     }
 </style>

@@ -31,6 +31,8 @@ export interface Config {
     run_at_startup: boolean;
     system_tray_on_minimize: boolean;
     force_high_resolution_timer: boolean;
+    /** Report the pen as a real Windows Ink pen instead of a mouse. */
+    windows_ink: boolean;
     websocket: {
         enabled: boolean;
         port: number;

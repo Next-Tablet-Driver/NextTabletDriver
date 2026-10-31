@@ -10,6 +10,8 @@ export interface TabletEventData {
     x: number;
     y: number;
     pressure: number;
+    /** The highest raw pressure the tablet reports; 0 while unknown. */
+    max_pressure?: number;
     hover_distance: number;
     tilt_x: number;
     tilt_y: number;

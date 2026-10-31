@@ -20,11 +20,10 @@ describe("HardwareToggles", () => {
         expect(markDirty).toHaveBeenCalledOnce();
     });
 
-    it("shows no switch until the config is loaded", () => {
+    it("shows nothing until the config is loaded", () => {
         const { mapping } = fakeMapping(null);
         render(HardwareToggles, { props: { mapping } });
         expect(screen.queryByLabelText("Disable Pressure")).toBeNull();
-        expect(screen.getByText("Hardware Toggles")).toBeInTheDocument();
     });
 });
 
@@ -44,10 +43,9 @@ describe("Thresholds", () => {
         expect(markDirty).toHaveBeenCalledOnce();
     });
 
-    it("shows no field until the config is loaded", () => {
+    it("shows nothing until the config is loaded", () => {
         const { mapping } = fakeMapping(null);
         render(Thresholds, { props: { mapping } });
         expect(screen.queryAllByRole("spinbutton")).toHaveLength(0);
-        expect(screen.getByText("Thresholds")).toBeInTheDocument();
     });
 });

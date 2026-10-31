@@ -128,7 +128,9 @@
             type="text"
             value={recording ? preview : value}
         />
-        <Select onchange={pickPreset} options={PRESETS} bind:value={presetShown} />
+        <div class="preset">
+            <Select onchange={pickPreset} options={PRESETS} bind:value={presetShown} />
+        </div>
         <Button
             aria-label={`Record ${label}`}
             aria-pressed={recording}
@@ -149,14 +151,20 @@
     .binding-row {
         display: flex;
         flex-direction: column;
-        gap: var(--space-1);
-        margin-bottom: var(--space-4);
+        gap: var(--space-1-5);
     }
 
     .binding-row label {
-        font-size: var(--font-md);
-        color: var(--text-active);
+        font-size: var(--font-base);
+        color: var(--text-muted);
         font-weight: var(--font-weight-medium);
+    }
+
+    /* The preset list sits inside the field, so it drops its own frame. */
+    .preset {
+        --border: transparent;
+        --bg-input: transparent;
+        display: flex;
     }
 
     .binding-input {
@@ -166,6 +174,7 @@
         border: var(--border-width) solid var(--border);
         border-radius: var(--radius-md);
         overflow: hidden;
+        transition: border-color var(--transition-normal) var(--ease-emphasized);
     }
 
     .binding-input.invalid {

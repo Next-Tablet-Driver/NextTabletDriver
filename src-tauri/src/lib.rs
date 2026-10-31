@@ -54,13 +54,12 @@ pub fn run() {
         commands::delete_theme
     ])
     .on_window_event(|window, event| {
-        if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-            let state: tauri::State<'_, std::sync::Arc<next_tablet_driver::engine::state::SharedState>> = window.state();
-            let config = state.config.mapping.read().unwrap_or_log("config_read_tauri");
-            if config.system_tray_on_minimize {
-                let _ = window.hide();
-                api.prevent_close();
-            }
+        // Closing the main window quits the app. The tray only takes over when the window is
+        // minimized (see `system_tray_on_minimize`), never when it is closed.
+        if let tauri::WindowEvent::CloseRequested { .. } = event
+            && window.label() == "main"
+        {
+            window.app_handle().exit(0);
         }
     })
     .setup(|app| {
@@ -89,6 +88,8 @@ pub fn run() {
         let mode_relative_i = CheckMenuItem::with_id(app, "mode_relative", "Relative", true, config.mode == next_tablet_driver::core::config::models::DriverMode::Relative, None::<&str>)?;
         let mode_menu = Submenu::with_id_and_items(app, "mode", "Mode", true, &[&mode_absolute_i, &mode_relative_i])?;
         
+        let windows_ink_i = CheckMenuItem::with_id(app, "windows_ink", "Windows Ink (Drawing)", true, config.windows_ink, None::<&str>)?;
+
         let plugins_i = MenuItem::with_id(app, "open_plugins", "Open Plugins Folder", true, None::<&str>)?;
         let themes_i = MenuItem::with_id(app, "open_themes", "Open Themes Folder", true, None::<&str>)?;
         
@@ -109,6 +110,7 @@ pub fn run() {
             &status_i,
             &profiles_menu,
             &mode_menu,
+            &windows_ink_i,
             &sep2,
             &plugins_i,
             &themes_i,
@@ -158,6 +160,18 @@ pub fn run() {
                         let _ = save_sender.try_send(config_clone);
                         let _ = app.emit("profile-loaded", ());
                     }
+                } else if id == "windows_ink" {
+                    let state: tauri::State<'_, std::sync::Arc<next_tablet_driver::engine::state::SharedState>> = app.state();
+                    let mut mapping_config = state.config.mapping.write().unwrap_or_log("config_write_tauri");
+                    mapping_config.windows_ink = !mapping_config.windows_ink;
+                    let config_clone = mapping_config.clone();
+                    drop(mapping_config);
+                    // The polling loop picks the new value up on its next config check.
+                    state.config.version.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+
+                    let save_sender: tauri::State<'_, crossbeam_channel::Sender<next_tablet_driver::core::config::models::MappingConfig>> = app.state();
+                    let _ = save_sender.try_send(config_clone);
+                    let _ = app.emit("profile-loaded", ());
                 } else if id == "open_plugins" {
                     let state: tauri::State<'_, std::sync::Arc<next_tablet_driver::engine::state::SharedState>> = app.state();
                     let _ = crate::commands::open_plugins_folder(state);
@@ -214,6 +228,7 @@ pub fn run() {
 
         // Event Bridge: Pipe HID packets to Tauri Frontend
         let app_handle = app.handle().clone();
+        let shared_events = std::sync::Arc::clone(&shared);
         std::thread::spawn(move || {
             let mut last_emit = std::time::Instant::now();
             let emit_interval = std::time::Duration::from_millis(16); // ~60Hz for UI
@@ -229,12 +244,15 @@ pub fn run() {
                     let any_visible = app_handle.webview_windows().values().any(|w| w.is_visible().unwrap_or(false));
                     
                     if any_visible {
+                        // The UI turns the raw pressure into a share of the maximum, to follow it on the curve.
+                        let max_pressure = shared_events.device.read().map_or(0.0, |device| device.max_pressure);
                         // Map the complex TabletData to a simple serializable struct for Svelte
                         let payload = serde_json::json!({
                             "status": frame.status.as_str(),
                             "x": frame.x,
                             "y": frame.y,
                             "pressure": frame.pressure,
+                            "max_pressure": max_pressure,
                             "hover_distance": frame.hover_distance,
                             "tilt_x": frame.tilt_x,
                             "tilt_y": frame.tilt_y,
@@ -272,20 +290,28 @@ pub fn run() {
 
         let mode_absolute_i_clone = mode_absolute_i;
         let mode_relative_i_clone = mode_relative_i;
+        let windows_ink_i_clone = windows_ink_i;
         let shared_mode = std::sync::Arc::clone(&shared);
-        
+
         std::thread::spawn(move || {
             let mut last_mode = shared_mode.config.mapping.read().map_or(
                 next_tablet_driver::core::config::models::DriverMode::Absolute,
                 |guard| guard.mode,
             );
-            
+            let mut last_ink = shared_mode.config.mapping.read().is_ok_and(|guard| guard.windows_ink);
+
             loop {
-                let current_mode = match shared_mode.config.mapping.read() {
-                    Ok(guard) => guard.mode,
+                let (current_mode, current_ink) = match shared_mode.config.mapping.read() {
+                    Ok(guard) => (guard.mode, guard.windows_ink),
                     Err(_) => break,
                 };
-                
+
+                // The option can also be changed from the Drawing page or by loading a profile.
+                if current_ink != last_ink {
+                    let _ = windows_ink_i_clone.set_checked(current_ink);
+                    last_ink = current_ink;
+                }
+
                 if current_mode != last_mode {
                     let _ = mode_absolute_i_clone.set_checked(current_mode == next_tablet_driver::core::config::models::DriverMode::Absolute);
                     let _ = mode_relative_i_clone.set_checked(current_mode == next_tablet_driver::core::config::models::DriverMode::Relative);

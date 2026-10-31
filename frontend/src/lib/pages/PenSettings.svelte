@@ -1,7 +1,7 @@
 <script lang="ts">
-    import { Pencil } from "lucide-svelte";
     import type { MappingState } from "../features/mapping/mapping-state.svelte";
-    
+    import Title from "../components/ui/Title.svelte";
+
     import Thresholds from "../features/pen/Thresholds.svelte";
     import HardwareToggles from "../features/pen/HardwareToggles.svelte";
     import BindingCard from "../features/pen/BindingCard.svelte";
@@ -11,49 +11,68 @@
     const { mapping }: { mapping: MappingState } = $props();
 </script>
 
-<div class="page-container">
-    <div class="section-header">
-        <Pencil size={20} />
-        <h2>Pen Settings</h2>
-    </div>
-
+<div class="page">
     {#if mapping.config}
-        <div class="grid-layout">
-            <Thresholds {mapping} />
-            <HardwareToggles {mapping} />
-            <BindingCard {mapping} type="tip" />
-            <BindingCard {mapping} type="eraser" />
+        <div class="section">
+            <Title>Pen</Title>
+            <div class="controls">
+                <HardwareToggles {mapping} />
+                <Thresholds {mapping} />
+            </div>
+        </div>
+
+        <div class="section">
+            <Title>Pressure Curve</Title>
             <PressureCurve {mapping} />
+        </div>
+
+        <div class="section">
+            <Title>Buttons</Title>
             <ButtonActions {mapping} />
+        </div>
+
+        <div class="section">
+            <Title>Tip and Eraser</Title>
+            <p class="note">Saved, but not applied yet.</p>
+            <div class="pair">
+                <BindingCard {mapping} type="tip" />
+                <BindingCard {mapping} type="eraser" />
+            </div>
         </div>
     {/if}
 </div>
 
 <style>
-    .page-container {
-        padding: var(--space-8);
+    .page {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-8);
         height: 100%;
+        padding: var(--space-4);
         overflow-y: auto;
     }
 
-    .section-header {
+    .section {
         display: flex;
-        align-items: center;
+        flex-direction: column;
         gap: var(--space-2);
-        margin-bottom: var(--space-8);
-        color: var(--text-active);
     }
-    
-    .section-header h2 {
-        font-size: var(--font-xl-plus);
-        font-weight: var(--font-weight-bold);
+
+    .controls {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-3);
+    }
+
+    .note {
         margin: 0;
+        color: var(--text-muted);
+        font-size: var(--font-base);
     }
-    
-    .grid-layout {
+
+    .pair {
         display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: var(--space-8);
-        max-width: 900px;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: var(--space-4);
     }
 </style>

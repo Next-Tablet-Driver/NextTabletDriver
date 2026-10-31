@@ -2,6 +2,7 @@
     import { onMount } from "svelte";
     import type { MappingState } from "../../features/mapping/mapping-state.svelte";
     import { getTabletStatus } from "../../infrastructure/tauri/commands";
+    import Subtitle from "../../components/ui/Subtitle.svelte";
     import BindingField from "./BindingField.svelte";
 
     const { mapping }: { mapping: MappingState } = $props();
@@ -49,67 +50,47 @@
     }
 </script>
 
-<div class="card buttons-card">
-    <div class="section-header small">
-        <svg fill="none" height="18" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="18"><rect height="20" rx="4" width="12" x="6" y="2"></rect><line x1="12" x2="12.01" y1="18" y2="18"></line></svg>
-        <h3>Button Actions</h3>
-    </div>
-
+<div class="groups">
     {#if mapping.config !== null}
-        {#each { length: penRows } as _row, index (index)}
-            <BindingField
-                id={`pen_button_${String(index)}`}
-                label={`Pen Button ${String(index + 1)}`}
-                onedit={(text: string) => { edit("pen", index, text); }}
-                value={valueOf("pen", index)}
-            />
-        {/each}
+        <div class="group">
+            <Subtitle>Button Actions</Subtitle>
+            {#each { length: penRows } as _row, index (index)}
+                <BindingField
+                    id={`pen_button_${String(index)}`}
+                    label={`Pen Button ${String(index + 1)}`}
+                    onedit={(text: string) => { edit("pen", index, text); }}
+                    value={valueOf("pen", index)}
+                />
+            {/each}
+        </div>
+
+        {#if auxRows > 0}
+            <div class="group">
+                <Subtitle>Tablet Keys</Subtitle>
+                {#each { length: auxRows } as _row, index (index)}
+                    <BindingField
+                        id={`aux_button_${String(index)}`}
+                        label={`Tablet Key ${String(index + 1)}`}
+                        onedit={(text: string) => { edit("aux", index, text); }}
+                        value={valueOf("aux", index)}
+                    />
+                {/each}
+            </div>
+        {/if}
     {/if}
 </div>
 
-{#if mapping.config !== null && auxRows > 0}
-    <div class="card buttons-card">
-        <div class="section-header small">
-            <svg fill="none" height="18" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="18"><rect height="16" rx="2" width="20" x="2" y="4"></rect><path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M8 12h.01M12 12h.01M16 12h.01M7 16h10"></path></svg>
-            <h3>Tablet Keys</h3>
-        </div>
-        {#each { length: auxRows } as _row, index (index)}
-            <BindingField
-                id={`aux_button_${String(index)}`}
-                label={`Tablet Key ${String(index + 1)}`}
-                onedit={(text: string) => { edit("aux", index, text); }}
-                value={valueOf("aux", index)}
-            />
-        {/each}
-    </div>
-{/if}
-
 <style>
-    .card {
+    .groups {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: var(--space-8);
+        align-items: start;
+    }
+
+    .group {
         display: flex;
         flex-direction: column;
-        gap: var(--space-4);
-    }
-
-    .buttons-card {
-        grid-column: span 1;
-        margin-top: var(--space-6);
-    }
-
-    .section-header {
-        display: flex;
-        align-items: center;
-        gap: var(--space-2);
-        color: var(--text-active);
-    }
-
-    .section-header.small {
-        margin-bottom: var(--space-4);
-    }
-
-    .section-header.small h3 {
-        font-size: var(--font-lg-plus);
-        font-weight: var(--font-weight-bold);
-        margin: 0;
+        gap: var(--space-3);
     }
 </style>

@@ -276,7 +276,7 @@
         font-size: var(--font-sm);
         font-weight: var(--font-weight-bold);
         margin: 0 var(--space-1);
-        transition: all var(--transition-moderate) ease;
+        transition: background-color var(--transition-moderate) ease, border-color var(--transition-moderate) ease, transform var(--transition-moderate) ease;
     }
 
     .link-url:hover {
@@ -363,7 +363,7 @@
         font-size: var(--font-md);
         font-weight: var(--font-weight-medium);
         text-decoration: none;
-        transition: all var(--transition-moderate);
+        transition: background-color var(--transition-moderate), border-color var(--transition-moderate);
     }
 
     .btn-link:hover {

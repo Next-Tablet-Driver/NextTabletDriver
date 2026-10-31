@@ -31,6 +31,7 @@ const config: Config = {
     run_at_startup: false,
     system_tray_on_minimize: true,
     force_high_resolution_timer: true,
+    windows_ink: false,
     websocket: {
         enabled: true,
         port: 8765,
@@ -264,6 +265,30 @@ function mockGithubFetch(): void {
     };
 }
 
+/**
+ * A pen that presses and releases in a loop, so the live views (the pressure curve) have
+ * something to show. Pressure goes up and down like a stroke, with a short pause in the air.
+ */
+function simulatePen(callbacks: Map<number, (payload: unknown) => void>, handlerId: number): void {
+    const start = performance.now();
+    window.setInterval(() => {
+        const seconds = (performance.now() - start) / 1000;
+        const wave = Math.sin(seconds * 1.4);
+        const touching = wave > 0;
+        const payload = {
+            status: touching ? "Contact" : "Hover",
+            x: 0,
+            y: 0,
+            pressure: touching ? Math.round(wave * 8191) : 0,
+            max_pressure: 8191,
+            hover_distance: 0,
+            tilt_x: 0,
+            tilt_y: 0,
+        };
+        callbacks.get(handlerId)?.({ event: "tablet-event", id: 0, payload });
+    }, 33);
+}
+
 /** Installs a minimal `__TAURI_INTERNALS__` so the Tauri JS APIs work against fixtures. */
 export function installTauriMock(): void {
     window.__ntdInvocations = [];
@@ -292,7 +317,11 @@ export function installTauriMock(): void {
             window.__ntdInvocations?.push({ command, args });
             const handler = handlers.get(command);
             if (handler !== undefined) return Promise.resolve(handler(args));
-            if (command === "plugin:event|listen") return Promise.resolve(nextCallbackId++);
+            if (command === "plugin:event|listen") {
+                const handlerId = Number(args.handler);
+                if (args.event === "tablet-event") simulatePen(callbacks, handlerId);
+                return Promise.resolve(nextCallbackId++);
+            }
             if (command === "plugin:window|is_maximized") return Promise.resolve(false);
             // Anything else (window controls, updater, dialogs...) is a harmless no-op.
             return Promise.resolve(null);

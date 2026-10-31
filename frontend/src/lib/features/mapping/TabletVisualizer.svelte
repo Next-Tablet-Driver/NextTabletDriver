@@ -469,6 +469,7 @@
   }
 
   .ratio-text {
+      font-variant-numeric: tabular-nums;
     font-size: var(--font-sm);
     font-weight: var(--font-weight-bold);
     z-index: 2;
@@ -476,6 +477,7 @@
   }
 
   .dimensions {
+      font-variant-numeric: tabular-nums;
     z-index: 2;
   }
 

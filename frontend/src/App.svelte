@@ -12,6 +12,7 @@
   import Credits from "./lib/pages/Credits.svelte";
   import Filters from "./lib/pages/Filters.svelte";
   import PenSettings from "./lib/pages/PenSettings.svelte";
+  import Drawing from "./lib/pages/Drawing.svelte";
   import Settings from "./lib/pages/Settings.svelte";
   import Debugger from "./lib/pages/Debugger.svelte";
   import Performance from "./lib/pages/Performance.svelte";
@@ -30,6 +31,7 @@
       credits: Credits,
       filters: Filters,
       penSettings: PenSettings,
+      drawing: Drawing,
       settings: Settings
   };
 

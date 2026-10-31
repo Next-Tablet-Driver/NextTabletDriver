@@ -174,7 +174,7 @@ async function diff(name: string, limit = 60): Promise<DiffResult> {
     return compare(before, collect(), limit);
 }
 
-const PAGES = ["Output", "Filters", "Pen Settings", "Console", "Settings", "Release", "Credits"] as const;
+const PAGES = ["Output", "Filters", "Pen Settings", "Drawing", "Console", "Settings", "Release", "Credits"] as const;
 
 /** Waits until the DOM stops changing (async pages render in several steps). */
 async function settle(): Promise<void> {

@@ -56,10 +56,9 @@ describe("ButtonActions", () => {
         expect(markDirty).toHaveBeenCalledOnce();
     });
 
-    it("shows only the header while the config is not loaded", () => {
+    it("shows no field while the config is not loaded", () => {
         const { mapping } = fakeMapping(null);
         render(ButtonActions, { props: { mapping } });
-        expect(screen.getByText("Button Actions")).toBeInTheDocument();
         expect(screen.queryAllByRole("textbox")).toHaveLength(0);
     });
 });

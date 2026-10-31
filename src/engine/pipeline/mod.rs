@@ -160,12 +160,10 @@ impl Pipeline {
             self.last_max_p = max_p;
         }
 
-        let pressure = if config.disable_pressure {
-            max_p as u16
-        } else {
-            pressure_raw
-        };
-        f32::from(pressure) > self.tip_threshold_raw
+        // Disabling the pressure only changes the value that is reported (always full, see
+        // `inject_frame`). The tip still has to touch the tablet to be down, which the raw
+        // pressure tells whether the pressure is reported or not.
+        f32::from(pressure_raw) > self.tip_threshold_raw
     }
 }
 
@@ -277,8 +275,10 @@ mod tests {
             ..Default::default()
         };
 
-        // Should always be true (down) regardless of raw pressure
-        assert!(pipeline.evaluate_pressure(0, 1000.0, &config));
+        // The pen has to touch the tablet to be down, whether the pressure is reported or not.
+        assert!(!pipeline.evaluate_pressure(0, 1000.0, &config));
+        assert!(!pipeline.evaluate_pressure(499, 1000.0, &config));
+        assert!(pipeline.evaluate_pressure(501, 1000.0, &config));
     }
 
     #[test]

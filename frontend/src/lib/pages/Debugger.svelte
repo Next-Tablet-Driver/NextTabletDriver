@@ -25,6 +25,7 @@
         border-radius: var(--radius-lg); /* To match main window if transparent */
     }
     .content {
+        font-variant-numeric: tabular-nums;
         padding: var(--space-5);
         flex: 1;
         overflow-y: auto;

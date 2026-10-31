@@ -36,7 +36,8 @@
       border-radius: var(--radius-md);
       padding: var(--space-1) var(--space-4);
       cursor: pointer;
-      transition: all var(--transition-normal);
+      transition-property: background-color, border-color, color, opacity, transform;
+      transition-duration: var(--transition-normal);
       font-size: var(--font-md);
       font-family: var(--font-sans);
       font-weight: var(--font-weight-medium);
@@ -47,7 +48,7 @@
   }
 
   .btn:active:not(:disabled) {
-      transform: scale(0.98);
+      transform: scale(0.96);
   }
 
   /* Disabled State */

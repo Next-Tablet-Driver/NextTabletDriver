@@ -61,7 +61,7 @@
 
   /* Pressed Effect */
   input[type="checkbox"]:active:not(:disabled) {
-      transform: scale(0.95);
+      transform: scale(0.96);
   }
 
   /* Checked */

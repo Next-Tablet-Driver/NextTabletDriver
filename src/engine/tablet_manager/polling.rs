@@ -128,6 +128,10 @@ pub(super) fn run_polling_loop(
     state.buttons.release_all(injector);
 }
 
+/// The pressure reported when the user turned pressure off: a pen that touches then acts at full
+/// pressure.
+const MAX_PRESSURE: i32 = 8191;
+
 /// Drives OS input injection from a processed frame.
 ///
 /// Mirrors the branching that used to live inside `Pipeline::process()` itself:
@@ -142,6 +146,10 @@ fn inject_frame<I: InputSink>(
     config: &MappingConfig,
     frame: &ProcessedFrame,
 ) {
+    // The pen mode is part of the profile: follow it here, before anything is sent. Windows Ink
+    // is a pen mode, so it needs absolute positions; relative mode keeps the mouse.
+    injector.set_windows_ink(config.windows_ink && config.mode == DriverMode::Absolute);
+
     if !data.is_connected {
         injector.set_left_button(false);
         injector.set_proximity(false);
@@ -158,14 +166,19 @@ fn inject_frame<I: InputSink>(
 
     match config.mode {
         DriverMode::Absolute => {
+            injector.set_eraser(data.eraser);
             injector.move_absolute(
                 frame.screen_x,
                 frame.screen_y,
                 frame.u,
                 frame.v,
-                frame.pressure,
-                frame.tilt_x,
-                frame.tilt_y,
+                if config.disable_pressure {
+                    MAX_PRESSURE
+                } else {
+                    frame.pressure
+                },
+                if config.disable_tilt { 0 } else { frame.tilt_x },
+                if config.disable_tilt { 0 } else { frame.tilt_y },
             );
         }
         DriverMode::Relative => {

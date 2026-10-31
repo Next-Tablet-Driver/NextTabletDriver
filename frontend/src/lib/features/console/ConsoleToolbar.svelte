@@ -72,7 +72,7 @@
         height: 32px;
         width: 260px;
         position: relative;
-        transition: all var(--transition-moderate) ease;
+        transition: border-color var(--transition-moderate) ease, background-color var(--transition-moderate) ease;
     }
 
     .search-box:focus-within {
@@ -106,7 +106,7 @@
         justify-content: center;
         padding: var(--space-0-5);
         border-radius: var(--radius-md);
-        transition: all var(--transition-normal);
+        transition: background-color var(--transition-normal), color var(--transition-normal);
     }
 
     .clear-search:hover {
@@ -128,7 +128,7 @@
         font-size: var(--font-base);
         font-weight: var(--font-weight-medium);
         cursor: pointer;
-        transition: all var(--transition-moderate) var(--ease-emphasized);
+        transition: background-color var(--transition-moderate) var(--ease-emphasized), color var(--transition-moderate) var(--ease-emphasized), border-color var(--transition-moderate) var(--ease-emphasized);
     }
 
     .filter-btn:hover {

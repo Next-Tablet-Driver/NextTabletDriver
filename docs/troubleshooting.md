@@ -38,7 +38,7 @@ The real tablet and the virtual one are both moving the cursor. The udev rules s
 
 ## My drawing app gets no pressure (Windows)
 
-On Windows, NextTabletDriver sends position and a left click only. Pressure and tilt are not passed to other programs. This is a current limitation of the Windows input method. On Linux, pressure and tilt work.
+By default, NextTabletDriver acts like a mouse on Windows: it sends position and a left click only. This keeps latency low for osu!. To give drawing programs pressure and tilt, turn on **Windows Ink** on the **Drawing** tab. See [Drawing](drawing.md). If you still get no pressure, draw on the test pad of that tab: its type must read `pen`.
 
 ## A pen button or a tablet key does nothing
 
@@ -77,10 +77,9 @@ These are things that do not work yet, or not fully. They are listed so that you
 
 | Area | What to expect | What you can do |
 | --- | --- | --- |
-| Pressure and tilt on Windows | Not sent to other programs. | Use position and click only (this is enough for osu!). On Linux they work. |
-| Eraser, tip binding and tilt options | The eraser end is not forwarded. The **Pen Settings** options *Eraser threshold*, *Disable tilt*, *Tip binding* and *Eraser binding* are saved but not used. The tip always clicks the left mouse button. | Wait for a later version. |
+| Pressure and tilt on Windows | Sent only when **Windows Ink** is on (**Drawing** tab). It is off by default. | Turn it on for drawing, leave it off for osu!. See [Drawing](drawing.md). |
+| Eraser, tip binding and tilt options | The eraser end is only forwarded with Windows Ink. The **Pen Settings** options *Eraser threshold*, *Disable tilt*, *Tip binding* and *Eraser binding* are saved but not used. The tip always clicks the left mouse button. | Wait for a later version. |
 | Button mapping and the left button | A pen button bound to **Left Click** shares the left button with the tip. Releasing one while the other is held also releases the click. | Bind the pen buttons to other buttons or keys. |
-| Pressure curve on Windows | It only changes the pressure that programs receive, so it has no visible effect on Windows. | None needed. |
 | Relative mode | Sensitivity (10 px per mm) and reset time (100 ms) are fixed. There is no setting for them in the app. | Use absolute mode, or import settings from OpenTabletDriver (it brings in its sensitivity). |
 | Language | The language choice is saved, but the interface is in English only. | None. |
 | Usage statistics | The checkbox **Enable Anonymous Usage Statistics** is a placeholder. The app does not send data. | None. |

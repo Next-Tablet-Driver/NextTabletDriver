@@ -5,7 +5,8 @@
 //! and injects them as virtual input events.
 //!
 //! # Platform Specifics
-//! - **Windows**: Uses `windows-sys` to call `SendInput` directly for mouse simulation.
+//! - **Windows**: Uses `windows-sys` to call `SendInput` directly for mouse simulation. When the
+//!   user turns on Windows Ink (the "Drawing" page), it reports a virtual pen instead (`ink`).
 //! - **Linux**: Creates a virtual tablet device via `/dev/uinput` (kernel module)
 //!   using the `evdev` crate. This approach is universally compatible with
 //!   X11, Wayland, and `XWayland` - the kernel sees it as real hardware.
@@ -63,6 +64,13 @@ pub trait InputSink {
     fn set_mouse_button(&mut self, button: MouseButton, is_down: bool);
     /// Presses or releases a keyboard key on behalf of a button binding.
     fn set_key(&mut self, key: Key, is_down: bool);
+    /// Reports the pen as a real pen (pressure, tilt, hover) instead of a mouse. Called with every
+    /// report, so it must be cheap when nothing changes. Only Windows has such a mode, so the
+    /// default does nothing.
+    fn set_windows_ink(&mut self, _enabled: bool) {}
+    /// Tells which end of the pen is near the tablet (the eraser end, or the tip end). Only the
+    /// Windows Ink pen reports it, so the default does nothing.
+    fn set_eraser(&mut self, _eraser: bool) {}
 }
 
 impl InputSink for Injector {
@@ -98,8 +106,20 @@ impl InputSink for Injector {
     fn set_key(&mut self, key: Key, is_down: bool) {
         Self::set_key(self, key, is_down);
     }
+
+    #[cfg(windows)]
+    fn set_windows_ink(&mut self, enabled: bool) {
+        Self::set_windows_ink(self, enabled);
+    }
+
+    #[cfg(windows)]
+    fn set_eraser(&mut self, eraser: bool) {
+        Self::set_eraser(self, eraser);
+    }
 }
 
+#[cfg(windows)]
+mod ink;
 #[cfg(windows)]
 pub mod windows;
 #[cfg(windows)]

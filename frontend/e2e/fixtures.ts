@@ -5,7 +5,7 @@ export interface Invocation {
     args: Record<string, unknown>;
 }
 
-export const TABS = ["Output", "Filters", "Pen Settings", "Console", "Settings", "Release", "Credits"] as const;
+export const TABS = ["Output", "Filters", "Pen Settings", "Drawing", "Console", "Settings", "Release", "Credits"] as const;
 export type TabName = (typeof TABS)[number];
 
 /** Thin helper around the page, with what every screen test needs. */

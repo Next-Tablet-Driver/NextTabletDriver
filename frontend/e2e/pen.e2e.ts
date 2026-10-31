@@ -10,8 +10,8 @@ test.describe("Pen Settings screen", () => {
         await expect(app.content.locator("input[type=number]").first()).toHaveValue("10");
         await expect(app.content.getByLabel("Disable Pressure")).not.toBeChecked();
         await expect(app.content.getByLabel("Disable Tilt")).not.toBeChecked();
-        await expect(app.content.getByRole("textbox").nth(0)).toHaveValue("Left Click");
-        await expect(app.content.getByRole("textbox").nth(1)).toHaveValue("Disabled");
+        await expect(app.content.getByLabel("Tip binding", { exact: true })).toHaveValue("Left Click");
+        await expect(app.content.getByLabel("Eraser binding", { exact: true })).toHaveValue("Disabled");
         await expect(app.content.getByLabel("Pen Button 1", { exact: true })).toHaveValue("Right Click");
         await expect(app.content.getByLabel("Pen Button 2", { exact: true })).toHaveValue("Middle Click");
     });
@@ -22,12 +22,12 @@ test.describe("Pen Settings screen", () => {
     });
 
     test("disabling pressure is saved", async ({ app }) => {
-        await app.content.getByLabel("Disable Pressure").check();
+        await app.content.getByText("Disable Pressure").click();
         expect((await app.savedConfigWhere((config) => config.disable_pressure === true)).disable_pressure).toBe(true);
     });
 
     test("changing the tip binding is saved", async ({ app }) => {
-        await app.content.getByRole("textbox").nth(0).fill("Right Click");
+        await app.content.getByLabel("Tip binding", { exact: true }).fill("Right Click");
         expect((await app.savedConfigWhere((config) => config.tip_binding === "Right Click")).tip_binding).toBe("Right Click");
     });
 
@@ -78,7 +78,7 @@ test.describe("Pen Settings screen", () => {
     });
 
     test("the profile is marked modified after a change", async ({ app, page }) => {
-        await app.content.getByLabel("Disable Tilt").check();
+        await app.content.getByText("Disable Tilt").click();
         await expect(page.getByText("Default Profile*")).toBeVisible();
     });
 });

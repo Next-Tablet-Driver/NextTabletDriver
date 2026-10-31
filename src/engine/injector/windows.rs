@@ -12,6 +12,7 @@
 //! between our packets, and expressing relative moves as absolute ones keeps
 //! them immune to the OS pointer speed/acceleration curve.
 
+use super::ink::InkPen;
 use crate::core::input::{Key, MouseButton};
 use std::time::{Duration, Instant};
 use windows_sys::Win32::Foundation::POINT;
@@ -23,7 +24,8 @@ use windows_sys::Win32::UI::Input::KeyboardAndMouse::{
     SendInput,
 };
 use windows_sys::Win32::UI::WindowsAndMessaging::{
-    GetCursorPos, GetSystemMetrics, SM_CXSCREEN, SM_CYSCREEN, XBUTTON1, XBUTTON2,
+    GetCursorPos, GetSystemMetrics, SM_CXSCREEN, SM_CYSCREEN, SM_XVIRTUALSCREEN, SM_YVIRTUALSCREEN,
+    XBUTTON1, XBUTTON2,
 };
 
 /// Minimum interval between `GetSystemMetrics` refreshes for absolute-mode
@@ -46,7 +48,17 @@ pub struct Injector {
 
     screen_w: i32,
     screen_h: i32,
+    /// Top-left corner of the whole desktop. Negative when a screen sits left of or above the
+    /// main one. The Windows Ink pen needs it (see `ink::pen_position`).
+    desktop_origin: (i32, i32),
     last_metrics_refresh: Instant,
+
+    /// What the "Drawing" page asked for last. Kept apart from `ink` because creating the
+    /// virtual pen can fail, and a refused request must not be retried at every report.
+    ink_requested: bool,
+    /// The virtual Windows Ink pen, while it is on and available. Pen reports go through it
+    /// instead of the mouse events.
+    ink: Option<InkPen>,
 }
 
 /// Creating the injector cannot fail on Windows; the alias keeps `Injector::try_new` shaped
@@ -83,13 +95,50 @@ impl Injector {
             remainder_y: 0.0,
             screen_w,
             screen_h,
+            desktop_origin: query_desktop_origin(),
             last_metrics_refresh: Instant::now(),
+            ink_requested: false,
+            ink: None,
         }
     }
 
-    /// Updates stylus proximity state. Unused on Windows since proximity
-    /// tracking is handled at the system level.
-    pub const fn set_proximity(&mut self, _in_proximity: bool) {}
+    /// Turns the Windows Ink pen on or off.
+    ///
+    /// Cheap when the request did not change, so it can be called with every report. When on,
+    /// the pen is reported as a real pen (pressure, tilt, hover) and the tip no longer clicks the
+    /// mouse. When off, or when Windows cannot create the pen, plain mouse events are used.
+    pub fn set_windows_ink(&mut self, enabled: bool) {
+        if enabled == self.ink_requested {
+            return;
+        }
+        self.ink_requested = enabled;
+
+        if enabled {
+            // The tip click now goes through the pen: do not leave a mouse click held.
+            self.set_left_button(false);
+            self.ink = InkPen::create();
+        } else if let Some(mut pen) = self.ink.take() {
+            pen.leave();
+            log::info!(target: "Injector", "Windows Ink pen removed, back to mouse events.");
+        }
+    }
+
+    /// Tells the Windows Ink pen which end is near the tablet. The mouse path has no eraser.
+    pub const fn set_eraser(&mut self, eraser: bool) {
+        if let Some(pen) = &mut self.ink {
+            pen.set_eraser(eraser);
+        }
+    }
+
+    /// Updates stylus proximity state.
+    ///
+    /// The mouse path needs nothing: the operating system tracks the cursor. The Windows Ink
+    /// pen has to be told when the pen leaves the range of the tablet.
+    pub fn set_proximity(&mut self, in_proximity: bool) {
+        if !in_proximity && let Some(pen) = &mut self.ink {
+            pen.leave();
+        }
+    }
 
     fn refresh_screen_metrics(&mut self) {
         let now = Instant::now();
@@ -103,6 +152,7 @@ impl Injector {
             self.screen_w = w;
             self.screen_h = h;
         }
+        self.desktop_origin = query_desktop_origin();
     }
 
     /// Injects an absolute cursor position on the screen.
@@ -112,8 +162,8 @@ impl Injector {
     /// * `target_x` - Target X coordinate in OS pixels.
     /// * `target_y` - Target Y coordinate in OS pixels.
     /// * `_u` / `_v` - Normalized UV coordinates (unused on Windows).
-    /// * `_pressure` - Pressure (unused on Windows).
-    /// * `_tilt_x` / `_tilt_y` - Tilt (unused on Windows).
+    /// * `pressure` - Pressure (0 to 8191). Only used by the Windows Ink pen.
+    /// * `tilt_x` / `tilt_y` - Tilt in degrees. Only used by the Windows Ink pen.
     #[allow(clippy::too_many_arguments)]
     pub fn move_absolute(
         &mut self,
@@ -121,11 +171,24 @@ impl Injector {
         target_y: f32,
         _u: f32,
         _v: f32,
-        _pressure: i32,
-        _tilt_x: i32,
-        _tilt_y: i32,
+        pressure: i32,
+        tilt_x: i32,
+        tilt_y: i32,
     ) {
         self.refresh_screen_metrics();
+
+        if let Some(pen) = &mut self.ink {
+            // Sent by the `set_left_button` call that follows, with the tip state.
+            pen.record(
+                (target_x, target_y),
+                self.desktop_origin,
+                pressure,
+                tilt_x,
+                tilt_y,
+            );
+            return;
+        }
+
         send_absolute_move(target_x, target_y, self.screen_w, self.screen_h);
 
         // Reset accumulators so relative mode starts clean after a mode switch
@@ -175,7 +238,14 @@ impl Injector {
     /// The injector maintains internal state and only fires OS events when the
     /// requested `is_down` state differs from the currently held state, preventing
     /// API spam.
+    ///
+    /// With the Windows Ink pen on, this is also what sends the pen report recorded by
+    /// `move_absolute`, with the tip state, so it runs for every report and not only for changes.
     pub fn set_left_button(&mut self, is_down: bool) {
+        if let Some(pen) = &mut self.ink {
+            pen.report(is_down);
+            return;
+        }
         if is_down == self.last_pressure_down {
             return;
         }
@@ -375,6 +445,15 @@ fn query_screen_size() -> (i32, i32) {
     // SAFETY: same as above.
     let h = unsafe { GetSystemMetrics(SM_CYSCREEN) };
     (w, h)
+}
+
+/// The top-left corner of the whole desktop, all screens included.
+fn query_desktop_origin() -> (i32, i32) {
+    // SAFETY: `GetSystemMetrics` is a pure metrics query with no preconditions.
+    let x = unsafe { GetSystemMetrics(SM_XVIRTUALSCREEN) };
+    // SAFETY: same as above.
+    let y = unsafe { GetSystemMetrics(SM_YVIRTUALSCREEN) };
+    (x, y)
 }
 
 /// Normalizes `(target_x, target_y)` to the 0-65535 range `SendInput` expects

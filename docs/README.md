@@ -10,6 +10,7 @@ Find the guide you need.
 | [Linux setup](linux.md) | Permissions, the `.deb` package, the AppImage, Arch and NixOS. |
 | [Troubleshooting](troubleshooting.md) | Fix common problems, read the logs, report a bug, and see the known limitations. |
 | [Button mapping](button-mapping.md) | Make the pen buttons and the tablet keys press mouse buttons, keys and shortcuts. |
+| [Drawing with Windows Ink](drawing.md) | Report the pen as a real pen (pressure, tilt, hover) for drawing programs. |
 | [Plugins](plugins.md) | Smooth the pen movement with filters, or write your own. |
 | [Themes](themes.md) | Change the colors and the look of the app. |
 

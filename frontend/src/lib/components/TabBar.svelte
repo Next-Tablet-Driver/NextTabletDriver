@@ -5,6 +5,7 @@
       { id: "output", label: "Output" },
       { id: "filters", label: "Filters" },
       { id: "penSettings", label: "Pen Settings" },
+      { id: "drawing", label: "Drawing" },
       { id: "console", label: "Console" },
       { id: "settings", label: "Settings" },
       { id: "release", label: "Release" },

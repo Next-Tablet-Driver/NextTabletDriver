@@ -70,9 +70,9 @@ The math for steps 4.1, 4.2 and 4.5 lives in `core::math`. These functions are s
 | How | `SendInput` | A virtual device made with `/dev/uinput` |
 | Cursor position | Yes | Yes |
 | Tip touch as a click | Left mouse button | `BTN_TOUCH` on the virtual pen, and `BTN_LEFT` on the virtual mouse for apps that ignore `BTN_TOUCH` |
-| Pressure and tilt | **No.** Measured, but not sent to other apps. | Yes (`ABS_PRESSURE`, `ABS_TILT_X`, `ABS_TILT_Y`) |
+| Pressure and tilt | **Only with Windows Ink** (off by default, see [Drawing](drawing.md)). Otherwise measured, but not sent to other apps. | Yes (`ABS_PRESSURE`, `ABS_TILT_X`, `ABS_TILT_Y`) |
 | Pen buttons and tablet keys | Mouse buttons and keys, as the user bound them (see [Button mapping](button-mapping.md)) | The same, on the virtual mouse and the virtual keyboard |
-| Eraser | Not sent yet | Not sent yet |
+| Eraser | Only with Windows Ink | Not sent yet |
 | Relative mode | Mouse movement | A virtual mouse |
 
 On Linux the engine creates three devices, named `NextTabletDriver Virtual Pen`, `NextTabletDriver Virtual Mouse` and `NextTabletDriver Virtual Keyboard`. The kernel treats them as real hardware, so they work on X11, Wayland and XWayland.

@@ -415,6 +415,11 @@ pub struct MappingConfig {
     /// Whether to snap the target area to display edges when resizing/moving.
     #[serde(default = "default_true")]
     pub display_snapping: bool,
+    /// Whether the pen is injected as a real Windows Ink pen (pressure, tilt, hover) instead of
+    /// a mouse. Off by default so that osu! keeps the plain mouse path. Windows only, and only
+    /// used in absolute mode.
+    #[serde(default = "default_false")]
+    pub windows_ink: bool,
     /// Pressure response curve settings.
     #[serde(default)]
     pub pressure_curve: PressureCurveConfig,
@@ -451,6 +456,7 @@ impl Default for MappingConfig {
             lock_aspect_ratio: false,
             show_osu_playfield: false,
             display_snapping: default_true(),
+            windows_ink: false,
             pressure_curve: PressureCurveConfig::default(),
             theme: ThemePreference::default(),
             language: default_language(),
