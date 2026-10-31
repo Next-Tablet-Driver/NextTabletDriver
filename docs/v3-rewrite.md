@@ -1545,8 +1545,8 @@ just the application.
 | | |
 |---|---|
 | **Current phase** | Phase 1: Workspace, quality, CI, contribution rules |
-| **Last completed task** | P2.4 |
-| **Next task** | P2.5 |
+| **Last completed task** | P2.5 |
+| **Next task** | P2.6 |
 | **v1 bridge release** | not started (P7.5a) |
 | **Last updated** | 2026-10-31 |
 
@@ -1914,10 +1914,22 @@ Goal: `ntd-core`, `ntd-tablets`, `ntd-pipeline` without any I/O (§7, phase 2).
     for the `Deserialize` types that the root crate still uses for the local `tablets` folder
     (until `ntd-hid`). `include_dir` stays in the root crate for the translations (`i18n`).
     CI job `codegen` regenerates and fails on any diff. Golden files did not change.
-- [ ] **P2.5** Extract `ntd-pipeline` with `trait Filter` (§4.4)
+- [x] **P2.5** Extract `ntd-pipeline` with `trait Filter` (§4.4) (branch `chore/v3-phase-2`)
   - Depends on: P2.1
   - Done when: `engine/pipeline` and the filter chain are in `crates/ntd-pipeline`; the
     `filters` ↔ `engine::plugins` cycle no longer exists; latency within +5 %.
+  - Notes: `git mv` of `engine/pipeline/*` (stages, `ProcessedFrame`) and `filters/mod.rs` (the
+    chain) to `crates/ntd-pipeline`. The chain now holds `Box<dyn Filter>`; `Filter` has `process`,
+    `set_property` and `reset`. The plugin side is `engine::plugins::PluginFilter` (wraps a
+    `PluginInstance`), and `PluginManager::create_pipeline` builds the chain, so `ntd-pipeline`
+    does not know plugins exist and the `filters` ↔ `plugins` cycle is gone. The `shared:
+    &Arc<SharedState>` parameter of `Pipeline::process`, `Normalizer` and `Projector` was never
+    read and is removed, which cuts the dependency on `engine::state`. The crate depends on
+    `ntd-core`, `ntd-tablets`, `ntd-plugin-api`, `log`, `serde_json` and `thiserror`: no I/O. The
+    plugin-ABI tests stayed with the plugins; the chain is tested with a plain Rust filter.
+    Latency (criterion, before/after on the same machine): `pipeline_*` benches +0.6 % to +3.9 %,
+    `hot_path/process_packet` between -0.3 % and +8 % with a run-to-run noise of about 5 % on the
+    same binary. `Projector` still reads `Instant::now()`: P2.6.
 - [ ] **P2.6** Clock injected into the pipeline
   - Depends on: P2.5
   - Done when: no `Instant::now()` or `sleep` in `ntd-pipeline` (rule 37).
