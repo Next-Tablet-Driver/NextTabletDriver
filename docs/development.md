@@ -202,19 +202,22 @@ If you change `frontend/package-lock.json`, update the npm hash in `nix/default.
 
 ## The CI
 
-A pull request only runs the jobs that its files need. A first job, *Changed paths*, reads the list of changed files and decides:
+A pull request only runs the jobs that its files need. A first job, *Changed paths*, reads the list of changed files, and each job below runs only when a file it builds or checks has changed.
 
-| You change | Jobs that run |
+| Job | Runs when you change |
 | --- | --- |
-| Only documentation, licences or issue templates | None. **CI success** passes at once. |
-| Only `frontend/` or `resources/` | Frontend, E2E, Coverage, Tauri build |
-| Rust code (`src/`, `src-tauri/`, `sdk/`, `plugins/`, `qa/`, `tools/`, `tablets/`, `packaging/`, `scripts/`) or a Rust config file | Rust Quality Check, SDK and plugins, Coverage, Tauri build |
-| A `Cargo.toml` or `Cargo.lock` | The Rust jobs above, and Dependency policy |
-| `.github/workflows/ci.yml` | Everything |
+| Rust Quality Check | `src/`, `qa/`, `tablets/`, `resources/`, `sdk/plugin_api/`, the root `Cargo.toml` or `Cargo.lock`, the toolchain or lint files (`rust-toolchain.toml`, `clippy.toml`, `rustfmt.toml`, `.cargo/`) |
+| SDK, plugin API, plugins and examples | `sdk/`, `plugins/`, `src/`, `tablets/`, `resources/` (the SDK embeds the root crate), any `Cargo.toml`, the toolchain or lint files |
+| Frontend, E2E | `frontend/` |
+| Coverage | `src/`, `qa/`, `tablets/`, `resources/`, `sdk/plugin_api/`, the root `Cargo.*`, `frontend/`, `coverage-thresholds.json`, `scripts/coverage_gate.py`, the toolchain files |
+| Tauri build | `src-tauri/`, `frontend/`, and what the root crate is built from (`src/`, `tablets/`, `resources/`, `sdk/plugin_api/`, the root `Cargo.*`), the scripts the build uses (`scripts/assert-gui-subsystem.ps1`, `scripts/smoke-windows.ps1`, `scripts/99-nexttabletdriver.rules`), the toolchain files. It does **not** run for `qa/` |
+| Dependency policy | any `Cargo.toml` or `Cargo.lock`, `deny.toml` |
+
+So a change only to the documentation, the licences or the issue templates runs none of them; a change only to a plugin runs only the SDK job; a change only to `src-tauri/` runs only the Tauri build. Changing `.github/workflows/ci.yml` runs everything.
 
 A push to `main` and a manual run always run everything. A job that is skipped counts as passed. The single required check is **CI success**: it passes when every job that ran has passed.
 
-The filter is the `changes` job in `.github/workflows/ci.yml`. If you add a folder that holds code, add it there, or its changes will not trigger the jobs.
+The filter is the `changes` job in `.github/workflows/ci.yml`. If you add a folder that holds code, add it there, or its changes will not trigger the jobs. `tools/` has no job yet: a change there runs nothing.
 
 | Job | What it checks |
 | --- | --- |

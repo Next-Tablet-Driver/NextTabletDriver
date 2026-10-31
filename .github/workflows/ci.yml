@@ -15,9 +15,11 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  # Decides which jobs a pull request needs, from the files it changes. A change to the docs runs
-  # none of them; a change to the frontend does not build the Rust code. Pushes to main and manual
-  # runs always run everything. A skipped job counts as passed in `ci-success`.
+  # Decides which jobs a pull request needs, from the files it changes. Each job runs only when a
+  # file it builds or checks has changed: a change to the documentation runs none of them, a change
+  # to the frontend does not build the Rust code, a change to a plugin does not build the app.
+  # Pushes to main and manual runs always run everything. A skipped job counts as passed in
+  # `ci-success`. When you add a folder that holds code, add it to the patterns below.
   changes:
     name: Changed paths
     runs-on: ubuntu-latest
@@ -25,9 +27,11 @@ jobs:
       contents: read
       pull-requests: read
     outputs:
-      rust: ${{ steps.filter.outputs.rust }}
+      root: ${{ steps.filter.outputs.root }}
+      sdk: ${{ steps.filter.outputs.sdk }}
       frontend: ${{ steps.filter.outputs.frontend }}
-      native: ${{ steps.filter.outputs.native }}
+      coverage: ${{ steps.filter.outputs.coverage }}
+      tauri: ${{ steps.filter.outputs.tauri }}
       deps: ${{ steps.filter.outputs.deps }}
     steps:
       - name: Decide what to run
@@ -40,7 +44,7 @@ jobs:
         run: |
           set -euo pipefail
           emit() { echo "$1=$2" >> "$GITHUB_OUTPUT"; }
-          all() { for k in rust frontend native deps; do emit "$k" true; done; }
+          all() { for k in root sdk frontend coverage tauri deps; do emit "$k" true; done; }
 
           if [ "$EVENT" != "pull_request" ]; then
             all
@@ -58,20 +62,42 @@ jobs:
           echo "Files that can change the code:"; echo "${code:-<none>}"
 
           match() { if echo "$code" | grep -Eq "$1"; then echo true; else echo false; fi; }
-          ci='^\.github/workflows/ci\.yml$'
-          rust=$(match "^(src|src-tauri|sdk|plugins|qa|tools|tablets|packaging|scripts)/|(^|/)Cargo\.(toml|lock)$|^(rust-toolchain|clippy|rustfmt|deny)\.toml$|^coverage-thresholds\.json$|^\.cargo/|$ci")
-          frontend=$(match "^(frontend|resources)/|$ci")
-          deps=$(match "(^|/)Cargo\.(toml|lock)$|^deny\.toml$|$ci")
 
-          native=false
-          if [ "$rust" = true ] || [ "$frontend" = true ]; then native=true; fi
+          # Shared by every Rust job: this workflow and the toolchain and lint configuration.
+          common='^\.github/workflows/ci\.yml$|^(rust-toolchain|clippy|rustfmt)\.toml$|^\.cargo/'
 
-          emit rust "$rust"; emit frontend "$frontend"; emit native "$native"; emit deps "$deps"
+          # What the root crate is built from: sources, the tablet definitions and locales it
+          # embeds, and the plugin API it depends on. Tests and benchmarks (qa/) are added only
+          # for the jobs that run them.
+          built_from='^(src|tablets|resources)/|^sdk/plugin_api/|^Cargo\.(toml|lock)$'
+
+          # Rust quality check of the root crate.
+          root=$(match "$built_from|^qa/|$common")
+
+          # SDK, plugin API, plugins and examples. The SDK embeds the root crate, and this job also
+          # checks the lint policy of every Cargo.toml.
+          sdk=$(match "^(sdk|plugins)/|^(src|tablets|resources)/|(^|/)Cargo\.toml$|$common")
+
+          # Frontend lint, types, unit tests and build; the E2E tests run on the same files. The
+          # generated bindings are committed under frontend/, so they are covered.
+          frontend=$(match "^frontend/|^\.github/workflows/ci\.yml$")
+
+          # Coverage of the root crate and of the frontend, and the scripts that gate it.
+          coverage=$(match "$built_from|^qa/|^frontend/|^coverage-thresholds\.json$|^scripts/(test_)?coverage_gate\.py$|$common")
+
+          # The desktop app: its own crate, everything it embeds, and the build scripts it uses.
+          tauri=$(match "$built_from|^(src-tauri|frontend)/|^scripts/(99-nexttabletdriver\.rules|assert-gui-subsystem\.ps1|smoke-windows\.ps1)$|$common")
+
+          # Dependency policy: any manifest or lockfile, and the policy itself.
+          deps=$(match '(^|/)Cargo\.(toml|lock)$|^deny\.toml$|^\.github/workflows/ci\.yml$')
+
+          emit root "$root"; emit sdk "$sdk"; emit frontend "$frontend"
+          emit coverage "$coverage"; emit tauri "$tauri"; emit deps "$deps"
 
   rust:
     name: Rust Quality Check (${{ matrix.os }})
     needs: changes
-    if: needs.changes.outputs.rust == 'true'
+    if: needs.changes.outputs.root == 'true'
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -145,7 +171,7 @@ jobs:
   plugins:
     name: SDK, plugin API, plugins and examples
     needs: changes
-    if: needs.changes.outputs.rust == 'true'
+    if: needs.changes.outputs.sdk == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -306,7 +332,7 @@ jobs:
   coverage:
     name: Coverage
     needs: changes
-    if: needs.changes.outputs.native == 'true'
+    if: needs.changes.outputs.coverage == 'true'
     runs-on: windows-latest
     permissions:
       contents: read
@@ -429,7 +455,7 @@ jobs:
   tauri:
     name: Tauri build (${{ matrix.os }})
     needs: changes
-    if: needs.changes.outputs.native == 'true'
+    if: needs.changes.outputs.tauri == 'true'
     strategy:
       fail-fast: false
       matrix:
