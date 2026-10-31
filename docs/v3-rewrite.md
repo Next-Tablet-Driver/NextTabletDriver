@@ -1104,6 +1104,7 @@ limit, and everything that can be checked is checked in CI.
 | `machete` | `cargo machete`: no unused dependency |
 | `clippy` | `cargo clippy --locked --all-targets --all-features` on touched crates |
 | `clippy-release` | same with `--release` (code behind `cfg(not(debug_assertions))`) |
+| `check-targets` | `cargo clippy --target` on the tier 3 targets of §16.2, blocking |
 | `doc` | `cargo doc --no-deps` with `RUSTDOCFLAGS=-D warnings` |
 | `test` | `cargo nextest run` + doctests, Windows x64 and Linux x64 matrix |
 | `golden` | parser golden files (§7, phase 0) |
@@ -2140,6 +2141,15 @@ Goal: every OS access behind a trait, with a fake and room for each platform (§
 - [ ] **P3.9** CI `check-targets` job (§16.2)
   - Depends on: P3.2, P3.3, P3.4, P3.5
   - Done when: `cargo clippy` passes on every tier 3 target, and the job is blocking.
+  - Notes (box left open until the job has run green on GitHub): the `check-targets` job of
+    `ci.yml` runs `cargo clippy --locked --target <t> --workspace --exclude app --all-targets
+    --all-features -D warnings` for `aarch64-apple-darwin` and `x86_64-apple-darwin` (macOS
+    runner), `i686-pc-windows-msvc` (Windows runner), `i686-unknown-linux-gnu` and
+    `armv7-unknown-linux-gnueabihf` (Ubuntu with multiarch libraries and a cross compiler). It
+    is in the `needs` of `ci-success`, the one required check, so it blocks. `app` (Tauri) is
+    excluded. Only `i686-pc-windows-msvc` was run locally and passes; the macOS and Linux
+    targets cannot be built from a Windows machine (C build scripts of `ring` and `hidapi`), so
+    their setup, in particular the armhf apt sources, is untested.
 - [ ] **GATE 3**
   - Done when: P3.1 to P3.9 are `[x]`; no OS-specific code outside the allowed crates (rule 108);
     golden files, latency and E2E identical.
