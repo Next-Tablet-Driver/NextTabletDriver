@@ -2,6 +2,10 @@
 //!
 //! Loads dynamic libraries, executes the ABI handshake, parses the plugin manifest,
 //! and extracts function pointers into a thread-safe `LoadedLibrary`.
+#![allow(
+    unsafe_code,
+    reason = "loading plugin libraries and calling their C ABI through function pointers"
+)]
 
 use super::error::PluginError;
 use super::trust::PinnedLibrary;

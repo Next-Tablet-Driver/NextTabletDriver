@@ -5,6 +5,7 @@
 //! data sample. Some tablets stay silent until the pen comes into
 //! proximity, which makes a sample-read-based check unreliable at boot
 //! time; this queries the OS-reported capability instead.
+#![allow(unsafe_code, reason = "Win32 HID API calls through windows-sys")]
 
 use std::ffi::CStr;
 use windows_sys::Win32::Devices::HumanInterfaceDevice::{

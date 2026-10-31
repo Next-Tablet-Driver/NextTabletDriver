@@ -3,6 +3,10 @@
 //! Safe RAII wrapper around an active plugin instance created from a [`LoadedLibrary`].
 //! Guarantees that the backing shared library is never unmapped while the instance exists,
 //! and properly destroys the C++ or Rust instance upon Drop.
+#![allow(
+    unsafe_code,
+    reason = "calls into a plugin instance through its C ABI function pointers"
+)]
 
 use super::error::PluginError;
 use super::loader::LoadedLibrary;

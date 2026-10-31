@@ -11,6 +11,10 @@
 //! cursor is the source of truth, since another input source could move it
 //! between our packets, and expressing relative moves as absolute ones keeps
 //! them immune to the OS pointer speed/acceleration curve.
+#![allow(
+    unsafe_code,
+    reason = "Win32 cursor and input injection calls through windows-sys"
+)]
 
 use crate::core::input::{Key, MouseButton};
 use std::time::{Duration, Instant};

@@ -9,6 +9,10 @@
 //! number of readers in other processes copy out a consistent snapshot
 //! without ever blocking the writer: a reader retries whenever it detects the
 //! writer was mid-publish, instead of taking a mutex.
+#![allow(
+    unsafe_code,
+    reason = "the shared segment is read and written through raw pointers (seqlock)"
+)]
 
 use std::sync::atomic::{AtomicU32, Ordering};
 

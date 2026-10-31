@@ -1,5 +1,6 @@
 //! Windows implementation of the HID owner lock via a named mutex
 //! (`Local\NextTabletDriver_HidOwner`), tried non-blockingly.
+#![allow(unsafe_code, reason = "Win32 named mutex calls through windows-sys")]
 
 use std::ptr;
 use windows_sys::Win32::Foundation::{CloseHandle, HANDLE, WAIT_ABANDONED, WAIT_OBJECT_0};

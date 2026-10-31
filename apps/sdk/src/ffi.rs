@@ -15,6 +15,10 @@
     unreachable_pub,
     reason = "cbindgen and csbindgen only export `pub` items, so the C ABI must stay `pub`"
 )]
+#![allow(
+    unsafe_code,
+    reason = "the C ABI is `#[no_mangle] extern \"C\"` functions over raw pointers"
+)]
 
 use crate::engine_loop;
 use next_tablet_driver::core::config::models::{ActiveArea, DriverMode};

@@ -1,5 +1,9 @@
 //! Windows shared memory backing for the seqlock segment, via a named
 //! page-file-backed file mapping (`CreateFileMappingW`/`MapViewOfFile`).
+#![allow(
+    unsafe_code,
+    reason = "Win32 file-mapping calls and raw pointers over the shared segment"
+)]
 
 use std::ffi::c_void;
 use windows_sys::Win32::Foundation::{CloseHandle, HANDLE, INVALID_HANDLE_VALUE};

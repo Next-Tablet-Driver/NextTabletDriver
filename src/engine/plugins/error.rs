@@ -161,6 +161,10 @@ mod tests {
     }
 
     #[test]
+    #[allow(
+        unsafe_code,
+        reason = "loads a library that does not exist, to build a real error"
+    )]
     fn library_loading_errors_convert_and_keep_their_source() {
         // SAFETY: loading a library that does not exist runs no initialisation code.
         let cause = unsafe { libloading::Library::new("ntd-no-such-library-for-tests") }

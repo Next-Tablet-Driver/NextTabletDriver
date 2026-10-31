@@ -1,6 +1,10 @@
 //! Runs this process as the HID owner: detects and polls the real device,
 //! publishes live state into the shared segment, and listens for
 //! config-write commands from reader processes.
+#![allow(
+    unsafe_code,
+    reason = "Win32 thread priority calls through windows-sys"
+)]
 
 use super::polling::run_polling_loop;
 use super::sdk_bridge::DesktopCommandHandler;

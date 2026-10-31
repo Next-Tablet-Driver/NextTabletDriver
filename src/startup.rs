@@ -6,6 +6,10 @@
 //! # Platform Specifics
 //! - **Windows**: Creates/removes a value in `HKCU\...\CurrentVersion\Run`.
 //! - **Linux**: Creates/removes a `.desktop` file in `~/.config/autostart/`.
+#![allow(
+    unsafe_code,
+    reason = "Win32 registry and timer-resolution calls through windows-sys"
+)]
 
 use directories::UserDirs;
 use std::env;

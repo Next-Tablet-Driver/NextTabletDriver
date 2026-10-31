@@ -13,6 +13,10 @@ fn main() {
 /// terminal would be lost. Reuse the parent's console when there is one (this never opens a
 /// window) and leave stdout/stderr alone when they are already redirected to a pipe or a file.
 #[cfg(all(windows, debug_assertions))]
+#[allow(
+    unsafe_code,
+    reason = "Win32 console calls, each with its SAFETY comment"
+)]
 fn attach_parent_console() {
     use std::fs::OpenOptions;
     use std::os::windows::io::IntoRawHandle;
