@@ -1,204 +1,212 @@
-# NextTabletDriver v3 — Plan de refonte du backend
+# NextTabletDriver v3: backend rewrite plan
 
-> **Statut** : document de cadrage. Il décide **pourquoi** on refait le backend, **comment** on le fait,
-> et surtout **ce qu'il ne faut pas faire**.
+> **Status**: framing document. It decides **why** the backend is being rebuilt, **how** it is
+> done, and above all **what must not be done**.
 >
-> **Public** : contributeurs humains **et** assistants IA (LLMs). Si tu es un LLM qui travaille sur ce
-> dépôt : la section [« Ce qu'il ne faut PAS faire »](#9-ce-quil-ne-faut-pas-faire) est **normative**.
-> Une règle qui commence par « NE PAS » est une interdiction, pas une suggestion. En cas de doute,
-> arrête-toi et demande, plutôt que de « faire au mieux ».
+> **Audience**: human contributors **and** AI assistants (LLMs). If you are an LLM working on
+> this repository: the section ["What NOT to do"](#9-what-not-to-do) is **normative**. A rule
+> that starts with "DO NOT" is a prohibition, not a suggestion. When in doubt, stop and ask
+> instead of "doing your best".
 >
-> **Avancement et prochaine tâche** : voir la [roadmap (§17)](#17-roadmap). Elle est la source de
-> vérité sur ce qui est fait et sur ce qu'il faut faire ensuite.
+> **Progress and next task**: see the [roadmap (§17)](#17-roadmap). It is the source of truth
+> for what is done and what comes next.
 
 ---
 
-## Sommaire
+## Contents
 
-0. [Résumé des décisions](#0-résumé-des-décisions)
-1. [Diagnostic de la v2](#1-diagnostic-de-la-v2)
-2. [Nouveau dépôt ou même dépôt ?](#2-nouveau-dépôt-ou-même-dépôt-)
-3. [Réécriture d'un coup ou migration progressive ?](#3-réécriture-dun-coup-ou-migration-progressive-)
-4. [Architecture cible : le workspace](#4-architecture-cible--le-workspace)
-5. [Le contrat backend ↔ frontend](#5-le-contrat-backend--frontend)
-6. [Le frontend : on le garde, mais sa couche de données change](#6-le-frontend--on-le-garde-mais-sa-couche-de-données-change)
-7. [Plan de migration par phases](#7-plan-de-migration-par-phases)
-8. [Règles par crate](#8-règles-par-crate)
-9. [Ce qu'il ne faut PAS faire](#9-ce-quil-ne-faut-pas-faire)
-10. [Checklist de PR](#10-checklist-de-pr)
-11. [Problèmes trouvés en dehors de l'architecture](#11-problèmes-trouvés-en-dehors-de-larchitecture)
-12. [Qualité de code](#12-qualité-de-code)
+0. [Summary of decisions](#0-summary-of-decisions)
+1. [Assessment of v2](#1-assessment-of-v2)
+2. [New repository or same repository?](#2-new-repository-or-same-repository)
+3. [Big-bang rewrite or incremental migration?](#3-big-bang-rewrite-or-incremental-migration)
+4. [Target architecture: the workspace](#4-target-architecture-the-workspace)
+5. [The backend ↔ frontend contract](#5-the-backend--frontend-contract)
+6. [The frontend: kept, but its data layer changes](#6-the-frontend-kept-but-its-data-layer-changes)
+7. [Migration plan by phase](#7-migration-plan-by-phase)
+8. [Rules per crate](#8-rules-per-crate)
+9. [What NOT to do](#9-what-not-to-do)
+10. [PR checklist](#10-pr-checklist)
+11. [Issues found outside the architecture](#11-issues-found-outside-the-architecture)
+12. [Code quality](#12-code-quality)
 13. [CI/CD](#13-cicd)
-14. [Contributions, IA et AGENTS.md](#14-contributions-ia-et-agentsmd)
-15. [Outils internes](#15-outils-internes)
-16. [Plateformes cibles](#16-plateformes-cibles)
+14. [Contributions, AI and AGENTS.md](#14-contributions-ai-and-agentsmd)
+15. [Internal tools](#15-internal-tools)
+16. [Target platforms](#16-target-platforms)
 17. [Roadmap](#17-roadmap)
 
 ---
 
-## 0. Résumé des décisions
+## 0. Summary of decisions
 
-| Question | Décision | Raison en une ligne |
+| Question | Decision | One-line reason |
 |---|---|---|
-| Refaire l'architecture du backend ? | **Oui** | Les modules ont des dépendances circulaires qu'un seul crate ne peut pas empêcher. |
-| Nouveau dépôt « NextTabletDriver v3 » ? | **Non. Même dépôt, version 3.0.0** | L'auto-update des utilisateurs v2 pointe en dur vers ce dépôt. Un nouveau dépôt les abandonne sur la v2. |
-| Réécrire d'un coup (big bang) ? | **Non. Migration progressive** | Environ 30 parsers de tablettes et un pipeline sensible à la latence : la parité ne se réécrit pas d'un coup. |
-| Garder le frontend ? | **Oui** | Svelte 5 + TS + tests + design system + E2E : la base est saine. |
-| Changer quelque chose côté frontend ? | **Oui, la couche de données** | Types écrits à la main, `Config` fourre-tout, chaînes magiques, `invoke` hors couche. |
-| Quelles plateformes ? | **Windows, Linux, macOS ; x64, x86 32 bits, ARM** | Pas tout en 3.0 : la v3 livre d'abord Windows et Linux, mais l'architecture prévoit la place de chaque plateforme (§16). |
-| Combien de crates ? | **Une douzaine, pas plus** | Assez pour imposer le sens des dépendances, pas assez pour devenir de la bureaucratie. |
+| Rebuild the backend architecture? | **Yes** | Modules have circular dependencies that a single crate cannot prevent. |
+| New "NextTabletDriver v3" repository? | **No. Same repository, version 3.0.0** | v2 auto-update is hardcoded to this repository. A new one would strand v2 users. |
+| Big-bang rewrite? | **No. Incremental migration** | 18 parser families and a latency-sensitive pipeline: parity cannot be rewritten in one go. |
+| Keep the frontend? | **Yes** | Svelte 5 + TS + tests + design system + E2E: the base is sound. |
+| Change anything in the frontend? | **Yes, the data layer and the quality rules** | Hand-written types, catch-all `Config`, magic strings, `invoke` outside the layer. |
+| How many crates? | **About fifteen, no more** | Enough to enforce dependency direction, not so many that it becomes bureaucracy. |
+| Platforms? | **Windows, Linux, macOS; x64, 32-bit x86, ARM** | Not all in 3.0: v3 ships Windows and Linux first, but the architecture leaves room for every platform (§16). |
+| Language? | **English everywhere** | Code, comments, commits, PRs, AGENTS.md and `docs/`, including this document. |
+| 2.x releases during the rewrite? | **Total freeze** after one transition release | The only 2.x release is the one that ships the real updater key (§2, P0.2). No exceptions. |
+| 2.x maintenance after 3.0? | **None** | Everyone moves to 3.0 through auto-update. |
+| v2 plugins in v3? | **Not supported: new ABI v3** | Official plugins are rebuilt; third-party authors follow a migration guide. |
+| Websocket and SDK? | **Versioned v3 protocol, websocket v2 kept for all of 3.x** | Overlays and integrations keep working; v2 websocket is removed in 4.0. |
+| Telemetry? | **On by default (opt-out), as in v2** | Anonymous, no personal data, can be turned off in Settings. |
 
 ---
 
-## 1. Diagnostic de la v2
+## 1. Assessment of v2
 
-### 1.1 Ce qui va bien (à ne pas casser)
+### 1.1 What works (do not break it)
 
-- Un **pipeline de traitement déjà assez pur** (`src/engine/pipeline/transformer.rs`, `projector.rs`,
-  `src/core/math/*`). On le testerait facilement s'il était isolé.
-- Un **ABI de plugins** séparé (`sdk/plugin_api`), une **vérification de confiance** des plugins
-  (`src/engine/plugins/trust.rs`, minisign) et des plugins réels (`plugins/*`).
-- Les **descripteurs de tablettes en données** (`tablets/`) plutôt qu'en code.
-- La **qualité** : clippy, `deny.toml`, des seuils de couverture (`coverage-thresholds.json`),
-  du fuzzing (`qa/fuzz`), des E2E Playwright et un smoke test natif.
-- Un frontend structuré par **features** (`frontend/src/lib/features/*`).
+- A **processing pipeline that is already fairly pure** (`src/engine/pipeline/transformer.rs`,
+  `projector.rs`, `src/core/math/*`). It would be easy to test if it were isolated.
+- A separate **plugin ABI** (`sdk/plugin_api`), plugin **trust verification**
+  (`src/engine/plugins/trust.rs`, minisign) and real plugins (`plugins/*`).
+- **Tablet descriptors as data** (`tablets/`) rather than code.
+- **Quality**: clippy, `deny.toml`, coverage thresholds (`coverage-thresholds.json`), fuzzing
+  (`qa/fuzz`), Playwright E2E and a native smoke test.
+- A frontend organised by **features** (`frontend/src/lib/features/*`).
 
-### 1.2 Ce qui ne va pas
+### 1.2 What does not work
 
-Le backend (≈ 23 500 lignes) vit dans **un seul crate** `next_tablet_driver`. À l'intérieur d'un
-crate, `crate::n_importe_quoi` est toujours accessible, donc **rien n'empêche les mauvaises
-dépendances**. Voici celles qui existent aujourd'hui :
+The backend (≈ 23,500 lines) lives in **a single crate**, `next_tablet_driver`. Inside a crate,
+`crate::anything` is always reachable, so **nothing prevents bad dependencies**. These exist today:
 
-| Violation | Où | Pourquoi c'est grave |
+| Violation | Where | Why it matters |
 |---|---|---|
-| `drivers` → `engine` | `src/drivers/parsers/wacom/intuos_v1.rs:3`, `pl.rs:3` importent `engine::state::{LockRecoveryExt, WriteRecoverExt}` | Un parser (bytes → rapport) doit être pur. Là, il dépend du runtime et de ses verrous. |
-| `filters` ↔ `engine::plugins` (cycle) | `src/filters/mod.rs:8` ↔ `src/engine/plugins/manager.rs:12` | Un cycle : impossible de tester ou de réutiliser l'un sans l'autre. |
-| `engine` → `application` | `src/engine/tablet_manager/owner.rs:38,61,252` appellent `application::telemetry::capture_event` | La couche basse appelle la couche haute : la télémétrie est soudée au moteur. |
-| `engine` → `settings` (globales) | `src/engine/plugins/manager.rs:44-80` appellent `settings::get_plugins_dir()` / `get_settings_dir()` | Des chemins globaux : on ne peut pas tester avec un dossier temporaire ni embarquer le moteur ailleurs. |
-| `engine` → `settings` (logs) | `src/engine/tablet_manager/polling.rs:390` | La boucle de polling connaît le module de configuration. |
-| Feature `desktop` | `Cargo.toml` `[features]` | Elle sert uniquement à *retirer* l'I/O pour le SDK. C'est le symptôme d'un découpage manquant. |
-| Trois `Cargo.lock` | racine, `src-tauri/`, `sdk/` | Les versions divergent ; `src-tauri/Cargo.toml` dit même « copied: this crate has its own lockfile ». |
-| Fichiers « dieu » | `core/config/models.rs` (934 l.), `tablet_manager/polling.rs` (715 l.) | Trop de responsabilités par fichier. |
-| `MappingConfig` fourre-tout | `core/config/models.rs` | Un même objet contient la zone de mapping, les bindings, le websocket, le thème, la langue, le démarrage auto… |
-| Bindings et modes en `String` | `tip_binding: String`, `pen_button_bindings: Vec<String>` | Les erreurs se voient à l'exécution et pas à la compilation ; le frontend doit deviner le format. |
+| `drivers` → `engine` | `src/drivers/parsers/wacom/intuos_v1.rs:3`, `pl.rs:3` import `engine::state::{LockRecoveryExt, WriteRecoverExt}` | A parser (bytes → report) should be pure. Here it depends on the runtime and its locks. |
+| `filters` ↔ `engine::plugins` (cycle) | `src/filters/mod.rs:8` ↔ `src/engine/plugins/manager.rs:12` | A cycle: neither can be tested or reused without the other. |
+| `engine` → `application` | `src/engine/tablet_manager/owner.rs:38,61,252` call `application::telemetry::capture_event` | The low layer calls the high layer: telemetry is welded to the engine. |
+| `engine` → `settings` (globals) | `src/engine/plugins/manager.rs:44-80` call `settings::get_plugins_dir()` / `get_settings_dir()` | Global paths: impossible to test with a temp directory or embed the engine elsewhere. |
+| `engine` → `settings` (logs) | `src/engine/tablet_manager/polling.rs:390` | The polling loop knows about the settings module. |
+| `desktop` feature | `Cargo.toml` `[features]` | It exists only to *remove* I/O for the SDK. A symptom of a missing split. |
+| Three `Cargo.lock` files | root, `src-tauri/`, `sdk/` | Versions drift; `src-tauri/Cargo.toml` even says "copied: this crate has its own lockfile". |
+| God files | `core/config/models.rs` (934 lines), `tablet_manager/polling.rs` (715 lines) | Too many responsibilities per file. |
+| Catch-all `MappingConfig` | `core/config/models.rs` | One object holds the mapping area, bindings, websocket, theme, language, autostart… |
+| Bindings and modes as `String` | `tip_binding: String`, `pen_button_bindings: Vec<String>` | Errors surface at runtime instead of compile time; the frontend has to guess the format. |
 
-**Conclusion** : il ne manque pas de code. Il manque des **frontières**. Les sous-crates sont la façon
-la moins chère d'en avoir qui sont **vérifiées par le compilateur**.
+**Conclusion**: code is not what is missing. **Boundaries** are. Sub-crates are the cheapest way
+to get boundaries that are **checked by the compiler**.
 
 ---
 
-## 2. Nouveau dépôt ou même dépôt ?
+## 2. New repository or same repository?
 
-### Décision : **même dépôt**, la v3 s'appelle simplement `3.0.0`.
+### Decision: **same repository**; v3 is simply `3.0.0`.
 
-### Pourquoi pas un nouveau dépôt
+### Why not a new repository
 
-1. **L'auto-update est câblé sur ce dépôt.**
+1. **Auto-update is wired to this repository.**
    - `src-tauri/tauri.conf.json` → `https://github.com/Next-Tablet-Driver/NextTabletDriver/releases/latest/download/latest.json`
    - `src/application/services/autoupdate/github.rs` → `api.github.com/repos/Next-Tablet-Driver/NextTabletDriver/releases`
 
-   Si la v3 vit dans un autre dépôt, **toutes les installations v2 restent sur la v2 pour toujours**,
-   sans le savoir. C'est la raison la plus forte, et elle suffit à trancher.
-2. **Historique Git** : `git blame` sur un parser Wacom explique *pourquoi* tel octet est masqué.
-   Ce savoir est irremplaçable. Un nouveau dépôt le coupe.
-3. **Issues, PR, étoiles, référencement, liens externes** (osu!, forums, wikis) : tout pointe ici.
-4. **Écosystème de plugins** : les auteurs de plugins suivent ce dépôt et ce SDK.
-5. **« v3 » est une version, pas un produit.** SemVer est fait pour ça : `3.0.0` = changements
-   incompatibles. Le nom dans le dépôt n'apporte rien.
+   If v3 lives in another repository, **every v2 install stays on v2 forever** without knowing it.
+   This is the strongest reason and it settles the question on its own.
+2. **Git history**: `git blame` on a Wacom parser explains *why* a given byte is masked. That
+   knowledge is irreplaceable. A new repository cuts it off.
+3. **Issues, PRs, stars, search ranking, external links** (osu!, forums, wikis): they all point here.
+4. **Plugin ecosystem**: plugin authors follow this repository and this SDK.
+5. **"v3" is a version, not a product.** That is what SemVer is for: `3.0.0` means breaking changes.
 
-### Ce qu'on fait à la place
+### What we do instead
 
-- Une branche longue `v3` **seulement si nécessaire**. Mieux : on travaille sur `main` par petites
-  PR (voir §3), et la v2 reste maintenable via une branche `release/2.x` pour les correctifs.
-- Si un jour on veut vraiment renommer le projet : **renommer le dépôt** sur GitHub (les redirections
-  sont conservées) **et** publier d'abord une dernière v2.x qui pointe l'updater vers le nouvel
-  endpoint. Jamais l'inverse.
-
----
-
-## 3. Réécriture d'un coup ou migration progressive ?
-
-### Décision : **migration progressive** (« strangler fig »), pas de big bang.
-
-### Pourquoi
-
-- La nouvelle architecture **correspond presque un pour un aux modules existants** (§4). On
-  **déplace** du code et on **coupe des dépendances**, on ne réinvente pas d'algorithmes.
-- Les parsers encodent des années de rétro-ingénierie. Les réécrire, c'est réintroduire des bugs
-  déjà corrigés.
-- Le produit est **sensible à la latence** (osu!). Un big bang mélange régressions de latence et
-  changements d'architecture : impossible de savoir ce qui a cassé.
-- **Effet second système** : une réécriture complète gonfle toujours en périmètre (« tant qu'on y
-  est… ») et ne sort jamais.
-- Les tests existants (unitaires, fuzz, E2E, smoke natif) **servent de filet** pendant tout le
-  déplacement. Avec un big bang, on les perd aussi.
-
-### Règle d'or
-
-> À chaque PR, le binaire compile, les tests passent, et l'application fonctionne pour un utilisateur.
-> Il n'existe jamais d'état « ça marchera quand tout sera fini ».
+- Work on `main` in small PRs (§3). No long-lived `v3` branch.
+- **Transition release, then total freeze.** Today's updater public key is a placeholder (§11).
+  One last 2.x release ships the real key (roadmap P0.2) so that every v2 install can verify and
+  accept 3.0. After it, **no 2.x release is published** until `3.0.0-beta.1`, not even a security
+  fix.
+- **No 2.x maintenance after 3.0**: there is no `release/2.x` branch. Everyone moves to 3.0
+  through auto-update.
+- If the project is ever renamed: **rename the repository** on GitHub (redirects are kept) **and**
+  ship a release whose updater points to the new endpoint first. Never the other way round.
 
 ---
 
-## 4. Architecture cible : le workspace
+## 3. Big-bang rewrite or incremental migration?
 
-### 4.1 Disposition
+### Decision: **incremental migration** ("strangler fig"), no big bang.
+
+### Why
+
+- The new architecture **maps almost one-to-one onto the existing modules** (§4). We **move**
+  code and **cut dependencies**; we do not reinvent algorithms.
+- The parsers encode years of reverse engineering. Rewriting them reintroduces bugs that were
+  already fixed.
+- The product is **latency sensitive** (osu!). A big bang mixes latency regressions with
+  architecture changes: nobody can tell what broke.
+- **Second-system effect**: a full rewrite always grows in scope ("while we're at it…") and never
+  ships.
+- The existing tests (unit, fuzz, E2E, native smoke) **are the safety net** throughout the move.
+  A big bang loses them too.
+
+### Golden rule
+
+> After every PR, the binary builds, the tests pass and the application works for a user.
+> There is never a state of "it will work once everything is done".
+
+---
+
+## 4. Target architecture: the workspace
+
+### 4.1 Layout
 
 ```
 Cargo.toml                 # [workspace] + [workspace.dependencies] + [workspace.lints]
-Cargo.lock                 # UN SEUL lockfile
+Cargo.lock                 # ONE lockfile
 crates/
-  ntd-core/                # types et maths purs
-  ntd-tablets/             # descripteurs + parsers (bytes → rapport), purs
-  ntd-hid/                 # I/O HID (hidapi)
-  ntd-pipeline/            # transformation, projection, chaîne de filtres, trait Filter
-  ntd-plugin-api/          # ABI C stable (ex sdk/plugin_api)
-  ntd-plugin-host/         # chargement, vérification de confiance, gestion des plugins
-  ntd-output/              # injection d'entrées OS (SendInput / uinput)
-  ntd-interop/             # shm, lock, protocole de commandes inter-process
-  ntd-settings/            # profils, préférences, thèmes, import OTD
-  ntd-platform/            # intégration OS hors HID/injection : démarrage auto, instance
-                           # unique, priorité des threads, timer haute résolution (§16.4)
-  ntd-engine/              # runtime : threads, état, boutons, orchestration
-  ntd-services/            # websocket, autoupdate, télémétrie, supervisor
-  ntd-ipc/                 # DTO du contrat frontend + génération des types TS
-  ntd-test-support/        # fakes (HID, output, horloge), fixtures — dev-only
+  ntd-core/                # pure types and maths
+  ntd-tablets/             # descriptors + parsers (bytes → report), pure
+  ntd-hid/                 # HID I/O (hidapi)
+  ntd-pipeline/            # transform, projection, filter chain, Filter trait
+  ntd-plugin-api/          # stable C ABI (formerly sdk/plugin_api), published on crates.io
+  ntd-plugin-host/         # loading, trust verification, plugin management
+  ntd-output/              # OS input injection (SendInput / uinput)
+  ntd-interop/             # shm, lock, inter-process command protocol
+  ntd-settings/            # profiles, preferences, themes, OTD import
+  ntd-platform/            # OS integration outside HID/injection: autostart, single
+                           # instance, thread priority, high-resolution timer (§16.4)
+  ntd-engine/              # runtime: threads, state, buttons, orchestration
+  ntd-services/            # websocket, autoupdate, telemetry, supervisor
+  ntd-ipc/                 # frontend contract DTOs + TS generation (tauri-specta)
+  ntd-test-support/        # fakes (HID, output, clock), fixtures; dev-only
 apps/
-  desktop/                 # ex src-tauri : câblage Tauri uniquement
-  sdk/                     # cdylib/staticlib pour intégrateurs
-plugins/                   # plugins officiels, membres du workspace
-frontend/                  # inchangé dans sa structure
-tablets/                   # données des tablettes (embarquées par ntd-tablets)
-qa/fuzz/                   # cibles fuzz sur ntd-tablets, ntd-pipeline et ntd-interop
+  desktop/                 # formerly src-tauri: Tauri wiring only
+  sdk/                     # cdylib/staticlib for integrators
+plugins/                   # official plugins, workspace members
+frontend/                  # structure unchanged
+tablets/                   # tablet data (consumed by ntd-codegen)
+qa/fuzz/                   # fuzz targets on ntd-tablets, ntd-pipeline and ntd-interop
 tools/
-  ntd-codegen/             # tablets/*.json → Rust généré dans ntd-tablets (§15.1)
-  ntd-tester/              # replay HID → moteur réel → sortie factice (§15.2)
-  ntd-recorder/            # capture HID d'une tablette pour les issues (§15.3)
-  ntd-stress/              # stress du websocket et du protocole interop (§15.5)
-xtask/                     # tâches de dev (types TS, lint-style, plan CI)
+  ntd-codegen/             # tablets/*.json → generated Rust in ntd-tablets (§15.1)
+  ntd-tester/              # HID replay → real engine → fake output (§15.2)
+  ntd-recorder/            # tablet HID capture for issues (§15.3)
+  ntd-stress/              # websocket and interop protocol stress (§15.5)
+xtask/                     # dev tasks (TS types, lint-style, CI plan)
 ```
 
-### 4.2 Responsabilités et dépendances
+### 4.2 Responsibilities and dependencies
 
-| Crate | Repris de | Dépend de | I/O autorisée |
+| Crate | Taken from | Depends on | I/O allowed |
 |---|---|---|---|
-| `ntd-core` | `core/input`, `core/math`, types de `core/config/models` réellement partagés, erreurs de base | — | **Aucune** |
-| `ntd-tablets` | `drivers/parsers`, `drivers/config_loader`, `drivers/models`, `drivers/config`, matching VID/PID de `drivers/detection` | core | **Aucune** (les JSON sont embarqués) |
-| `ntd-hid` | `drivers/hid_caps`, énumération de `detection`, `tablet_manager/reader` | core, tablets | HID |
-| `ntd-pipeline` | `engine/pipeline/*`, `filters` (chaîne + trait) | core | **Aucune** |
-| `ntd-plugin-api` | `sdk/plugin_api` | — | **Aucune** |
-| `ntd-plugin-host` | `engine/plugins/*` | pipeline, plugin-api | fichiers, `libloading` |
+| `ntd-core` | `core/input`, `core/math`, types from `core/config/models` that are really shared, base errors | — | **None** |
+| `ntd-tablets` | `drivers/parsers`, `drivers/config_loader`, `drivers/models`, `drivers/config`, VID/PID matching from `drivers/detection` | core | **None** (descriptors are generated code) |
+| `ntd-hid` | `drivers/hid_caps`, enumeration from `detection`, `tablet_manager/reader` | core, tablets | HID |
+| `ntd-pipeline` | `engine/pipeline/*`, `filters` (chain + trait) | core | **None** |
+| `ntd-plugin-api` | `sdk/plugin_api` | — | **None** |
+| `ntd-plugin-host` | `engine/plugins/*` | pipeline, plugin-api | files, `libloading` |
 | `ntd-output` | `engine/injector/*` | core | OS (injection) |
-| `ntd-interop` | `engine/interop/*` | core | shm, verrous OS |
-| `ntd-settings` | `settings/*` | core | fichiers (chemins **injectés**) |
-| `ntd-platform` | démarrage auto, instance unique, priorité de thread et timer (aujourd'hui éparpillés dans `startup.rs`, `application/`, `engine/`) | core | OS |
-| `ntd-engine` | `engine/tablet_manager/*`, `engine/state` | core, tablets, hid, pipeline, plugin-host, output, interop, settings | threads |
-| `ntd-services` | `application/services/*`, `application/telemetry/*` | engine, settings | réseau |
-| `ntd-ipc` | DTO implicites de `src-tauri/src/commands.rs` + `frontend/.../tauri/commands.ts` | core, settings (types) | **Aucune** |
-| `apps/desktop` | `src-tauri` | engine, services, ipc | Tauri |
-| `apps/sdk` | `sdk` | core, tablets, hid, pipeline | via ses dépendances |
+| `ntd-interop` | `engine/interop/*` | core | shm, OS locks |
+| `ntd-settings` | `settings/*` | core | files (paths **injected**) |
+| `ntd-platform` | autostart, single instance, thread priority and timer (today scattered across `startup.rs`, `application/`, `engine/`) | core | OS |
+| `ntd-engine` | `engine/tablet_manager/*`, `engine/state` | core, tablets, hid, pipeline, plugin-host, output, interop, settings, platform | threads |
+| `ntd-services` | `application/services/*`, `application/telemetry/*` | engine, settings | network |
+| `ntd-ipc` | implicit DTOs of `src-tauri/src/commands.rs` + `frontend/.../tauri/commands.ts` | core, settings (types) | **None** |
+| `apps/desktop` | `src-tauri` | engine, services, ipc, platform | Tauri |
+| `apps/sdk` | `sdk` | core, tablets, hid, pipeline | through its dependencies |
 
-### 4.3 Graphe (les flèches vont **toujours vers le bas**)
+### 4.3 Graph (arrows **always point down**)
 
 ```
                  apps/desktop                 apps/sdk
@@ -206,31 +214,33 @@ xtask/                     # tâches de dev (types TS, lint-style, plan CI)
         services     ipc      \          tablets hid pipeline
             |          \       \
           engine ───────┴───────┘
-   ┌────┬───┼────────┬─────────┬─────────┬──────────┐
-  hid tablets pipeline plugin-host output  interop  settings
-   │    │      │         │   │     │        │         │
-   └────┴──────┴─────────┘  plugin-api      └─────────┴──► core
-                 (tout dépend de core, core ne dépend de rien)
+   ┌────┬───┼────────┬─────────┬─────────┬──────────┬──────────┐
+  hid tablets pipeline plugin-host output  interop  settings  platform
+   │    │      │         │   │     │        │         │          │
+   └────┴──────┴─────────┘  plugin-api      └─────────┴──────────┴──► core
+                 (everything depends on core, core depends on nothing)
 ```
 
-### 4.4 Les trois inversions qui cassent les cycles
+### 4.4 The three inversions that break the cycles
 
-1. **Filtres ↔ plugins** : `ntd-pipeline` définit `trait Filter`. `ntd-plugin-host` fournit un
-   `PluginFilter: Filter`. Le pipeline ne sait pas que les plugins existent.
-2. **Moteur → télémétrie** : `ntd-engine` publie des `EngineEvent` (ex. `DeviceLost`,
-   `ParserError`) sur un canal. `ntd-services` s'abonne et décide d'envoyer ou non la télémétrie.
-3. **Moteur → chemins globaux** : on construit une struct `Paths { settings, plugins, logs, … }`
-   **une fois** dans `apps/desktop`, puis on la passe en paramètre. Aucun crate de bibliothèque
-   n'appelle `directories` lui-même.
+1. **Filters ↔ plugins**: `ntd-pipeline` defines `trait Filter`. `ntd-plugin-host` provides a
+   `PluginFilter: Filter`. The pipeline does not know plugins exist.
+2. **Engine → telemetry**: `ntd-engine` publishes `EngineEvent`s (e.g. `DeviceLost`,
+   `ParserError`) on a channel. `ntd-services` subscribes and decides whether to send telemetry.
+3. **Engine → global paths**: a `Paths { settings, plugins, logs, … }` struct is built **once** in
+   `apps/desktop` and passed as a parameter. No library crate calls `directories` itself.
 
-### 4.5 Interface publique du moteur
+### 4.5 Public engine interface
 
 ```rust
-// ntd-engine — esquisse, pas une API figée
-pub struct Engine { /* privé */ }
+// ntd-engine: sketch, not a frozen API
+pub struct Engine { /* private */ }
 
 impl Engine {
-    pub fn start(cfg: EngineConfig, deps: EngineDeps) -> Result<(EngineHandle, Receiver<EngineEvent>), EngineError>;
+    pub fn start(
+        cfg: EngineConfig,
+        deps: EngineDeps,
+    ) -> Result<(EngineHandle, Receiver<EngineEvent>), EngineError>;
 }
 
 #[derive(Clone)]
@@ -244,17 +254,17 @@ impl EngineHandle {
 }
 
 pub struct EngineDeps {
-    pub hid: Box<dyn HidBackend>,      // réel ou fake
-    pub output: Box<dyn OutputSink>,   // réel ou fake
-    pub clock: Box<dyn Clock>,         // réel ou fake
+    pub hid: Box<dyn HidBackend>,      // real or fake
+    pub output: Box<dyn OutputSink>,   // real or fake
+    pub clock: Box<dyn Clock>,         // real or fake
     pub paths: Paths,
 }
 ```
 
-Le moteur se pilote **uniquement** par cette poignée. Il n'y a pas de `SharedState` global que
-chaque commande Tauri verrouille et modifie à sa façon.
+The engine is driven **only** through this handle. There is no global `SharedState` that every
+Tauri command locks and mutates in its own way.
 
-### 4.6 Configuration du workspace
+### 4.6 Workspace configuration
 
 ```toml
 [workspace]
@@ -263,7 +273,7 @@ members = ["crates/*", "apps/*", "plugins/*", "tools/*", "xtask"]
 
 [workspace.package]
 edition = "2024"
-rust-version = "1.99.0"
+rust-version = "1.99.0"   # MSRV, see §12.6
 license = "MIT"
 repository = "https://github.com/Next-Tablet-Driver/NextTabletDriver"
 
@@ -273,529 +283,576 @@ thiserror = "2"
 log = "0.4"
 crossbeam-channel = "0.5"
 hidapi = "2.6.3"
-# … une seule version de chaque dépendance pour tout le workspace
+# … one version of each dependency for the whole workspace
 
-# Les lints complets sont dans §12.3.
+# The full lint set is in §12.3.
 ```
 
-Chaque crate : `[lints] workspace = true` et `serde.workspace = true`, etc.
+Every crate: `[lints] workspace = true`, `serde.workspace = true`, etc. Every crate is
+`publish = false` except `ntd-plugin-api` (§8).
 
 ---
 
-## 5. Le contrat backend ↔ frontend
+## 5. The backend ↔ frontend contract
 
-On garde le frontend, donc **le contrat est la chose la plus importante à protéger**.
+The frontend is kept, so **the contract is the most important thing to protect**.
 
-### 5.1 Principe
+### 5.1 Principle
 
-- `ntd-ipc` contient **tous** les types échangés avec le frontend : arguments et retours des
-  commandes, payloads des événements, erreurs.
-- Les types TypeScript sont **générés** depuis Rust (recommandé : `tauri-specta`, qui génère
-  aussi les fonctions typées pour les commandes ; sinon `ts-rs`) dans
-  `frontend/src/lib/infrastructure/tauri/bindings.ts`.
-- La CI régénère les bindings et **échoue s'il y a une différence** (`cargo xtask gen-ts && git diff --exit-code`).
+- `ntd-ipc` holds **every** type exchanged with the frontend: command arguments and return
+  values, event payloads, errors.
+- The TypeScript types **and** typed command/event functions are **generated** from Rust with
+  **`tauri-specta`** into `frontend/src/lib/infrastructure/tauri/bindings.ts`.
+- CI regenerates the bindings and **fails on any diff** (`cargo xtask gen-ts && git diff --exit-code`).
 
-### 5.2 Ordre
+### 5.2 Order
 
-1. **D'abord**, on fige le contrat v2 tel quel dans `ntd-ipc` (les 26 commandes de
-   `src-tauri/src/commands.rs`, les événements `tablet-event`, `log-event`, `device-changed`,
-   `profile-loaded`, `navigate-to-updates`). On génère les types. Le frontend ne change pas de
-   comportement.
-2. **Ensuite**, on fait évoluer le contrat vers sa forme v3 (§6.3), commande par commande, chaque
-   changement étant **compilé des deux côtés** grâce aux types générés.
+1. **First**, freeze the v2 contract as is (the 26 commands of `src-tauri/src/commands.rs`, the
+   events `tablet-event`, `log-event`, `device-changed`, `profile-loaded`, `navigate-to-updates`)
+   and generate the bindings. The frontend's behaviour does not change.
+2. **Then** evolve the contract towards its v3 shape (§6.3), one command at a time, each change
+   **compiled on both sides** thanks to the generated bindings.
 
-### 5.3 Erreurs
+### 5.3 Errors
 
-Les commandes renvoient `Result<T, IpcError>`, où `IpcError` est un enum sérialisé
-(`{ kind: "DeviceNotFound" } | { kind: "InvalidMapping", field: "…" } | …`). Le frontend
-`switch` sur `kind`. On ne fait jamais `.to_string()` d'une erreur vers le frontend pour qu'il
-analyse le texte.
+Commands return `Result<T, IpcError>`, where `IpcError` is a serialised enum
+(`{ kind: "DeviceNotFound" } | { kind: "InvalidMapping", field: "…" } | …`). The frontend
+`switch`es on `kind`. An error is never `.to_string()`ed for the frontend to parse.
+
+### 5.4 External integrations: websocket and SDK
+
+- **Websocket**: v3 introduces a **versioned** protocol. Each message carries a protocol
+  version; the client chooses it at connection time. The **v2 protocol stays available for the
+  whole 3.x line** through a compatibility layer, with the same messages and fields as today, so
+  existing overlays (osu! and others) keep working. It is removed in 4.0 and deprecated in the
+  3.0 release notes.
+- **SDK** (`apps/sdk`, C and C# bindings): v3 is a **new major SDK version**, with a migration
+  guide `docs/sdk-migration-v3.md`. Within 3.x, the SDK API does not break.
+- Both protocols (websocket v2 and v3) are covered by tests and by `ntd-stress` (§15.5).
 
 ---
 
-## 6. Le frontend : on le garde, mais sa couche de données change
+## 6. The frontend: kept, but its data layer changes
 
-### 6.1 Verdict : garder le frontend n'est **pas** une erreur
+### 6.1 Verdict: keeping the frontend is **not** a mistake
 
-- Stack moderne et adaptée : **Svelte 5** (runes), **TypeScript**, **Vite**.
-- Organisation par features (`mapping`, `pen`, `filters`, `settings`, `console`, `release`, `credits`).
-- Design system avec tokens, thèmes validés (`theme/validate.ts`, `contrast.ts`) et tests.
-- Tests unitaires (Vitest + Testing Library), E2E Playwright, smoke natif, mock Tauri (`src/dev/tauri-mock.ts`).
-- ≈ 12 000 lignes **qui fonctionnent**. Les réécrire ne corrigerait aucun des problèmes listés
-  ci-dessous : ils viennent tous du **contrat** et de la **couche de données**, pas de Svelte.
+- A modern, suitable stack: **Svelte 5** (runes), **TypeScript**, **Vite**.
+- Organised by features (`mapping`, `pen`, `filters`, `settings`, `console`, `release`, `credits`).
+- A design system with tokens, validated themes (`theme/validate.ts`, `contrast.ts`) and tests.
+- Unit tests (Vitest + Testing Library), Playwright E2E, native smoke test, Tauri mock
+  (`src/dev/tauri-mock.ts`).
+- ≈ 12,000 lines **that work**. Rewriting them would not fix any of the issues below: they all
+  come from the **contract** and the **data layer**, not from Svelte.
 
-> Réécrire le frontend *et* le backend en même temps, c'est ne plus avoir aucun point fixe pour
-> détecter les régressions. On garde le frontend **précisément** pour qu'il serve de référence.
+> Rewriting the frontend *and* the backend at the same time means losing every fixed point for
+> detecting regressions. The frontend is kept **precisely** so it can serve as the reference.
 
-### 6.2 Ce qui ne va pas côté frontend
+### 6.2 What is wrong in the frontend
 
-| Problème | Où | Conséquence |
+| Issue | Where | Consequence |
 |---|---|---|
-| Types écrits à la main, dupliqués depuis Rust | `infrastructure/tauri/commands.ts` (`Config`, `Area`, `PluginPropertyKind`…) | Ils dérivent en silence de Rust. Une faute de frappe = `undefined` à l'exécution. |
-| `Config` fourre-tout | même fichier ; `get_config` / `set_config(new_config: MappingConfig)` côté Rust | Chaque petit changement renvoie **tout** l'objet, avec des conflits possibles si deux écrans modifient en même temps. |
-| Chaînes magiques | `mode: string`, `tip_binding: string`, noms d'événements `"tablet-event"` | Pas de vérification à la compilation. |
-| `invoke` direct dans les composants | `components/MenuBar.svelte:93,113,194,278` | Ça contourne la couche `infrastructure`, ce qui casse le mock et la cohérence. |
-| Détection « dirty » par `JSON.stringify` | `features/mapping/mapping-state.svelte.ts` (le commentaire mentionne l'ordre de sérialisation) | Fragile : dépend de l'ordre des clés. |
-| `setTimeout(…, 50)` pour `isLoaded` | `mapping-state.svelte.ts` | Contournement d'une course, pas une correction. |
-| `listen` direct dans un composant | `features/mapping/TabletVisualizer.svelte` | Contourne `infrastructure/events.ts`. |
-| Flux haute fréquence via `emit` JSON | `src-tauri/src/lib.rs:242` (`tablet-event`) | Coûteux en CPU ; le bon outil est `tauri::ipc::Channel`. |
-| Double dépendance d'icônes | `package.json` : `@lucide/svelte` **et** `lucide-svelte` | Poids inutile, deux API. |
+| Hand-written types duplicated from Rust | `infrastructure/tauri/commands.ts` (`Config`, `Area`, `PluginPropertyKind`…) | They silently drift from Rust. A typo means `undefined` at runtime. |
+| Catch-all `Config` | same file; `get_config` / `set_config(new_config: MappingConfig)` in Rust | Every small change sends **the whole** object back, with possible conflicts if two screens edit at once. |
+| Magic strings | `mode: string`, `tip_binding: string`, event names like `"tablet-event"` | No compile-time check. |
+| `invoke` called directly in components | `components/MenuBar.svelte:93,113,194,278` | Bypasses the `infrastructure` layer, breaking the mock and consistency. |
+| "Dirty" detection with `JSON.stringify` | `features/mapping/mapping-state.svelte.ts` (the comment mentions serialisation order) | Fragile: depends on key order. |
+| `setTimeout(…, 50)` for `isLoaded` | `mapping-state.svelte.ts` | A workaround for a race, not a fix. |
+| `listen` called directly in a component | `features/mapping/TabletVisualizer.svelte` | Bypasses `infrastructure/events.ts`. |
+| High-frequency stream via JSON `emit` | `src-tauri/src/lib.rs:242` (`tablet-event`) | CPU-heavy; the right tool is `tauri::ipc::Channel`. |
+| Two icon libraries | `package.json`: `@lucide/svelte` **and** `lucide-svelte` | Dead weight, two APIs. |
 
-### 6.3 Ce qui doit changer (et rien de plus)
+### 6.3 What must change (and nothing more)
 
-1. **Types générés** (§5) : suppression de toutes les interfaces DTO écrites à la main dans `commands.ts`.
-2. **Une seule porte vers Tauri** : `infrastructure/tauri/` est le **seul** endroit qui importe
-   `@tauri-apps/api`. Règle ESLint `no-restricted-imports` pour l'imposer partout ailleurs.
-3. **Découper `Config` par domaine**, côté contrat comme côté stores :
-   - `Mapping` (zones, rotation, mode, snapping, ratio)
-   - `PenSettings` (seuils, pression, courbe, tilt)
-   - `Bindings` (types : `enum Binding { Key{…}, Mouse{…}, Disabled, … }`)
-   - `FilterChain` (plugins activés et leurs propriétés)
-   - `AppPreferences` (thème, langue, démarrage auto, tray, timer haute résolution)
+1. **Generated bindings** (§5): every hand-written DTO interface in `commands.ts` goes away.
+2. **A single gateway to Tauri**: `infrastructure/tauri/` is the **only** place that imports
+   `@tauri-apps/api`. An ESLint `no-restricted-imports` rule enforces it everywhere else.
+3. **Split `Config` by domain**, in the contract and in the stores:
+   - `Mapping` (areas, rotation, mode, snapping, aspect ratio)
+   - `PenSettings` (thresholds, pressure, curve, tilt)
+   - `Bindings` (typed: `enum Binding { Key{…}, Mouse{…}, Disabled, … }`)
+   - `FilterChain` (enabled plugins and their properties)
+   - `AppPreferences` (theme, language, autostart, tray, high-resolution timer, telemetry)
    - `WebSocketSettings`
 
-   Une commande par domaine (`get_mapping` / `update_mapping`…). Un store Svelte par domaine.
-4. **Le backend fait autorité.** Le frontend envoie une intention (`update_mapping`), le backend
-   valide, applique et renvoie l'état réel (ou un événement `mapping-changed`). Le frontend
-   affiche **ce que le backend renvoie**. Pas de « sauvegarde » qui écrase l'état à l'aveugle.
-5. **Dirty et historique** : on compare de façon structurelle (égalité champ par champ) et on
-   supprime `JSON.stringify`. L'undo/redo peut rester côté frontend, mais il porte sur des objets
-   de domaine typés.
-6. **Flux temps réel** : `tablet-event` passe par un `Channel` Tauri, débité à la fréquence d'affichage
-   (≈ 60 Hz) **côté backend**. Le frontend ne reçoit jamais 1000 Hz.
-7. **Supprimer les `setTimeout` de synchronisation**, en remplaçant par de vrais états (`loading | ready | error`).
-8. **Garder** : composants UI, design system, thèmes, pages, tests, E2E, mock Tauri (mis à jour
-   automatiquement grâce aux types générés).
+   One command pair per domain (`get_mapping` / `update_mapping`…). One Svelte store per domain.
+4. **The backend is the source of truth.** The frontend sends an intent (`update_mapping`), the
+   backend validates, applies and returns the real state (or a `mapping-changed` event). The
+   frontend shows **what the backend returns**. No "save" that blindly overwrites state.
+5. **Dirty state and history**: structural comparison (field by field), no `JSON.stringify`.
+   Undo/redo can stay in the frontend, on typed domain objects.
+6. **Real-time stream**: `tablet-event` goes through a Tauri `Channel`, decimated to the display
+   rate (≈ 60 Hz) **in the backend**. The frontend never receives 1000 Hz.
+7. **Remove synchronisation `setTimeout`s** in favour of real states (`loading | ready | error`).
+8. **Keep**: UI components, design system, themes, pages, tests, E2E, Tauri mock (kept up to date
+   automatically by the generated bindings).
+9. **Frontend quality rules** (§12.7) apply like the backend ones.
 
 ---
 
-## 7. Plan de migration par phases
+## 7. Migration plan by phase
 
-Chaque phase = plusieurs petites PR. **Critère de sortie** obligatoire avant la phase suivante.
+Each phase = several small PRs. The **exit criterion** is mandatory before the next phase. The
+detailed, checkable task list is the roadmap (§17).
 
-### Phase 0 — Filets de sécurité (avant de toucher l'architecture)
+### Phase 0: Safety nets (before touching the architecture)
 
-- Corriger la clé publique de l'updater (§11).
-- Ajouter des **tests de golden files** pour les parsers : pour chaque tablette, des rapports HID
-  bruts → rapport parsé attendu (snapshot). C'est le filet le plus important.
-- Écrire `ntd-recorder` (§15.3) en premier : c'est lui qui produit les captures dont les golden
-  files ont besoin.
-- Ajouter un **benchmark de latence** du pipeline (criterion existe déjà) et noter la référence.
-- Figer le contrat IPC actuel (§5.2 étape 1) avec génération TS.
-- **Sortie** : CI verte, golden files pour toutes les tablettes supportées, latence de référence notée.
+- Fix the updater public key (§11), publish the **transition 2.x release**, then start the
+  release freeze (§2).
+- Write `ntd-recorder` (§15.3) first: it produces the captures that golden files need.
+- Add **golden file tests** for the parsers: for each tablet, raw HID reports → expected parsed
+  report (snapshot). This is the most important safety net.
+- Add a **latency benchmark** of the pipeline (criterion already exists) and record the baseline.
+- Freeze the current IPC contract (§5.2 step 1) with `tauri-specta`.
+- **Exit**: green CI, golden files for every tablet with a real capture, latency baseline recorded.
 
-### Phase 1 — Workspace sans changement de code
+### Phase 1: Workspace, quality, CI, contribution rules
 
-- Créer le `[workspace]`, fusionner les trois `Cargo.lock`, introduire `[workspace.dependencies]`
-  et `[workspace.lints]`.
-- Déplacer `src-tauri` → `apps/desktop`, `sdk` → `apps/sdk`, `sdk/plugin_api` → `crates/ntd-plugin-api`.
-- Mettre en place la politique de qualité (§12) et la CI (§13). Les nouveaux lints `deny` vont
-  faire apparaître du code existant non conforme : le corriger dans des PR dédiées, **sans**
-  changer de comportement, crate par crate.
-- Écrire `AGENTS.md` et la politique de contribution (§14).
-- **Sortie** : un seul lockfile, `cargo build --workspace` et `cargo test --workspace` verts,
-  aucun changement de comportement.
+- Create the `[workspace]`, merge the three `Cargo.lock` files, introduce
+  `[workspace.dependencies]` and `[workspace.lints]`.
+- Move `src-tauri` → `apps/desktop`, `sdk` → `apps/sdk`, `sdk/plugin_api` → `crates/ntd-plugin-api`.
+- Put the quality policy (§12) and CI (§13) in place. The new `deny` lints will surface existing
+  non-compliant code: fix it in dedicated PRs, **without** behaviour change, one area at a time.
+- Write `AGENTS.md` and the contribution policy (§14).
+- **Exit**: one lockfile, `cargo build --workspace` and `cargo test --workspace` green, no
+  behaviour change.
 
-### Phase 2 — Extraire les feuilles pures
+### Phase 2: Extract the pure leaves
 
-Dans l'ordre : `ntd-core` → `ntd-tablets` → `ntd-pipeline`.
+In order: `ntd-core` → `ntd-tablets` → `ntd-pipeline`.
 
-- Pour `ntd-tablets` : remplacer l'usage de `engine::state::LockRecoveryExt` dans les parsers
-  Wacom par un état local au parser (un parser ne devrait pas avoir besoin d'un verrou) ou, à défaut,
-  déplacer l'utilitaire dans `ntd-core`.
-- Pour `ntd-pipeline` : introduire `trait Filter`, couper le cycle avec les plugins.
-- Brancher `qa/fuzz` sur ces crates directement, et ajouter les cibles des parsers (§15.4).
-- Remplacer `include_dir` + parsing JSON au démarrage par `ntd-codegen` (§15.1).
-- **Sortie** : ces crates n'ont **aucune** dépendance I/O (vérifié dans `cargo tree`), golden files
-  identiques, latence identique.
+- For `ntd-tablets`: replace the use of `engine::state::LockRecoveryExt` in the Wacom parsers with
+  parser-local state (a parser should not need a lock) or, failing that, move the helper into
+  `ntd-core`.
+- For `ntd-pipeline`: introduce `trait Filter`, break the cycle with plugins.
+- Point `qa/fuzz` at these crates directly and add the parser targets (§15.4).
+- Replace `include_dir` + JSON parsing at startup with `ntd-codegen` (§15.1).
+- **Exit**: these crates have **no** I/O dependency (checked with `cargo tree`), golden files
+  identical, latency within tolerance (+5 %).
 
-### Phase 3 — Extraire les adaptateurs I/O
+### Phase 3: Extract the I/O adapters
 
-`ntd-hid`, `ntd-output`, `ntd-interop`, `ntd-plugin-host`, `ntd-settings`, chacun derrière un trait
-avec un fake dans `ntd-test-support`.
+`ntd-hid`, `ntd-output`, `ntd-interop`, `ntd-plugin-host`, `ntd-settings`, `ntd-platform`, each
+behind a trait with a fake in `ntd-test-support`.
 
-- `ntd-settings` reçoit `Paths` en paramètre ; plus aucune fonction `get_*_dir()` globale.
-- Créer `ntd-platform` et donner à chaque adaptateur OS (`ntd-hid`, `ntd-output`, `ntd-interop`,
-  `ntd-platform`) la structure `windows` / `linux` / `macos` de §16.3, avec le module `macos`
-  qui renvoie `Unsupported`.
-- **Sortie** : la feature `desktop` n'existe plus ; `apps/sdk` ne dépend plus de `ntd-engine` ;
-  le workspace compile (`cargo check`) sur toutes les cibles de §16.2, y compris celles qui ne
-  sont pas encore implémentées.
+- `ntd-settings` receives `Paths` as a parameter; no global `get_*_dir()` function remains.
+- Every OS adapter gets the `windows` / `linux` / `macos` / `unsupported` structure of §16.3, with
+  `macos` returning `Unsupported`.
+- `ntd-plugin-host` implements ABI v3 and refuses v2 plugins with a clear message.
+- **Exit**: the `desktop` feature no longer exists; `apps/sdk` no longer depends on `ntd-engine`;
+  the workspace builds (`cargo check`) on every target of §16.2, including those not implemented
+  yet.
 
-### Phase 4 — Le moteur
+### Phase 4: The engine
 
-- `ntd-engine` avec `EngineHandle` + `EngineEvent` (§4.5).
-- Découper `polling.rs` (715 l.) et `owner.rs` : lecture, parsing, pipeline, sortie, boutons.
-- Télémétrie sortie du moteur (événements).
-- **Sortie** : `ntd-tester` (§15.2) passe sur toutes les captures ; latence ≤ référence.
+- `ntd-engine` with `EngineHandle` + `EngineEvent` (§4.5).
+- Split `polling.rs` (715 lines) and `owner.rs`: reading, parsing, pipeline, output, buttons.
+- Telemetry moved out of the engine (events).
+- **Exit**: `ntd-tester` (§15.2) passes on every capture; latency within tolerance.
 
-### Phase 5 — Services et application
+### Phase 5: Services and application
 
-- `ntd-services` (websocket, autoupdate, télémétrie, supervisor) s'abonne aux `EngineEvent`.
-- `apps/desktop` devient du câblage : environ 300 lignes au total, aucune logique métier.
-- **Sortie** : `apps/desktop/src` ne contient plus de logique ; chaque commande fait ≤ 10 lignes.
+- `ntd-services` (websocket v3 + v2 compatibility, autoupdate, telemetry, supervisor) subscribes
+  to `EngineEvent`s.
+- SDK v3 and its migration guide (§5.4).
+- `apps/desktop` becomes wiring only: about 300 lines in total, no business logic.
+- **Exit**: `apps/desktop/src` contains no logic; each command is ≤ 10 lines.
 
-### Phase 6 — Contrat v3 et frontend
+### Phase 6: v3 contract and frontend
 
-- Découpage de `Config` par domaine, bindings typés, erreurs typées, `Channel` pour le temps réel (§6.3).
-- Migration automatique des profils v2 → v3 (§8, `ntd-settings`).
-- **Sortie** : E2E verts, profils v2 réels importés sans perte, `3.0.0-beta.1` publiée sur le canal
-  de pré-release.
+- Split `Config` by domain, typed bindings, typed errors, `Channel` for real time (§6.3).
+- Automatic v2 → v3 profile migration (§8, `ntd-settings`).
+- **Exit**: E2E green, real v2 profiles imported without loss.
 
-### Phase 7 — Sortie
+### Phase 7: Release
 
-- Bêta publique, puis `3.0.0`.
-- Une dernière `2.x` maintenue pour les correctifs critiques pendant une durée annoncée.
+- Update channels, release workflows, `3.0.0-beta.1` on the pre-release channel.
+- **4-week** public beta, then `3.0.0`.
+- No 2.x maintenance afterwards (§2).
 
 ---
 
-## 8. Règles par crate
+## 8. Rules per crate
 
 ### `ntd-core`
-- Zéro I/O, zéro thread, zéro `unsafe`, zéro dépendance lourde.
-- Types de valeur (`Copy` quand c'est possible) ; unités explicites dans les noms ou des newtypes
-  (`Millimeters`, `TabletUnits`, `Pixels`).
+- No I/O, no threads, no `unsafe`, no heavy dependencies.
+- Value types (`Copy` when possible); units explicit in names or newtypes (`Millimeters`,
+  `TabletUnits`, `Pixels`).
 
 ### `ntd-tablets`
-- Un parser = une fonction `fn parse(&mut self, report: &[u8]) -> Result<Option<TabletReport>, ParseError>`.
-- **Jamais de panic** sur une entrée : tout rapport malformé renvoie une erreur (c'est fuzzé).
-- Pas de `log::` dans le chemin chaud : on renvoie une erreur typée et l'appelant décide.
-- Chaque nouvelle tablette arrive avec ses golden files.
+- A parser = a function `fn parse(&mut self, report: &[u8]) -> Result<Option<TabletReport>, ParseError>`.
+- **Never panic** on input: any malformed report returns an error (it is fuzzed).
+- No `log::` in the hot path: return a typed error and let the caller decide.
+- Every new tablet comes with its golden files.
+- Descriptors are generated by `ntd-codegen` (§15.1).
 
 ### `ntd-hid`
-- Seul crate qui parle à `hidapi`.
-- Gère la reconnexion, mais **ne parse pas** : il délivre des octets bruts.
+- The only crate that talks to `hidapi`.
+- Handles reconnection, but **does not parse**: it delivers raw bytes.
 
 ### `ntd-pipeline`
-- Déterministe : même entrée + même horloge = même sortie.
-- **Aucune allocation** dans le chemin chaud (pré-allouer à la configuration).
-- Le temps est injecté (`Clock`), jamais lu avec `Instant::now()` directement.
+- Deterministic: same input + same clock = same output.
+- **No allocation** in the hot path (pre-allocate at configuration time).
+- Time is injected (`Clock`), never read with `Instant::now()` directly.
 
 ### `ntd-plugin-api`
-- **ABI C stable, versionnée.** Toute modification incompatible = nouvelle version de l'ABI et le
-  host garde le support de l'ancienne pendant au moins une version majeure.
-- Uniquement des types `#[repr(C)]`. Pas de `String`, `Vec`, `Box` ni de trait Rust qui traversent la frontière.
+- **Stable, versioned C ABI.** v3 introduces **ABI v3**: target triple in the manifest,
+  fixed-width types only. **v2 plugins are not supported** in v3; the host refuses them with a
+  clear message, and `docs/plugin-migration-v3.md` explains how to port a plugin.
+- Within a major version, the ABI does not break. The next incompatible change is ABI v4, with v4.
+- `#[repr(C)]` types only. No `String`, `Vec`, `Box` or Rust trait crosses the boundary.
+- **Published on crates.io** as `ntd-plugin-api` so authors can `cargo add ntd-plugin-api`. Its
+  major version follows the ABI version. It is the only published crate.
 
 ### `ntd-plugin-host`
-- La vérification de confiance (minisign) se fait **avant** `dlopen`, jamais après.
-- Un plugin qui panique ou renvoie une erreur est désactivé, le pipeline continue sans lui.
+- Trust verification (minisign) happens **before** `dlopen`, never after.
+- A plugin that panics or returns an error is disabled; the pipeline continues without it.
 
 ### `ntd-output`
-- Un trait `OutputSink` ; une implémentation par OS ; un fake qui enregistre les événements.
+- A `OutputSink` trait; one implementation per OS; a fake that records events.
 
 ### `ntd-settings`
-- Chaque fichier persistant a un champ `version`. Les migrations sont des fonctions pures
-  `v2 → v3` testées avec de **vrais** fichiers v2 en fixtures.
-- Écriture atomique (fichier temporaire + rename).
-- Un fichier corrompu → sauvegarde du fichier corrompu, chargement des valeurs par défaut, message
-  à l'utilisateur. On ne perd jamais silencieusement un profil.
+- Every persisted file has a `version` field. Migrations are pure `v2 → v3` functions tested with
+  **real** v2 files as fixtures.
+- Atomic writes (temporary file + rename).
+- A corrupted file → back up the corrupted file, load defaults, tell the user. A profile is
+  never silently lost.
 
 ### `ntd-engine`
-- Seul propriétaire des threads du moteur.
-- API = `EngineHandle` (commandes) + `Receiver<EngineEvent>`. Pas de `Arc<Mutex<…>>` exposé.
+- The only owner of the engine threads.
+- API = `EngineHandle` (commands) + `Receiver<EngineEvent>`. No exposed `Arc<Mutex<…>>`.
 
 ### `ntd-services`
-- Toute fonctionnalité réseau (télémétrie, update, websocket) est **désactivable**, et la télémétrie
-  est **opt-in**.
+- Every network feature (telemetry, update, websocket) can be **turned off**.
+- **Telemetry is on by default (opt-out)**, as in v2. It is anonymous, contains no personal data
+  (user paths, profile names, machine names), and the toggle is visible in Settings. v2 profiles
+  keep the user's current choice on migration.
+- The websocket binds to `127.0.0.1` by default and serves protocol v3 and v2 (§5.4).
 
 ### `ntd-ipc`
-- Uniquement des types sérialisables et la génération TS. Pas de logique.
+- Serialisable types and TS generation (`tauri-specta`) only. No logic.
 
 ### `apps/desktop`
-- Câblage : construire `Paths`, démarrer `Engine` et `services`, enregistrer les commandes, le tray,
-  l'updater. Chaque commande = traduire DTO → appel `EngineHandle` → DTO.
+- Wiring: build `Paths`, start `Engine` and services, register commands, tray, updater. Each
+  command = translate DTO → call `EngineHandle` → DTO.
 
 ---
 
-## 9. Ce qu'il ne faut PAS faire
+## 9. What NOT to do
 
-> Cette section est **normative**, pour les humains comme pour les LLMs.
-> Si une tâche semble exiger d'enfreindre une de ces règles : **arrête-toi et demande**.
+> This section is **normative**, for humans and LLMs alike.
+> If a task seems to require breaking one of these rules: **stop and ask**.
 
-### 9.1 Projet, dépôt, stratégie
+### 9.1 Project, repository, strategy
 
-1. **NE PAS** créer un nouveau dépôt pour la v3. L'updater des utilisateurs v2 pointe ici (§2).
-2. **NE PAS** changer l'URL de l'updater, le nom du dépôt ou le propriétaire GitHub sans avoir d'abord
-   publié une version v2.x qui pointe vers le nouvel emplacement.
-3. **NE PAS** faire une réécriture big bang sur une branche qui diverge pendant des mois.
-4. **NE PAS** mélanger dans une même PR un déplacement de code et un changement de comportement.
-   Une PR qui déplace du code ne change **rien** d'autre (diff lisible avec `git diff -M`).
-5. **NE PAS** profiter de la refonte pour ajouter des fonctionnalités. Les fonctionnalités
-   attendent la fin de la phase concernée.
-6. **NE PAS** réécrire le frontend.
-7. **NE PAS** supprimer l'historique Git, squasher l'historique existant ou repartir d'un `git init`.
-8. **NE PAS** casser `main` : chaque PR laisse l'application fonctionnelle.
+1. **DO NOT** create a new repository for v3. v2 users' updater points here (§2).
+2. **DO NOT** change the updater URL, repository name or GitHub owner without first publishing a
+   release that points to the new location.
+3. **DO NOT** do a big-bang rewrite on a branch that diverges for months.
+4. **DO NOT** mix moving code and changing behaviour in the same PR. A PR that moves code changes
+   **nothing** else (diff readable with `git diff -M`).
+5. **DO NOT** add features during the rewrite. Features wait until the relevant phase is done.
+6. **DO NOT** rewrite the frontend.
+7. **DO NOT** delete Git history, squash existing history, or restart from `git init`.
+8. **DO NOT** break `main`: every PR leaves the application working.
 
-### 9.2 Architecture et découpage
+### 9.2 Architecture and split
 
-9. **NE PAS** créer de dépendance d'un crate bas vers un crate haut (voir §4.3). Si tu en as besoin,
-   c'est qu'il manque un trait ou un événement : inverse la dépendance.
-10. **NE PAS** créer de cycle entre crates, même via une feature optionnelle.
-11. **NE PAS** créer un crate fourre-tout `ntd-common`, `ntd-utils`, `ntd-shared` ou `ntd-misc`. Chaque
-    fonction a un propriétaire ; s'il n'y en a pas, c'est `ntd-core` et elle doit être pure.
-12. **NE PAS** découper plus fin que nécessaire : **pas** un crate par fabricant de tablette, **pas**
-    un crate par filtre, **pas** un crate par OS. Un module suffit.
-13. **NE PAS** réintroduire de feature Cargo pour « retirer » des parties d'un crate (comme `desktop`).
-    Si un consommateur n'en veut pas une partie, cette partie est un autre crate.
-14. **NE PAS** utiliser les features Cargo pour choisir l'OS. Utiliser `cfg(target_os = …)`.
-15. **NE PAS** ajouter d'état global (`static`, `lazy_static`, `OnceLock` métier, `get_settings_dir()`)
-    dans un crate de bibliothèque. Les dépendances se passent en paramètre.
-16. **NE PAS** exposer `Arc<Mutex<État>>` hors de `ntd-engine`. On communique par commandes et
-    événements.
-17. **NE PAS** appeler la télémétrie, le réseau ou le système de fichiers depuis `ntd-core`,
-    `ntd-tablets` ou `ntd-pipeline`.
-18. **NE PAS** mettre de logique métier dans `apps/desktop` ni dans les commandes Tauri.
-19. **NE PAS** faire dépendre `apps/sdk` de `ntd-engine`, `ntd-services` ou de Tauri.
-20. **NE PAS** dupliquer un type dans deux crates « pour éviter une dépendance ». Il appartient au
-    crate le plus bas qui en a besoin.
-21. **NE PAS** garder plusieurs `Cargo.lock`. Un seul workspace, un seul lockfile.
-22. **NE PAS** déclarer une version de dépendance dans un crate membre : `foo.workspace = true`.
+9. **DO NOT** add a dependency from a low crate to a high crate (see §4.3). If you need one, a
+   trait or an event is missing: invert the dependency.
+10. **DO NOT** create a cycle between crates, even through an optional feature.
+11. **DO NOT** create a catch-all crate such as `ntd-common`, `ntd-utils`, `ntd-shared` or
+    `ntd-misc`. Every function has an owner; if none fits, it is `ntd-core` and it must be pure.
+12. **DO NOT** split finer than needed: **no** crate per tablet vendor, **no** crate per filter,
+    **no** crate per OS. A module is enough.
+13. **DO NOT** reintroduce a Cargo feature to "remove" parts of a crate (like `desktop`). If a
+    consumer does not want part of a crate, that part is another crate.
+14. **DO NOT** use Cargo features to pick the OS. Use `cfg(target_os = …)`.
+15. **DO NOT** add global state (`static`, `lazy_static`, business `OnceLock`,
+    `get_settings_dir()`) in a library crate. Dependencies are passed as parameters.
+16. **DO NOT** expose `Arc<Mutex<State>>` outside `ntd-engine`. Communicate through commands and
+    events.
+17. **DO NOT** call telemetry, the network or the file system from `ntd-core`, `ntd-tablets` or
+    `ntd-pipeline`.
+18. **DO NOT** put business logic in `apps/desktop` or in Tauri commands.
+19. **DO NOT** make `apps/sdk` depend on `ntd-engine`, `ntd-services` or Tauri.
+20. **DO NOT** duplicate a type in two crates "to avoid a dependency". It belongs to the lowest
+    crate that needs it.
+21. **DO NOT** keep several `Cargo.lock` files. One workspace, one lockfile.
+22. **DO NOT** declare a dependency version in a member crate: `foo.workspace = true`.
 
-### 9.3 Rust : code et erreurs
+### 9.3 Rust: code and errors
 
-23. **NE PAS** utiliser `unwrap()`, `expect()` ou `panic!` sur une donnée venant de l'extérieur
-    (HID, fichier, réseau, plugin, frontend). Seuls les invariants internes prouvés peuvent `expect`
-    avec un message qui explique l'invariant.
-24. **NE PAS** utiliser `anyhow` (ni `Box<dyn Error>`) dans les crates de bibliothèque. On utilise des
-    enums `thiserror`. `anyhow` est toléré seulement dans `xtask`.
-25. **NE PAS** convertir une erreur en `String` pour la transporter. On garde le type.
-26. **NE PAS** avaler les erreurs avec `let _ = …` ou `.ok()` sans commentaire qui justifie pourquoi
-    l'échec est sans conséquence (le code v2 fait `let _ = app.emit(…)` partout).
-27. **NE PAS** utiliser `unsafe` hors de `ntd-hid`, `ntd-output`, `ntd-interop`, `ntd-plugin-host`,
-    `ntd-plugin-api`. Chaque bloc `unsafe` a un commentaire `// SAFETY:`.
-28. **NE PAS** désactiver un lint clippy globalement pour faire passer la CI. `#[allow]` local avec
-    justification, ou on corrige.
-29. **NE PAS** écrire des fichiers de plus d'environ 400 lignes. Au-delà, découper par responsabilité.
-30. **NE PAS** utiliser `String` pour un ensemble fini de valeurs (mode, binding, type de courbe,
-    niveau de log). Utiliser un `enum` sérialisé.
-31. **NE PAS** laisser des nombres sans unité : distinguer unités tablette, millimètres, pixels,
-    secondes avec des newtypes ou des noms explicites.
-32. **NE PAS** faire `pub` par défaut. `pub(crate)` d'abord ; l'API publique d'un crate est
-    volontaire et documentée.
+23. **DO NOT** use `unwrap()`, `expect()` or `panic!` on data coming from outside (HID, file,
+    network, plugin, frontend). Only proven internal invariants may `expect`, with a message
+    explaining the invariant.
+24. **DO NOT** use `anyhow` (or `Box<dyn Error>`) in library crates. Use `thiserror` enums.
+    `anyhow` is tolerated only in `xtask`.
+25. **DO NOT** convert an error to `String` to carry it. Keep the type.
+26. **DO NOT** swallow errors with `let _ = …` or `.ok()` without a comment justifying why the
+    failure does not matter (v2 does `let _ = app.emit(…)` everywhere).
+27. **DO NOT** use `unsafe` outside `ntd-hid`, `ntd-output`, `ntd-interop`, `ntd-plugin-host`,
+    `ntd-plugin-api` and `ntd-platform`. Every `unsafe` block has a `// SAFETY:` comment.
+28. **DO NOT** disable a clippy lint globally to make CI pass. Use a local `#[allow]` with a
+    reason, or fix the code.
+29. **DO NOT** write files longer than about 400 lines without justifying it in the PR. This is a
+    review guideline, not a CI check.
+30. **DO NOT** use `String` for a finite set of values (mode, binding, curve type, log level). Use
+    a serialised `enum`.
+31. **DO NOT** leave numbers without units: tell tablet units, millimetres, pixels and seconds
+    apart with newtypes or explicit names.
+32. **DO NOT** make things `pub` by default. `pub(crate)` first; a crate's public API is
+    deliberate and documented.
 
-### 9.4 Latence, concurrence et chemin chaud
+### 9.4 Latency, concurrency and the hot path
 
-33. **NE PAS** allouer (`Vec::new`, `String`, `format!`, `Box`, `clone()` de collections) dans la
-    boucle de lecture → parsing → pipeline → sortie.
-34. **NE PAS** logger dans le chemin chaud (même en `debug!` : le formatage coûte). Compteurs ou
-    échantillonnage seulement.
-35. **NE PAS** prendre un verrou bloquant partagé avec l'UI dans le chemin chaud. La configuration
-    arrive par un canal ou un swap atomique (`arc-swap`), lu sans blocage.
-36. **NE PAS** utiliser `async`/Tokio dans le moteur. Le moteur est fait de threads dédiés avec des
-    canaux ; l'async est réservé à `ntd-services` si besoin.
-37. **NE PAS** appeler `Instant::now()` ou `sleep` directement dans le pipeline. On injecte un `Clock`.
-38. **NE PAS** envoyer chaque rapport HID au frontend. On décime côté backend (≈ 60 Hz).
-39. **NE PAS** fusionner une PR qui dégrade le benchmark de latence de référence sans décision explicite.
+33. **DO NOT** allocate (`Vec::new`, `String`, `format!`, `Box`, `clone()` of collections) in the
+    read → parse → pipeline → output loop.
+34. **DO NOT** log in the hot path (not even `debug!`: formatting costs). Counters or sampling only.
+35. **DO NOT** take a blocking lock shared with the UI in the hot path. Configuration arrives
+    through a channel or an atomic swap (`arc-swap`), read without blocking.
+36. **DO NOT** use `async`/Tokio in the engine. The engine is dedicated threads and channels;
+    async is reserved for `ntd-services` if needed.
+37. **DO NOT** call `Instant::now()` or `sleep` directly in the pipeline. Inject a `Clock`.
+38. **DO NOT** send every HID report to the frontend. Decimate in the backend (≈ 60 Hz).
+39. **DO NOT** merge a PR that makes the reference latency benchmark more than **5 %** slower
+    than the baseline without an explicit maintainer decision recorded in the PR.
 
-### 9.5 Tablettes et parsers
+### 9.5 Tablets and parsers
 
-40. **NE PAS** réécrire un parser « plus proprement » sans golden files qui prouvent la parité octet par octet.
-41. **NE PAS** supprimer un masque de bits, un décalage ou un cas particulier « qui a l'air inutile »
-    dans un parser. Regarder `git blame` d'abord : c'est presque toujours un correctif matériel.
-42. **NE PAS** ajouter une tablette sans descripteur dans `tablets/` **et** golden files.
-43. **NE PAS** faire paniquer un parser sur un rapport trop court ou inconnu : on renvoie une erreur ou `None`.
-44. **NE PAS** coder en dur un VID/PID dans le code Rust : il va dans les descripteurs.
-45. **NE PAS** copier des descripteurs ou du code d'autres pilotes (ex. OpenTabletDriver) sans
-    vérifier leur licence et l'attribution requise (`tablets/OpenTabletDriver` existe : vérifier
-    la compatibilité de sa licence avec la licence MIT du projet).
+40. **DO NOT** rewrite a parser "more cleanly" without golden files proving byte-for-byte parity.
+41. **DO NOT** remove a bit mask, shift or special case "that looks useless" from a parser. Check
+    `git blame` first: it is almost always a hardware fix.
+42. **DO NOT** add a tablet without a descriptor in `tablets/` **and** golden files.
+43. **DO NOT** let a parser panic on a short or unknown report: return an error or `None`.
+44. **DO NOT** hardcode a VID/PID in Rust code: it belongs in the descriptors.
+45. **DO NOT** copy descriptors or code from other drivers (e.g. OpenTabletDriver) without
+    checking their licence and required attribution (`tablets/OpenTabletDriver` is a git
+    submodule of their repository: check its licence against the project's MIT licence).
 
-### 9.6 Plugins, ABI et sécurité
+### 9.6 Plugins, ABI and security
 
-46. **NE PAS** charger (`dlopen`/`LoadLibrary`) une bibliothèque avant d'avoir vérifié sa signature.
-47. **NE PAS** modifier `ntd-plugin-api` de façon incompatible sans incrémenter la version d'ABI et
-    garder la compatibilité avec la précédente.
-48. **NE PAS** faire traverser la frontière ABI à des types Rust (`String`, `Vec`, `Box`, `Option<&T>` non
-    `repr(C)`, traits, panics). Les panics doivent être attrapées (`catch_unwind`) côté plugin et côté host.
-49. **NE PAS** affaiblir, contourner ou rendre optionnelle la vérification de confiance « pour le dev »
-    dans le code de production. Le mode dev est explicite et visible dans l'interface.
-50. **NE PAS** committer de clé privée, de token, ni de clé de développement à la place d'une vraie clé
-    publique (voir §11).
-51. **NE PAS** exposer le websocket hors de `127.0.0.1` par défaut.
-52. **NE PAS** activer la télémétrie par défaut ni y inclure des données personnelles (chemins
-    utilisateur, noms de fichiers de profils).
+46. **DO NOT** load (`dlopen`/`LoadLibrary`) a library before verifying its signature.
+47. **DO NOT** change `ntd-plugin-api` incompatibly within a major version. v3 introduces ABI v3
+    and drops v2 plugins; the next break is ABI v4, with v4.
+48. **DO NOT** let Rust types cross the ABI boundary (`String`, `Vec`, `Box`, non-`repr(C)`
+    `Option<&T>`, traits, panics). Panics must be caught (`catch_unwind`) on both the plugin and
+    the host side.
+49. **DO NOT** weaken, bypass or make trust verification optional "for dev" in production code.
+    Dev mode is explicit and visible in the UI.
+50. **DO NOT** commit a private key, a token, or a development key in place of a real public key
+    (see §11).
+51. **DO NOT** expose the websocket beyond `127.0.0.1` by default.
+52. **DO NOT** put personal data in telemetry (user paths, profile file names, machine names) and
+    **DO NOT** make it impossible to disable. It is on by default (opt-out) and the toggle lives in
+    Settings.
 
-### 9.7 Settings et persistance
+### 9.7 Settings and persistence
 
-53. **NE PAS** changer le format d'un fichier persistant sans champ `version` et migration testée.
-54. **NE PAS** casser les profils v2 des utilisateurs : la v3 les importe automatiquement, et garde
-    une sauvegarde de l'original.
-55. **NE PAS** écrire un fichier de configuration en place. Fichier temporaire, puis rename atomique.
-56. **NE PAS** remplacer silencieusement un fichier illisible par les valeurs par défaut sans garder
-    une copie et prévenir l'utilisateur.
-57. **NE PAS** remettre un objet `Config` unique qui contient tout. Un type par domaine (§6.3).
+53. **DO NOT** change the format of a persisted file without a `version` field and a tested
+    migration.
+54. **DO NOT** break users' v2 profiles: v3 imports them automatically and keeps a backup of the
+    original.
+55. **DO NOT** write a configuration file in place. Temporary file, then atomic rename.
+56. **DO NOT** silently replace an unreadable file with defaults without keeping a copy and
+    telling the user.
+57. **DO NOT** bring back a single `Config` object that holds everything. One type per domain
+    (§6.3).
 
-### 9.8 Contrat IPC et frontend
+### 9.8 IPC contract and frontend
 
-58. **NE PAS** écrire à la main en TypeScript un type qui existe en Rust. Il est généré.
-59. **NE PAS** modifier `bindings.ts` à la main. Il est régénéré et vérifié en CI.
-60. **NE PAS** importer `@tauri-apps/api` ailleurs que dans `frontend/src/lib/infrastructure/tauri/`.
-61. **NE PAS** utiliser de chaînes littérales pour les noms de commandes ou d'événements dans les composants.
-62. **NE PAS** renvoyer tout l'état à chaque modification (`set_config(tout)`). Une commande par
-    domaine, avec validation backend.
-63. **NE PAS** faire confiance au frontend pour valider. Le backend valide tout et renvoie l'état réel.
-64. **NE PAS** renvoyer des erreurs sous forme de texte que le frontend devrait analyser. Erreurs typées.
-65. **NE PAS** utiliser `setTimeout` pour « attendre que ça soit prêt ». Utiliser un état explicite.
-66. **NE PAS** comparer des objets avec `JSON.stringify`.
-67. **NE PAS** utiliser `emit` d'événements JSON pour les flux haute fréquence. Utiliser `Channel`.
-68. **NE PAS** changer de framework frontend, de design system ou de structure de dossiers pendant la refonte.
-69. **NE PAS** garder deux bibliothèques pour la même chose (`@lucide/svelte` et `lucide-svelte`).
+58. **DO NOT** hand-write in TypeScript a type that exists in Rust. It is generated.
+59. **DO NOT** edit `bindings.ts` by hand. It is regenerated and checked in CI.
+60. **DO NOT** import `@tauri-apps/api` anywhere but `frontend/src/lib/infrastructure/tauri/`.
+61. **DO NOT** use string literals for command or event names in components.
+62. **DO NOT** send the whole state on every change (`set_config(everything)`). One command per
+    domain, validated by the backend.
+63. **DO NOT** rely on the frontend for validation. The backend validates everything and returns
+    the real state.
+64. **DO NOT** return errors as text the frontend has to parse. Typed errors.
+65. **DO NOT** use `setTimeout` to "wait until it's ready". Use an explicit state.
+66. **DO NOT** compare objects with `JSON.stringify`.
+67. **DO NOT** use JSON event `emit` for high-frequency streams. Use `Channel`.
+68. **DO NOT** change frontend framework, design system or folder structure during the rewrite.
+69. **DO NOT** keep two libraries for the same job (`@lucide/svelte` and `lucide-svelte`).
 
-### 9.9 Tests et CI
+### 9.9 Tests and CI
 
-70. **NE PAS** supprimer, ignorer (`#[ignore]`, `.skip`) ou affaiblir un test pour faire passer une PR.
-71. **NE PAS** baisser les seuils de `coverage-thresholds.json`.
-72. **NE PAS** écrire de tests qui nécessitent une vraie tablette ou une vraie injection OS pour
-    tester la logique. Utiliser les fakes de `ntd-test-support`.
-73. **NE PAS** mettre à jour des snapshots / golden files en masse sans relire chaque différence et
-    expliquer pourquoi dans la PR.
-74. **NE PAS** tester les détails d'implémentation (« la fonction privée X est appelée »). Tester le
-    comportement observable.
-75. **NE PAS** fusionner avec une CI rouge « parce que c'est flaky ». Un test flaky est un bug à corriger.
+70. **DO NOT** delete, ignore (`#[ignore]`, `.skip`) or weaken a test to get a PR through.
+71. **DO NOT** lower the thresholds in `coverage-thresholds.json`.
+72. **DO NOT** write tests that need a real tablet or real OS injection to test logic. Use the
+    fakes in `ntd-test-support`.
+73. **DO NOT** update snapshots / golden files in bulk without reviewing each difference and
+    explaining why in the PR.
+74. **DO NOT** test implementation details ("private function X is called"). Test observable
+    behaviour.
+75. **DO NOT** merge with red CI "because it's flaky". A flaky test is a bug to fix.
 
-### 9.10 Release et mise à jour
+### 9.10 Release and update
 
-76. **NE PAS** publier une version dont la signature n'a pas été vérifiée avec la clé publique
-    réellement embarquée dans l'application.
-77. **NE PAS** publier la v3 en `latest` avant une période de bêta sur un canal de pré-release.
-78. **NE PAS** retirer le support d'auto-update vers la v3 depuis la dernière v2.x.
+76. **DO NOT** publish a release whose signature was not verified with the public key actually
+    embedded in the application.
+77. **DO NOT** publish v3 as `latest` before the 4-week beta on the pre-release channel.
+78. **DO NOT** remove from the transition 2.x release (P0.2) the ability to auto-update to v3.
 
-### 9.11 Spécifique aux LLMs / assistants de code
+### 9.11 Specific to LLMs and coding assistants
 
-79. **NE PAS** inventer d'API, de crate, de commande Tauri ou de champ de configuration. Vérifier dans
-    le code (`grep`) avant de les utiliser ou de les citer.
-80. **NE PAS** « simplifier » du code de parser, de masque HID ou de timing sans le comprendre.
-81. **NE PAS** générer du code de remplacement pour un module entier quand la tâche demande un
-    déplacement. Déplacer = `git mv` + corriger les chemins, rien d'autre.
-82. **NE PAS** ajouter de dépendance externe sans la déclarer dans `[workspace.dependencies]`, vérifier
-    qu'elle passe `cargo deny`, et justifier pourquoi la std ou une dépendance existante ne suffit pas.
-83. **NE PAS** contourner une règle de ce document en disant qu'elle « ne s'applique pas vraiment ici ».
-    Demander.
-84. **NE PAS** déclarer une tâche terminée sans avoir lancé `cargo fmt --check`, `cargo clippy --workspace
+79. **DO NOT** invent APIs, crates, Tauri commands or configuration fields. Check the code
+    (`grep`) before using or citing them.
+80. **DO NOT** "simplify" parser, HID mask or timing code without understanding it.
+81. **DO NOT** generate replacement code for a whole module when the task asks for a move.
+    Moving = `git mv` + fix paths, nothing else.
+82. **DO NOT** add an external dependency without declaring it in `[workspace.dependencies]`,
+    checking that it passes `cargo deny`, and justifying why std or an existing dependency is not
+    enough.
+83. **DO NOT** sidestep a rule of this document by claiming it "doesn't really apply here". Ask.
+84. **DO NOT** declare a task done without running `cargo fmt --check`, `cargo clippy --workspace
     --all-targets --locked`, `cargo test --workspace`, `cargo xtask lint-style`, `cargo machete`,
-    `typos`, et côté frontend `npm run check`, `npm run lint`, `npm test`.
-85. **NE PAS** produire de gros commits « refactor everything ». Une PR = une intention.
-86. **NE PAS** laisser de `TODO` sans issue liée, ni de code commenté « au cas où ».
-87. **NE PAS** inclure d'identifiant de modèle IA dans les commits, le code ou la documentation.
-88. **NE PAS** ouvrir de pull request en tant qu'agent, même si on te le demande. Tu prépares la
-    branche et la description ; un humain ouvre la PR (§14.3).
+    `typos`, and on the frontend `npm run format:check`, `npm run check`, `npm run lint`,
+    `npm test`.
+85. **DO NOT** produce large "refactor everything" commits. One PR = one intent.
+86. **DO NOT** leave a `TODO` without a linked issue, or commented-out code "just in case".
+87. **DO NOT** include an AI model identifier, AI session link or AI co-author trailer in
+    commits, code or documentation.
+88. **DO NOT** open a pull request as an agent, even if asked to. Prepare the branch and the
+    description; a human opens the PR (§14.3).
 
-### 9.12 Qualité de code et commentaires
+### 9.12 Code quality and comments
 
-89. **NE PAS** dépasser 100 caractères par ligne dans un fichier `.rs`, commentaires et chaînes
-    compris (§12.1).
-90. **NE PAS** écrire de commentaire qui paraphrase le code (`// incrémente i`, `// retourne le
-    résultat`). Un commentaire explique un **pourquoi** : un choix, une contrainte matérielle,
-    un invariant, un piège (§12.2).
-91. **NE PAS** décorer les commentaires : pas de bannières (`// =====`, `// -----`, `/*****/`), pas
-    d'emojis, pas d'ASCII art, pas de titres de section en majuscules, pas de signature ni de date.
-92. **NE PAS** laisser de code commenté. L'historique Git le garde.
-93. **NE PAS** écrire `#[allow(...)]` sans `reason = "..."`. La raison est le commentaire.
-94. **NE PAS** utiliser `println!`, `eprintln!`, `print!` ni `dbg!`. Tout passe par `log`.
-95. **NE PAS** utiliser `unreachable!()` : renvoyer une erreur, ou restructurer le code pour que
-    le cas n'existe pas dans les types.
-96. **NE PAS** écrire de bloc `unsafe` sans commentaire `// SAFETY:` qui prouve l'invariant.
-97. **NE PAS** déclarer un élément `pub` sans doc `///`, ni une fonction publique qui renvoie
-    `Result` sans section `# Errors`, ni une fonction qui peut paniquer sans `# Panics`.
-98. **NE PAS** déclarer de dépendance inutilisée (cargo-machete échoue).
-99. **NE PAS** rétrograder un lint de `deny` à `warn` ou `allow` au niveau du workspace sans
-    décision des mainteneurs, consignée dans la PR et dans la `reason`.
-100. **NE PAS** figer une version précise de Rust dans `rust-toolchain.toml` ou dans un workflow.
-     La toolchain est `stable` (§12.6). Quand une nouvelle version casse la CI, on corrige le
-     code, on ne revient pas à une version figée.
-101. **NE PAS** modifier à la main un fichier dans `crates/ntd-tablets/src/generated/`. On modifie
-     le JSON dans `tablets/` ou le générateur, puis on régénère.
-102. **NE PAS** committer des fichiers régénérés sans rapport avec la PR. Un passage de codegen
-     peut toucher d'autres fichiers : on garde ceux qui sont nécessaires et on annule le reste.
-103. **NE PAS** inventer ou retoucher une capture `ntd-recorder`. Une capture vient d'une vraie
-     tablette ; si elle est fausse, on en refait une.
-104. **NE PAS** mettre des données personnelles dans une capture (nom de machine, chemins,
-     numéro de série complet) : `ntd-recorder` les retire, et on vérifie avant de committer.
-105. **NE PAS** supprimer une entrée du corpus fuzz qui a fait planter le code : elle devient un
-     test de régression.
+89. **DO NOT** exceed 100 characters per line in a `.rs` file, comments and strings included
+    (§12.1).
+90. **DO NOT** write a comment that paraphrases the code (`// increment i`, `// return the
+    result`). A comment explains a **why**: a choice, a hardware constraint, an invariant, a pitfall
+    (§12.2).
+91. **DO NOT** decorate comments: no banners (`// =====`, `// -----`, `/*****/`), no emojis, no
+    ASCII art, no all-caps section titles, no signature or date.
+92. **DO NOT** leave commented-out code. Git history keeps it.
+93. **DO NOT** write `#[allow(...)]` without `reason = "..."`. The reason is the comment.
+94. **DO NOT** use `println!`, `eprintln!`, `print!` or `dbg!`. Everything goes through `log`.
+    Tools (`tools/*`, `xtask`) that must print declare it with a local
+    `#[expect(clippy::print_stdout, reason = "...")]`.
+95. **DO NOT** use `unreachable!()`: return an error, or restructure so the case cannot exist in
+    the types.
+96. **DO NOT** write an `unsafe` block without a `// SAFETY:` comment proving the invariant.
+97. **DO NOT** declare a `pub` item without `///` docs, a public function returning `Result`
+    without an `# Errors` section, or a function that can panic without `# Panics`.
+98. **DO NOT** declare an unused dependency (cargo-machete fails).
+99. **DO NOT** downgrade a lint from `deny` to `warn` or `allow` at workspace level without a
+    maintainer decision recorded in the PR and in the `reason`.
 
-### 9.13 Plateformes et architectures
+### 9.13 Platforms and architectures
 
-106. **NE PAS** supposer 64 bits. Pas de `usize`/`isize` dans les formats persistants, l'ABI des
-     plugins, le protocole interop ou le contrat IPC : utiliser `u32`/`u64` explicites. Pas de
-     `as usize` sur un `u64` : `usize::try_from`.
-107. **NE PAS** écrire `cfg(not(windows))` pour dire « Linux ». Toujours `cfg(target_os = "...")`
-     explicite, et un OS non géré tombe dans une branche qui renvoie `Unsupported`, jamais dans
-     une branche silencieuse ou vide.
-108. **NE PAS** mettre de code spécifique à un OS hors de `ntd-hid`, `ntd-output`, `ntd-interop`,
-     `ntd-platform` et `apps/desktop`.
-109. **NE PAS** lire des octets HID ou réseau avec `from_ne_bytes`, `transmute` ou un cast de
-     pointeur. Toujours `from_le_bytes` / `from_be_bytes` explicite.
-110. **NE PAS** utiliser d'intrinsèques SIMD ou d'instructions propres à une architecture sans
-     version portable équivalente, testée sur toutes les cibles.
-111. **NE PAS** charger un plugin compilé pour une autre cible : le manifeste déclare son target
-     triple et le host refuse un plugin qui ne correspond pas.
-112. **NE PAS** annoncer (README, site, notes de version) une plateforme de niveau 3 comme
-     supportée.
-113. **NE PAS** laisser une plateforme de niveau 3 cesser de compiler : `check-targets` est une
-     check bloquante.
-114. **NE PAS** supposer Windows dans le frontend (barre de titre, raccourcis `Ctrl`, emplacement
-     des boutons de fenêtre) : passer par `infrastructure/os.ts`, qui expose la plateforme.
-115. **NE PAS** promettre le 32 bits sur macOS : il n'existe plus (macOS ne lance plus
-     d'applications 32 bits depuis 10.15).
+100. **DO NOT** pin a specific Rust version in `rust-toolchain.toml` or in a workflow. The
+     toolchain is `stable` (§12.6). When a new version breaks CI, fix the code; do not go back to
+     a pinned version.
+101. **DO NOT** edit a file in `crates/ntd-tablets/src/generated/` by hand. Edit the JSON in
+     `tablets/` or the generator, then regenerate.
+102. **DO NOT** commit regenerated files unrelated to the PR. A codegen run can touch other files:
+     keep the ones you need and revert the rest.
+103. **DO NOT** invent or retouch an `ntd-recorder` capture. A capture comes from a real tablet; if
+     it is wrong, record a new one.
+104. **DO NOT** put personal data in a capture (machine name, paths, full serial number):
+     `ntd-recorder` strips them, and you check before committing.
+105. **DO NOT** delete a fuzz corpus entry that crashed the code: it becomes a regression test.
+106. **DO NOT** assume 64 bits. No `usize`/`isize` in persisted formats, the plugin ABI, the
+     interop protocol or the IPC contract: use explicit `u32`/`u64`. No `as usize` on a `u64`:
+     use `usize::try_from`.
+107. **DO NOT** write `cfg(not(windows))` to mean "Linux". Always an explicit
+     `cfg(target_os = "...")`, and an unhandled OS falls into a branch that returns
+     `Unsupported`, never into a silent or empty branch.
+108. **DO NOT** put OS-specific code outside `ntd-hid`, `ntd-output`, `ntd-interop`,
+     `ntd-platform` and `apps/desktop`.
+109. **DO NOT** read HID or network bytes with `from_ne_bytes`, `transmute` or a pointer cast.
+     Always an explicit `from_le_bytes` / `from_be_bytes`.
+110. **DO NOT** use SIMD intrinsics or architecture-specific instructions without an equivalent
+     portable version, tested on every target.
+111. **DO NOT** load a plugin built for another target: the manifest declares its target triple
+     and the host refuses a plugin that does not match.
+112. **DO NOT** advertise (README, website, release notes) a tier 3 platform as supported.
+113. **DO NOT** let a tier 3 platform stop compiling: `check-targets` is a blocking check.
+114. **DO NOT** assume Windows in the frontend (title bar, `Ctrl` shortcuts, window button
+     placement): go through `infrastructure/os.ts`, which exposes the platform.
+115. **DO NOT** promise 32-bit macOS: it no longer exists (macOS has not run 32-bit applications
+     since 10.15).
+
+### 9.14 Language, releases and integrations
+
+116. **DO NOT** write code, comments, commit messages, PR titles or descriptions, `AGENTS.md` or
+     `docs/` in any language other than English.
+117. **DO NOT** publish any 2.x release after the transition release (P0.2), not even a security
+     fix. The freeze lasts until `3.0.0-beta.1`.
+118. **DO NOT** remove or change the websocket v2 protocol during 3.x. It is removed in 4.0 only.
+119. **DO NOT** break the SDK API or `ntd-plugin-api` within 3.x.
+
+### 9.15 Frontend quality
+
+120. **DO NOT** use `any`, or `@ts-ignore` / `@ts-expect-error` without a description explaining
+     why.
+121. **DO NOT** use `console.*` outside `frontend/src/lib/infrastructure/log.ts`.
+122. **DO NOT** leave an ESLint or `svelte-check` warning: warnings fail CI like errors.
+123. **DO NOT** exceed 100 characters per line in `.ts` and `.svelte` files; Prettier is the
+     reference.
 
 ---
 
-## 10. Checklist de PR
+## 10. PR checklist
 
-- [ ] La PR a **une seule intention** (déplacer **ou** changer un comportement, pas les deux).
-- [ ] Aucune dépendance de crate ne va vers le haut (§4.3) ; `cargo tree -p <crate>` est conforme.
-- [ ] Aucun nouvel état global, aucun `unwrap` sur une donnée externe, aucun `unsafe` hors des crates autorisés.
-- [ ] Golden files des parsers identiques (ou différences justifiées une par une).
-- [ ] Benchmark de latence ≤ référence si le chemin chaud est touché.
-- [ ] `bindings.ts` régénéré et sans diff si le contrat est touché.
-- [ ] Migration et fixtures si un format persistant est touché.
+- [ ] The PR has **a single intent** (move **or** change behaviour, not both).
+- [ ] No crate dependency points up (§4.3); `cargo tree -p <crate>` is compliant.
+- [ ] No new global state, no `unwrap` on external data, no `unsafe` outside allowed crates.
+- [ ] Parser golden files identical (or differences justified one by one).
+- [ ] Latency benchmark within +5 % of the baseline if the hot path is touched.
+- [ ] `bindings.ts` regenerated with no diff if the contract is touched.
+- [ ] Migration and fixtures if a persisted format is touched.
 - [ ] `cargo fmt --check`, `cargo clippy --workspace --all-targets`, `cargo test --workspace`,
-      `cargo deny check` verts.
-- [ ] `npm run check`, `npm run lint`, `npm test`, `npm run e2e` verts.
-- [ ] Documentation (`docs/`) à jour si le comportement visible change.
-- [ ] Aucune ligne de plus de 100 caractères, aucun commentaire décoratif ou paraphrasant (§12).
-- [ ] `cargo machete` et `typos` verts (§13).
-- [ ] La description dit **quoi**, **pourquoi**, **comment c'est testé**, et si une IA a écrit
-      une part significative du code (§14).
+      `cargo deny check` green.
+- [ ] `npm run format:check`, `npm run check`, `npm run lint`, `npm test`, `npm run e2e` green.
+- [ ] Documentation (`docs/`) updated if visible behaviour changes.
+- [ ] No line over 100 characters, no decorative or paraphrasing comment (§12).
+- [ ] `cargo machete` and `typos` green (§13).
+- [ ] Everything is written in English (rule 116).
+- [ ] The description says **what**, **why**, **how it was tested**, and whether AI wrote a
+      significant part of the code (§14).
+- [ ] If the PR finishes a roadmap task, the box is ticked and §17.1 updated (§17.2).
 
 ---
 
-## 11. Problèmes trouvés en dehors de l'architecture
+## 11. Issues found outside the architecture
 
-Ces points sont à traiter **dès la phase 0**, indépendamment de la refonte :
+These points are handled **in phase 0**, independently of the rewrite:
 
-1. **Clé publique de l'updater factice.** `src-tauri/tauri.conf.json` → `plugins.updater.pubkey`
-   vaut `dW51c2VkX3B1YmtleV9mb3JfZGV2ZWxvcG1lbnRfcHVycG9zZXM=`, qui se décode en
-   `unused_pubkey_for_development_purposes`. La release est signée en CI
-   (`.github/workflows/release.yml`, `TAURI_SIGNING_PRIVATE_KEY`), mais l'application ne peut pas
-   vérifier cette signature avec cette clé. Selon le comportement de l'updater, l'auto-update échoue
-   ou n'est pas protégé. **À corriger avant toute autre chose**, puisque la stratégie de migration
-   v2 → v3 repose entièrement sur l'auto-update.
-2. **Licence des descripteurs `tablets/OpenTabletDriver`** : vérifier la licence d'origine et sa
-   compatibilité avec la licence MIT du projet, et ajouter l'attribution requise.
-3. **Double dépendance d'icônes** dans `frontend/package.json` (`@lucide/svelte` et `lucide-svelte`).
+1. **Placeholder updater public key.** In `src-tauri/tauri.conf.json`, `plugins.updater.pubkey` is
+   `dW51c2VkX3B1YmtleV9mb3JfZGV2ZWxvcG1lbnRfcHVycG9zZXM=`, which decodes to
+   `unused_pubkey_for_development_purposes`. Releases are signed in CI
+   (`.github/workflows/release.yml`, `TAURI_SIGNING_PRIVATE_KEY`), but the application cannot
+   verify that signature with this key. Depending on the updater's behaviour, auto-update either
+   fails or is unprotected. **Fix this before anything else**, since the whole v2 → v3 migration
+   relies on auto-update; it ships in the transition release (P0.2).
+2. **Licence of `tablets/OpenTabletDriver`**: it is a git submodule of the OpenTabletDriver
+   repository. Identify its licence, check compatibility with the project's MIT licence, and add
+   the required attribution.
+3. **Two icon libraries** in `frontend/package.json` (`@lucide/svelte` and `lucide-svelte`).
 
 ---
 
-## 12. Qualité de code
+## 12. Code quality
 
-Ces règles s'appliquent à tout le code Rust du workspace. Elles sont **vérifiées par la CI** :
-une règle qu'aucun outil ne vérifie finit toujours par ne plus être respectée.
+These rules apply to all Rust code in the workspace (§12.1 to §12.6) and to the frontend
+(§12.7). They are **checked by CI**: a rule no tool checks always ends up being ignored.
 
-### 12.1 Largeur de ligne : 100 caractères, strict
+### 12.1 Line width: 100 characters, strict
 
-- `rustfmt.toml` : `max_width = 100` (déjà le cas en v2).
-- **Limite de rustfmt** : sur la toolchain stable, rustfmt ne coupe ni les commentaires ni les
-  chaînes longues (`wrap_comments`, `comment_width` et `error_on_line_overflow` sont instables).
-  Clippy n'a pas de lint de longueur de ligne. Une vérification dédiée
-  (`cargo xtask lint-style`, §12.5) fait donc échouer la CI dès qu'une ligne de `.rs` dépasse
-  100 caractères, commentaires et chaînes compris.
-- Une chaîne trop longue se découpe avec `concat!` ou une continuation `\` en fin de ligne. On ne
-  la contourne pas avec un `#[rustfmt::skip]`.
-- Éditeur : `.vscode/settings.json` garde `"editor.rulers": [80, 100]` (déjà le cas). 80 est un
-  repère visuel, 100 est la limite. `.editorconfig` ajoute `max_line_length = 100` pour `[*.rs]`.
+- `rustfmt.toml`: `max_width = 100` (already the case in v2).
+- **rustfmt limitation**: on the stable toolchain, rustfmt wraps neither comments nor long
+  strings (`wrap_comments`, `comment_width` and `error_on_line_overflow` are unstable). Clippy has
+  no line length lint. A dedicated check (`cargo xtask lint-style`, §12.5) therefore fails CI as
+  soon as a `.rs` line exceeds 100 characters, comments and strings included.
+- A long string is split with `concat!` or a trailing `\` continuation. It is not worked around
+  with `#[rustfmt::skip]`.
+- Editor: `.vscode/settings.json` keeps `"editor.rulers": [80, 100]` (already the case). 80 is a
+  visual guide, 100 is the limit. `.editorconfig` adds `max_line_length = 100` for `[*.rs]`,
+  `[*.ts]` and `[*.svelte]`.
 
-`rustfmt.toml` cible (options stables uniquement) :
+Target `rustfmt.toml` (stable options only):
 
 ```toml
 edition = "2024"
@@ -805,56 +862,54 @@ use_field_init_shorthand = true
 use_try_shorthand = true
 ```
 
-### 12.2 Commentaires
+### 12.2 Comments
 
-**Principe** : le code dit **quoi**, le commentaire dit **pourquoi**. Si un commentaire répète ce
-que le code dit, on le supprime. Si le code n'est pas clair sans commentaire, on renomme ou on
-découpe d'abord, et on commente seulement ce qui reste.
+**Principle**: the code says **what**, the comment says **why**. If a comment repeats what the
+code says, delete it. If the code is not clear without a comment, rename or split first, and
+comment only what remains.
 
-Un commentaire est justifié quand il explique :
-- un **choix** entre plusieurs options (« canal borné plutôt que non borné : on préfère perdre un
-  rapport que d'accumuler de la latence ») ;
-- une **contrainte matérielle ou externe** (« la Intuos Pro envoie la pression sur 13 bits ; les
-  3 bits hauts sont du bruit ») ;
-- un **invariant** que les types n'expriment pas ;
-- un **piège** (« ne pas déplacer cet appel avant `flush` : Windows perd l'événement ») ;
-- la preuve d'un bloc `unsafe` (`// SAFETY:`, obligatoire).
+A comment is justified when it explains:
+- a **choice** between several options ("bounded channel rather than unbounded: we would rather
+  drop a report than build up latency");
+- a **hardware or external constraint** ("the Intuos Pro sends pressure on 13 bits; the top 3 bits
+  are noise");
+- an **invariant** the types do not express;
+- a **pitfall** ("do not move this call before `flush`: Windows drops the event");
+- the proof of an `unsafe` block (`// SAFETY:`, mandatory).
 
-Interdits :
-- la paraphrase (`// boucle sur les rapports`, `// crée le parser`) ;
-- les décorations : bannières `// ======`, `// ------`, `/*******/`, titres en majuscules,
-  emojis, ASCII art, signatures, dates ;
-- le code commenté ;
-- les `TODO` sans issue : la seule forme acceptée est `// TODO(#123): ...`.
+Forbidden:
+- paraphrase (`// loop over the reports`, `// create the parser`);
+- decoration: `// ======`, `// ------`, `/*******/` banners, all-caps titles, emojis, ASCII art,
+  signatures, dates;
+- commented-out code;
+- `TODO`s without an issue: the only accepted form is `// TODO(#123): ...`.
 
 ```rust
-// Mauvais
+// Bad
 // ===== PARSING =====
-// On récupère la pression
-let pressure = u16::from_le_bytes([r[6], r[7]]) & 0x1FFF; // masque 🎯
+// Get the pressure
+let pressure = u16::from_le_bytes([r[6], r[7]]) & 0x1FFF; // mask 🎯
 
-// Bon
-// Les 3 bits hauts portent l'état du bouton latéral sur ce modèle,
-// pas la pression : voir les golden files intuos_pro_*.
+// Good
+// On this model the top 3 bits carry the side button state, not
+// pressure: see the intuos_pro_* golden files.
 let pressure = u16::from_le_bytes([r[6], r[7]]) & 0x1FFF;
 ```
 
-**Documentation publique obligatoire** (`missing_docs = "deny"`) :
-- chaque élément `pub` a un commentaire `///` court et factuel : ce que c'est, pas comment c'est
-  implémenté ;
-- chaque fonction publique qui renvoie `Result` a une section `# Errors`
-  (`missing_errors_doc = "deny"`) ;
-- chaque fonction publique qui peut paniquer a une section `# Panics`
-  (`missing_panics_doc = "deny"`), ce qui devrait être rare vu §9.3 ;
-- chaque crate a un `//!` en tête de `lib.rs` qui dit sa responsabilité et ce qu'il ne fait pas.
+**Public documentation is mandatory** (`missing_docs = "deny"`):
+- every `pub` item has a short, factual `///` comment: what it is, not how it is implemented;
+- every public function returning `Result` has an `# Errors` section (`missing_errors_doc = "deny"`);
+- every public function that can panic has a `# Panics` section (`missing_panics_doc = "deny"`),
+  which should be rare given §9.3;
+- every crate has a `//!` header in `lib.rs` stating its responsibility and what it does not do.
 
-`unreachable_pub = "deny"` complète cette règle : un élément qui n'est pas réellement exporté
-s'écrit `pub(crate)` et n'a donc pas besoin de doc publique.
+`unreachable_pub = "deny"` completes this rule: an item that is not really exported is written
+`pub(crate)` and therefore needs no public docs.
 
-### 12.3 Cargo.toml strict
+### 12.3 Strict Cargo.toml
 
-Les lints sont définis **une seule fois** dans `[workspace.lints]` du `Cargo.toml` racine ; chaque
-crate a `[lints] workspace = true` et rien d'autre.
+Lints are defined **once** in `[workspace.lints]` of the root `Cargo.toml`; every crate has
+`[lints] workspace = true` and nothing else.
 
 ```toml
 [workspace.lints.rust]
@@ -867,13 +922,13 @@ dead_code = "deny"
 broken_intra_doc_links = "deny"
 
 [workspace.lints.clippy]
-# Groupes : tout est bloquant.
+# Groups: everything blocks.
 all = { level = "deny", priority = -1 }
 pedantic = { level = "deny", priority = -1 }
 nursery = { level = "deny", priority = -1 }
 cargo = { level = "deny", priority = -1 }
 
-# Gestion d'erreurs : aucune donnée externe ne doit pouvoir faire paniquer le pilote.
+# Error handling: no external data may make the driver panic.
 unwrap_used = "deny"
 expect_used = "deny"
 panic = "deny"
@@ -884,12 +939,12 @@ unimplemented = "deny"
 exit = "deny"
 lossy_float_literal = "deny"
 
-# Sorties : tout passe par `log`.
+# Output: everything goes through `log`.
 print_stdout = "deny"
 print_stderr = "deny"
 dbg_macro = "deny"
 
-# unsafe et FFI.
+# unsafe and FFI.
 undocumented_unsafe_blocks = "deny"
 multiple_unsafe_ops_per_block = "deny"
 uninit_assumed_init = "deny"
@@ -902,65 +957,65 @@ fn_to_numeric_cast_any = "deny"
 missing_errors_doc = "deny"
 missing_panics_doc = "deny"
 
-# Tout #[allow] doit porter sa justification : #[allow(lint, reason = "...")].
+# Every #[allow] must carry its justification: #[allow(lint, reason = "...")].
 allow_attributes_without_reason = "deny"
 
-# Exceptions, reprises de la v2.
-# Les rapports HID mélangent u8/u16/i16/f32 : les conversions sont voulues et bornées.
+# Exceptions, carried over from v2.
+# HID reports mix u8/u16/i16/f32: the conversions are intended and bounded.
 cast_precision_loss = "allow"
 cast_possible_truncation = "allow"
 cast_sign_loss = "allow"
-# x/y, tilt_x/tilt_y : les noms proches sont le vocabulaire du domaine.
+# x/y, tilt_x/tilt_y: close names are the domain vocabulary.
 similar_names = "allow"
-# Les parsers sont de longs `match` plats sur les octets ; les découper nuit à la lecture.
+# Parsers are long flat `match`es over bytes; splitting them hurts readability.
 too_many_lines = "allow"
 assert_is_empty = "allow"
-# Les doublons de versions sont gérés par cargo-deny (bans), avec une liste d'exceptions revue.
+# Duplicate versions are handled by cargo-deny (bans) with a reviewed exception list.
 multiple_crate_versions = "allow"
 ```
 
-Points d'attention :
-- **`unsafe_code`** : `deny` (et pas `forbid`) pour que les crates FFI autorisés (`ntd-hid`,
-  `ntd-output`, `ntd-interop`, `ntd-plugin-host`, `ntd-plugin-api`) puissent mettre
-  `#![allow(unsafe_code, reason = "...")]` à la racine du module concerné. `cargo xtask
-  lint-style` échoue si ce `allow` apparaît dans un autre crate.
-- **`clippy::cargo`** impose des métadonnées complètes : chaque crate hérite de
-  `[workspace.package]` (`license.workspace = true`, `repository.workspace = true`…) et déclare
-  sa propre `description`. Les versions wildcard (`"*"`) sont interdites.
-- **`nursery` en `deny`** : ces lints évoluent entre versions de Rust. Avec la toolchain
-  `stable` (§12.6), une nouvelle version de Rust peut donc faire échouer la CI sans qu'aucun code
-  n'ait changé. C'est voulu : on corrige ces nouveaux lints dans une PR dédiée, et on ne
-  rétrograde jamais le lint pour faire repasser la CI (règle 99).
-- **Tests** : `clippy.toml` garde `allow-unwrap-in-tests`, `allow-expect-in-tests`,
-  `allow-panic-in-tests` et `allow-indexing-slicing-in-tests`. Un test qui panique, c'est un
-  test qui échoue, et c'est le comportement voulu.
-- Toutes les commandes cargo de la CI utilisent `--locked`.
+Notes:
+- **`unsafe_code`**: `deny` (not `forbid`) so that the allowed FFI crates (`ntd-hid`,
+  `ntd-output`, `ntd-interop`, `ntd-plugin-host`, `ntd-plugin-api`, `ntd-platform`) can put
+  `#![allow(unsafe_code, reason = "...")]` at the root of the relevant module.
+  `cargo xtask lint-style` fails if that `allow` appears in another crate.
+- **`clippy::cargo`** requires complete metadata: every crate inherits from `[workspace.package]`
+  (`license.workspace = true`, `repository.workspace = true`…) and declares its own
+  `description`. Wildcard versions (`"*"`) are forbidden.
+- **`nursery` as `deny`**: these lints change between Rust versions. With the `stable` toolchain
+  (§12.6), a new Rust release can therefore fail CI without any code change. That is intended:
+  the new lints are fixed in a dedicated PR, and a lint is never downgraded to get CI green again
+  (rule 99).
+- **Tools** (`tools/*`, `xtask`) follow the same lints. Where a CLI tool must print or stop on an
+  error, it says so locally with `#[expect(..., reason = "...")]` on the function concerned, never
+  with a global `allow`.
+- **Tests**: `clippy.toml` keeps `allow-unwrap-in-tests`, `allow-expect-in-tests`,
+  `allow-panic-in-tests` and `allow-indexing-slicing-in-tests`. A test that panics is a failing
+  test, which is the intended behaviour.
+- Every cargo command in CI uses `--locked`.
 
-### 12.4 Gestion d'erreurs
+### 12.4 Error handling
 
-- Un enum d'erreur `thiserror` par crate (`TabletError`, `PipelineError`, `EngineError`…). Les
-  erreurs d'un crate bas s'emballent dans celui du dessus via `#[from]`, sans perdre la source.
-- `?` partout. Une conversion `Option` → `Result` s'écrit `.ok_or(Erreur::Variante)`, jamais
-  `.unwrap()`.
-- Les seuls `expect` tolérés hors tests sont des invariants internes, avec
-  `#[allow(clippy::expect_used, reason = "invariant : ...")]`. La raison est relue en review.
+- One `thiserror` error enum per crate (`TabletError`, `PipelineError`, `EngineError`…). Errors
+  from a lower crate are wrapped in the upper one with `#[from]`, without losing the source.
+- `?` everywhere. An `Option` → `Result` conversion is `.ok_or(Error::Variant)`, never `.unwrap()`.
+- The only `expect`s tolerated outside tests are internal invariants, with
+  `#[allow(clippy::expect_used, reason = "invariant: ...")]`. The reason is reviewed.
 
 ### 12.5 `cargo xtask lint-style`
 
-Une tâche dans `xtask/` vérifie ce que rustfmt et clippy ne savent pas vérifier. Elle tourne en CI
-et en local :
-- lignes de plus de 100 caractères dans les `.rs` (hors fichiers générés) ;
-- commentaires décoratifs : bannières (`//` suivi de 4 `=`, `-`, `*` ou `#`, ou plus), emojis ;
-- `TODO`/`FIXME` sans `(#numéro)` ;
-- `#![allow(unsafe_code` hors des crates autorisés ;
-- `#[rustfmt::skip]` sans commentaire de justification juste au-dessus.
+A task in `xtask/` checks what rustfmt and clippy cannot. It runs in CI and locally:
+- `.rs` lines over 100 characters (excluding generated files);
+- decorative comments: banners (`//` followed by 4 or more `=`, `-`, `*` or `#`), emojis;
+- `TODO`/`FIXME` without `(#number)`;
+- `#![allow(unsafe_code` outside the allowed crates;
+- `#[rustfmt::skip]` without a justifying comment right above it.
 
-### 12.6 Toolchain : `stable`
+### 12.6 Toolchain: `stable`
 
-La v3 suit la **dernière version stable de Rust**, plutôt qu'une version figée comme en v2
-(`1.99.0`).
+v3 follows the **latest stable Rust release** instead of a pinned version as in v2 (`1.99.0`).
 
-`rust-toolchain.toml` :
+`rust-toolchain.toml`:
 
 ```toml
 [toolchain]
@@ -968,360 +1023,386 @@ channel = "stable"
 components = ["rustfmt", "clippy", "rust-analyzer", "rust-src"]
 ```
 
-Conséquences et règles :
-- **Pas de version précise** dans `rust-toolchain.toml`, ni dans les workflows CI. Les jobs
-  installent la toolchain depuis ce fichier, sans la redéfinir.
-- **`rust-version`** (la MSRV, version minimale supportée) reste déclarée une seule fois, dans
-  `[workspace.package]`. Elle documente la plus vieille version qui compile le projet. Ce
-  n'est pas la version utilisée en CI. On la remonte quand on adopte une nouveauté du langage.
-- **Une nouvelle version stable peut casser la CI** (nouveaux lints `pedantic`/`nursery`,
-  avertissements de `rustc`). On corrige dans une PR dédiée, intitulée
-  `chore: fix lints for Rust 1.xx`, qui ne contient rien d'autre.
-- **Anticiper** : un job planifié chaque semaine lance `clippy` et les tests sur la toolchain
-  `beta`. Il n'est pas bloquant, mais il ouvre une issue s'il échoue, ce qui laisse environ six
-  semaines pour corriger avant que la version arrive en stable.
-- **Traçabilité des releases** : les builds ne sont plus reproductibles à la version de `rustc`
-  près. Le job de release écrit donc la sortie de `rustc -Vv` dans les notes de version et dans
-  les artefacts.
-- `Cargo.lock` reste commité et toutes les commandes utilisent `--locked` : seules la toolchain
-  et les lints suivent `stable`, les dépendances ne bougent pas sans PR.
+Consequences and rules:
+- **No specific version** in `rust-toolchain.toml` or in CI workflows. Jobs install the toolchain
+  from that file without redefining it.
+- **`rust-version`** (the MSRV, minimum supported version) is still declared once, in
+  `[workspace.package]`. It documents the oldest version that builds the project. It is not the
+  version CI uses. It is raised when a new language feature is adopted.
+- **A new stable release can break CI** (new `pedantic`/`nursery` lints, `rustc` warnings). Fix
+  it in a dedicated PR titled `chore: fix lints for Rust 1.xx` that contains nothing else.
+- **Anticipate**: a weekly scheduled job runs `clippy` and the tests on the `beta` toolchain. It
+  is not blocking, but opens an issue on failure, which leaves about six weeks to fix things
+  before the release reaches stable.
+- **Release traceability**: builds are no longer reproducible down to the `rustc` version. The
+  release job therefore writes the output of `rustc -Vv` into the release notes and artifacts.
+- `Cargo.lock` stays committed and every command uses `--locked`: only the toolchain and lints
+  follow `stable`; dependencies do not move without a PR.
+
+### 12.7 Frontend
+
+The frontend follows the same spirit as the backend: same comment rules (§12.2), same 100-column
+limit, and everything that can be checked is checked in CI.
+
+- **Formatting**: Prettier with `prettier-plugin-svelte`, `printWidth: 100`. CI runs
+  `npm run format:check` (`prettier --check .`).
+- **TypeScript**: `strict: true` plus `noUncheckedIndexedAccess` (the frontend equivalent of
+  `indexing_slicing`) and `noImplicitOverride`.
+- **ESLint**, warnings fail CI (`eslint . --max-warnings 0`):
+  - `@typescript-eslint/no-explicit-any`: error;
+  - `@typescript-eslint/ban-ts-comment`: error, `@ts-expect-error` allowed only with a
+    description;
+  - `no-console`: error, except in `infrastructure/log.ts`, the frontend's only logger;
+  - `no-restricted-imports`: `@tauri-apps/*` only from `infrastructure/tauri/` and
+    `infrastructure/os.ts` (§6.3);
+  - existing Svelte rules, as errors.
+- **`svelte-check`**: `--fail-on-warnings`.
+- **Comments**: same rules as §12.2 (why, not what; no decoration). Public functions and types
+  exported from `infrastructure/` and stores have a short JSDoc comment.
 
 ---
 
 ## 13. CI/CD
 
-### 13.1 Principes
+### 13.1 Principles
 
-- **Une seule check requise** sur `main` : `ci-success`, qui dépend de tous les jobs. On peut ainsi
-  ajouter des jobs sans toucher aux règles de protection de branche.
-- **CI par crate touché** : un job `plan` calcule les crates modifiés par la PR et leurs
-  dépendants (`cargo metadata` + `git diff` sur la base). Lints, tests et builds ne tournent que
-  sur ceux-là. On fait une **CI complète** sur `main`, sur les tags, et dès qu'un fichier global
-  change (`Cargo.toml` racine, `Cargo.lock`, `rust-toolchain.toml`, `clippy.toml`, `rustfmt.toml`,
-  `deny.toml`, `.github/**`).
-- `RUSTFLAGS="-D warnings"`, `--locked` partout, `concurrency` avec `cancel-in-progress` sur les PR.
-- Actions **épinglées par SHA**, `permissions: contents: read` par défaut. Les droits d'écriture
-  ne sont donnés qu'aux jobs de release.
-- Les secrets de signature ne sont accessibles que dans un **environnement GitHub `release`**
-  protégé (reviewers requis), jamais dans les jobs de PR.
+- **A single required check** on `main`: `ci-success`, which depends on every job. Jobs can be
+  added without touching branch protection rules.
+- **CI per touched crate**: a `plan` job computes the crates changed by the PR and their
+  dependents (`cargo metadata` + `git diff` against the base). Lints, tests and builds only run on
+  those. A **full run** happens on `main`, on tags, and whenever a global file changes (root
+  `Cargo.toml`, `Cargo.lock`, `rust-toolchain.toml`, `clippy.toml`, `rustfmt.toml`, `deny.toml`,
+  `.github/**`).
+- `RUSTFLAGS="-D warnings"`, `--locked` everywhere, `concurrency` with `cancel-in-progress` on PRs.
+- Actions **pinned by SHA**, `permissions: contents: read` by default. Write permissions only for
+  release jobs.
+- Signing secrets and the crates.io token are only available in a protected **GitHub `release`
+  environment**, never in PR jobs.
 
-### 13.2 `ci.yml` : tests et qualité (PR, push sur `main`)
+### 13.2 `ci.yml`: tests and quality (PRs, push to `main`)
 
-| Job | Contenu |
+| Job | Content |
 |---|---|
-| `plan` | `cargo xtask ci-plan` : crates touchés, ou exécution complète (§15.6) |
+| `plan` | `cargo xtask ci-plan`: touched crates, or full run (§15.6) |
 | `fmt` | `cargo fmt --all --check` |
 | `style` | `cargo xtask lint-style` (§12.5) |
-| `typos` | `crate-ci/typos` sur le code, les commentaires et `docs/` (config `typos.toml`, exclusions : `tablets/`, fichiers générés) |
-| `machete` | `cargo machete` : aucune dépendance inutilisée |
-| `clippy` | `cargo clippy --locked --all-targets --all-features` sur les crates touchés |
-| `clippy-release` | idem avec `--release` (code derrière `cfg(not(debug_assertions))`) |
-| `doc` | `cargo doc --no-deps` avec `RUSTDOCFLAGS=-D warnings` |
-| `test` | `cargo nextest run` + doctests, matrice Windows x64 et Linux x64 |
-| `golden` | golden files des parsers (§7, phase 0) |
+| `typos` | `crate-ci/typos` on code, comments and `docs/` (`typos.toml`, excluding `tablets/` and generated files) |
+| `machete` | `cargo machete`: no unused dependency |
+| `clippy` | `cargo clippy --locked --all-targets --all-features` on touched crates |
+| `clippy-release` | same with `--release` (code behind `cfg(not(debug_assertions))`) |
+| `doc` | `cargo doc --no-deps` with `RUSTDOCFLAGS=-D warnings` |
+| `test` | `cargo nextest run` + doctests, Windows x64 and Linux x64 matrix |
+| `golden` | parser golden files (§7, phase 0) |
 | `bindings` | `cargo xtask gen-ts && git diff --exit-code` |
 | `codegen` | `cargo run --locked -p ntd-codegen && git diff --exit-code` (§15.1) |
-| `tester` | `cargo run --locked -p ntd-tester` sur toutes les captures (§15.2) |
-| `fuzz` | chaque cible fuzz pendant 60 s sur les PR qui touchent les crates concernés ; plus longtemps dans le workflow nightly |
-| `coverage` | `cargo llvm-cov` + seuils de `coverage-thresholds.json` (exécution complète) |
-| `bench` | benchmark de latence comparé à la référence, sur `main` et sur les PR étiquetées `perf` |
-| `frontend` | `npm run check`, `lint`, `test`, `build` |
+| `tester` | `cargo run --locked -p ntd-tester` on every capture (§15.2) |
+| `fuzz` | each fuzz target for 60 s on PRs touching the relevant crates; longer in the nightly workflow |
+| `coverage` | `cargo llvm-cov` + `coverage-thresholds.json` thresholds (full run) |
+| `bench` | latency benchmark against the baseline, fails above +5 %, on `main` and on PRs labelled `perf` |
+| `frontend` | `npm run format:check`, `check`, `lint`, `test`, `build` (§12.7) |
 | `e2e` | Playwright |
-| `build` | build des applications sur les cibles de niveau 1 et 2 (§16.2) |
-| `check-targets` | `cargo clippy` sur les cibles de niveau 3 (§16.2) : elles doivent compiler même si elles ne sont pas encore implémentées |
-| `ci-success` | agrège tous les jobs ci-dessus |
+| `build` | application builds on tier 1 and tier 2 targets (§16.2) |
+| `check-targets` | `cargo clippy` on tier 3 targets (§16.2): they must build even if not implemented yet |
+| `ci-success` | aggregates every job above |
 
-Hors `ci.yml`, un workflow `toolchain-beta.yml` planifié chaque semaine lance clippy et les tests
-sur la toolchain `beta`. Il n'est pas bloquant et ouvre une issue s'il échoue (§12.6).
+Outside `ci.yml`, a weekly scheduled `toolchain-beta.yml` workflow runs clippy and the tests on
+the `beta` toolchain. It is not blocking and opens an issue on failure (§12.6).
 
-### 13.3 `security.yml` : sécurité (PR, `main`, et chaque jour)
+### 13.3 `security.yml`: security (PRs, `main`, and daily)
 
-- `cargo deny check` : advisories, licences, bans (doublons), sources. Une seule exécution grâce au
-  lockfile unique, au lieu d'un audit par lockfile comme en v2.
-- `npm audit --omit=dev` sur `frontend/`.
-- CodeQL (existe déjà).
-- `actions/dependency-review-action` sur les PR.
-- Secret scanning et push protection activés dans les réglages du dépôt.
+- `cargo deny check`: advisories, licences, bans (duplicates), sources. A single run thanks to the
+  single lockfile, instead of one audit per lockfile as in v2.
+- `npm audit --omit=dev` on `frontend/`.
+- CodeQL (already exists).
+- `actions/dependency-review-action` on PRs.
+- Secret scanning and push protection enabled in the repository settings.
 
-### 13.4 `prerelease.yml` : pré-release (tag `v3.0.0-beta.N` / `-rc.N`)
+### 13.4 `prerelease.yml`: pre-release (tag `v3.0.0-beta.N` / `-rc.N`)
 
-1. Vérifier que le tag pointe sur un commit de `main` dont la CI est verte, et que la version des
-   `Cargo.toml` et de `tauri.conf.json` correspond au tag.
-2. Construire la matrice Windows x64/ARM64 et Linux x64/ARM64.
-3. Signer, puis **vérifier la signature avec la clé publique réellement embarquée** dans
-   `tauri.conf.json`. Le job échoue si la clé est absente ou factice (§11).
-4. Publier une **GitHub pre-release** avec les sommes SHA-256.
-5. Publier le manifeste du **canal bêta**. Attention : l'endpoint actuel
-   `releases/latest/download/latest.json` ignore les pre-releases, donc le canal bêta a besoin
-   de son propre endpoint stable. Les utilisateurs s'y abonnent avec une option « recevoir les
-   bêtas » dans les paramètres.
+1. Check that the tag points to a `main` commit with green CI, and that the version in the
+   `Cargo.toml` files and `tauri.conf.json` matches the tag.
+2. Build the tier 1 and tier 2 targets.
+3. Sign, then **verify the signature with the public key actually embedded** in
+   `tauri.conf.json`. The job fails if the key is missing or a placeholder (§11).
+4. Publish a **GitHub pre-release** with SHA-256 checksums.
+5. Publish the **beta channel** manifest (`beta.json`) to **GitHub Pages**. The current endpoint
+   `releases/latest/download/latest.json` ignores pre-releases, so the beta channel needs its own
+   stable URL. Users subscribe to it with a "receive betas" option in Settings.
 
-### 13.5 `nightly.yml` : build de nuit
+### 13.5 `nightly.yml`: nightly build
 
-- Chaque nuit, **seulement s'il y a eu des commits** sur `main` depuis le dernier nightly.
-- Build de la matrice complète, signature, publication sous un tag `nightly` qu'on **écrase**
-  (pre-release GitHub, marquée comme non supportée).
-- Fuzzing long (par exemple 30 min par cible) et `ntd-stress` sur le build produit.
-- Canal d'update `nightly` séparé, opt-in, avec son propre endpoint (même raison que le canal bêta).
-- Ne tourne que sur le dépôt principal (`if: github.repository == 'Next-Tablet-Driver/NextTabletDriver'`),
-  jamais sur les forks.
+- Every night, **only if there were commits** on `main` since the last nightly.
+- Builds the full matrix, signs, and publishes under a `nightly` tag that is **overwritten**
+  (GitHub pre-release, marked as unsupported).
+- Long fuzzing (e.g. 30 min per target) and `ntd-stress` on the produced build.
+- Separate, opt-in `nightly` update channel, with its manifest (`nightly.json`) on **GitHub Pages**.
+- Runs only on the main repository
+  (`if: github.repository == 'Next-Tablet-Driver/NextTabletDriver'`), never on forks.
 
-### 13.6 `release.yml` : release (tag `vX.Y.Z`)
+### 13.6 `release.yml`: release (tag `vX.Y.Z`)
 
-Mêmes étapes que la pré-release, plus :
-- publication en `latest` et mise à jour de `latest.json` (canal stable) ;
-- notes de version générées à partir des titres de PR (déjà normalisés par `pr-title.yml`) ;
-- publication winget (`winget-release.yml` existe).
+Same steps as the pre-release, plus:
+- publication as `latest` and update of `latest.json` (stable channel);
+- release notes generated from PR titles (already normalised by `pr-title.yml`), including
+  `rustc -Vv`;
+- winget publication (`winget-release.yml` exists).
+
+`ntd-plugin-api` is published to **crates.io** by a separate job, triggered by a
+`plugin-api-vX.Y.Z` tag, in the `release` environment. The job checks that the crate's major
+version matches the ABI version declared in the code.
 
 ---
 
-## 14. Contributions, IA et AGENTS.md
+## 14. Contributions, AI and AGENTS.md
 
 ### 14.1 `AGENTS.md`
 
-- **`AGENTS.md` à la racine**, court : ce qu'est le projet, la disposition du workspace (§4.1),
-  les commandes à lancer avant de rendre une tâche (§9, règle 84), et un renvoi vers ce
-  document, avec la mention que §9 est normatif. Ajouter `CLAUDE.md` en lien symbolique vers
-  `AGENTS.md` pour que tous les outils lisent le même fichier.
-- **Un `AGENTS.md` par zone sensible**, avec les détails propres à la zone :
-  - `crates/ntd-tablets/AGENTS.md` : ajouter une tablette, golden files, ne jamais supprimer un
-    masque sans `git blame` ;
-  - `crates/ntd-plugin-api/AGENTS.md` : stabilité de l'ABI, `repr(C)`, versionnage ;
-  - `crates/ntd-engine/AGENTS.md` : règles du chemin chaud (§9.4) ;
-  - `crates/ntd-ipc/AGENTS.md` : régénérer les bindings, ne jamais éditer `bindings.ts`.
-- Si un mainteneur dit autre chose que `AGENTS.md`, on suit le mainteneur, **sauf** pour la
-  règle 14.3.
+- **Root `AGENTS.md`**, short: what the project is, the workspace layout (§4.1), the commands to
+  run before handing over a task (§9, rule 84), and a pointer to this document stating that §9 is
+  normative and §17 is the roadmap. Add `CLAUDE.md` as a symlink to `AGENTS.md` so every tool
+  reads the same file.
+- **One `AGENTS.md` per sensitive area**, with area-specific details:
+  - `crates/ntd-tablets/AGENTS.md`: adding a tablet, golden files, never removing a mask without
+    `git blame`;
+  - `crates/ntd-plugin-api/AGENTS.md`: ABI stability, `repr(C)`, versioning, crates.io;
+  - `crates/ntd-engine/AGENTS.md`: hot path rules (§9.4);
+  - `crates/ntd-ipc/AGENTS.md`: regenerating the bindings, never editing `bindings.ts`;
+  - `tools/ntd-codegen/AGENTS.md`: adding a descriptor field.
+- If a maintainer says something different from `AGENTS.md`, follow the maintainer, **except**
+  for rule 14.3.
 
-### 14.2 Politique d'utilisation de l'IA
+### 14.2 AI usage policy
 
-- L'auteur d'une PR est responsable de **chaque ligne**, quel que soit l'outil qui l'a écrite.
-  Avant d'ouvrir la PR, il a lu tout le diff, lancé le code, et sait répondre aux questions de
-  review sans demander à un modèle.
-- La description dit si une IA a écrit une part significative du code ou de la description.
-  Supprimer cette mention d'une description rédigée par un agent est un motif de fermeture.
-- Les mainteneurs peuvent fermer sans review une PR qu'ils estiment générée et non vérifiée.
-- On ne rouvre pas une PR fermée et on ne la recrée pas à l'identique : on en discute d'abord.
+- The author of a PR is responsible for **every line**, whatever tool wrote it. Before opening the
+  PR, they have read the whole diff, run the code, and can answer review questions without asking
+  a model.
+- The description says whether AI wrote a significant part of the code or the description.
+  Removing that statement from an agent-drafted description is grounds for closing.
+- Maintainers may close without review a PR they consider generated and unchecked.
+- A closed PR is not reopened or recreated identically: discuss it first.
+- Commits carry no AI co-author trailer, session link or model identifier (rule 87).
 
-### 14.3 Les agents n'ouvrent pas de PR
+### 14.3 Agents do not open PRs
 
-Un agent IA prépare la branche, les commits et le texte de la description. Il n'ouvre **jamais**
-la pull request lui-même, même si on le lui demande : c'est un humain qui l'ouvre, après avoir
-relu. Un agent ne pousse jamais sur `main`.
+An AI agent prepares the branch, the commits and the description text. It **never** opens the
+pull request itself, even if asked to: a human opens it after reviewing. An agent never pushes to
+`main`.
 
-### 14.4 Critères de fermeture sans review
+### 14.4 Review and merge
 
-Une PR peut être fermée sans review complète si :
-- la description est vide, répète seulement le titre, ou ne dit pas comment le changement a été
-  testé ;
-- elle mélange des changements sans rapport (reformatage de code non touché, lockfile modifié
-  sans raison, fichiers générés sans le changement qui les justifie) ;
-- elle modifie un parser sans golden files, ou change un comportement visible sans capture ;
-- elle duplique une PR ouverte sans dire en quoi elle diffère ;
-- l'auteur ne sait pas expliquer son changement ;
-- elle cache ou retire la mention d'usage de l'IA (§14.2) ;
-- la CI échoue et l'auteur ne la corrige pas, ou ne répond plus à la review.
+- `main` is protected: no direct push, `ci-success` is the only required check.
+- **The maintainer may merge their own PRs** once `ci-success` is green and the PR checklist (§10)
+  is complete. No second reviewer is required while there is a single maintainer.
+- **External PRs** require the maintainer's approval.
 
-### 14.5 Modèle de description de PR
+### 14.5 Closing without review
 
-`.github/pull_request_template.md` :
+A PR may be closed without a full review if:
+- the description is empty, only repeats the title, or does not say how the change was tested;
+- it mixes unrelated changes (reformatting untouched code, lockfile changed without reason,
+  generated files without the change that justifies them);
+- it changes a parser without golden files, or changes visible behaviour without a screenshot;
+- it duplicates an open PR without saying how it differs;
+- the author cannot explain their change;
+- it hides or removes the AI usage statement (§14.2);
+- it is not written in English (rule 116);
+- CI fails and the author does not fix it, or stops answering the review.
+
+### 14.6 PR description template
+
+`.github/pull_request_template.md`:
 
 ```markdown
-## Quoi
+## What
 
-## Pourquoi
+## Why
 
-## Impact (utilisateurs, latence, formats persistants, ABI, contrat IPC)
+## Impact (users, latency, persisted formats, ABI, IPC contract, websocket/SDK)
 
-## Comment c'est testé
+## How it was tested
 
-## Limites connues
+## Known limitations
 
-## Usage de l'IA
-<!-- Aucun / partiel (préciser quoi) / majoritaire -->
+## AI usage
+<!-- None / partial (say what) / most -->
+
+## Roadmap
+<!-- Task ID from docs/v3-rewrite.md §17, if any -->
 ```
 
 ---
 
-## 15. Outils internes
+## 15. Internal tools
 
-Ces outils s'inspirent de ceux de PumpkinMC (`tools/pumpkin-codegen`, `tools/pumpkin-tester`,
-`tools/pumpkin-fuzzer`, l'Extractor et `.github/scripts/ci_packages.py`), adaptés à un pilote de
-tablette. Ce sont des binaires dans `tools/`, membres du workspace. Ils suivent les lints du
-workspace : un outil CLI qui écrit sur la sortie standard le déclare avec
-`#[expect(clippy::print_stdout, reason = "...")]` sur sa fonction `main`, pas par un `allow`
-global.
+These tools are inspired by PumpkinMC's (`tools/pumpkin-codegen`, `tools/pumpkin-tester`,
+`tools/pumpkin-fuzzer`, the Extractor and `.github/scripts/ci_packages.py`), adapted to a tablet
+driver. They are binaries in `tools/`, members of the workspace, and follow the workspace lints
+(§12.3).
 
-### 15.1 `ntd-codegen` : les tablettes deviennent du code
+### 15.1 `ntd-codegen`: tablets become code
 
-**Problème v2** : `src/drivers/config_loader.rs` embarque `tablets/` avec `include_dir` et
-parse le JSON **au démarrage**. Un JSON invalide n'est donc découvert qu'à l'exécution, chez
-l'utilisateur.
+**v2 problem**: `src/drivers/config_loader.rs` embeds `tablets/` with `include_dir` and parses the
+JSON **at startup**. An invalid JSON file is only discovered at runtime, on the user's machine.
 
-**Ce que fait l'outil** :
-- lit `tablets/**/*.json`, les valide (champs obligatoires, VID/PID uniques, parser référencé
-  existant, dimensions cohérentes) ;
-- génère des tables statiques Rust dans `crates/ntd-tablets/src/generated/`, avec un en-tête
-  « fichier généré par ntd-codegen, ne pas modifier » ;
-- les fichiers générés sont **commités**, comme chez Pumpkin : les diffs se relisent en review et
-  la compilation ne dépend pas d'un `build.rs`.
+**What the tool does**:
+- reads `tablets/**/*.json` and validates it (required fields, unique VID/PID, referenced parser
+  exists, consistent dimensions, optional per-OS fields of §16.3);
+- generates static Rust tables in `crates/ntd-tablets/src/generated/`, with a "generated by
+  ntd-codegen, do not edit" header;
+- the generated files are **committed**, as at Pumpkin: diffs are reviewable and the build does
+  not depend on a `build.rs`.
 
-**Commandes** : `cargo run --locked -p ntd-codegen` régénère tout. La CI régénère et échoue s'il y
-a une différence.
+**Commands**: `cargo run --locked -p ntd-codegen` regenerates everything. CI regenerates and fails
+on any diff.
 
-**Conséquences** : plus de `serde_json` ni d'`include_dir` dans le chemin de démarrage, plus
-d'erreur de descripteur à l'exécution, et le matching VID/PID devient une recherche dans une
-table statique.
+**Consequences**: no more `serde_json` or `include_dir` on the startup path, no more descriptor
+errors at runtime, and VID/PID matching becomes a static table lookup.
 
-Un `tools/ntd-codegen/AGENTS.md` décrit comment ajouter un champ de descripteur.
+### 15.2 `ntd-tester`: the real engine, without a tablet
 
-### 15.2 `ntd-tester` : le moteur réel, sans tablette
+**Equivalent** of `pumpkin-tester` (real server + bots + scenarios).
 
-**Équivalent** de `pumpkin-tester` (vrai serveur + bots + scénarios).
+**What the tool does**:
+- starts the **real** `ntd-engine` with a `HidBackend` that replays a capture (§15.3), an
+  `OutputSink` that records what would be injected, a simulated clock and `Paths` in a temporary
+  directory;
+- for each scenario, compares the output (positions, pressure, clicks, keys) with an expected
+  file, with an explicit tolerance for floats;
+- covers what unit tests do not see: profiles (mapping, rotation, relative mode), filter chain and
+  official plugins, button bindings, unplugging and replugging mid-capture.
 
-**Ce que fait l'outil** :
-- démarre le **vrai** `ntd-engine` avec un `HidBackend` qui rejoue une capture (§15.3), un
-  `OutputSink` qui enregistre ce qui serait injecté, une horloge simulée et des `Paths` dans un
-  dossier temporaire ;
-- pour chaque scénario, compare la sortie (positions, pression, clics, touches) à un fichier
-  attendu, avec une tolérance explicite pour les flottants ;
-- couvre ce que les tests unitaires ne voient pas : profils (mapping, rotation, mode relatif),
-  chaîne de filtres et plugins officiels, bindings des boutons, débranchement et rebranchement
-  au milieu d'une capture.
+**Scenario format**: `qa/scenarios/<name>/` holds the capture, the profile and the expected
+output. Adding a scenario requires no code.
 
-**Format d'un scénario** : `qa/scenarios/<nom>/` contient la capture, le profil et la sortie
-attendue. Ajouter un scénario ne demande aucun code.
+**Command**: `cargo run --locked -p ntd-tester` (or `-- <name>` for a single scenario). It exits
+non-zero on the first mismatch and prints a readable diff.
 
-**Commande** : `cargo run --locked -p ntd-tester` (ou `-- <nom>` pour un seul scénario). Il
-renvoie un code de sortie non nul au premier écart et affiche un diff lisible.
+### 15.3 `ntd-recorder`: capturing a tablet
 
-### 15.3 `ntd-recorder` : capturer une tablette
+**Equivalent** of Pumpkin's Extractor, which produces reference data from the game. Here the
+reference data comes from the user's tablet.
 
-**Équivalent** de l'Extractor de Pumpkin, qui produit les données de référence depuis le jeu.
-Ici, les données de référence viennent de la tablette de l'utilisateur.
+**What the tool does**:
+- lists HID devices; the user picks their tablet;
+- records the HID report descriptor, device information (VID, PID, product strings, interfaces)
+  and a session of timestamped raw reports while the user follows on-screen instructions ("hover
+  without touching", "press lightly then hard", "click button 1", "tilt the pen"…);
+- writes a single versioned file (`.ntdcap`, JSON or binary), **without personal data**
+  (truncated serial number, no machine name or path);
+- ships as a standalone binary documented in `docs/adding-a-tablet.md`. The `tablet_support.yml`
+  issue template asks for this file.
 
-**Ce que fait l'outil** :
-- liste les périphériques HID, l'utilisateur choisit sa tablette ;
-- enregistre le descripteur de rapport HID, les infos du périphérique (VID, PID, chaînes produit,
-  interfaces) et une session de rapports bruts horodatés pendant que l'utilisateur suit des
-  consignes à l'écran (« survole sans toucher », « appuie doucement puis fort », « clique sur le
-  bouton 1 », « incline le stylet »…) ;
-- écrit un seul fichier (`.ntdcap`, JSON ou binaire versionné), **sans données personnelles**
-  (numéro de série tronqué, pas de nom de machine ni de chemin) ;
-- est distribué en binaire autonome et documenté dans `docs/adding-a-tablet.md`. Le modèle
-  d'issue `tablet_support.yml` demande ce fichier.
+**Uses**:
+1. Adding a tablet: the capture is used to write the descriptor, then becomes a golden file and a
+   `ntd-tester` scenario.
+2. Bug reports: replay the reporter's capture instead of guessing.
+3. Initial fuzzing corpus (§15.4).
 
-**Usages** :
-1. Ajout d'une tablette : la capture sert à écrire le descripteur, puis devient golden file et
-   scénario `ntd-tester`.
-2. Rapport de bug : on rejoue la capture du rapporteur au lieu de deviner.
-3. Corpus de départ pour le fuzzing (§15.4).
+### 15.4 Fuzzing the parsers and the protocol
 
-### 15.4 Fuzzing des parsers et du protocole
+**v2 state**: `qa/fuzz/fuzz_targets/` only covers maths (`rotate_point`, `normalized_to_screen`,
+`physical_to_normalized`, `apply_relative_delta`). **No HID parser is fuzzed**, although the
+parsers are the surface that receives external bytes.
 
-**Constat v2** : `qa/fuzz/fuzz_targets/` ne couvre que les maths (`rotate_point`,
-`normalized_to_screen`, `physical_to_normalized`, `apply_relative_delta`). **Aucun parser HID
-n'est fuzzé**, alors que c'est la surface qui reçoit des octets extérieurs.
+**To add** (cargo-fuzz):
+- one target per parser family (`wacom`, `huion`, `xp_pen`, `uclogic`, `veikk`…) that feeds
+  arbitrary bytes to the parser and checks it returns `Ok`/`Err`/`None` **without panicking**, and
+  that produced values stay within the descriptor's bounds;
+- one target for decoding the `ntd-interop` command protocol and one for incoming websocket
+  messages (v2 and v3);
+- one target for loading profiles and the v2 → v3 migration (`ntd-settings`).
 
-**À ajouter** (cargo-fuzz) :
-- une cible par famille de parser (`wacom`, `huion`, `xp_pen`, `uclogic`, `veikk`…) qui envoie des
-  octets arbitraires au parser et vérifie qu'il renvoie `Ok`/`Err`/`None` **sans paniquer**, et
-  que les valeurs produites restent dans les bornes du descripteur ;
-- une cible pour le décodage du protocole de commandes `ntd-interop` et une pour les messages
-  websocket entrants ;
-- une cible pour le chargement des profils et la migration v2 → v3 (`ntd-settings`).
+**Corpus**: seeded with `ntd-recorder` captures; every crash found is added to the corpus **and**
+becomes a unit test.
 
-**Corpus** : il démarre avec les captures `ntd-recorder` ; chaque crash trouvé est ajouté au
-corpus **et** devient un test unitaire.
+### 15.5 `ntd-stress`: websocket and IPC stress
 
-### 15.5 `ntd-stress` : stress du websocket et de l'IPC
+**Equivalent** of `pumpkin-fuzzer`, which hammers a running server with random packets.
 
-**Équivalent** de `pumpkin-fuzzer`, qui bombarde un serveur lancé avec des paquets aléatoires.
+**What the tool does**:
+- connects to a running NTD (local websocket, protocols v2 and v3, and the interop command
+  protocol);
+- modes: random messages, valid but out-of-range messages, corrupted or truncated frames, burst
+  connections and disconnections, slow clients that never read;
+- options: duration, concurrency, mode;
+- checks at the end that the process is alive, memory is back to normal and pipeline latency has
+  not moved.
 
-**Ce que fait l'outil** :
-- se connecte à un NTD lancé (websocket local et protocole de commandes interop) ;
-- modes : messages aléatoires, messages valides mais hors bornes, trames corrompues ou
-  tronquées, connexions et déconnexions en rafale, clients lents qui ne lisent pas ;
-- options : durée, concurrence, mode ;
-- vérifie à la fin que le processus est vivant, que la mémoire est revenue à la normale et que
-  la latence du pipeline n'a pas bougé.
+It runs in the nightly workflow (§13.5), not on every PR: it is a long test.
 
-Il tourne dans le workflow nightly (§13.5), pas sur chaque PR : c'est un test long.
+### 15.6 `cargo xtask ci-plan`: CI per touched crate
 
-### 15.6 `cargo xtask ci-plan` : CI par crate touché
+**Inspired by** Pumpkin's `.github/scripts/ci_packages.py`, but **written in Rust in `xtask`**
+rather than Python: one language for tooling, and it reuses `cargo metadata`.
 
-**Inspiré de** `.github/scripts/ci_packages.py` de Pumpkin, mais **écrit en Rust dans `xtask`**
-plutôt qu'en Python : une seule langue pour les outils, et il réutilise `cargo metadata`.
+**What the command does**:
+- computes the files changed between the PR base and head;
+- maps them to crates, then adds **every crate that depends on them** (reverse graph from
+  `cargo metadata`);
+- switches to a full run if a global file changes (list in §13.1), on `main`, on tags and on
+  nightly;
+- writes the crate list and the test matrix to `$GITHUB_OUTPUT` (Linux and Windows x64 on PRs,
+  full matrix with ARM64 on full runs).
 
-**Ce que fait la commande** :
-- calcule les fichiers modifiés entre la base et la tête de la PR ;
-- les associe aux crates, puis ajoute **tous les crates qui en dépendent** (graphe inverse de
-  `cargo metadata`) ;
-- bascule en exécution complète si un fichier global change (liste en §13.1), sur `main`, sur
-  les tags et sur le nightly ;
-- écrit dans `$GITHUB_OUTPUT` la liste des crates et la matrice de test (Linux et Windows x64
-  sur les PR, matrice complète avec ARM64 en exécution complète).
-
-Les jobs `clippy`, `test` et `build` lisent cette sortie et passent `-p <crate>` pour chaque
-crate. Le script a ses propres tests unitaires (graphe de dépendances factice).
+The `clippy`, `test` and `build` jobs read this output and pass `-p <crate>` for each crate. The
+command has its own unit tests (fake dependency graph).
 
 ---
 
-## 16. Plateformes cibles
+## 16. Target platforms
 
-### 16.1 Objectif
+### 16.1 Goal
 
-À terme, NextTabletDriver doit fonctionner de façon **stable** sur **Windows, Linux et macOS**,
-sur toutes les architectures courantes de chacun : x86_64 (Intel/AMD 64 bits), x86 32 bits, ARM
-64 bits et, sur Linux, ARM 32 bits ; sur macOS, Intel et Apple Silicon.
+Eventually, NextTabletDriver must run **reliably** on **Windows, Linux and macOS**, on every
+common architecture of each: x86_64 (Intel/AMD 64-bit), 32-bit x86, 64-bit ARM and, on Linux,
+32-bit ARM; on macOS, Intel and Apple Silicon.
 
-**Ce n'est pas l'objectif de la 3.0.** La v2 ne gère que Windows et Linux (`cfg(windows)` et
-`cfg(target_os = "linux")` dans `engine/injector`, `engine/interop`…), et le support d'une
-nouvelle plateforme est un vrai travail (permissions, injection, packaging). La refonte doit
-en revanche **préparer** ce travail : chaque nouvelle plateforme doit être une implémentation à
-ajouter dans des emplacements déjà prévus, pas une refonte de plus.
+**This is not the goal of 3.0.** v2 only handles Windows and Linux (`cfg(windows)` and
+`cfg(target_os = "linux")` in `engine/injector`, `engine/interop`…), and supporting a new platform
+is real work (permissions, injection, packaging). The rewrite must, however, **prepare** that
+work: each new platform must be an implementation added in places that already exist, not another
+redesign.
 
-### 16.2 Matrice et niveaux de support
+### 16.2 Matrix and support tiers
 
-| Plateforme | Target Rust | Niveau en 3.0 | Ensuite |
+| Platform | Rust target | Tier in 3.0 | Later |
 |---|---|---|---|
 | Windows x64 | `x86_64-pc-windows-msvc` | **1** | — |
 | Linux x64 | `x86_64-unknown-linux-gnu` | **1** | — |
 | Windows ARM64 | `aarch64-pc-windows-msvc` | **2** | 1 |
 | Linux ARM64 | `aarch64-unknown-linux-gnu` | **2** | 1 |
-| macOS Apple Silicon | `aarch64-apple-darwin` | 3 | 2, puis 1 |
-| macOS Intel | `x86_64-apple-darwin` | 3 | 2 (binaire universel avec Apple Silicon) |
-| Windows x86 32 bits | `i686-pc-windows-msvc` | 3 | 2 |
-| Linux x86 32 bits | `i686-unknown-linux-gnu` | 3 | 2 |
-| Linux ARM 32 bits | `armv7-unknown-linux-gnueabihf` | 3 | 2 |
+| macOS Apple Silicon | `aarch64-apple-darwin` | 3 | 2, then 1 |
+| macOS Intel | `x86_64-apple-darwin` | 3 | 2 (universal binary with Apple Silicon) |
+| Windows 32-bit x86 | `i686-pc-windows-msvc` | 3 | 2 |
+| Linux 32-bit x86 | `i686-unknown-linux-gnu` | 3 | 2 |
+| Linux 32-bit ARM | `armv7-unknown-linux-gnueabihf` | 3 | 2 |
 
-Hors périmètre : macOS 32 bits (il n'existe plus) et Windows ARM 32 bits (abandonné par
-Microsoft).
+Out of scope: 32-bit macOS (it no longer exists) and 32-bit Windows ARM (abandoned by Microsoft).
 
-Définition des niveaux :
-- **Niveau 1** : fonctionnalités complètes, tests et `ntd-tester` en CI sur un runner natif,
-  publiée dans chaque release, bugs bloquants pour une release.
-- **Niveau 2** : fonctionnalités complètes, build et tests en CI (runner natif, ou émulation
-  QEMU / `cross` pour l'ARM 32 bits et l'x86 32 bits sous Linux), publiée en release avec la
-  mention « expérimental ».
-- **Niveau 3** : **préparée, pas implémentée**. Le workspace compile pour cette cible (`cargo
-  clippy --target …` bloquant en CI), les modules OS existent et renvoient
-  `PlatformError::Unsupported`. Rien n'est publié.
+Tier definitions:
+- **Tier 1**: complete features, tests and `ntd-tester` in CI on a native runner, shipped in every
+  release, bugs block a release.
+- **Tier 2**: complete features, build and tests in CI (native runner, or QEMU / `cross`
+  emulation for 32-bit ARM and 32-bit x86 on Linux), shipped in releases marked "experimental".
+- **Tier 3**: **prepared, not implemented**. The workspace builds for this target (`cargo clippy
+  --target …` blocking in CI), the OS modules exist and return `PlatformError::Unsupported`.
+  Nothing is shipped.
 
-Une plateforme passe au niveau supérieur par une décision explicite, quand elle remplit les
-critères ; jamais « parce que ça compile ».
+A platform moves up a tier by explicit decision, when it meets the criteria; never "because it
+compiles".
 
-### 16.3 Ce que la refonte doit préparer dès maintenant
+### 16.3 What the rewrite must prepare now
 
-**Structure des adaptateurs OS.** Chaque crate qui touche l'OS (`ntd-hid`, `ntd-output`,
-`ntd-interop`, `ntd-platform`) a la même forme :
+**OS adapter structure.** Every crate that touches the OS (`ntd-hid`, `ntd-output`,
+`ntd-interop`, `ntd-platform`) has the same shape:
 
 ```
 src/
-  lib.rs          # trait public + choix de l'implémentation selon target_os
+  lib.rs          # public trait + implementation chosen by target_os
   windows.rs
   linux.rs
-  macos.rs        # en 3.0 : renvoie PlatformError::Unsupported
-  unsupported.rs  # tout autre OS : erreur explicite, compile quand même
+  macos.rs        # in 3.0: returns PlatformError::Unsupported
+  unsupported.rs  # any other OS: explicit error, still compiles
 ```
 
 ```rust
@@ -1346,8 +1427,8 @@ mod unsupported;
 pub use unsupported::Backend;
 ```
 
-**Capacités plutôt que suppositions.** Les plateformes n'offrent pas toutes la même chose
-(injection de la pression, de l'inclinaison, souris absolue). Les traits exposent des capacités :
+**Capabilities rather than assumptions.** Platforms do not all offer the same things (pressure
+injection, tilt, absolute pointer). Traits expose capabilities:
 
 ```rust
 pub struct OutputCapabilities {
@@ -1363,496 +1444,517 @@ pub trait OutputSink {
 }
 ```
 
-Le moteur et le frontend lisent ces capacités : le frontend masque ou désactive une option non
-disponible au lieu de l'afficher sans effet.
+The engine and the frontend read these capabilities: the frontend hides or disables an option
+that is not available instead of showing it with no effect.
 
-**Indépendance vis-à-vis de l'architecture** :
-- types à largeur fixe dans tout ce qui est sérialisé ou traverse une frontière (règle 106) ;
-- octets lus avec un ordre explicite (règle 109) ;
-- tous les `Atomic*` utilisés doivent exister sur toutes les cibles de §16.2 : vérifier
-  `cfg(target_has_atomic = "64")` avant d'utiliser `AtomicU64` dans un crate partagé ;
-- la CI de niveau 3 attrape ces problèmes tôt, avant même qu'une plateforme soit implémentée.
+**Architecture independence**:
+- fixed-width types in everything serialised or crossing a boundary (rule 106);
+- bytes read with an explicit byte order (rule 109);
+- every `Atomic*` used must exist on every target of §16.2: check
+  `cfg(target_has_atomic = "64")` before using `AtomicU64` in a shared crate;
+- tier 3 CI catches these problems early, before a platform is even implemented.
 
-**Plugins et SDK** :
-- l'ABI de `ntd-plugin-api` n'utilise que des types à largeur fixe et `repr(C)` : la même ABI
-  vaut pour 32 et 64 bits ;
-- le manifeste d'un plugin déclare son target triple ; le host refuse un plugin d'une autre
-  cible (règle 111). Le format de distribution d'un plugin prévoit **plusieurs binaires** (un par
-  cible) dès la 3.0, même si on n'en publie que deux ;
-- `apps/sdk` et ses bindings (C, C#) sont construits par cible, avec le même nommage d'artefacts
-  que l'application.
+**Plugins and SDK**:
+- the `ntd-plugin-api` ABI uses only fixed-width, `repr(C)` types: the same ABI works for 32 and
+  64 bits;
+- a plugin's manifest declares its target triple; the host refuses a plugin for another target
+  (rule 111). The plugin distribution format allows **several binaries** (one per target) from 3.0
+  on, even if only two are published;
+- `apps/sdk` and its bindings (C, C#) are built per target, with the same artifact naming as the
+  application.
 
-**Descripteurs de tablettes** : le schéma de `ntd-codegen` (§15.1) prévoit un champ optionnel par
-OS pour les cas où l'interface ou la collection HID à ouvrir diffère selon le système.
+**Tablet descriptors**: the `ntd-codegen` schema (§15.1) has an optional per-OS field for cases
+where the HID interface or collection to open differs by system.
 
-**Mise à jour et packaging** :
-- le manifeste d'update (`latest.json` et les canaux bêta/nightly) utilise les clés de
-  plateforme de l'updater Tauri (`windows-x86_64`, `linux-aarch64`, `darwin-aarch64`…) ; le
-  script qui le génère prend la liste des cibles en entrée au lieu de la coder en dur ;
-- les noms d'artefacts suivent un seul format : `NextTabletDriver_<version>_<os>_<arch>.<ext>`.
+**Update and packaging**:
+- the update manifests (`latest.json` and the beta/nightly channels) use the Tauri updater
+  platform keys (`windows-x86_64`, `linux-aarch64`, `darwin-aarch64`…); the script that generates
+  them takes the target list as input instead of hardcoding it;
+- artifact names follow a single format: `NextTabletDriver_<version>_<os>_<arch>.<ext>`.
 
-**Frontend** : `infrastructure/os.ts` expose la plateforme (OS, architecture) et les capacités ;
-les composants qui en dépendent (`TitleBar.svelte`, raccourcis clavier, menus) ne testent
-jamais l'OS eux-mêmes (règle 114).
+**Frontend**: `infrastructure/os.ts` exposes the platform (OS, architecture) and capabilities;
+components that depend on them (`TitleBar.svelte`, keyboard shortcuts, menus) never test the OS
+themselves (rule 114).
 
 ### 16.4 `ntd-platform`
 
-Petit crate pour l'intégration système qui n'est ni HID ni injection, et qui est aujourd'hui
-éparpillée :
+A small crate for system integration that is neither HID nor injection, and that is scattered
+today:
 
-| Fonction | Windows | Linux | macOS (plus tard) |
+| Function | Windows | Linux | macOS (later) |
 |---|---|---|---|
-| Démarrage automatique | registre `Run` | `.desktop` dans `~/.config/autostart` | LaunchAgent |
-| Instance unique | mutex nommé | socket ou verrou de fichier | socket ou verrou de fichier |
-| Priorité du thread de polling | `SetThreadPriority` | `sched_setscheduler` | QoS de thread |
-| Timer haute résolution (`force_high_resolution_timer`) | `timeBeginPeriod` | sans objet | sans objet |
-| Dossiers (config, plugins, logs) | via `directories`, passés en `Paths` (§4.4) | idem | idem |
+| Autostart | `Run` registry key | `.desktop` in `~/.config/autostart` | LaunchAgent |
+| Single instance | named mutex | socket or file lock | socket or file lock |
+| Polling thread priority | `SetThreadPriority` | `sched_setscheduler` | thread QoS |
+| High-resolution timer (`force_high_resolution_timer`) | `timeBeginPeriod` | n/a | n/a |
+| Directories (config, plugins, logs) | via `directories`, passed as `Paths` (§4.4) | same | same |
 
-### 16.5 Points de vigilance par plateforme (pour plus tard)
+### 16.5 Per-platform concerns (for later)
 
-Ces points ne sont **pas** à traiter en 3.0, mais l'architecture ne doit pas les rendre
-difficiles.
+These points are **not** handled in 3.0, but the architecture must not make them hard.
 
-**macOS** :
-- **Permissions** : la lecture HID demande l'autorisation « Surveillance de l'entrée » et
-  l'injection demande « Accessibilité ». L'application doit détecter leur absence et guider
-  l'utilisateur, ce qui suppose des erreurs typées `PermissionDenied` dès maintenant dans
-  `ntd-hid` et `ntd-output`.
-- **Saisie exclusive** : pour que le pilote système ne déplace pas aussi le curseur, il faut
-  ouvrir la tablette en mode exclusif (IOKit). `HidBackend` doit donc accepter une option
-  « exclusif » dès la 3.0, même si seule une plateforme l'utilise.
-- **Signature et notarisation** obligatoires (compte Apple Developer, Hardened Runtime). Le
-  Hardened Runtime bloque le chargement de bibliothèques signées par d'autres que nous :
-  charger des plugins tiers demande l'entitlement `com.apple.security.cs.disable-library-validation`.
-  À décider explicitement au moment du portage, et la vérification minisign (§8) reste
-  obligatoire dans tous les cas.
-- **Mémoire partagée** : les noms POSIX `shm_open` sont limités à 31 caractères sur macOS ;
-  `ntd-interop` ne doit pas supposer des noms plus longs.
-- **Interface** : boutons de fenêtre à gauche, barre de menus globale, raccourcis `Cmd`.
-- **Binaire universel** (Intel + Apple Silicon) plutôt que deux téléchargements.
+**macOS**:
+- **Permissions**: reading HID requires the "Input Monitoring" permission and injection requires
+  "Accessibility". The application must detect their absence and guide the user, which requires
+  typed `PermissionDenied` errors in `ntd-hid` and `ntd-output` from now on.
+- **Exclusive access**: to stop the system driver from also moving the cursor, the tablet must be
+  opened in exclusive mode (IOKit). `HidBackend` must therefore accept an "exclusive" option from
+  3.0, even if only one platform uses it.
+- **Signing and notarisation** are mandatory (Apple Developer account, Hardened Runtime). The
+  Hardened Runtime blocks loading libraries signed by anyone else: loading third-party plugins
+  requires the `com.apple.security.cs.disable-library-validation` entitlement. This must be
+  decided explicitly at porting time, and minisign verification (§8) stays mandatory in every case.
+- **Shared memory**: POSIX `shm_open` names are limited to 31 characters on macOS; `ntd-interop`
+  must not assume longer names.
+- **UI**: window buttons on the left, global menu bar, `Cmd` shortcuts.
+- **Universal binary** (Intel + Apple Silicon) rather than two downloads.
 
-**Linux** :
-- règles udev pour l'accès à `hidraw` et `uinput` sans root, à fournir dans les paquets ;
-- X11 et Wayland : l'injection par `uinput` fonctionne sur les deux, mais la détection des écrans
-  diffère et doit passer par un trait ;
-- formats de paquets par architecture (deb, rpm, AppImage), WebKitGTK disponible sur chaque cible.
+**Linux**:
+- udev rules for `hidraw` and `uinput` access without root, shipped in the packages;
+- X11 and Wayland: `uinput` injection works on both, but screen detection differs and must go
+  through a trait;
+- package formats per architecture (deb, rpm, AppImage), WebKitGTK available on each target.
 
-**32 bits (Windows x86, Linux x86, ARM 32 bits)** :
-- vérifier que Tauri, WebView2 (Windows x86) et WebKitGTK sont disponibles pour la cible ;
-- mémoire plus limitée : pas de tampons dimensionnés « large » par défaut dans le pipeline.
+**32-bit (Windows x86, Linux x86, 32-bit ARM)**:
+- check that Tauri, WebView2 (Windows x86) and WebKitGTK are available for the target;
+- more limited memory: no "large by default" buffers in the pipeline.
 
-**Windows ARM64** : vérifier que chaque plugin officiel et le SDK sont bien publiés pour ARM64,
-et pas seulement l'application.
+**Windows ARM64**: check that every official plugin and the SDK are published for ARM64, not
+just the application.
 
 ---
 
 ## 17. Roadmap
 
-### 17.1 État actuel
+### 17.1 Current state
 
 | | |
 |---|---|
-| **Phase en cours** | Phase 0 — Filets de sécurité |
-| **Dernière tâche terminée** | aucune |
-| **Prochaine tâche** | P0.1 |
-| **Dernière mise à jour** | 2026-10-31 |
+| **Current phase** | Phase 0: Safety nets |
+| **Last completed task** | none |
+| **Next task** | P0.1 |
+| **Release freeze** | not started (starts after P0.2) |
+| **Last updated** | 2026-10-31 |
 
-Ce tableau est mis à jour par **chaque** PR qui coche une tâche.
+This table is updated by **every** PR that ticks a task.
 
-### 17.2 Comment utiliser la roadmap
+### 17.2 How to use the roadmap
 
-**Légende** :
-- `[ ]` à faire
-- `[~]` en cours : ajouter la branche ou la PR et l'auteur, par exemple `[~] (branche refactor/p2-2-tablets, @pseudo)`
-- `[x]` terminée : ajouter le lien de la PR qui l'a terminée
-- `[-]` abandonnée : ajouter la raison et le lien de la décision
+**Legend**:
+- `[ ]` to do
+- `[~]` in progress: add the branch or PR and the author, e.g. `[~] (branch refactor/p2-3-tablets, @handle)`
+- `[x]` done: add the link to the PR that completed it
+- `[-]` dropped: add the reason and a link to the decision
 
-**Règles** (pour les humains et les LLMs) :
-1. **Ce fichier, sur `main`, fait foi.** Ni une issue, ni une conversation, ni la mémoire d'un
-   agent ne remplace la case cochée ici.
-2. **Quelle tâche prendre** : la **première** tâche `[ ]` de la phase en cours dont toutes les
-   dépendances (« Dépend de ») sont `[x]`. Deux tâches d'une même phase sans dépendance entre elles
-   peuvent avancer en parallèle, par des personnes différentes.
-3. **Pas de saut de phase.** Une phase commence quand la **porte** de la phase précédente est
-   cochée. Une porte se coche seulement quand tous ses critères sont vérifiés, commande à l'appui.
-4. **Avant de commencer** : vérifier qu'aucune PR ou branche ouverte ne traite déjà la tâche, puis
-   passer la tâche à `[~]` (petite PR de roadmap, ou premier commit de la branche).
-5. **Une tâche = une PR**, sauf mention « (plusieurs PR) ». La PR qui termine la tâche la coche
-   **dans le même commit** et met à jour §17.1.
-6. **« Terminé quand » est un contrat.** On ne coche pas si un seul critère n'est pas vérifié.
-   Une tâche à moitié faite reste `[~]`.
-7. **Une tâche mal découpée** (trop grosse, dépendance oubliée) se corrige d'abord dans une PR qui
-   modifie seulement la roadmap, puis on reprend.
-8. **Pour un LLM** : ne travailler que sur **une** tâche à la fois, celle que la règle 2 désigne
-   ou celle qu'un mainteneur a nommée ; relire la section de référence (§…) et les règles
-   « NE PAS » (§9) avant de commencer ; ne jamais cocher une case sans avoir lancé les commandes
-   de la règle 84 ; ne pas ouvrir de PR (règle 88).
-9. **Chaque PR** passe aussi la checklist de PR (§10).
-
----
-
-### Phase 0 — Filets de sécurité
-
-Objectif : pouvoir détecter toute régression **avant** de toucher l'architecture (§7, phase 0).
-
-- [ ] **P0.1** Corriger la clé publique de l'updater (§11.1)
-  - Dépend de : —
-  - Terminé quand : `tauri.conf.json` contient la vraie clé publique associée à
-    `TAURI_SIGNING_PRIVATE_KEY` ; une mise à jour de test signée est acceptée par l'application
-    et une mise à jour signée avec une autre clé est refusée.
-- [ ] **P0.2** Vérifier la licence de `tablets/OpenTabletDriver` (§11.2)
-  - Dépend de : —
-  - Terminé quand : la licence d'origine est identifiée, l'attribution requise est ajoutée (ou les
-    fichiers incompatibles sont remplacés), et la décision est écrite dans la PR.
-- [ ] **P0.3** Supprimer la double dépendance d'icônes (§11.3)
-  - Dépend de : —
-  - Terminé quand : une seule bibliothèque Lucide dans `frontend/package.json`, `npm run check`,
-    `npm test` et `npm run e2e` verts.
-- [ ] **P0.4** Écrire `ntd-recorder` v1 (§15.3)
-  - Dépend de : —
-  - Note : il vit dans `tools/ntd-recorder` avec son propre `Cargo.lock` **temporairement** ; il
-    rejoint le workspace en P1.2. C'est la seule exception à la règle 21.
-  - Terminé quand : l'outil liste les périphériques, capture descripteur + rapports guidés, écrit
-    un `.ntdcap` versionné sans données personnelles ; `docs/adding-a-tablet.md` et
-    `.github/ISSUE_TEMPLATE/tablet_support.yml` demandent ce fichier.
-- [ ] **P0.5** Harness de golden files (`qa/golden`)
-  - Dépend de : P0.4
-  - Terminé quand : `cargo test` rejoue chaque capture dans le parser v2 et compare à un snapshot
-    commité ; un octet modifié dans un parser fait échouer le test.
-- [ ] **P0.6** Golden files pour les tablettes supportées (plusieurs PR)
-  - Dépend de : P0.5
-  - Terminé quand : chaque tablette dont on a une capture réelle (ou des rapports réels dans les
-    tests existants) a ses golden files ; les tablettes sans capture sont listées dans
-    `qa/golden/MISSING.md` (règle 103 : on n'invente pas de capture).
-- [ ] **P0.7** Référence de latence
-  - Dépend de : —
-  - Terminé quand : un benchmark criterion couvre le chemin parsing → pipeline → sortie (fake) ;
-    les résultats et la machine de mesure sont notés dans `docs/perf-baseline.md`.
-- [ ] **P0.8** Générer les types TS du contrat v2 (§5.2, étape 1)
-  - Dépend de : —
-  - Terminé quand : les 26 commandes et 5 événements actuels ont des types générés depuis Rust
-    dans `frontend/src/lib/infrastructure/tauri/bindings.ts`, **sans changement de comportement** ;
-    un job CI régénère et échoue s'il y a une différence.
-- [ ] **P0.9** Le frontend utilise les types générés
-  - Dépend de : P0.8
-  - Terminé quand : `commands.ts` et `events.ts` n'ont plus d'interface DTO écrite à la main ;
-    `npm run check`, `npm test`, `npm run e2e` verts.
-- [ ] **PORTE 0**
-  - Terminé quand : P0.1 à P0.9 sont `[x]`, la CI est verte, et `docs/perf-baseline.md` existe.
+**Rules** (for humans and LLMs):
+1. **This file, on `main`, is authoritative.** No issue, conversation or agent memory replaces a
+   box ticked here.
+2. **Which task to take**: the **first** `[ ]` task of the current phase whose dependencies
+   ("Depends on") are all `[x]`. Two tasks of the same phase with no dependency between them can
+   progress in parallel, by different people.
+3. **No skipping phases.** A phase starts when the previous phase's **gate** is ticked. A gate is
+   ticked only when all its criteria are verified, with the commands to prove it.
+4. **Before starting**: check that no open PR or branch already handles the task, then set it to
+   `[~]` (small roadmap PR, or first commit of the branch).
+5. **One task = one PR**, unless marked "(several PRs)". The PR that completes the task ticks it
+   **in the same commit** and updates §17.1.
+6. **"Done when" is a contract.** Do not tick if a single criterion is not verified. A half-done
+   task stays `[~]`.
+7. **A badly scoped task** (too big, missing dependency) is fixed first in a PR that only changes
+   the roadmap, then work resumes.
+8. **For an LLM**: work on **one** task at a time, the one rule 2 designates or the one a
+   maintainer named; reread the referenced section (§…) and the "DO NOT" rules (§9) before
+   starting; never tick a box without running the commands of rule 84; do not open a PR
+   (rule 88).
+9. **Every PR** also goes through the PR checklist (§10).
 
 ---
 
-### Phase 1 — Workspace, qualité, CI, règles de contribution
+### Phase 0: Safety nets
 
-Objectif : un seul workspace et toute la politique de qualité en place, **sans changer le
-comportement** (§7, phase 1 ; §12, §13, §14).
+Goal: be able to detect any regression **before** touching the architecture (§7, phase 0).
 
-- [ ] **P1.1** Créer le workspace et déplacer les applications
-  - Dépend de : PORTE 0
-  - Terminé quand : `[workspace]` à la racine ; `src-tauri` → `apps/desktop`, `sdk` → `apps/sdk`,
-    `sdk/plugin_api` → `crates/ntd-plugin-api`, plugins officiels membres ; **un seul**
-    `Cargo.lock` ; `cargo build --workspace` et `cargo test --workspace` verts ; diff de
-    déplacement pur (`git diff -M`).
-- [ ] **P1.2** Intégrer `tools/ntd-recorder` au workspace
-  - Dépend de : P1.1
-  - Terminé quand : son `Cargo.lock` séparé est supprimé.
-- [ ] **P1.3** `[workspace.dependencies]` et `[workspace.package]`
-  - Dépend de : P1.1
-  - Terminé quand : aucun crate membre ne déclare de version de dépendance (règle 22) ;
-    métadonnées héritées.
-- [ ] **P1.4** Toolchain `stable` (§12.6)
-  - Dépend de : P1.1
-  - Terminé quand : `rust-toolchain.toml` sur `channel = "stable"`, aucune version de Rust dans les
-    workflows, `rust-version` déclaré une fois dans `[workspace.package]`.
-- [ ] **P1.5** Formatage et éditeur (§12.1)
-  - Dépend de : P1.1
-  - Terminé quand : `rustfmt.toml` et `.editorconfig` conformes à §12.1 ; `cargo fmt --all
-    --check` vert.
-- [ ] **P1.6** Introduire `[workspace.lints]` en `warn` (§12.3)
-  - Dépend de : P1.3
-  - Terminé quand : le bloc de §12.3 est en place avec les groupes en `warn` **temporairement** ;
-    le nombre d'avertissements par crate est noté dans la PR.
-- [ ] **P1.7** Corriger les avertissements de lints (plusieurs PR, un domaine par PR)
-  - Dépend de : P1.6
-  - Terminé quand : zéro avertissement sur le workspace ; chaque PR ne corrige que des lints,
-    sans changement de comportement (golden files et E2E identiques).
-- [ ] **P1.8** Passer les lints en `deny`
-  - Dépend de : P1.7
-  - Terminé quand : `[workspace.lints]` est exactement celui de §12.3.
-- [ ] **P1.9** `xtask` et `cargo xtask lint-style` (§12.5)
-  - Dépend de : P1.1
-  - Terminé quand : la commande vérifie les 5 points de §12.5, a ses tests, et passe sur le dépôt.
-- [ ] **P1.10** `typos` et `cargo-machete`
-  - Dépend de : P1.1
-  - Terminé quand : `typos.toml` existe, les deux outils passent sur le dépôt.
+- [ ] **P0.1** Fix the updater public key (§11.1)
+  - Depends on: —
+  - Done when: `tauri.conf.json` contains the real public key matching
+    `TAURI_SIGNING_PRIVATE_KEY`; a signed test update is accepted by the application and an
+    update signed with another key is refused.
+- [ ] **P0.2** Transition 2.x release, then start the freeze (§2)
+  - Depends on: P0.1
+  - Done when: a 2.x release with the real key is published and installed v2 builds update to it;
+    the README and release notes announce the freeze until `3.0.0-beta.1`; §17.1 says the freeze
+    has started. No 2.x release is published after this (rule 117).
+- [ ] **P0.3** Check the licence of `tablets/OpenTabletDriver` (§11.2)
+  - Depends on: —
+  - Done when: the upstream licence is identified, the required attribution is added (or
+    incompatible files are replaced), and the decision is written in the PR.
+- [ ] **P0.4** Remove the duplicate icon library (§11.3)
+  - Depends on: —
+  - Done when: a single Lucide library in `frontend/package.json`; `npm run check`, `npm test` and
+    `npm run e2e` green.
+- [ ] **P0.5** Write `ntd-recorder` v1 (§15.3)
+  - Depends on: —
+  - Note: it lives in `tools/ntd-recorder` with its own `Cargo.lock` **temporarily**; it joins the
+    workspace in P1.2. This is the only exception to rule 21.
+  - Done when: the tool lists devices, captures descriptor + guided reports, writes a versioned
+    `.ntdcap` without personal data; `docs/adding-a-tablet.md` and
+    `.github/ISSUE_TEMPLATE/tablet_support.yml` ask for this file.
+- [ ] **P0.6** Golden file harness (`qa/golden`)
+  - Depends on: P0.5
+  - Done when: `cargo test` replays every capture through the v2 parser and compares it with a
+    committed snapshot; changing one byte in a parser fails the test.
+- [ ] **P0.7** Golden files for the supported tablets (several PRs)
+  - Depends on: P0.6
+  - Done when: every tablet with a real capture (or real reports in the existing tests) has golden
+    files; tablets without a capture are listed in `qa/golden/MISSING.md` (rule 103: captures are
+    never invented).
+- [ ] **P0.8** Latency baseline
+  - Depends on: —
+  - Done when: a criterion benchmark covers the parse → pipeline → (fake) output path; the results
+    and the measuring machine are recorded in `docs/perf-baseline.md`; the 5 % tolerance is
+    written next to them.
+- [ ] **P0.9** Generate the v2 contract with `tauri-specta` (§5.2, step 1)
+  - Depends on: —
+  - Done when: the 26 current commands and 5 events have types and typed functions generated from
+    Rust in `frontend/src/lib/infrastructure/tauri/bindings.ts`, **with no behaviour change**; a CI
+    job regenerates and fails on any diff.
+- [ ] **P0.10** The frontend uses the generated bindings
+  - Depends on: P0.9
+  - Done when: `commands.ts` and `events.ts` have no hand-written DTO interface left;
+    `npm run check`, `npm test`, `npm run e2e` green.
+- [ ] **GATE 0**
+  - Done when: P0.1 to P0.10 are `[x]`, CI is green, the freeze has started and
+    `docs/perf-baseline.md` exists.
+
+---
+
+### Phase 1: Workspace, quality, CI, contribution rules
+
+Goal: one workspace and the whole quality policy in place, **with no behaviour change** (§7,
+phase 1; §12, §13, §14).
+
+- [ ] **P1.1** Create the workspace and move the applications
+  - Depends on: GATE 0
+  - Done when: `[workspace]` at the root; `src-tauri` → `apps/desktop`, `sdk` → `apps/sdk`,
+    `sdk/plugin_api` → `crates/ntd-plugin-api`, official plugins are members; **one**
+    `Cargo.lock`; `cargo build --workspace` and `cargo test --workspace` green; pure move diff
+    (`git diff -M`).
+- [ ] **P1.2** Bring `tools/ntd-recorder` into the workspace
+  - Depends on: P1.1
+  - Done when: its separate `Cargo.lock` is deleted.
+- [ ] **P1.3** `[workspace.dependencies]` and `[workspace.package]`
+  - Depends on: P1.1
+  - Done when: no member crate declares a dependency version (rule 22); metadata is inherited.
+- [ ] **P1.4** `stable` toolchain (§12.6)
+  - Depends on: P1.1
+  - Done when: `rust-toolchain.toml` on `channel = "stable"`, no Rust version in workflows,
+    `rust-version` declared once in `[workspace.package]`.
+- [ ] **P1.5** Formatting and editor (§12.1)
+  - Depends on: P1.1
+  - Done when: `rustfmt.toml` and `.editorconfig` match §12.1; `cargo fmt --all --check` green.
+- [ ] **P1.6** Introduce `[workspace.lints]` as `warn` (§12.3)
+  - Depends on: P1.3
+  - Done when: the §12.3 block is in place with the groups as `warn` **temporarily**; the number
+    of warnings per crate is recorded in the PR.
+- [ ] **P1.7** Fix lint warnings (several PRs, one area per PR)
+  - Depends on: P1.6
+  - Done when: zero warnings on the workspace; each PR only fixes lints, with no behaviour change
+    (golden files and E2E identical).
+- [ ] **P1.8** Switch the lints to `deny`
+  - Depends on: P1.7
+  - Done when: `[workspace.lints]` is exactly the one in §12.3.
+- [ ] **P1.9** `xtask` and `cargo xtask lint-style` (§12.5)
+  - Depends on: P1.1
+  - Done when: the command checks the 5 points of §12.5, has tests, and passes on the repository.
+- [ ] **P1.10** `typos` and `cargo-machete`
+  - Depends on: P1.1
+  - Done when: `typos.toml` exists and both tools pass on the repository.
 - [ ] **P1.11** `cargo xtask ci-plan` (§15.6)
-  - Dépend de : P1.9
-  - Terminé quand : la commande produit la liste des crates touchés + dépendants et la matrice, a
-    ses tests sur un graphe factice.
-- [ ] **P1.12** Refondre `ci.yml` (§13.1, §13.2)
-  - Dépend de : P1.8, P1.9, P1.10, P1.11
-  - Terminé quand : les jobs de §13.2 qui ont déjà un objet existent (fmt, style, typos, machete,
-    clippy, clippy-release, doc, test, golden, bindings, coverage, frontend, e2e, build) ;
-    actions épinglées par SHA ; `ci-success` agrège tout.
-- [ ] **P1.13** Refondre `security.yml` (§13.3)
-  - Dépend de : P1.1
-  - Terminé quand : un seul `cargo deny check`, `npm audit`, dependency review sur les PR ; secret
-    scanning et push protection activés.
-- [ ] **P1.14** `toolchain-beta.yml` (§12.6)
-  - Dépend de : P1.12
-  - Terminé quand : job hebdomadaire non bloquant qui ouvre une issue en cas d'échec.
-- [ ] **P1.15** Protection de `main`
-  - Dépend de : P1.12
-  - Terminé quand : `ci-success` est la seule check requise ; push direct sur `main` interdit.
-- [ ] **P1.16** `AGENTS.md` racine et `CLAUDE.md` (§14.1)
-  - Dépend de : P1.1
-  - Terminé quand : `AGENTS.md` décrit le projet, la disposition, les commandes, renvoie à §9 et
-    §17 ; `CLAUDE.md` est un lien vers lui.
-- [ ] **P1.17** Contribution : politique IA, critères de fermeture, modèle de PR (§14.2 à §14.5)
-  - Dépend de : —
-  - Terminé quand : `.github/CONTRIBUTING.md` et `.github/pull_request_template.md` sont à jour.
-- [ ] **P1.18** Branche `release/2.x`
-  - Dépend de : P1.1
-  - Terminé quand : la branche existe à partir du dernier tag 2.x, et `docs/releasing.md` explique
-    comment y livrer un correctif.
-- [ ] **PORTE 1**
-  - Terminé quand : P1.1 à P1.18 sont `[x]` ; CI verte ; golden files, latence et E2E identiques
-    à la phase 0.
+  - Depends on: P1.9
+  - Done when: the command produces the list of touched crates + dependents and the matrix, with
+    tests on a fake graph.
+- [ ] **P1.12** Frontend quality tooling as warnings (§12.7)
+  - Depends on: —
+  - Done when: Prettier (`printWidth: 100`), the TypeScript options and the ESLint rules of §12.7
+    are configured, temporarily as warnings; `npm run format:check` exists; the number of
+    warnings is recorded in the PR.
+- [ ] **P1.13** Fix frontend warnings (several PRs)
+  - Depends on: P1.12
+  - Done when: zero ESLint, `svelte-check` and TypeScript warnings; Prettier applied; no behaviour
+    change (E2E identical); `infrastructure/log.ts` is the only place using `console`.
+- [ ] **P1.14** Switch the frontend rules to errors
+  - Depends on: P1.13
+  - Done when: `eslint --max-warnings 0`, `svelte-check --fail-on-warnings` and
+    `prettier --check` are in place as in §12.7.
+- [ ] **P1.15** Rework `ci.yml` (§13.1, §13.2)
+  - Depends on: P1.8, P1.9, P1.10, P1.11, P1.14
+  - Done when: the §13.2 jobs that already have something to check exist (fmt, style, typos,
+    machete, clippy, clippy-release, doc, test, golden, bindings, coverage, bench, frontend, e2e,
+    build); actions pinned by SHA; `ci-success` aggregates everything.
+- [ ] **P1.16** Rework `security.yml` (§13.3)
+  - Depends on: P1.1
+  - Done when: a single `cargo deny check`, `npm audit`, dependency review on PRs; secret scanning
+    and push protection enabled.
+- [ ] **P1.17** `toolchain-beta.yml` (§12.6)
+  - Depends on: P1.15
+  - Done when: weekly non-blocking job that opens an issue on failure.
+- [ ] **P1.18** Protect `main` (§14.4)
+  - Depends on: P1.15
+  - Done when: `ci-success` is the only required check; direct pushes to `main` are forbidden;
+    the maintainer can merge their own PRs after green CI.
+- [ ] **P1.19** Root `AGENTS.md` and `CLAUDE.md` (§14.1)
+  - Depends on: P1.1
+  - Done when: `AGENTS.md` describes the project, layout and commands, and points to §9 and §17;
+    `CLAUDE.md` is a symlink to it.
+- [ ] **P1.20** Contribution: language, AI policy, review, closing criteria, PR template
+  (§14.2 to §14.6)
+  - Depends on: —
+  - Done when: `.github/CONTRIBUTING.md` and `.github/pull_request_template.md` are up to date and
+    in English.
+- [ ] **GATE 1**
+  - Done when: P1.1 to P1.20 are `[x]`; CI green; golden files, latency (within +5 %) and E2E
+    identical to phase 0.
 
 ---
 
-### Phase 2 — Extraire les crates purs
+### Phase 2: Extract the pure crates
 
-Objectif : `ntd-core`, `ntd-tablets`, `ntd-pipeline` sans aucune I/O (§7, phase 2).
+Goal: `ntd-core`, `ntd-tablets`, `ntd-pipeline` without any I/O (§7, phase 2).
 
-- [ ] **P2.1** Extraire `ntd-core`
-  - Dépend de : PORTE 1
-  - Terminé quand : `core/input`, `core/math` et les types réellement partagés sont dans
-    `crates/ntd-core` ; `cargo tree -p ntd-core` ne montre aucune dépendance d'I/O.
-- [ ] **P2.2** Supprimer la dépendance `drivers` → `engine::state`
-  - Dépend de : P2.1
-  - Terminé quand : `parsers/wacom/intuos_v1.rs` et `pl.rs` n'importent plus `engine::state` (état
-    local au parser, ou utilitaire déplacé dans `ntd-core`) ; golden files identiques.
-- [ ] **P2.3** Extraire `ntd-tablets`
-  - Dépend de : P2.2
-  - Terminé quand : parsers, modèles et chargement des descripteurs dans `crates/ntd-tablets` ;
-    aucune I/O ; golden files branchés dessus.
+- [ ] **P2.1** Extract `ntd-core`
+  - Depends on: GATE 1
+  - Done when: `core/input`, `core/math` and the really shared types are in `crates/ntd-core`;
+    `cargo tree -p ntd-core` shows no I/O dependency.
+- [ ] **P2.2** Remove the `drivers` → `engine::state` dependency
+  - Depends on: P2.1
+  - Done when: `parsers/wacom/intuos_v1.rs` and `pl.rs` no longer import `engine::state`
+    (parser-local state, or helper moved to `ntd-core`); golden files identical.
+- [ ] **P2.3** Extract `ntd-tablets`
+  - Depends on: P2.2
+  - Done when: parsers, models and descriptor loading are in `crates/ntd-tablets`; no I/O; golden
+    files run against it.
 - [ ] **P2.4** `ntd-codegen` (§15.1)
-  - Dépend de : P2.3
-  - Terminé quand : `tablets/*.json` est validé et génère `crates/ntd-tablets/src/generated/` ;
-    `include_dir` et le parsing JSON au démarrage sont supprimés ; job CI `codegen` ;
-    `tools/ntd-codegen/AGENTS.md` et `crates/ntd-tablets/AGENTS.md` écrits.
-- [ ] **P2.5** Extraire `ntd-pipeline` avec `trait Filter` (§4.4)
-  - Dépend de : P2.1
-  - Terminé quand : `engine/pipeline` et la chaîne de filtres sont dans `crates/ntd-pipeline` ; le
-    cycle `filters` ↔ `engine::plugins` n'existe plus ; latence ≤ référence.
-- [ ] **P2.6** Horloge injectée dans le pipeline
-  - Dépend de : P2.5
-  - Terminé quand : aucun `Instant::now()` ni `sleep` dans `ntd-pipeline` (règle 37).
-- [ ] **P2.7** Fuzzing des parsers (§15.4)
-  - Dépend de : P2.3
-  - Terminé quand : une cible par famille de parser, corpus initialisé avec les captures, job CI
-    `fuzz` de 60 s par cible.
-- [ ] **PORTE 2**
-  - Terminé quand : P2.1 à P2.7 sont `[x]` ; `cargo tree` confirme l'absence d'I/O dans les trois
-    crates ; golden files identiques ; latence ≤ référence.
+  - Depends on: P2.3
+  - Done when: `tablets/*.json` is validated and generates `crates/ntd-tablets/src/generated/`;
+    `include_dir` and JSON parsing at startup are gone; CI `codegen` job;
+    `tools/ntd-codegen/AGENTS.md` and `crates/ntd-tablets/AGENTS.md` written.
+- [ ] **P2.5** Extract `ntd-pipeline` with `trait Filter` (§4.4)
+  - Depends on: P2.1
+  - Done when: `engine/pipeline` and the filter chain are in `crates/ntd-pipeline`; the
+    `filters` ↔ `engine::plugins` cycle no longer exists; latency within +5 %.
+- [ ] **P2.6** Clock injected into the pipeline
+  - Depends on: P2.5
+  - Done when: no `Instant::now()` or `sleep` in `ntd-pipeline` (rule 37).
+- [ ] **P2.7** Parser fuzzing (§15.4)
+  - Depends on: P2.3
+  - Done when: one target per parser family, corpus seeded with captures, CI `fuzz` job of 60 s
+    per target.
+- [ ] **GATE 2**
+  - Done when: P2.1 to P2.7 are `[x]`; `cargo tree` confirms no I/O in the three crates; golden
+    files identical; latency within +5 %.
 
 ---
 
-### Phase 3 — Extraire les adaptateurs I/O
+### Phase 3: Extract the I/O adapters
 
-Objectif : chaque accès à l'OS derrière un trait, avec un fake et la place pour chaque plateforme
-(§7, phase 3 ; §16.3).
+Goal: every OS access behind a trait, with a fake and room for each platform (§7, phase 3; §16.3).
 
 - [ ] **P3.1** `ntd-test-support`
-  - Dépend de : PORTE 2
-  - Terminé quand : fakes de `HidBackend`, `OutputSink`, `Clock` utilisables par tous les crates
-    en dev-dependency.
+  - Depends on: GATE 2
+  - Done when: fakes of `HidBackend`, `OutputSink`, `Clock` usable by every crate as a
+    dev-dependency.
 - [ ] **P3.2** `ntd-platform` (§16.4)
-  - Dépend de : P3.1
-  - Terminé quand : démarrage auto, instance unique, priorité de thread et timer haute résolution
-    sont dans ce crate, avec la structure `windows` / `linux` / `macos` / `unsupported`.
+  - Depends on: P3.1
+  - Done when: autostart, single instance, thread priority and high-resolution timer live in this
+    crate, with the `windows` / `linux` / `macos` / `unsupported` structure.
 - [ ] **P3.3** `ntd-hid`
-  - Dépend de : P3.1
-  - Terminé quand : trait `HidBackend` avec option « exclusif » et erreur `PermissionDenied` ;
-    seul crate qui dépend de `hidapi` ; structure §16.3.
+  - Depends on: P3.1
+  - Done when: `HidBackend` trait with an "exclusive" option and a `PermissionDenied` error; the
+    only crate depending on `hidapi`; §16.3 structure.
 - [ ] **P3.4** `ntd-output`
-  - Dépend de : P3.1
-  - Terminé quand : trait `OutputSink` avec `capabilities()` ; implémentations Windows et Linux ;
-    `macos` renvoie `Unsupported`.
+  - Depends on: P3.1
+  - Done when: `OutputSink` trait with `capabilities()`; Windows and Linux implementations;
+    `macos` returns `Unsupported`.
 - [ ] **P3.5** `ntd-interop`
-  - Dépend de : P3.1
-  - Terminé quand : protocole pur séparé du transport ; noms de mémoire partagée ≤ 31
-    caractères ; cible fuzz du protocole.
+  - Depends on: P3.1
+  - Done when: pure protocol separated from transport; shared memory names ≤ 31 characters;
+    protocol fuzz target.
 - [ ] **P3.6** `ntd-settings`
-  - Dépend de : P3.1
-  - Terminé quand : `Paths` injecté (plus aucun `get_*_dir()` global) ; fichiers versionnés ;
-    écriture atomique ; un fichier corrompu est sauvegardé et signalé (§8).
-- [ ] **P3.7** `ntd-plugin-host`
-  - Dépend de : P2.5, P3.6
-  - Terminé quand : signature vérifiée avant chargement ; target triple dans le manifeste et
-    refus des autres cibles ; un plugin qui panique est désactivé sans arrêter le pipeline ;
-    `crates/ntd-plugin-api/AGENTS.md` écrit.
-- [ ] **P3.8** Supprimer la feature `desktop`
-  - Dépend de : P3.3, P3.4, P3.5
-  - Terminé quand : la feature n'existe plus ; `apps/sdk` ne dépend que de `ntd-core`,
+  - Depends on: P3.1
+  - Done when: `Paths` injected (no global `get_*_dir()` left); versioned files; atomic writes; a
+    corrupted file is backed up and reported (§8).
+- [ ] **P3.7** `ntd-plugin-host` and ABI v3
+  - Depends on: P2.5, P3.6
+  - Done when: ABI v3 defined in `ntd-plugin-api` (target triple in the manifest, fixed-width
+    types); signature verified before loading; other targets and v2 plugins refused with a clear
+    message; a panicking plugin is disabled without stopping the pipeline; official plugins
+    rebuilt for ABI v3; `docs/plugin-migration-v3.md` and `crates/ntd-plugin-api/AGENTS.md`
+    written.
+- [ ] **P3.8** Remove the `desktop` feature
+  - Depends on: P3.3, P3.4, P3.5
+  - Done when: the feature no longer exists; `apps/sdk` depends only on `ntd-core`,
     `ntd-tablets`, `ntd-hid`, `ntd-pipeline`.
-- [ ] **P3.9** Job CI `check-targets` (§16.2)
-  - Dépend de : P3.2, P3.3, P3.4, P3.5
-  - Terminé quand : `cargo clippy` passe sur toutes les cibles de niveau 3, et le job est bloquant.
-- [ ] **PORTE 3**
-  - Terminé quand : P3.1 à P3.9 sont `[x]` ; aucun code spécifique à un OS hors des crates
-    autorisés (règle 108) ; golden files, latence et E2E identiques.
+- [ ] **P3.9** CI `check-targets` job (§16.2)
+  - Depends on: P3.2, P3.3, P3.4, P3.5
+  - Done when: `cargo clippy` passes on every tier 3 target, and the job is blocking.
+- [ ] **GATE 3**
+  - Done when: P3.1 to P3.9 are `[x]`; no OS-specific code outside the allowed crates (rule 108);
+    golden files, latency and E2E identical.
 
 ---
 
-### Phase 4 — Le moteur
+### Phase 4: The engine
 
-Objectif : `ntd-engine` piloté uniquement par `EngineHandle` et `EngineEvent` (§4.5 ; §7, phase 4).
+Goal: `ntd-engine` driven only through `EngineHandle` and `EngineEvent` (§4.5; §7, phase 4).
 
-- [ ] **P4.1** Squelette `ntd-engine`
-  - Dépend de : PORTE 3
-  - Terminé quand : `Engine::start`, `EngineHandle`, `EngineEvent`, `EngineDeps` existent comme
-    en §4.5 ; plus aucun `Arc<Mutex<…>>` exposé hors du crate.
-- [ ] **P4.2** Découper `polling.rs` et `owner.rs` (plusieurs PR)
-  - Dépend de : P4.1
-  - Terminé quand : lecture, parsing, pipeline, sortie et boutons sont des modules séparés, aucun
-    fichier de plus d'environ 400 lignes (règle 29).
-- [ ] **P4.3** Configuration sans verrou dans le chemin chaud
-  - Dépend de : P4.1
-  - Terminé quand : la configuration arrive par canal ou swap atomique (règle 35) ; aucune
-    allocation dans la boucle (règle 33), vérifié par un test ou un compteur d'allocations.
-- [ ] **P4.4** Télémétrie sortie du moteur
-  - Dépend de : P4.1
-  - Terminé quand : `ntd-engine` ne référence plus la télémétrie ; il publie des `EngineEvent`.
+- [ ] **P4.1** `ntd-engine` skeleton
+  - Depends on: GATE 3
+  - Done when: `Engine::start`, `EngineHandle`, `EngineEvent`, `EngineDeps` exist as in §4.5; no
+    `Arc<Mutex<…>>` exposed outside the crate.
+- [ ] **P4.2** Split `polling.rs` and `owner.rs` (several PRs)
+  - Depends on: P4.1
+  - Done when: reading, parsing, pipeline, output and buttons are separate modules; any file over
+    about 400 lines is justified in its PR (rule 29).
+- [ ] **P4.3** Lock-free configuration in the hot path
+  - Depends on: P4.1
+  - Done when: configuration arrives through a channel or atomic swap (rule 35); no allocation in
+    the loop (rule 33), checked by a test or an allocation counter.
+- [ ] **P4.4** Telemetry moved out of the engine
+  - Depends on: P4.1
+  - Done when: `ntd-engine` no longer references telemetry; it publishes `EngineEvent`s.
 - [ ] **P4.5** `ntd-tester` (§15.2)
-  - Dépend de : P4.1, P3.1
-  - Terminé quand : chaque capture a au moins un scénario dans `qa/scenarios/` ; job CI `tester` ;
-    `crates/ntd-engine/AGENTS.md` écrit.
-- [ ] **PORTE 4**
-  - Terminé quand : P4.1 à P4.5 sont `[x]` ; `ntd-tester` vert sur toutes les captures ;
-    latence ≤ référence.
+  - Depends on: P4.1, P3.1
+  - Done when: every capture has at least one scenario in `qa/scenarios/`; CI `tester` job;
+    `crates/ntd-engine/AGENTS.md` written.
+- [ ] **GATE 4**
+  - Done when: P4.1 to P4.5 are `[x]`; `ntd-tester` green on every capture; latency within +5 %.
 
 ---
 
-### Phase 5 — Services et application
+### Phase 5: Services and application
 
-Objectif : `apps/desktop` ne fait plus que du câblage (§7, phase 5).
+Goal: `apps/desktop` only does wiring (§7, phase 5).
 
 - [ ] **P5.1** `ntd-services`
-  - Dépend de : PORTE 4
-  - Terminé quand : websocket (lié à `127.0.0.1` par défaut), autoupdate, télémétrie (opt-in) et
-    supervisor sont dans ce crate et consomment des `EngineEvent`.
-- [ ] **P5.2** `ntd-ipc`
-  - Dépend de : PORTE 4
-  - Terminé quand : les types générés en P0.8 viennent de ce crate ; `crates/ntd-ipc/AGENTS.md`
-    écrit.
-- [ ] **P5.3** `apps/desktop` en câblage seul
-  - Dépend de : P5.1, P5.2
-  - Terminé quand : aucune logique métier dans `apps/desktop` ; chaque commande fait au plus
-    10 lignes.
-- [ ] **P5.4** Manifeste racine virtuel
-  - Dépend de : P5.3
-  - Terminé quand : le `Cargo.toml` racine n'a plus de `[package]` ; le dossier `src/` racine
-    n'existe plus.
-- [ ] **P5.5** `ntd-stress` (§15.5)
-  - Dépend de : P5.1
-  - Terminé quand : l'outil couvre les modes de §15.5 et ne fait pas tomber un NTD lancé.
-- [ ] **PORTE 5**
-  - Terminé quand : P5.1 à P5.5 sont `[x]` ; le graphe `cargo tree` correspond à §4.3 ; E2E,
-    `ntd-tester` et golden files verts.
+  - Depends on: GATE 4
+  - Done when: autoupdate, telemetry (on by default, can be turned off, no personal data) and
+    supervisor live in this crate and consume `EngineEvent`s.
+- [ ] **P5.2** Websocket v3 and v2 compatibility (§5.4)
+  - Depends on: P5.1
+  - Done when: the websocket binds to `127.0.0.1` by default, serves the versioned v3 protocol and
+    the unchanged v2 protocol; both have tests and a fuzz target; the v3 protocol is documented in
+    `docs/integrations.md`.
+- [ ] **P5.3** `ntd-ipc`
+  - Depends on: GATE 4
+  - Done when: the bindings generated in P0.9 come from this crate; `crates/ntd-ipc/AGENTS.md`
+    written.
+- [ ] **P5.4** SDK v3 (§5.4)
+  - Depends on: GATE 4
+  - Done when: `apps/sdk` exposes the v3 API, its C and C# bindings are regenerated, and
+    `docs/sdk-migration-v3.md` explains the changes.
+- [ ] **P5.5** `apps/desktop` as wiring only
+  - Depends on: P5.1, P5.2, P5.3
+  - Done when: no business logic in `apps/desktop`; each command is at most 10 lines.
+- [ ] **P5.6** Virtual root manifest
+  - Depends on: P5.5
+  - Done when: the root `Cargo.toml` no longer has a `[package]`; the root `src/` directory no
+    longer exists.
+- [ ] **P5.7** `ntd-stress` (§15.5)
+  - Depends on: P5.2
+  - Done when: the tool covers the §15.5 modes on both websocket protocols and does not bring down
+    a running NTD.
+- [ ] **GATE 5**
+  - Done when: P5.1 to P5.7 are `[x]`; the `cargo tree` graph matches §4.3; E2E, `ntd-tester` and
+    golden files green.
 
 ---
 
-### Phase 6 — Contrat v3 et frontend
+### Phase 6: v3 contract and frontend
 
-Objectif : le contrat découpé et typé, et la couche de données du frontend corrigée (§5, §6.3).
+Goal: the contract split and typed, and the frontend data layer fixed (§5, §6.3).
 
-- [ ] **P6.1** Découper `Config` par domaine côté backend
-  - Dépend de : PORTE 5
-  - Terminé quand : `Mapping`, `PenSettings`, `Bindings`, `FilterChain`, `AppPreferences`,
-    `WebSocketSettings` ont chacun leurs commandes `get_*` / `update_*` ; `set_config(tout)`
-    n'existe plus.
-- [ ] **P6.2** Types forts dans le contrat
-  - Dépend de : P6.1
-  - Terminé quand : bindings, modes et types de courbe sont des `enum` ; les commandes renvoient
-    `Result<T, IpcError>` typé.
-- [ ] **P6.3** Flux temps réel par `Channel`
-  - Dépend de : P6.1
-  - Terminé quand : `tablet-event` passe par `tauri::ipc::Channel`, décimé côté backend à environ
-    60 Hz.
-- [ ] **P6.4** Une seule porte vers Tauri dans le frontend
-  - Dépend de : P6.1
-  - Terminé quand : règle ESLint `no-restricted-imports` active ; plus d'`invoke` dans
-    `MenuBar.svelte` ni de `listen` dans `TabletVisualizer.svelte`.
-- [ ] **P6.5** Stores par domaine
-  - Dépend de : P6.2, P6.4
-  - Terminé quand : un store par domaine ; plus de `JSON.stringify` pour comparer ni de
-    `setTimeout` de synchronisation ; le frontend affiche l'état renvoyé par le backend.
-- [ ] **P6.6** Capacités et plateforme dans l'interface
-  - Dépend de : P6.5
-  - Terminé quand : `os.ts` expose OS, architecture et capacités ; une option non disponible est
-    masquée ou désactivée ; `TitleBar.svelte` et les raccourcis ne testent plus l'OS eux-mêmes.
-- [ ] **P6.7** Migration des profils v2 → v3
-  - Dépend de : P6.1
-  - Terminé quand : de vrais fichiers v2 en fixtures sont importés sans perte ; l'original est
-    sauvegardé ; cible fuzz de chargement des profils.
-- [ ] **PORTE 6**
-  - Terminé quand : P6.1 à P6.7 sont `[x]` ; E2E verts ; profils v2 réels importés sans perte.
+- [ ] **P6.1** Split `Config` by domain in the backend
+  - Depends on: GATE 5
+  - Done when: `Mapping`, `PenSettings`, `Bindings`, `FilterChain`, `AppPreferences`,
+    `WebSocketSettings` each have their `get_*` / `update_*` commands; `set_config(everything)` no
+    longer exists.
+- [ ] **P6.2** Strong types in the contract
+  - Depends on: P6.1
+  - Done when: bindings, modes and curve types are `enum`s; commands return a typed
+    `Result<T, IpcError>`.
+- [ ] **P6.3** Real-time stream through `Channel`
+  - Depends on: P6.1
+  - Done when: `tablet-event` goes through `tauri::ipc::Channel`, decimated in the backend to
+    about 60 Hz.
+- [ ] **P6.4** A single gateway to Tauri in the frontend
+  - Depends on: P6.1
+  - Done when: the ESLint `no-restricted-imports` rule is active; no more `invoke` in
+    `MenuBar.svelte` or `listen` in `TabletVisualizer.svelte`.
+- [ ] **P6.5** Stores per domain
+  - Depends on: P6.2, P6.4
+  - Done when: one store per domain; no `JSON.stringify` comparison or synchronisation
+    `setTimeout` left; the frontend shows the state returned by the backend.
+- [ ] **P6.6** Capabilities and platform in the UI
+  - Depends on: P6.5
+  - Done when: `os.ts` exposes OS, architecture and capabilities; an unavailable option is hidden
+    or disabled; `TitleBar.svelte` and shortcuts no longer test the OS themselves.
+- [ ] **P6.7** v2 → v3 profile migration
+  - Depends on: P6.1
+  - Done when: real v2 files as fixtures are imported without loss, including the telemetry
+    choice; the original is backed up; profile loading fuzz target.
+- [ ] **GATE 6**
+  - Done when: P6.1 to P6.7 are `[x]`; E2E green; real v2 profiles imported without loss.
 
 ---
 
-### Phase 7 — Release 3.0
+### Phase 7: Release 3.0
 
-Objectif : publier la v3 sans laisser un seul utilisateur v2 derrière (§2, §13).
+Goal: ship v3 without leaving a single v2 user behind (§2, §13).
 
-- [ ] **P7.1** Canaux d'update `beta` et `nightly`
-  - Dépend de : PORTE 6
-  - Terminé quand : chaque canal a son endpoint stable ; l'option « recevoir les bêtas » existe dans
-    les paramètres ; le générateur de manifeste prend la liste des cibles en entrée (§16.3).
+- [ ] **P7.1** `beta` and `nightly` update channels on GitHub Pages
+  - Depends on: GATE 6
+  - Done when: `beta.json` and `nightly.json` are served from GitHub Pages at stable URLs; the
+    "receive betas" option exists in Settings; the manifest generator takes the target list as
+    input (§16.3).
 - [ ] **P7.2** `prerelease.yml` (§13.4)
-  - Dépend de : P7.1
-  - Terminé quand : le workflow vérifie le tag, la version et la signature avec la clé embarquée,
-    puis publie une pre-release avec les SHA-256.
+  - Depends on: P7.1
+  - Done when: the workflow checks the tag, the version and the signature against the embedded
+    key, then publishes a pre-release with SHA-256 checksums and updates `beta.json`.
 - [ ] **P7.3** `nightly.yml` (§13.5)
-  - Dépend de : P7.1
-  - Terminé quand : build de nuit seulement s'il y a eu des commits, tag `nightly` écrasé, fuzzing
-    long et `ntd-stress` exécutés.
-- [ ] **P7.4** `release.yml` (§13.6)
-  - Dépend de : P7.2
-  - Terminé quand : publication en `latest`, `latest.json` multi-cibles, notes générées avec
-    `rustc -Vv`, winget.
-- [ ] **P7.5** Dernière 2.x de transition
-  - Dépend de : P7.4
-  - Terminé quand : une 2.x publiée sait recevoir la 3.0 par l'auto-update (et pointe vers un
-    nouvel endpoint si l'endpoint change).
-- [ ] **P7.6** `3.0.0-beta.1` et période de bêta
-  - Dépend de : P7.2, P7.5
-  - Terminé quand : la bêta est publiée ; aucun bug bloquant ouvert sur les plateformes de niveau 1
-    pendant la durée de bêta annoncée.
-- [ ] **P7.7** `3.0.0`
-  - Dépend de : P7.6
-  - Terminé quand : la release est publiée ; README et `docs/` à jour, avec les niveaux de support
-    de §16.2 (règle 112).
-- [ ] **P7.8** Annonce de maintenance de la 2.x
-  - Dépend de : P7.7
-  - Terminé quand : la durée de maintenance de `release/2.x` est annoncée dans les notes de
-    version.
-- [ ] **PORTE 7 — v3.0 terminée**
+  - Depends on: P7.1
+  - Done when: nightly build only if there were commits, `nightly` tag overwritten, long fuzzing
+    and `ntd-stress` run, `nightly.json` updated.
+- [ ] **P7.4** `release.yml` and crates.io publication (§13.6)
+  - Depends on: P7.2
+  - Done when: publication as `latest`, multi-target `latest.json`, notes generated with
+    `rustc -Vv`, winget; the `plugin-api-v*` tag publishes `ntd-plugin-api` to crates.io and checks
+    its major version against the ABI version.
+- [ ] **P7.5** `3.0.0-beta.1` and a 4-week beta
+  - Depends on: P7.2, P7.4
+  - Done when: the beta is published (this ends the freeze); after 4 weeks there is no open
+    blocking bug on tier 1 platforms.
+- [ ] **P7.6** `3.0.0`
+  - Depends on: P7.5
+  - Done when: the release is published and reaches 2.x installs through auto-update; README and
+    `docs/` are up to date, with the §16.2 support tiers (rule 112), the websocket v2 deprecation
+    notice, the plugin and SDK migration guides.
+- [ ] **P7.7** Announce the end of 2.x
+  - Depends on: P7.6
+  - Done when: the release notes and README state that 2.x is no longer maintained.
+- [ ] **GATE 7: v3.0 done**
 
 ---
 
-### Après la 3.0 — Plateformes (§16)
+### After 3.0: platforms (§16)
 
-Ces tâches n'ont pas d'ordre imposé entre elles. Chacune fait passer une plateforme au niveau
-supérieur selon les critères de §16.2.
+These tasks have no imposed order between them. Each moves a platform up a tier according to the
+§16.2 criteria.
 
-- [ ] **P8.1** Windows ARM64 et Linux ARM64 : niveau 2 → 1
-- [ ] **P8.2** macOS Apple Silicon : niveau 3 → 2 (permissions, ouverture exclusive, injection,
-  signature et notarisation, décision sur les plugins tiers, §16.5)
-- [ ] **P8.3** macOS Intel : niveau 3 → 2 (binaire universel avec P8.2)
-- [ ] **P8.4** Windows x86 32 bits : niveau 3 → 2
-- [ ] **P8.5** Linux x86 32 bits : niveau 3 → 2
-- [ ] **P8.6** Linux ARM 32 bits : niveau 3 → 2
-- [ ] **P8.7** macOS : niveau 2 → 1
-
+- [ ] **P8.1** Windows ARM64 and Linux ARM64: tier 2 → 1
+- [ ] **P8.2** macOS Apple Silicon: tier 3 → 2 (permissions, exclusive access, injection, signing
+  and notarisation, decision on third-party plugins, §16.5)
+- [ ] **P8.3** macOS Intel: tier 3 → 2 (universal binary with P8.2)
+- [ ] **P8.4** Windows 32-bit x86: tier 3 → 2
+- [ ] **P8.5** Linux 32-bit x86: tier 3 → 2
+- [ ] **P8.6** Linux 32-bit ARM: tier 3 → 2
+- [ ] **P8.7** macOS: tier 2 → 1
