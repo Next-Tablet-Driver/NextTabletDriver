@@ -15,7 +15,9 @@ const HAWKU_THRESHOLD: f32 = 0.63_f32;
 
 /// Standalone plugin implementing the Hawku Smoothing filter.
 pub struct HawkuSmoothingPlugin {
+    /// Smoothing latency in milliseconds.
     pub latency: f32,
+    /// Expected update rate of the input reports, in hertz.
     pub frequency: f32,
 
     last_pos: (f32, f32),
@@ -36,6 +38,8 @@ impl Default for HawkuSmoothingPlugin {
 }
 
 impl HawkuSmoothingPlugin {
+    /// Returns the weight given to each new sample so that, at the configured rate, the filter
+    /// reaches 63 % of a step after `latency` milliseconds.
     #[must_use]
     pub fn compute_weight(&self) -> f32 {
         let timer_interval = 1000.0_f32 / self.frequency.max(1.0_f32);

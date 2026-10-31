@@ -61,7 +61,9 @@ impl KalmanAxis {
 
 /// Standalone plugin implementing the Kalman Smoothing filter.
 pub struct KalmanSmoothingPlugin {
+    /// How fast the real pen trajectory is expected to change (Q); higher responds faster.
     pub process_noise: f32,
+    /// Estimated hardware jitter (R); higher filters more noise.
     pub measurement_noise: f32,
     x_axis: KalmanAxis,
     y_axis: KalmanAxis,

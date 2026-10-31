@@ -193,6 +193,8 @@ pub trait NextTabletPlugin: Send + Sync + 'static {
 #[macro_export]
 macro_rules! export_ntd_plugin {
     ($plugin_type:ident) => {
+        /// Returns the plugin magic number and the ABI version, so the host can refuse a library
+        /// built for another interface.
         #[unsafe(no_mangle)]
         pub extern "C" fn ntd_plugin_handshake() -> u32 {
             // Lower 16 bits = ABI version, upper 16 bits = Magic lower half
@@ -200,6 +202,8 @@ macro_rules! export_ntd_plugin {
                 | ($crate::NTD_PLUGIN_ABI_VERSION & 0x0000_FFFF)
         }
 
+        /// Returns the plugin manifest as a NUL-terminated JSON string that stays valid for as long
+        /// as the library is loaded.
         #[unsafe(no_mangle)]
         pub extern "C" fn ntd_plugin_manifest() -> *const std::ffi::c_char {
             use std::sync::OnceLock;
@@ -218,6 +222,8 @@ macro_rules! export_ntd_plugin {
                 .as_ptr()
         }
 
+        /// Creates a plugin instance and returns an owning pointer to it, or null if creating it
+        /// panicked.
         #[unsafe(no_mangle)]
         pub extern "C" fn ntd_plugin_create() -> *mut std::ffi::c_void {
             let result = std::panic::catch_unwind(|| {

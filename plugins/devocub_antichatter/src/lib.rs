@@ -13,15 +13,25 @@ use ntd_plugin_api::{
 
 /// Standalone plugin implementing the Devocub Antichatter algorithm.
 pub struct DevocubAntichatterPlugin {
+    /// Smoothing latency in milliseconds; higher is smoother, lower is faster.
     pub latency: f32,
+    /// Steepness of the anti-chatter curve; higher values give a sharper response.
     pub antichatter_strength: f32,
+    /// Scales the smoothing sensitivity; higher values make the smoothing softer.
     pub antichatter_multiplier: f32,
+    /// Horizontal shift of the curve; higher values start the smoothing earlier.
     pub antichatter_offset_x: f32,
+    /// Minimum smoothing level: 0 passes the raw data through, 1 is the standard amount.
     pub antichatter_offset_y: f32,
+    /// Whether forward prediction compensates for the smoothing latency.
     pub prediction_enabled: bool,
+    /// Peak size of the forward prediction.
     pub prediction_strength: f32,
+    /// Width of the prediction peak along the velocity curve.
     pub prediction_sharpness: f32,
+    /// Cursor speed at which the prediction peaks.
     pub prediction_offset_x: f32,
+    /// Minimum prediction applied at any speed.
     pub prediction_offset_y: f32,
 
     current_pos: (f32, f32),

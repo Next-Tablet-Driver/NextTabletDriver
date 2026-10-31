@@ -21,11 +21,18 @@ pub enum RadialSpace {
 
 /// Standalone plugin implementing the Radial Follow algorithm.
 pub struct RadialFollowPlugin {
+    /// Largest distance the cursor may lag behind the pen before it catches up quickly.
     pub outer_radius: f64,
+    /// Dead zone: pen movement inside this distance does not move the cursor.
     pub inner_radius: f64,
+    /// How fast the cursor closes the distance from the outer to the inner radius; higher is
+    /// smoother.
     pub smoothing_coefficient: f64,
+    /// Softness of the transition around the outer radius; higher is softer.
     pub soft_knee_scale: f64,
+    /// Lets the smoothing continue past the outer radius, at a reduced rate.
     pub smoothing_leak_coefficient: f64,
+    /// Coordinate space the radius values are measured in.
     pub space: RadialSpace,
 
     cursor_x: f64,
