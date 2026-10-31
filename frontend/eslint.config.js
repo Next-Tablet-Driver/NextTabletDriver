@@ -116,7 +116,21 @@ export default tseslint.config(
 
       // ── General code quality ──
       'eqeqeq': ['error', 'always'],
-      'no-console': ['error', { allow: ['warn', 'error'] }],
+      // Roadmap P1.12: warnings until the code is clean (P1.13), errors after (P1.14).
+      'no-console': 'warn',
+      'no-restricted-imports': ['warn', {
+        patterns: [{
+          group: ['@tauri-apps/*'],
+          message: 'Import @tauri-apps/* only from infrastructure/tauri/ and infrastructure/os.ts.',
+        }],
+      }],
+      '@typescript-eslint/ban-ts-comment': ['warn', {
+        'ts-expect-error': 'allow-with-description',
+        'ts-ignore': true,
+        'ts-nocheck': true,
+        'ts-check': false,
+        minimumDescriptionLength: 10,
+      }],
       'no-debugger': 'error',
       'no-alert': 'error',
       'no-var': 'error',
@@ -141,6 +155,25 @@ export default tseslint.config(
       // Svelte 5 uses explicit undefined defaults for props sometimes
       '@typescript-eslint/no-useless-default-assignment': 'off',
     }
+  },
+
+  // ─── Where the rules above do not apply ──────────────────────────────────────
+  {
+    // The only code allowed to talk to Tauri, and the tests that mock it.
+    files: [
+      'src/lib/infrastructure/tauri/**',
+      'src/lib/infrastructure/os.ts',
+      '**/__tests__/**',
+      '**/*.test.ts',
+      'e2e/**',
+      'e2e-native/**',
+    ],
+    rules: { 'no-restricted-imports': 'off' },
+  },
+  {
+    // The frontend's only logger.
+    files: ['src/lib/infrastructure/log.ts'],
+    rules: { 'no-console': 'off' },
   },
 
   // ─── Ignores ──────────────────────────────────────────────────────────────────

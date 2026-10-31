@@ -12,6 +12,9 @@
     "e2e": "playwright test",
     "e2e:native": "node --experimental-strip-types e2e-native/smoke.ts",
     "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "check:strict": "svelte-check --tsconfig ./tsconfig.strict.json",
     "build:audit": "vite build && npx open-cli stats.html",
     "tauri": "tauri"
   },
@@ -29,6 +32,8 @@
     "eslint-plugin-svelte": "^3.23.0",
     "globals": "^17.13.0",
     "jsdom": "^30.1.1",
+    "prettier": "^3.9.10",
+    "prettier-plugin-svelte": "^4.1.1",
     "rollup-plugin-visualizer": "^7.1.1",
     "svelte": "^5.57.0",
     "svelte-check": "^4.7.6",

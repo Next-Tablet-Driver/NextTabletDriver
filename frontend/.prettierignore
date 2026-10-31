@@ -1,0 +1,11 @@
+# Build output, dependencies and reports
+dist/
+node_modules/
+coverage/
+playwright-report/
+test-results/
+blob-report/
+package-lock.json
+
+# Generated from the Rust code (see docs/development.md)
+src/lib/infrastructure/tauri/bindings.ts

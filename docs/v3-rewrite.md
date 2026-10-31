@@ -1545,8 +1545,8 @@ just the application.
 | | |
 |---|---|
 | **Current phase** | Phase 1: Workspace, quality, CI, contribution rules |
-| **Last completed task** | P1.11 |
-| **Next task** | P1.12 |
+| **Last completed task** | P1.12 |
+| **Next task** | P1.13 |
 | **v1 bridge release** | not started (P7.5a) |
 | **Last updated** | 2026-10-31 |
 
@@ -1746,11 +1746,21 @@ phase 1; §12, §13, §14).
     root crate's own folders, global files, non-PR events, the matrix, the `cargo metadata`
     reader). It reads `cargo metadata --no-deps`, so it needs no network. The ARM64 runner labels in
     the full-run matrix (`ubuntu-24.04-arm`, `windows-11-arm`) are not verified: P1.15 wires them.
-- [ ] **P1.12** Frontend quality tooling as warnings (§12.7)
+- [x] **P1.12** Frontend quality tooling as warnings (§12.7) (branch `chore/v3-phase-1`)
   - Depends on: —
   - Done when: Prettier (`printWidth: 100`), the TypeScript options and the ESLint rules of §12.7
     are configured, temporarily as warnings; `npm run format:check` exists; the number of
     warnings is recorded in the PR.
+  - Notes: most ESLint rules of §12.7 were already errors and pass. Added as warnings:
+    `no-console` (no longer allowing `warn` and `error`, except in `infrastructure/log.ts`),
+    `no-restricted-imports` for `@tauri-apps/*` (allowed in `infrastructure/tauri/`, `os.ts` and
+    the tests) and an explicit `ban-ts-comment`. `noUncheckedIndexedAccess` and `noImplicitOverride`
+    live in `tsconfig.strict.json`, checked by `npm run check:strict`, until P1.14 moves them into
+    `tsconfig.app.json`. Prettier is `printWidth: 100` with `prettier-plugin-svelte`.
+  - **Warnings recorded** (before P1.13): ESLint 51 (`no-console` 41, `no-restricted-imports` 10);
+    TypeScript strict options 15 errors (`design-tokens.test.ts` 4, `ReleaseCard.svelte` 4,
+    `Filters.svelte` 3, `mapping-state.svelte.ts` 2, `Select.svelte` 1, `tauri-mock.ts` 1);
+    `svelte-check` 0; Prettier would reformat 115 files.
 - [ ] **P1.13** Fix frontend warnings (several PRs)
   - Depends on: P1.12
   - Done when: zero ESLint, `svelte-check` and TypeScript warnings; Prettier applied; no behaviour
