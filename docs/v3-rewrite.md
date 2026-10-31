@@ -677,6 +677,9 @@ avec un fake dans `ntd-test-support`.
 98. **NE PAS** déclarer de dépendance inutilisée (cargo-machete échoue).
 99. **NE PAS** rétrograder un lint de `deny` à `warn` ou `allow` au niveau du workspace sans
     décision des mainteneurs, consignée dans la PR et dans la `reason`.
+100. **NE PAS** figer une version précise de Rust dans `rust-toolchain.toml` ou dans un workflow.
+     La toolchain est `stable` (§12.6). Quand une nouvelle version casse la CI, on corrige le
+     code, on ne revient pas à une version figée.
 
 ---
 
@@ -867,9 +870,10 @@ Points d'attention :
 - **`clippy::cargo`** impose des métadonnées complètes : chaque crate hérite de
   `[workspace.package]` (`license.workspace = true`, `repository.workspace = true`…) et déclare
   sa propre `description`. Les versions wildcard (`"*"`) sont interdites.
-- **`nursery` en `deny`** : ces lints évoluent entre versions de Rust. La toolchain reste donc
-  **figée** dans `rust-toolchain.toml`, et une montée de version est une PR à part qui corrige
-  les nouveaux lints.
+- **`nursery` en `deny`** : ces lints évoluent entre versions de Rust. Avec la toolchain
+  `stable` (§12.6), une nouvelle version de Rust peut donc faire échouer la CI sans qu'aucun code
+  n'ait changé. C'est voulu : on corrige ces nouveaux lints dans une PR dédiée, et on ne
+  rétrograde jamais le lint pour faire repasser la CI (règle 99).
 - **Tests** : `clippy.toml` garde `allow-unwrap-in-tests`, `allow-expect-in-tests`,
   `allow-panic-in-tests` et `allow-indexing-slicing-in-tests`. Un test qui panique, c'est un
   test qui échoue, et c'est le comportement voulu.
@@ -893,6 +897,37 @@ et en local :
 - `TODO`/`FIXME` sans `(#numéro)` ;
 - `#![allow(unsafe_code` hors des crates autorisés ;
 - `#[rustfmt::skip]` sans commentaire de justification juste au-dessus.
+
+### 12.6 Toolchain : `stable`
+
+La v3 suit la **dernière version stable de Rust**, plutôt qu'une version figée comme en v2
+(`1.99.0`).
+
+`rust-toolchain.toml` :
+
+```toml
+[toolchain]
+channel = "stable"
+components = ["rustfmt", "clippy", "rust-analyzer", "rust-src"]
+```
+
+Conséquences et règles :
+- **Pas de version précise** dans `rust-toolchain.toml`, ni dans les workflows CI. Les jobs
+  installent la toolchain depuis ce fichier, sans la redéfinir.
+- **`rust-version`** (la MSRV, version minimale supportée) reste déclarée une seule fois, dans
+  `[workspace.package]`. Elle documente la plus vieille version qui compile le projet. Ce
+  n'est pas la version utilisée en CI. On la remonte quand on adopte une nouveauté du langage.
+- **Une nouvelle version stable peut casser la CI** (nouveaux lints `pedantic`/`nursery`,
+  avertissements de `rustc`). On corrige dans une PR dédiée, intitulée
+  `chore: fix lints for Rust 1.xx`, qui ne contient rien d'autre.
+- **Anticiper** : un job planifié chaque semaine lance `clippy` et les tests sur la toolchain
+  `beta`. Il n'est pas bloquant, mais il ouvre une issue s'il échoue, ce qui laisse environ six
+  semaines pour corriger avant que la version arrive en stable.
+- **Traçabilité des releases** : les builds ne sont plus reproductibles à la version de `rustc`
+  près. Le job de release écrit donc la sortie de `rustc -Vv` dans les notes de version et dans
+  les artefacts.
+- `Cargo.lock` reste commité et toutes les commandes utilisent `--locked` : seules la toolchain
+  et les lints suivent `stable`, les dépendances ne bougent pas sans PR.
 
 ---
 
@@ -934,6 +969,9 @@ et en local :
 | `e2e` | Playwright |
 | `build` | build des applications : Windows x64, Windows ARM64, Linux x64, Linux ARM64 |
 | `ci-success` | agrège tous les jobs ci-dessus |
+
+Hors `ci.yml`, un workflow `toolchain-beta.yml` planifié chaque semaine lance clippy et les tests
+sur la toolchain `beta`. Il n'est pas bloquant et ouvre une issue s'il échoue (§12.6).
 
 ### 13.3 `security.yml` : sécurité (PR, `main`, et chaque jour)
 
