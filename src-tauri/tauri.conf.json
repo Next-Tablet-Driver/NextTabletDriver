@@ -40,7 +40,11 @@
     "shortDescription": "Low-latency tablet driver for osu! and drawing",
     "longDescription": "NextTabletDriver is a low-latency tablet driver for osu! and drawing, with precise mapping controls and a plugin system.",
     "publisher": "iSweat",
-    "license": "MIT",
+    "license": "MIT AND LGPL-3.0-only",
+    "resources": {
+      "../THIRD_PARTY_NOTICES.md": "licenses/THIRD_PARTY_NOTICES.md",
+      "../licenses/OpenTabletDriver-LGPL-3.0.txt": "licenses/OpenTabletDriver-LGPL-3.0.txt"
+    },
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

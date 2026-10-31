@@ -1542,8 +1542,8 @@ just the application.
 | | |
 |---|---|
 | **Current phase** | Phase 0: Safety nets |
-| **Last completed task** | P0.1 |
-| **Next task** | P0.3 |
+| **Last completed task** | P0.3 |
+| **Next task** | P0.4 |
 | **v1 bridge release** | not started (P7.5a) |
 | **Last updated** | 2026-10-31 |
 
@@ -1593,7 +1593,7 @@ Goal: be able to detect any regression **before** touching the architecture (§7
 - [-] **P0.2** ~~Transition 2.x release, then freeze~~
   - Dropped: no 2.x was ever released and the v1 updater has no signature check. Replaced by the
     v1 bridge release, P7.5a (§2).
-- [ ] **P0.3** Check the licence of `tablets/OpenTabletDriver` (§11.2)
+- [x] **P0.3** Check the licence of `tablets/OpenTabletDriver` (§11.2) (PR: to be linked)
   - Depends on: —
   - Done when: the upstream licence is identified, the required attribution is added (or
     incompatible files are replaced), and the decision is written in the PR.
