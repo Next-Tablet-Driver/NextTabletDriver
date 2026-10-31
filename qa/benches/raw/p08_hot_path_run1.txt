@@ -1,0 +1,228 @@
+   Compiling proc-macro2 v1.0.106
+   Compiling unicode-ident v1.0.24
+   Compiling quote v1.0.46
+   Compiling cfg-if v1.0.4
+   Compiling windows-link v0.2.1
+   Compiling version_check v0.9.5
+   Compiling find-msvc-tools v0.1.9
+   Compiling shlex v2.0.1
+   Compiling stable_deref_trait v1.2.1
+   Compiling typenum v1.20.1
+   Compiling zerocopy v0.8.52
+   Compiling subtle v2.6.1
+   Compiling windows-sys v0.61.2
+   Compiling serde_core v1.0.228
+   Compiling litemap v0.8.2
+   Compiling writeable v0.6.3
+   Compiling memchr v2.8.2
+   Compiling getrandom v0.3.4
+   Compiling generic-array v0.14.7
+   Compiling crossbeam-utils v0.8.21
+   Compiling autocfg v1.5.1
+   Compiling cc v1.2.65
+   Compiling icu_properties_data v2.2.0
+   Compiling serde v1.0.228
+   Compiling getrandom v0.4.3
+   Compiling itoa v1.0.18
+   Compiling zmij v1.0.21
+   Compiling icu_normalizer_data v2.2.0
+   Compiling utf8_iter v1.0.4
+   Compiling num-traits v0.2.19
+   Compiling windows-strings v0.5.1
+   Compiling windows-result v0.4.1
+   Compiling serde_json v1.0.150
+   Compiling zeroize v1.9.0
+   Compiling syn v2.0.118
+   Compiling crypto-common v0.1.7
+   Compiling block-buffer v0.10.4
+   Compiling rustls-pki-types v1.15.0
+   Compiling digest v0.10.7
+   Compiling rand_core v0.9.5
+   Compiling crossbeam-epoch v0.9.21
+   Compiling once_cell v1.21.4
+   Compiling cpufeatures v0.2.17
+   Compiling ring v0.17.14
+   Compiling smallvec v1.15.2
+   Compiling getrandom v0.2.17
+   Compiling regex-syntax v0.8.11
+   Compiling log v0.4.33
+   Compiling crossbeam-deque v0.8.8
+   Compiling untrusted v0.9.0
+   Compiling crc32fast v1.5.0
+   Compiling thiserror v2.0.18
+   Compiling inout v0.1.4
+   Compiling aho-corasick v1.1.5
+   Compiling windows-threading v0.2.1
+   Compiling winapi v0.3.9
+   Compiling rayon-core v1.13.0
+   Compiling rustls v0.23.46
+   Compiling either v1.18.0
+   Compiling libc v0.2.186
+   Compiling adler2 v2.0.1
+   Compiling httparse v1.10.1
+   Compiling pkg-config v0.3.33
+   Compiling simd-adler32 v0.3.9
+   Compiling percent-encoding v2.3.2
+   Compiling miniz_oxide v0.8.9
+   Compiling form_urlencoded v1.2.2
+   Compiling cipher v0.4.4
+   Compiling hidapi v2.6.6
+   Compiling sha2 v0.10.9
+   Compiling alloca v0.4.0
+   Compiling regex-automata v0.4.18
+   Compiling webpki-roots v1.0.8
+   Compiling hmac v0.12.1
+   Compiling bytes v1.12.0
+   Compiling option-ext v0.2.0
+   Compiling anstyle v1.0.14
+   Compiling widestring v1.2.1
+   Compiling fastrand v2.5.0
+   Compiling ciborium-io v0.2.2
+   Compiling synstructure v0.13.2
+   Compiling byteorder v1.5.0
+   Compiling plotters-backend v0.3.7
+   Compiling clap_lex v1.1.1
+   Compiling http v1.4.2
+   Compiling clap_builder v4.6.7
+   Compiling plotters-svg v0.3.7
+   Compiling fxhash v0.2.1
+   Compiling winapi-util v0.1.11
+   Compiling tempfile v3.27.0
+   Compiling rtoolbox v0.0.6
+   Compiling same-file v1.0.6
+   Compiling dirs-sys v0.5.0
+   Compiling pbkdf2 v0.12.2
+   Compiling webpki-roots v0.26.11
+   Compiling flate2 v1.1.9
+   Compiling salsa20 v0.10.2
+   Compiling regex v1.13.1
+   Compiling itertools v0.13.0
+   Compiling sha1 v0.10.6
+   Compiling include_dir_macros v0.7.4
+   Compiling rustls-webpki v0.103.15
+   Compiling wait-timeout v0.2.1
+   Compiling quick-error v1.2.3
+   Compiling bit-vec v0.8.0
+   Compiling scopeguard v1.2.0
+   Compiling base64 v0.22.1
+   Compiling cargo-husky v1.5.0
+   Compiling zerofrom-derive v0.1.7
+   Compiling yoke-derive v0.8.2
+   Compiling zerovec-derive v0.11.3
+   Compiling displaydoc v0.2.6
+   Compiling zerocopy-derive v0.8.52
+   Compiling serde_derive v1.0.228
+   Compiling windows-interface v0.59.3
+   Compiling windows-implement v0.60.2
+   Compiling thiserror-impl v2.0.18
+   Compiling cast v0.3.0
+   Compiling fnv v1.0.7
+   Compiling zerofrom v0.1.8
+   Compiling recvmsg v1.0.0
+   Compiling doctest-file v1.1.1
+   Compiling data-encoding v2.11.0
+   Compiling criterion-plot v0.8.2
+   Compiling yoke v0.8.3
+   Compiling rusty-fork v0.3.1
+   Compiling windows-core v0.62.2
+   Compiling zerovec v0.11.6
+   Compiling zerotrie v0.2.4
+   Compiling interprocess v2.4.3
+   Compiling windows-numerics v0.3.1
+   Compiling windows-collections v0.3.2
+   Compiling tinystr v0.8.3
+   Compiling potential_utf v0.1.5
+   Compiling windows-future v0.3.2
+   Compiling icu_locale_core v2.2.0
+   Compiling icu_collections v2.2.0
+   Compiling bit-set v0.8.0
+   Compiling clap v4.6.7
+   Compiling include_dir v0.7.4
+   Compiling windows v0.62.2
+   Compiling page_size v0.6.0
+   Compiling rayon v1.12.0
+   Compiling scrypt v0.11.0
+   Compiling icu_provider v2.2.0
+   Compiling directories v6.0.0
+   Compiling walkdir v2.5.0
+   Compiling rpassword v7.5.4
+   Compiling icu_normalizer v2.2.0
+   Compiling icu_properties v2.2.0
+   Compiling plotters v0.3.7
+   Compiling uuid v1.23.4
+   Compiling chrono v0.4.45
+   Compiling tinytemplate v1.2.1
+   Compiling ntd_plugin_api v0.1.0 (C:\Users\iswea\Documents\Developpement\01 - Projects\Rust\NextTabletDriver\sdk\plugin_api)
+   Compiling rand_xorshift v0.4.0
+   Compiling crossbeam-channel v0.5.15
+   Compiling libloading v0.9.0
+   Compiling oorandom v11.1.5
+   Compiling unarray v0.1.4
+   Compiling anes v0.1.6
+   Compiling base64 v0.23.1
+   Compiling minisign-verify v0.2.5
+   Compiling idna_adapter v1.2.2
+   Compiling ct-codecs v1.1.8
+   Compiling bitflags v2.13.0
+   Compiling idna v1.1.0
+   Compiling minisign v0.10.0
+   Compiling url v2.5.8
+   Compiling ppv-lite86 v0.2.21
+   Compiling half v2.7.1
+   Compiling ciborium-ll v0.2.2
+   Compiling rand_chacha v0.9.0
+   Compiling ureq v2.12.1
+   Compiling ciborium v0.2.2
+   Compiling rand v0.9.4
+   Compiling display-info v0.5.9
+   Compiling criterion v0.8.2
+   Compiling tungstenite v0.29.0
+   Compiling proptest v1.11.0
+   Compiling next_tablet_driver v3.0.0 (C:\Users\iswea\Documents\Developpement\01 - Projects\Rust\NextTabletDriver)
+    Finished `bench` profile [optimized] target(s) in 1m 42s
+     Running qa\benches\hot_path.rs (target\release\deps\hot_path-e4f3043e97bf2f31.exe)
+Gnuplot not found, using plotters backend
+Benchmarking hot_path/process_packet/tray_hidden
+Benchmarking hot_path/process_packet/tray_hidden: Warming up for 2.0000 s
+Benchmarking hot_path/process_packet/tray_hidden: Collecting 100 samples in estimated 5.0005 s (36M iterations)
+Benchmarking hot_path/process_packet/tray_hidden: Analyzing
+hot_path/process_packet/tray_hidden
+                        time:   [141.01 ns 143.47 ns 146.17 ns]
+                        thrpt:  [6.8415 Melem/s 6.9702 Melem/s 7.0917 Melem/s]
+Found 3 outliers among 100 measurements (3.00%)
+  3 (3.00%) high mild
+Benchmarking hot_path/process_packet/ui_60hz
+Benchmarking hot_path/process_packet/ui_60hz: Warming up for 2.0000 s
+Benchmarking hot_path/process_packet/ui_60hz: Collecting 100 samples in estimated 5.0004 s (37M iterations)
+Benchmarking hot_path/process_packet/ui_60hz: Analyzing
+hot_path/process_packet/ui_60hz
+                        time:   [135.82 ns 136.61 ns 137.42 ns]
+                        thrpt:  [7.2771 Melem/s 7.3199 Melem/s 7.3629 Melem/s]
+Found 1 outliers among 100 measurements (1.00%)
+  1 (1.00%) high mild
+Benchmarking hot_path/process_packet/ui_stress
+Benchmarking hot_path/process_packet/ui_stress: Warming up for 2.0000 s
+Benchmarking hot_path/process_packet/ui_stress: Collecting 100 samples in estimated 5.0005 s (22M iterations)
+Benchmarking hot_path/process_packet/ui_stress: Analyzing
+hot_path/process_packet/ui_stress
+                        time:   [226.89 ns 228.24 ns 229.67 ns]
+                        thrpt:  [4.3540 Melem/s 4.3814 Melem/s 4.4074 Melem/s]
+Found 4 outliers among 100 measurements (4.00%)
+  4 (4.00%) high severe
+
+Benchmarking hot_path/ui_snapshot_capture
+Benchmarking hot_path/ui_snapshot_capture: Warming up for 2.0000 s
+Benchmarking hot_path/ui_snapshot_capture: Collecting 100 samples in estimated 5.0004 s (15M iterations)
+Benchmarking hot_path/ui_snapshot_capture: Analyzing
+hot_path/ui_snapshot_capture
+                        time:   [327.62 ns 332.00 ns 337.09 ns]
+Found 8 outliers among 100 measurements (8.00%)
+  3 (3.00%) high mild
+  5 (5.00%) high severe
+
+
+hot_path tail latency (ns per packet, 64-packet batches x 20000)
+scenario             p50       p99     p99.9       max       mean
+tray_hidden          125       203       856      2431      134.3
+ui_60hz              123       289       991      2883      134.7
+ui_stress            212       477      1402      2633      224.1

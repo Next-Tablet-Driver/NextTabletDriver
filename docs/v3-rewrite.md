@@ -1542,8 +1542,8 @@ just the application.
 | | |
 |---|---|
 | **Current phase** | Phase 0: Safety nets |
-| **Last completed task** | P0.7 |
-| **Next task** | P0.8 |
+| **Last completed task** | P0.8 |
+| **Next task** | P0.9 |
 | **v1 bridge release** | not started (P7.5a) |
 | **Last updated** | 2026-10-31 |
 
@@ -1617,7 +1617,7 @@ Goal: be able to detect any regression **before** touching the architecture (§7
   - Done when: every tablet with a real capture (or real reports in the existing tests) has golden
     files; tablets without a capture are listed in `qa/golden/MISSING.md` (rule 103: captures are
     never invented).
-- [ ] **P0.8** Latency baseline
+- [x] **P0.8** Latency baseline (PR: to be linked)
   - Depends on: —
   - Done when: a criterion benchmark covers the parse → pipeline → (fake) output path; the results
     and the measuring machine are recorded in `docs/perf-baseline.md`; the 5 % tolerance is

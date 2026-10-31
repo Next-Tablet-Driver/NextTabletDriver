@@ -1,0 +1,75 @@
+    Finished `bench` profile [optimized] target(s) in 0.43s
+     Running qa\benches\pipeline.rs (target\release\deps\pipeline-d8b6a9337947988a.exe)
+Gnuplot not found, using plotters backend
+Benchmarking pipeline/absolute/cold/no_filters/linear
+Benchmarking pipeline/absolute/cold/no_filters/linear: Warming up for 3.0000 s
+Benchmarking pipeline/absolute/cold/no_filters/linear: Collecting 100 samples in estimated 5.0405 s (1000 iterations)
+Benchmarking pipeline/absolute/cold/no_filters/linear: Analyzing
+pipeline/absolute/cold/no_filters/linear
+                        time:   [181.35 µs 185.22 µs 189.36 µs]
+                        change: [+68.359% +73.567% +78.682%] (p = 0.00 < 0.05)
+                        Performance has regressed.
+Found 2 outliers among 100 measurements (2.00%)
+  2 (2.00%) high mild
+
+Benchmarking pipeline/absolute/warm/no_filters/linear
+Benchmarking pipeline/absolute/warm/no_filters/linear: Warming up for 3.0000 s
+Benchmarking pipeline/absolute/warm/no_filters/linear: Collecting 100 samples in estimated 5.2461 s (1000 iterations)
+Benchmarking pipeline/absolute/warm/no_filters/linear: Analyzing
+pipeline/absolute/warm/no_filters/linear
+                        time:   [188.25 µs 192.61 µs 198.00 µs]
+                        change: [+1.1007% +4.7415% +8.6439%] (p = 0.02 < 0.05)
+                        Performance has regressed.
+Found 3 outliers among 100 measurements (3.00%)
+  2 (2.00%) high mild
+  1 (1.00%) high severe
+
+Benchmarking pipeline/relative/warm/no_filters/linear
+Benchmarking pipeline/relative/warm/no_filters/linear: Warming up for 3.0000 s
+Benchmarking pipeline/relative/warm/no_filters/linear: Collecting 100 samples in estimated 5.1658 s (1000 iterations)
+Benchmarking pipeline/relative/warm/no_filters/linear: Analyzing
+pipeline/relative/warm/no_filters/linear
+                        time:   [187.38 µs 190.42 µs 193.49 µs]
+                        change: [−2.2641% +0.4121% +3.1376%] (p = 0.77 > 0.05)
+                        No change in performance detected.
+
+Benchmarking pipeline/absolute/warm/pressure/linear
+Benchmarking pipeline/absolute/warm/pressure/linear: Warming up for 3.0000 s
+Benchmarking pipeline/absolute/warm/pressure/linear: Collecting 100 samples in estimated 5.1038 s (1000 iterations)
+Benchmarking pipeline/absolute/warm/pressure/linear: Analyzing
+pipeline/absolute/warm/pressure/linear
+                        time:   [184.60 µs 189.08 µs 193.74 µs]
+                        thrpt:  [5.1615 Kelem/s 5.2889 Kelem/s 5.4172 Kelem/s]
+                 change:
+                        time:   [−5.0896% −2.1577% +0.9655%] (p = 0.18 > 0.05)
+                        thrpt:  [−0.9563% +2.2053% +5.3626%]
+                        No change in performance detected.
+Found 7 outliers among 100 measurements (7.00%)
+  7 (7.00%) high mild
+Benchmarking pipeline/absolute/warm/pressure/exponential
+Benchmarking pipeline/absolute/warm/pressure/exponential: Warming up for 3.0000 s
+Benchmarking pipeline/absolute/warm/pressure/exponential: Collecting 100 samples in estimated 5.2868 s (1000 iterations)
+Benchmarking pipeline/absolute/warm/pressure/exponential: Analyzing
+pipeline/absolute/warm/pressure/exponential
+                        time:   [185.93 µs 189.24 µs 192.75 µs]
+                        thrpt:  [5.1881 Kelem/s 5.2844 Kelem/s 5.3784 Kelem/s]
+                 change:
+                        time:   [−0.5673% +1.9483% +4.4205%] (p = 0.14 > 0.05)
+                        thrpt:  [−4.2334% −1.9110% +0.5706%]
+                        No change in performance detected.
+Found 4 outliers among 100 measurements (4.00%)
+  4 (4.00%) high mild
+Benchmarking pipeline/absolute/warm/pressure/custom_32_points
+Benchmarking pipeline/absolute/warm/pressure/custom_32_points: Warming up for 3.0000 s
+Benchmarking pipeline/absolute/warm/pressure/custom_32_points: Collecting 100 samples in estimated 5.0806 s (1000 iterations)
+Benchmarking pipeline/absolute/warm/pressure/custom_32_points: Analyzing
+pipeline/absolute/warm/pressure/custom_32_points
+                        time:   [189.91 µs 193.72 µs 197.71 µs]
+                        thrpt:  [5.0579 Kelem/s 5.1620 Kelem/s 5.2658 Kelem/s]
+                 change:
+                        time:   [−5.6115% −2.1031% +1.5060%] (p = 0.26 > 0.05)
+                        thrpt:  [−1.4837% +2.1483% +5.9451%]
+                        No change in performance detected.
+Found 4 outliers among 100 measurements (4.00%)
+  4 (4.00%) high mild
+
