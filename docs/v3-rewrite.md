@@ -1841,9 +1841,19 @@ phase 1; §12, §13, §14).
     one, and its licence paragraph now says the parsers are LGPL-3.0. The PR template is the §14.6
     one (What, Why, Impact, How it was tested, Known limitations, AI usage, Roadmap) plus the
     checklist.
-- [ ] **GATE 1**
+- [~] **GATE 1** (branch `chore/v3-phase-1`; waiting for the CI of the pull request)
   - Done when: P1.1 to P1.20 are `[x]`; CI green; golden files, latency (within +5 %) and E2E
     identical to phase 0.
+  - Verified locally on 2026-10-31: P1.1 to P1.20 are `[x]`. Golden files: the golden test passes
+    and no file of `qa/golden/` changed since `main`. Latency (3 runs of `hot_path`, median of the
+    means, against `docs/perf-baseline.md`): `tray_hidden` 136.1 ns (+2.8 %), `ui_60hz` 139.0 ns
+    (+1.0 %), `ui_stress` 231.3 ns (+0.9 %), all within +5 %. E2E: 65 passed, as in phase 0. Also
+    green locally: `cargo fmt`, clippy on the workspace with `-D warnings`, 669 tests with nextest,
+    the doctests, `cargo doc`, `lint-style`, `machete`, `typos`, `cargo deny check`, the benchmarks
+    build, the TypeScript bindings test, and on the frontend format, types, lint, 263 unit tests, the
+    build and `npm audit`.
+  - **Still to do**: CI green. None of the workflows has run on GitHub with these changes (the plan job
+    and the new ci.yml in particular): tick this box once the pull request's `CI success` is green.
 
 ---
 
