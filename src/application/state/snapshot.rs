@@ -1,6 +1,7 @@
 use crate::drivers::TabletData;
-use crate::engine::state::{LockRecoveryExt, SharedState};
+use crate::engine::state::SharedState;
 use ntd_core::config::models::MappingConfig;
+use ntd_core::sync::LockRecoveryExt;
 
 /// An immutable, lock-free snapshot of the application state for a single UI frame.
 #[derive(Clone, Debug)]

@@ -19,9 +19,10 @@ use next_tablet_driver::engine::interop::shm::{
     DEVICE_NAME_CAPACITY, SdkPublicState, ShmReader, ShmWriter,
 };
 use next_tablet_driver::engine::pipeline::{Pipeline, ProcessedFrame};
-use next_tablet_driver::engine::state::{LockRecoveryExt, SharedState, WriteRecoverExt};
+use next_tablet_driver::engine::state::SharedState;
 use next_tablet_driver::filters::FilterPipeline;
 use ntd_core::config::models::{ActiveArea, DriverMode, MappingConfig};
+use ntd_core::sync::{LockRecoveryExt, WriteRecoverExt};
 use std::panic;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};

@@ -9,3 +9,5 @@ pub mod config;
 pub mod input;
 /// Maths of the pipeline: geometry and coordinate transforms.
 pub mod math;
+/// Helpers for poisoned locks.
+pub mod sync;

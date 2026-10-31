@@ -2,7 +2,7 @@
 //! interface,
 //! and bridges the interface to the engine through commands and events.
 
-use next_tablet_driver::engine::state::LockRecoveryExt;
+use ntd_core::sync::LockRecoveryExt;
 use tauri::Manager;
 use tauri::menu::{CheckMenuItem, Menu, MenuItem, Submenu};
 use tauri::tray::TrayIconBuilder;

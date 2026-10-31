@@ -8,7 +8,9 @@
     reason = "emitted by the `#[tauri::command]` macro for async commands"
 )]
 
-use next_tablet_driver::engine::state::{LockRecoveryExt, SharedState};
+use next_tablet_driver::engine::state::SharedState;
+
+use ntd_core::sync::LockRecoveryExt;
 use std::sync::Arc;
 use tauri::State;
 
@@ -66,8 +68,8 @@ pub(crate) fn get_metrics(state: State<'_, Arc<SharedState>>) -> EngineMetrics {
     }
 }
 
-use next_tablet_driver::engine::state::WriteRecoverExt;
 use ntd_core::config::models::MappingConfig;
+use ntd_core::sync::WriteRecoverExt;
 
 #[tauri::command]
 #[specta::specta]

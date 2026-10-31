@@ -1,6 +1,6 @@
 use crate::drivers::TabletData;
 use crate::drivers::parsers::ReportParser;
-use crate::engine::state::{LockRecoveryExt, WriteRecoverExt};
+use ntd_core::sync::{LockRecoveryExt, WriteRecoverExt};
 use std::sync::Mutex;
 
 /// Parser for Wacom PL tablets, a port of the `PLReportParser` of `OpenTabletDriver`.

@@ -16,7 +16,9 @@ use tungstenite::handshake::server::{ErrorResponse, Request, Response};
 use tungstenite::protocol::WebSocket;
 use tungstenite::{Message, accept_hdr};
 
-use crate::engine::state::{LockRecoveryExt, SharedState};
+use crate::engine::state::SharedState;
+
+use ntd_core::sync::LockRecoveryExt;
 
 /// The JSON payload broadcasted to all connected WebSocket clients.
 ///
@@ -420,7 +422,8 @@ mod tests {
 
     #[test]
     fn test_websocket_broadcast_when_app_hidden_in_tray() {
-        use crate::engine::state::{SharedState, WriteRecoverExt};
+        use crate::engine::state::SharedState;
+        use ntd_core::sync::WriteRecoverExt;
         use std::sync::Arc;
         use std::sync::atomic::Ordering;
         use std::thread;
