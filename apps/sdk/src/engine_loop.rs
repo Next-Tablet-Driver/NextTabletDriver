@@ -202,7 +202,8 @@ fn reader_iteration(shared: &Arc<SharedState>, is_owner: &Arc<AtomicBool>) {
             // Held for the rest of this function's life, same as the
             // top-level branch in `engine_iteration`.
             if let Some(_hid_owner) = try_acquire_hid_owner() {
-                log::info!(target: "EngineLoop", "Promoted to HID owner, taking over the real device");
+                log::info!(target: "EngineLoop", "Promoted to HID owner, taking over the real \
+                    device");
                 owner_iteration(shared, is_owner);
                 return;
             }
@@ -353,7 +354,8 @@ fn owner_iteration(shared: &Arc<SharedState>, is_owner: &Arc<AtomicBool>) {
 
     let shm_writer = ShmWriter::create();
     if shm_writer.is_none() {
-        log::warn!(target: "EngineLoop", "Failed to create shared state segment; other processes won't see this instance's tablet data");
+        log::warn!(target: "EngineLoop", "Failed to create shared state segment; other processes \
+            won't see this instance's tablet data");
     }
 
     let command_handler: Arc<dyn CommandHandler> = Arc::new(SdkCommandHandler {
@@ -407,7 +409,8 @@ fn owner_iteration(shared: &Arc<SharedState>, is_owner: &Arc<AtomicBool>) {
             );
 
             if shared.lifecycle.shutdown_requested.load(Ordering::Relaxed) {
-                log::info!(target: "EngineLoop", "Shutdown requested, exiting engine loop after polling");
+                log::info!(target: "EngineLoop", "Shutdown requested, exiting engine loop after \
+                    polling");
                 break;
             }
             log::warn!(target: "EngineLoop", "Polling loop exited, restarting...");
@@ -484,7 +487,8 @@ fn on_disconnected(shared: &Arc<SharedState>) {
 /// shared segment for `ntd_poll_state`/readers to pick up.
 #[allow(
     clippy::too_many_arguments,
-    reason = "each argument is a distinct piece of per-device state the loop borrows; a parameter struct would only move the list"
+    reason = "each argument is a distinct piece of per-device state the loop borrows; a parameter \
+        struct would only move the list"
 )]
 fn run_polling_loop(
     device: &hidapi::HidDevice,

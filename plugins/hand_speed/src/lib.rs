@@ -131,21 +131,29 @@ impl NextTabletPlugin for HandSpeedPlugin {
             name: "Hand Speed & Stats".to_string(),
             version: "1.0.0".to_string(),
             author: "nzbasic".to_string(),
-            description: "Calculates real-time pen speed and cumulative travel distance with an embedded WebSocket server for stream overlays.".to_string(),
+            description: "Calculates real-time pen speed and cumulative travel distance with an \
+                embedded WebSocket server for stream overlays."
+                .to_string(),
             icon: Some("SPEEDOMETER".to_string()),
             properties: vec![
                 PropertyDescriptor {
                     id: "enabled".to_string(),
                     name: "WebSocket Server".to_string(),
-                    tooltip: Some("Enables the background WebSocket broadcast server for streaming overlays.".to_string()),
-                    kind: PropertyKind::Bool {
-                        default: true,
-                    },
+                    tooltip: Some(
+                        "Enables the background WebSocket broadcast server for streaming \
+                        overlays."
+                            .to_string(),
+                    ),
+                    kind: PropertyKind::Bool { default: true },
                 },
                 PropertyDescriptor {
                     id: "ip".to_string(),
                     name: "Server IP".to_string(),
-                    tooltip: Some("Bind IP address for the WebSocket server (e.g. 127.0.0.1).".to_string()),
+                    tooltip: Some(
+                        "Bind IP address for the WebSocket server (e.g. \
+                        127.0.0.1)."
+                            .to_string(),
+                    ),
                     kind: PropertyKind::String {
                         default: "127.0.0.1".to_string(),
                     },
@@ -153,7 +161,11 @@ impl NextTabletPlugin for HandSpeedPlugin {
                 PropertyDescriptor {
                     id: "port".to_string(),
                     name: "Port".to_string(),
-                    tooltip: Some("TCP port number for incoming overlay WebSocket connections.".to_string()),
+                    tooltip: Some(
+                        "TCP port number for incoming overlay WebSocket \
+                        connections."
+                            .to_string(),
+                    ),
                     kind: PropertyKind::Int {
                         min: 1024,
                         max: 65535,

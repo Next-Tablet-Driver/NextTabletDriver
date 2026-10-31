@@ -22,7 +22,8 @@ use std::time::{Duration, Instant};
 /// processing.
 #[allow(
     clippy::too_many_arguments,
-    reason = "each argument is a distinct piece of per-device state the loop borrows; a parameter struct would only move the list"
+    reason = "each argument is a distinct piece of per-device state the loop borrows; a parameter \
+        struct would only move the list"
 )]
 pub(super) fn run_polling_loop(
     device: &hidapi::HidDevice,
@@ -191,7 +192,8 @@ const STATS_INTERVAL: Duration = Duration::from_millis(16);
 /// Emits statistics updates and forwards output frames to the GUI thread.
 #[allow(
     clippy::too_many_arguments,
-    reason = "each argument is a distinct piece of per-device state the loop borrows; a parameter struct would only move the list"
+    reason = "each argument is a distinct piece of per-device state the loop borrows; a parameter \
+        struct would only move the list"
 )]
 fn process_packet<I: InputSink>(
     raw: &[u8],
@@ -247,7 +249,9 @@ fn process_packet<I: InputSink>(
         if total_dur > Duration::from_millis(5) {
             log::warn!(
                 target: "PerfSpike",
-                "LAG SPIKE: Packet parsing & processing took {total_dur:.2?} (parsing: {parse_duration:.2?}, inject: {inject_duration:.2?}, HID read: {read_duration:.2?}; stage timings are only recorded for sampled packets)"
+                "LAG SPIKE: Packet parsing & processing took {total_dur:.2?} (parsing: \
+                {parse_duration:.2?}, inject: {inject_duration:.2?}, HID read: \
+                {read_duration:.2?}; stage timings are only recorded for sampled packets)"
             );
         }
 
@@ -265,7 +269,8 @@ fn process_packet<I: InputSink>(
                 if interval > Duration::from_millis(25) {
                     log::warn!(
                         target: "PerfSpike",
-                        "LAG SPIKE: Delay between active packets was {interval:.2?} (exceeded 25ms threshold)"
+                        "LAG SPIKE: Delay between active packets was {interval:.2?} (exceeded 25ms \
+                            threshold)"
                     );
                 }
             }
@@ -346,7 +351,8 @@ impl Default for PacketLoopState {
 #[doc(hidden)]
 #[allow(
     clippy::too_many_arguments,
-    reason = "each argument is a distinct piece of per-device state the loop borrows; a parameter struct would only move the list"
+    reason = "each argument is a distinct piece of per-device state the loop borrows; a parameter \
+        struct would only move the list"
 )]
 pub fn process_packet_for_bench<I: InputSink>(
     raw: &[u8],

@@ -128,7 +128,8 @@ pub fn save_settings(name: &str, config: &MappingConfig) -> Result<(), ProfileEr
     let path = dir.join(&filename);
 
     save_to_path(&path, config)?;
-    log::info!(target: "Config", "Saved preset '{name}' (sanitized: '{sanitized_name}') to {}", path.display());
+    log::info!(target: "Config", "Saved preset '{name}' (sanitized: '{sanitized_name}') to \
+        {}", path.display());
     Ok(())
 }
 
@@ -163,7 +164,8 @@ pub fn load_last_session() -> Option<(MappingConfig, Vec<String>)> {
                 let corrections = config.validate_and_repair();
 
                 if !corrections.is_empty() {
-                    log::warn!(target: "Config", "Last session config had {} field(s) repaired", corrections.len());
+                    log::warn!(target: "Config", "Last session config had {} field(s) \
+                        repaired", corrections.len());
                     // Automatically save the repaired config
                     let _ = save_last_session(&config);
                 }
@@ -202,7 +204,8 @@ pub fn load_settings_from_file(path: &Path) -> Result<(MappingConfig, Vec<String
     let corrections = config.validate_and_repair();
 
     if !corrections.is_empty() {
-        log::warn!(target: "Config", "Config from {} had {} field(s) repaired", path.display(), corrections.len());
+        log::warn!(target: "Config", "Config from {} had {} field(s) \
+            repaired", path.display(), corrections.len());
         // Automatically save the repaired config
         let _ = save_to_path(path, &config);
     }

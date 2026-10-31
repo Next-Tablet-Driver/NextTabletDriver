@@ -1545,8 +1545,8 @@ just the application.
 | | |
 |---|---|
 | **Current phase** | Phase 1: Workspace, quality, CI, contribution rules |
-| **Last completed task** | P1.8 |
-| **Next task** | P1.9 |
+| **Last completed task** | P1.9 |
+| **Next task** | P1.10 |
 | **v1 bridge release** | not started (P7.5a) |
 | **Last updated** | 2026-10-31 |
 
@@ -1718,9 +1718,17 @@ phase 1; §12, §13, §14).
   - Done when: `[workspace.lints]` is exactly the one in §12.3.
   - Notes: it is the §12.3 block, with the one added exception (`redundant_pub_crate`). The local
     hooks run clippy with `-D warnings` again.
-- [ ] **P1.9** `xtask` and `cargo xtask lint-style` (§12.5)
+- [x] **P1.9** `xtask` and `cargo xtask lint-style` (§12.5) (branch `chore/v3-phase-1`)
   - Depends on: P1.1
   - Done when: the command checks the 5 points of §12.5, has tests, and passes on the repository.
+  - Notes: `xtask/` is a workspace member with no dependency, 18 tests, and `cargo xtask` is an
+    alias in `.cargo/config.toml`. Two deviations from §12.5, both documented in the tool: a line that
+    holds a URL is exempt from the 100-character limit (a URL cannot be split), and the crates
+    allowed to use `unsafe` are the ones that already do (`src/`, `apps/sdk/`, `apps/desktop/`,
+    `crates/ntd-plugin-api/`) until phase 2 narrows the list to the FFI crates. Bringing the
+    repository to 100 columns meant re-wrapping 33 comments and splitting about 140 lines, mostly
+    long log messages, with `\` continuations (the strings are byte-identical, checked with a
+    script).
 - [ ] **P1.10** `typos` and `cargo-machete`
   - Depends on: P1.1
   - Done when: `typos.toml` exists and both tools pass on the repository.

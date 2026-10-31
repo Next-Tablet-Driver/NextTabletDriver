@@ -103,7 +103,8 @@ fn parser_name(capture: &Capture) -> String {
 /// run and say nothing about the parser's logic.
 fn render(data: &TabletData) -> String {
     format!(
-        "status={} x={} y={} pressure={} tilt=({},{}) buttons={:#04x} eraser={} hover={} connected={}",
+        "status={} x={} y={} pressure={} tilt=({},{}) buttons={:#04x} eraser={} hover={} \
+            connected={}",
         data.status,
         data.x,
         data.y,

@@ -43,7 +43,8 @@ impl ActiveArea {
         self.normalize_rotation();
     }
 
-    /// Adjusts the width or height to match the target aspect ratio, ensuring it stays within physical limits.
+    /// Adjusts the width or height to match the target aspect ratio, ensuring it stays within
+    /// physical limits.
     pub fn apply_aspect_ratio(
         &mut self,
         target_ratio: f32,
@@ -448,7 +449,8 @@ pub struct MappingConfig {
     /// Whether minimizing the application window hides it to the system tray.
     #[serde(default = "default_false")]
     pub system_tray_on_minimize: bool,
-    /// Whether to force the Windows system timer resolution to 0.5ms for low-latency tablet polling.
+    /// Whether to force the Windows system timer resolution to 0.5ms for low-latency tablet
+    /// polling.
     #[serde(default = "default_true")]
     pub force_high_resolution_timer: bool,
     /// WebSocket server broadcast configuration.

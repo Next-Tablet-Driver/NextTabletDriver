@@ -67,7 +67,8 @@ proptest! {
 
     #[test]
     fn rotations_add_up(
-        x in coord(), y in coord(), cx in coord(), cy in coord(), a in -360.0f32..360.0, b in -360.0f32..360.0,
+        x in coord(), y in coord(), cx in coord(), cy in coord(),
+        a in -360.0f32..360.0, b in -360.0f32..360.0,
     ) {
         let (ax, ay) = rotate_point(x, y, cx, cy, a);
         let (twice_x, twice_y) = rotate_point(ax, ay, cx, cy, b);
@@ -80,7 +81,8 @@ proptest! {
         area_x in 0.0f32..500.0, area_y in 0.0f32..500.0,
         width in 1.0f32..500.0, height in 1.0f32..500.0, rotation in angle(),
     ) {
-        let (u, v) = physical_to_normalized(area_x, area_y, area_x, area_y, width, height, rotation);
+        let (u, v) =
+            physical_to_normalized(area_x, area_y, area_x, area_y, width, height, rotation);
         prop_assert!(close(u, 0.5) && close(v, 0.5), "({u}, {v})");
     }
 
@@ -93,7 +95,8 @@ proptest! {
         let x = (fx - 0.5).mul_add(width, area_x);
         let y = (fy - 0.5).mul_add(height, area_y);
         let (u, v) = physical_to_normalized(x, y, area_x, area_y, width, height, 0.0);
-        prop_assert!((-EPS..=1.0 + EPS).contains(&u) && (-EPS..=1.0 + EPS).contains(&v), "({u}, {v})");
+        prop_assert!((-EPS..=1.0 + EPS).contains(&u) && (-EPS..=1.0 + EPS).contains(&v), "({u}, \
+            {v})");
         prop_assert!(close(u, fx) && close(v, fy));
     }
 

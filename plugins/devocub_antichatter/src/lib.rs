@@ -79,13 +79,19 @@ impl NextTabletPlugin for DevocubAntichatterPlugin {
             name: "Devocub Antichatter".to_string(),
             version: "1.0.0".to_string(),
             author: "Devocub".to_string(),
-            description: "Antichatter and prediction filter to eliminate sensor jitter while preserving cursor responsiveness.".to_string(),
+            description: "Antichatter and prediction filter to eliminate sensor jitter while \
+                preserving cursor responsiveness."
+                .to_string(),
             icon: Some("WAVEFORM".to_string()),
             properties: vec![
                 PropertyDescriptor {
                     id: "latency".to_string(),
                     name: "Latency".to_string(),
-                    tooltip: Some("Smoothing latency in milliseconds (higher = smoother, lower = faster).".to_string()),
+                    tooltip: Some(
+                        "Smoothing latency in milliseconds (higher = smoother, lower = \
+                        faster)."
+                            .to_string(),
+                    ),
                     kind: PropertyKind::Float {
                         min: 0.5,
                         max: 200.0,
@@ -97,7 +103,11 @@ impl NextTabletPlugin for DevocubAntichatterPlugin {
                 PropertyDescriptor {
                     id: "antichatter_strength".to_string(),
                     name: "Antichatter Strength".to_string(),
-                    tooltip: Some("Controls curve steepness. Higher values produce sharper response.".to_string()),
+                    tooltip: Some(
+                        "Controls curve steepness. Higher values produce sharper \
+                        response."
+                            .to_string(),
+                    ),
                     kind: PropertyKind::Float {
                         min: 0.5,
                         max: 20.0,
@@ -109,7 +119,11 @@ impl NextTabletPlugin for DevocubAntichatterPlugin {
                 PropertyDescriptor {
                     id: "antichatter_multiplier".to_string(),
                     name: "Antichatter Multiplier".to_string(),
-                    tooltip: Some("Scales smoothing sensitivity. Higher values make smoothing softer.".to_string()),
+                    tooltip: Some(
+                        "Scales smoothing sensitivity. Higher values make smoothing \
+                        softer."
+                            .to_string(),
+                    ),
                     kind: PropertyKind::Float {
                         min: 0.1,
                         max: 1000.0,
@@ -121,7 +135,11 @@ impl NextTabletPlugin for DevocubAntichatterPlugin {
                 PropertyDescriptor {
                     id: "antichatter_offset_x".to_string(),
                     name: "Antichatter Offset X".to_string(),
-                    tooltip: Some("Shifts the curve horizontally. Higher values activate smoothing earlier.".to_string()),
+                    tooltip: Some(
+                        "Shifts the curve horizontally. Higher values activate smoothing \
+                        earlier."
+                            .to_string(),
+                    ),
                     kind: PropertyKind::Float {
                         min: -5.0,
                         max: 5.0,
@@ -133,7 +151,11 @@ impl NextTabletPlugin for DevocubAntichatterPlugin {
                 PropertyDescriptor {
                     id: "antichatter_offset_y".to_string(),
                     name: "Antichatter Offset Y".to_string(),
-                    tooltip: Some("Minimum smoothing base level. 0 provides raw data, 1 is standard.".to_string()),
+                    tooltip: Some(
+                        "Minimum smoothing base level. 0 provides raw data, 1 is \
+                        standard."
+                            .to_string(),
+                    ),
                     kind: PropertyKind::Float {
                         min: -5.0,
                         max: 10.0,
@@ -145,15 +167,21 @@ impl NextTabletPlugin for DevocubAntichatterPlugin {
                 PropertyDescriptor {
                     id: "prediction".to_string(),
                     name: "Enable Prediction".to_string(),
-                    tooltip: Some("Enables forward trajectory prediction to counteract smoothing latency.".to_string()),
-                    kind: PropertyKind::Bool {
-                        default: false,
-                    },
+                    tooltip: Some(
+                        "Enables forward trajectory prediction to counteract smoothing \
+                        latency."
+                            .to_string(),
+                    ),
+                    kind: PropertyKind::Bool { default: false },
                 },
                 PropertyDescriptor {
                     id: "prediction_strength".to_string(),
                     name: "Prediction Strength".to_string(),
-                    tooltip: Some("Peak amplitude of the forward prediction compensation.".to_string()),
+                    tooltip: Some(
+                        "Peak amplitude of the forward prediction \
+                        compensation."
+                            .to_string(),
+                    ),
                     kind: PropertyKind::Float {
                         min: 0.0,
                         max: 5.0,
@@ -165,7 +193,11 @@ impl NextTabletPlugin for DevocubAntichatterPlugin {
                 PropertyDescriptor {
                     id: "prediction_sharpness".to_string(),
                     name: "Prediction Sharpness".to_string(),
-                    tooltip: Some("Width of the prediction peak along the velocity curve.".to_string()),
+                    tooltip: Some(
+                        "Width of the prediction peak along the velocity \
+                        curve."
+                            .to_string(),
+                    ),
                     kind: PropertyKind::Float {
                         min: 0.1,
                         max: 5.0,
@@ -177,7 +209,11 @@ impl NextTabletPlugin for DevocubAntichatterPlugin {
                 PropertyDescriptor {
                     id: "prediction_offset_x".to_string(),
                     name: "Prediction Offset X".to_string(),
-                    tooltip: Some("Center of the prediction peak relative to cursor speed.".to_string()),
+                    tooltip: Some(
+                        "Center of the prediction peak relative to cursor \
+                        speed."
+                            .to_string(),
+                    ),
                     kind: PropertyKind::Float {
                         min: 0.0,
                         max: 10.0,
@@ -189,7 +225,11 @@ impl NextTabletPlugin for DevocubAntichatterPlugin {
                 PropertyDescriptor {
                     id: "prediction_offset_y".to_string(),
                     name: "Prediction Offset Y".to_string(),
-                    tooltip: Some("Minimum continuous prediction offset applied regardless of speed.".to_string()),
+                    tooltip: Some(
+                        "Minimum continuous prediction offset applied regardless of \
+                        speed."
+                            .to_string(),
+                    ),
                     kind: PropertyKind::Float {
                         min: -5.0,
                         max: 5.0,

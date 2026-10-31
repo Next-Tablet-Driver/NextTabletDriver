@@ -85,11 +85,13 @@ pub struct DigitizerIdentifier {
     /// share the same `VendorID`/`ProductID`/`InputReportLength` — mirrors
     /// `OpenTabletDriver`'s `Driver.DeviceMatchesStrings` in `Driver.cs`.
     pub device_strings: Option<HashMap<u8, String>>,
-    /// The fully qualified C# class name from `OpenTabletDriver` format mapping to our Rust parsers.
+    /// The fully qualified C# class name from `OpenTabletDriver` format mapping to our Rust
+    /// parsers.
     pub report_parser: String,
     /// Base64 encoded byte array(s) to send via `Device::write` to wake up the tablet.
     pub output_init_report: Option<Vec<String>>,
-    /// Base64 encoded byte array(s) to send via `Device::send_feature_report` to put the tablet in Absolute/Pro mode.
+    /// Base64 encoded byte array(s) to send via `Device::send_feature_report` to put the tablet in
+    /// Absolute/Pro mode.
     pub feature_init_report: Option<Vec<String>>,
     /// Optional overrides for specific operating systems or backends.
     pub attributes: Option<Attributes>,

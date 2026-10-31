@@ -91,7 +91,8 @@ pub(super) fn owner_iteration(shared_clone: &Arc<SharedState>, sender_clone: &Se
 
     let shm_writer = ShmWriter::create();
     if shm_writer.is_none() {
-        log::warn!(target: "TabletManager", "Failed to create shared state segment; other processes won't see this instance's tablet data");
+        log::warn!(target: "TabletManager", "Failed to create shared state segment; other \
+            processes won't see this instance's tablet data");
     }
 
     let command_handler: Arc<dyn CommandHandler> = Arc::new(DesktopCommandHandler {
@@ -168,11 +169,13 @@ pub(super) fn owner_iteration(shared_clone: &Arc<SharedState>, sender_clone: &Se
                 .shutdown_requested
                 .load(Ordering::Relaxed)
             {
-                log::info!(target: "TabletManager", "Shutdown requested, exiting manager loop after polling");
+                log::info!(target: "TabletManager", "Shutdown requested, exiting manager loop \
+                    after polling");
                 break;
             }
             if shared_clone.config.reload_requested.load(Ordering::Relaxed) {
-                log::warn!(target: "TabletManager", "Reload requested, breaking out to restart context...");
+                log::warn!(target: "TabletManager", "Reload requested, breaking out to restart \
+                    context...");
                 break;
             }
             log::warn!(target: "HID", "Polling loop exited, restarting...");
@@ -210,7 +213,8 @@ fn init_thread_priority() {
     // The return value of -1 is checked to gracefully handle permission failures.
     unsafe {
         if libc::nice(-11) == -1 {
-            log::info!(target: "TabletManager", "Running at normal priority (CAP_SYS_NICE not available)");
+            log::info!(target: "TabletManager", "Running at normal priority (CAP_SYS_NICE not \
+                available)");
         } else {
             log::info!(target: "TabletManager", "Thread priority increased (nice -11)");
         }
@@ -227,7 +231,8 @@ fn init_filter_pipeline(shared: &Arc<SharedState>, config: &MappingConfig) -> Fi
 /// Handles tablet connection events.
 ///
 /// Populates shared state device metadata, resets configuration parameters, and triggers
-/// a configuration increment if this is the first run to propagate the initial active area settings.
+/// a configuration increment if this is the first run to propagate the initial active area
+/// settings.
 fn on_device_connected(
     shared: &Arc<SharedState>,
     driver: &dyn crate::drivers::NextTabletDriver,

@@ -1,7 +1,8 @@
 //! # Plugin Manager
 //!
 //! Scans system and application directories for external plugins, manages the lifecycle
-//! of loaded shared libraries, and produces configured [`PluginInstance`]s for the filtering pipeline.
+//! of loaded shared libraries, and produces configured [`PluginInstance`]s for the filtering
+//! pipeline.
 
 use super::error::{DeletePluginError, TrustError};
 use super::instance::PluginInstance;
@@ -38,7 +39,8 @@ impl Default for PluginManager {
 }
 
 impl PluginManager {
-    /// Creates a new `PluginManager` initialized with the standard user plugins path and discovers plugins.
+    /// Creates a new `PluginManager` initialized with the standard user plugins path and discovers
+    /// plugins.
     #[must_use]
     pub fn new() -> Self {
         let search_paths = vec![crate::settings::get_plugins_dir()];
@@ -115,14 +117,16 @@ impl PluginManager {
                 let mut pinned = match PinnedLibrary::open(&path) {
                     Ok(pinned) => pinned,
                     Err(e) => {
-                        log::warn!(target: "Plugins", "Cannot read plugin library {path_display}: {e}");
+                        log::warn!(target: "Plugins", "Cannot read plugin library {path_display}: \
+                            {e}");
                         continue;
                     }
                 };
                 let sha256 = match pinned.sha256() {
                     Ok(hash) => hash,
                     Err(e) => {
-                        log::warn!(target: "Plugins", "Cannot read plugin library {path_display}: {e}");
+                        log::warn!(target: "Plugins", "Cannot read plugin library {path_display}: \
+                            {e}");
                         continue;
                     }
                 };
@@ -135,7 +139,8 @@ impl PluginManager {
                 if !is_trusted {
                     log::warn!(
                         target: "Plugins",
-                        "Skipping untrusted plugin library {path_display} (sha256 {sha256}); approve it in the Filters tab to load it"
+                        "Skipping untrusted plugin library {path_display} (sha256 {sha256}); \
+                            approve it in the Filters tab to load it"
                     );
                     untrusted.push(UntrustedPlugin {
                         file_name: entry.file_name().to_string_lossy().into_owned(),
@@ -152,7 +157,8 @@ impl PluginManager {
                                 let key = entry.key();
                                 log::warn!(
                                     target: "Plugins",
-                                    "Duplicate plugin ID '{key}' discovered at {path_display}; skipping in favor of earlier match"
+                                    "Duplicate plugin ID '{key}' discovered at {path_display}; \
+                                        skipping in favor of earlier match"
                                 );
                             }
                             std::collections::hash_map::Entry::Vacant(entry) => {

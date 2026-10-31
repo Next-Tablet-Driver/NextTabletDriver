@@ -64,7 +64,8 @@ mod tests {
     #[test]
     fn test_fallback_parser_contact_and_coordinates() {
         let parser = FallbackParser;
-        // report_id=0x02, status=0xA1 (bit 0 set), x=1000 (0x03E8), y=2000 (0x07D0), pressure=500 (0x01F4)
+        // report_id=0x02, status=0xA1 (bit 0 set), x=1000 (0x03E8), y=2000 (0x07D0), pressure=500
+        // (0x01F4)
         let report = [0x02, 0xA1, 0xE8, 0x03, 0xD0, 0x07, 0xF4, 0x01, 0x00, 0x00];
         let data = parser.parse(&report).expect("Failed to parse valid report");
 

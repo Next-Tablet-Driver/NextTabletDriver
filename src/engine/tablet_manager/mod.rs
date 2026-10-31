@@ -91,7 +91,8 @@ fn run_manager_loop(
             break;
         }
 
-        log::warn!(target: "TabletManager", "Engine context terminated, restarting in {restart_delay:?}...");
+        log::warn!(target: "TabletManager", "Engine context terminated, restarting in \
+            {restart_delay:?}...");
         thread::sleep(restart_delay);
     }
 }

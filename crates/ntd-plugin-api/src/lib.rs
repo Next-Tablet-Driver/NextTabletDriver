@@ -5,12 +5,14 @@
 //!
 //! ## Architecture & Safety
 //! Plugins communicate with `NextTabletDriver` through a pure C-ABI boundary (`extern "C"`).
-//! Functions never panic across FFI boundaries (all calls are guarded by `std::panic::catch_unwind`).
+//! Functions never panic across FFI boundaries (all calls are guarded by
+//! `std::panic::catch_unwind`).
 //! Communication on the time-critical polling path is completely zero-allocation.
 
 use serde::{Deserialize, Serialize};
 
-/// 32-bit magic identifier required for handshake verification: `"NTDP"` (Next Tablet Driver Plugin).
+/// 32-bit magic identifier required for handshake verification: `"NTDP"` (Next Tablet Driver
+/// Plugin).
 pub const NTD_PLUGIN_MAGIC: u32 = 0x4E54_4450;
 
 /// Current plugin ABI version.
@@ -250,7 +252,8 @@ macro_rules! export_ntd_plugin {
             }
 
             let result = std::panic::catch_unwind(|| {
-                // SAFETY: instance is validated non-null and was created by Box::into_raw in ntd_plugin_create.
+                // SAFETY: instance is validated non-null and was created by Box::into_raw in
+                // ntd_plugin_create.
                 let plugin = unsafe { &mut *(instance as *mut $plugin_type) };
                 // SAFETY: packet and context pointers are validated non-null.
                 let pkt = unsafe { &mut *packet };
@@ -278,7 +281,8 @@ macro_rules! export_ntd_plugin {
             }
 
             let result = std::panic::catch_unwind(|| {
-                // SAFETY: pointers are checked for null above and point to null-terminated C strings.
+                // SAFETY: pointers are checked for null above and point to null-terminated C
+                // strings.
                 let plugin = unsafe { &mut *(instance as *mut $plugin_type) };
                 let k = unsafe { std::ffi::CStr::from_ptr(key) }.to_string_lossy();
                 let v = unsafe { std::ffi::CStr::from_ptr(value_json) }.to_string_lossy();

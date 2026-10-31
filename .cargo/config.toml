@@ -1,3 +1,4 @@
 [alias]
+xtask = "run --quiet --package xtask --"
 verify = "clippy --all-targets --all-features -- -D warnings"
 deploy = "build --release"

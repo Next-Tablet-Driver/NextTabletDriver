@@ -74,7 +74,8 @@ impl Projector {
     /// # Arguments
     /// * `x_mm` - The current physical X coordinate (mm).
     /// * `y_mm` - The current physical Y coordinate (mm).
-    /// * `config` - The current global configuration containing relative movement limits and sensitivities.
+    /// * `config` - The current global configuration containing relative movement limits and
+    ///   sensitivities.
     ///
     /// # Returns
     /// A tuple `(delta_x, delta_y)` representing the relative movement offset.

@@ -152,7 +152,8 @@ mod tests {
 
     #[test]
     fn smoke_the_app_closed_summary_without_a_worker_does_not_panic() {
-        // Smoke test: the summary is only sent when a worker exists, so this checks it cannot panic.
+        // Smoke test: the summary is only sent when a worker exists, so this checks it cannot
+        // panic.
         let shared = SharedState::new();
         shared
             .pipeline

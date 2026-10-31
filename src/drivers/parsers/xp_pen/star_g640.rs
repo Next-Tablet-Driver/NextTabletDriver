@@ -69,7 +69,8 @@ mod tests {
     #[test]
     fn test_g640_hover_status_and_coordinates() {
         let parser = XpPenStarG640Parser;
-        // report_id=0x02, b1=0xA0 (Hover), x=4660 (0x1234: low=0x34, high=0x12), y=9250 (0x2422: low=0x22, high=0x24), p=0
+        // report_id=0x02, b1=0xA0 (Hover), x=4660 (0x1234: low=0x34, high=0x12), y=9250 (0x2422:
+        // low=0x22, high=0x24), p=0
         let report = [0x02, 0xA0, 0x34, 0x12, 0x22, 0x24, 0x00, 0x00];
         let data = parser.parse(&report).expect("Valid report should parse");
 
@@ -85,7 +86,8 @@ mod tests {
     #[test]
     fn test_g640_contact_pressure_and_tilt() {
         let parser = XpPenStarG640Parser;
-        // report_id=0x02, b1=0xA1 (Contact), x=1000, y=2000, pressure=1312 (0x0520), tilt_x=15, tilt_y=-20 (0xEC cast_signed)
+        // report_id=0x02, b1=0xA1 (Contact), x=1000, y=2000, pressure=1312 (0x0520), tilt_x=15,
+        // tilt_y=-20 (0xEC cast_signed)
         let report = [0x02, 0xA1, 0xE8, 0x03, 0xD0, 0x07, 0x20, 0x05, 0x0F, 0xEC];
         let data = parser
             .parse(&report)

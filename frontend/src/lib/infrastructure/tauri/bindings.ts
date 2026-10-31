@@ -212,7 +212,10 @@ export type MappingConfig_Deserialize = {
 	run_at_startup?: boolean,
 	/**  Whether minimizing the application window hides it to the system tray. */
 	system_tray_on_minimize?: boolean,
-	/**  Whether to force the Windows system timer resolution to 0.5ms for low-latency tablet polling. */
+	/**
+	 *  Whether to force the Windows system timer resolution to 0.5ms for low-latency tablet
+	 *  polling.
+	 */
 	force_high_resolution_timer?: boolean,
 	/**  WebSocket server broadcast configuration. */
 	websocket?: WebSocketConfig_Deserialize,
@@ -271,7 +274,10 @@ export type MappingConfig_Serialize = {
 	run_at_startup: boolean,
 	/**  Whether minimizing the application window hides it to the system tray. */
 	system_tray_on_minimize: boolean,
-	/**  Whether to force the Windows system timer resolution to 0.5ms for low-latency tablet polling. */
+	/**
+	 *  Whether to force the Windows system timer resolution to 0.5ms for low-latency tablet
+	 *  polling.
+	 */
 	force_high_resolution_timer: boolean,
 	/**  WebSocket server broadcast configuration. */
 	websocket: WebSocketConfig_Serialize,

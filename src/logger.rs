@@ -47,7 +47,8 @@ pub static LOG_BUFFER: LazyLock<Arc<RwLock<VecDeque<LogEntry>>>> =
 ///
 /// Incremented every time a log is successfully added to `LOG_BUFFER` or the buffer is cleared.
 /// The UI uses this sequence number to invalidate its console cache instead of relying on
-/// `LOG_BUFFER.len()`, which fails to trigger updates once the circular buffer reaches `MAX_LOGS` capacity.
+/// `LOG_BUFFER.len()`, which fails to trigger updates once the circular buffer reaches `MAX_LOGS`
+/// capacity.
 pub static LOG_SEQUENCE: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
 impl Log for GlobalLogger {

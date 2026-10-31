@@ -32,7 +32,8 @@ impl ActiveAreaGeometry {
     /// * `show_osu_playfield` - Whether to calculate the osu! playfield points.
     #[allow(
         clippy::too_many_arguments,
-        reason = "one argument per physical and screen dimension; a struct would be built once and used once"
+        reason = "one argument per physical and screen dimension; a struct would be built once and \
+            used once"
     )]
     #[must_use]
     pub fn calculate(

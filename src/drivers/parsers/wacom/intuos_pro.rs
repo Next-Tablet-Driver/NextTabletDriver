@@ -4,7 +4,8 @@ use crate::drivers::parsers::ReportParser;
 
 // Intuos Pro
 
-/// Parser for Wacom Intuos Pro tablets, a port of the `IntuosProReportParser` of `OpenTabletDriver`.
+/// Parser for Wacom Intuos Pro tablets, a port of the `IntuosProReportParser` of
+/// `OpenTabletDriver`.
 pub struct IntuosProParser {
     inner_v1: IntuosV1Parser,
 }

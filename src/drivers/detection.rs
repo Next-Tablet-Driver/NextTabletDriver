@@ -71,13 +71,15 @@ fn confirm_report_length(
     if let Some(len) = crate::drivers::hid_caps::query_input_report_byte_length(path) {
         log::debug!(
             target: "Detect",
-            "{config_name} | HidP_GetCaps: InputReportByteLength = {len} (expected {input_report_length})"
+            "{config_name} | HidP_GetCaps: InputReportByteLength = {len} (expected \
+                {input_report_length})"
         );
         return len == input_report_length;
     }
 
     #[cfg(windows)]
-    log::debug!(target: "Detect", "{config_name} | HidP_GetCaps unavailable, falling back to live sample");
+    log::debug!(target: "Detect", "{config_name} | HidP_GetCaps unavailable, falling back to live \
+        sample");
 
     let expected_wire_len = expected_wire_report_len(input_report_length);
     let mut sample = [0u8; 64];
@@ -133,7 +135,8 @@ fn confirm_device_strings(
             Err(e) => {
                 log::warn!(
                     target: "Detect",
-                    "{config_name} | Invalid DeviceStrings pattern {pattern:?} for index {index}: {e}"
+                    "{config_name} | Invalid DeviceStrings pattern {pattern:?} for index {index}: \
+                        {e}"
                 );
                 return false;
             }
@@ -165,12 +168,14 @@ fn send_init_reports(
                 Ok(data) => {
                     log::trace!(target: "Detect", "Sending Feature Report: {data:02x?}");
                     if let Err(e) = device.send_feature_report(&data) {
-                        log::debug!(target: "Detect", "{config_name} | Init Error (Feature Report): {e}");
+                        log::debug!(target: "Detect", "{config_name} | Init Error (Feature \
+                            Report): {e}");
                         return false;
                     }
                 }
                 Err(e) => {
-                    log::debug!(target: "Detect", "{config_name} | Base64 Decode Error (Feature): {e}");
+                    log::debug!(target: "Detect", "{config_name} | Base64 Decode Error (Feature): \
+                        {e}");
                     return false;
                 }
             }
@@ -183,12 +188,14 @@ fn send_init_reports(
                 Ok(data) => {
                     log::trace!(target: "Detect", "Sending Output Report: {data:02x?}");
                     if let Err(e) = device.write(&data) {
-                        log::debug!(target: "Detect", "{config_name} | Init Error (Output Report): {e}");
+                        log::debug!(target: "Detect", "{config_name} | Init Error (Output Report): \
+                            {e}");
                         return false;
                     }
                 }
                 Err(e) => {
-                    log::debug!(target: "Detect", "{config_name} | Base64 Decode Error (Output): {e}");
+                    log::debug!(target: "Detect", "{config_name} | Base64 Decode Error (Output): \
+                        {e}");
                     return false;
                 }
             }
@@ -263,8 +270,10 @@ pub fn detect_tablet(api: &HidApi) -> Option<(HidDevice, Box<dyn NextTabletDrive
 
                     log::warn!(
                         target: "Detect",
-                        "Found unrecognized potential tablet device: [{vid:04x}:{pid:04x}] '{manufacturer}' - '{product}'.\n\
-                        No configuration file was found for this model. You can create a custom JSON configuration \
+                        "Found unrecognized potential tablet device: [{vid:04x}:{pid:04x}] \
+                        '{manufacturer}' - '{product}'.\n\
+                        No configuration file was found for this model. You can create a \
+                        custom JSON configuration \
                         in the 'tablets/' directory to add support for it."
                     );
                 }
@@ -313,7 +322,8 @@ pub fn detect_tablet(api: &HidApi) -> Option<(HidDevice, Box<dyn NextTabletDrive
                         let init_start = Instant::now();
 
                         if !send_init_reports(&device, digitizer, &config.name) {
-                            log::debug!(target: "Detect", "Initialization failed for {}, skipping device", config.name);
+                            log::debug!(target: "Detect", "Initialization failed for {}, skipping \
+                                device", config.name);
                             continue;
                         }
 
@@ -331,7 +341,8 @@ pub fn detect_tablet(api: &HidApi) -> Option<(HidDevice, Box<dyn NextTabletDrive
                             if !strings_confirmed || !length_confirmed {
                                 log::debug!(
                                     target: "Detect",
-                                    "{} | Candidate not confirmed (DeviceStrings: {}, InputReportLength: {}), trying next candidate",
+                                    "{} | Candidate not confirmed (DeviceStrings: {}, \
+                                        InputReportLength: {}), trying next candidate",
                                     config.name,
                                     strings_confirmed,
                                     length_confirmed
@@ -355,7 +366,8 @@ pub fn detect_tablet(api: &HidApi) -> Option<(HidDevice, Box<dyn NextTabletDrive
 
                         log::info!(
                             target: "Tracking",
-                            "TABLET DETAILS: Name: '{}' | Width: {}mm, Height: {}mm | MaxX: {}, MaxY: {} | MaxPressure: {} | Parser: {}",
+                            "TABLET DETAILS: Name: '{}' | Width: {}mm, Height: {}mm | MaxX: {}, \
+                                MaxY: {} | MaxPressure: {} | Parser: {}",
                             config.name,
                             config.specifications.digitizer.width,
                             config.specifications.digitizer.height,
@@ -393,11 +405,15 @@ pub fn detect_tablet(api: &HidApi) -> Option<(HidDevice, Box<dyn NextTabletDrive
                         {
                             log::error!(
                                 target: "Detect",
-                                "PERMISSION DENIED: Could not open tablet '{}' at path {:?} (Interface {}) due to insufficient privileges.\n\
+                                "PERMISSION DENIED: Could not open tablet '{}' at path {:?} \
+                                (Interface {}) due to insufficient privileges.\n\
                                 \n\
                                 TO FIX THIS (Linux):\n\
                                 1. Create a custom udev rules file:\n\
-                                   echo 'KERNEL==\"hidraw*\", SUBSYSTEM==\"hidraw\", ATTRS{{idVendor}}==\"{:04x}\", ATTRS{{idProduct}}==\"{:04x}\", MODE=\"0666\"' | sudo tee /etc/udev/rules.d/99-next-tablet.rules\n\
+                                   echo 'KERNEL==\"hidraw*\", SUBSYSTEM==\"hidraw\", \
+                                   ATTRS{{idVendor}}==\"{:04x}\", ATTRS{{idProduct}}==\"{:04x}\", \
+                                   MODE=\"0666\"' \
+                                   | sudo tee /etc/udev/rules.d/99-next-tablet.rules\n\
                                 2. Reload and trigger udev rules:\n\
                                    sudo udevadm control --reload-rules && sudo udevadm trigger\n\
                                 3. Re-plug your tablet device.",
@@ -408,7 +424,8 @@ pub fn detect_tablet(api: &HidApi) -> Option<(HidDevice, Box<dyn NextTabletDrive
                                 pid
                             );
                         } else {
-                            log::debug!(target: "Detect", "Could not open {} interface {}: {e}", config.name, interface);
+                            log::debug!(target: "Detect", "Could not open {} interface {}: \
+                                {e}", config.name, interface);
                         }
                     }
                 }
@@ -425,7 +442,8 @@ pub fn detect_tablet(api: &HidApi) -> Option<(HidDevice, Box<dyn NextTabletDrive
                 {
                     log::warn!(
                         target: "Detect",
-                        "{:04x}:{:04x} | No candidate confirmed via report length, falling back to '{}'",
+                        "{:04x}:{:04x} | No candidate confirmed via report length, falling back to \
+                            '{}'",
                         vid,
                         pid,
                         config.name

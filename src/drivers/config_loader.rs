@@ -29,7 +29,8 @@ fn load_and_index_configurations() -> ConfigIndex {
         }
     }
 
-    log::info!(target: "Driver", "Indexed {} configurations across {} unique VID:PID pairs", index.values().flatten().count(), index.len());
+    log::info!(target: "Driver", "Indexed {} configurations across {} unique VID:PID \
+        pairs", index.values().flatten().count(), index.len());
     index
 }
 
@@ -99,12 +100,14 @@ fn load_embedded_recursive(
                                     }
                                 }
                                 Err(e) => {
-                                    log::error!(target: "Driver", "Failed to parse embedded config {}: {e}", file.path().display());
+                                    log::error!(target: "Driver", "Failed to parse embedded config \
+                                        {}: {e}", file.path().display());
                                 }
                             }
                         }
                         None => {
-                            log::warn!(target: "Driver", "Embedded config file {} is not valid UTF-8", file.path().display());
+                            log::warn!(target: "Driver", "Embedded config file {} is not valid \
+                                UTF-8", file.path().display());
                         }
                     }
                 }
@@ -133,11 +136,13 @@ fn load_from_disk_recursive(
                             }
                         }
                         Err(e) => {
-                            log::error!(target: "Driver", "Failed to parse disk config {}: {e}", p.display());
+                            log::error!(target: "Driver", "Failed to parse disk config {}: \
+                                {e}", p.display());
                         }
                     },
                     Err(e) => {
-                        log::error!(target: "Driver", "Failed to read disk config {}: {e}", p.display());
+                        log::error!(target: "Driver", "Failed to read disk config {}: \
+                            {e}", p.display());
                     }
                 }
             }

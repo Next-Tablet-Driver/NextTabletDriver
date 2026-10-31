@@ -6,7 +6,8 @@ use std::path::PathBuf;
 
 #[cfg(test)]
 thread_local! {
-    static TEST_SETTINGS_DIR: std::cell::RefCell<Option<PathBuf>> = const { std::cell::RefCell::new(None) };
+    static TEST_SETTINGS_DIR: std::cell::RefCell<Option<PathBuf>> =
+        const { std::cell::RefCell::new(None) };
 }
 
 /// Redirects the settings folder to `path` for the current test thread.

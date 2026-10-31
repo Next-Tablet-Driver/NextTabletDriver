@@ -55,7 +55,11 @@ impl StatsServer {
                                         match client.send(Message::Text(json.clone().into())) {
                                             Ok(()) => true,
                                             Err(tungstenite::Error::Io(ref io_err))
-                                                if io_err.kind() == std::io::ErrorKind::WouldBlock => true,
+                                                if io_err.kind()
+                                                    == std::io::ErrorKind::WouldBlock =>
+                                            {
+                                                true
+                                            }
                                             Err(_) => false,
                                         }
                                     });

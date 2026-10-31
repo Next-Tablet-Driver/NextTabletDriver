@@ -98,14 +98,18 @@ impl I18n {
         let filename = locale.filename();
         content
             .and_then(|content| serde_json::from_str::<HashMap<String, String>>(content).ok())
-            .map_or_else(|| {
-                log::error!(target: "I18N", "Failed to load locale file: {filename}");
-                HashMap::new()
-            }, |m| {
-                let len = m.len();
-                log::info!(target: "I18N", "Loaded translations for locale {locale:?} ({len} keys)");
-                m
-            })
+            .map_or_else(
+                || {
+                    log::error!(target: "I18N", "Failed to load locale file: {filename}");
+                    HashMap::new()
+                },
+                |m| {
+                    let len = m.len();
+                    log::info!(target: "I18N", "Loaded translations for locale {locale:?} ({len} \
+                    keys)");
+                    m
+                },
+            )
     }
 
     /// Looks up a translation key in the active dictionary.

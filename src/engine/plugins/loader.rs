@@ -132,7 +132,8 @@ impl PluginLoader {
             ));
         }
 
-        // SAFETY: manifest_ptr is checked non-null and points to a null-terminated C string in static memory.
+        // SAFETY: manifest_ptr is checked non-null and points to a null-terminated C string in
+        // static memory.
         let manifest_cstr = unsafe { CStr::from_ptr(manifest_ptr) };
         let manifest_json = manifest_cstr.to_str().map_err(|e| {
             PluginError::ManifestError(format!("Manifest contains invalid UTF-8: {e}"))

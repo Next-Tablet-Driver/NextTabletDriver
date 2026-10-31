@@ -155,7 +155,8 @@ pub fn create_parser(parser_name: &str) -> Box<dyn ReportParser> {
             if !parser_name.is_empty() {
                 log::warn!(
                     target: "Driver",
-                    "Unknown report parser '{parser_name}' specified in configuration. Falling back to FallbackParser."
+                    "Unknown report parser '{parser_name}' specified in configuration. Falling \
+                        back to FallbackParser."
                 );
             }
             Box::new(fallback::FallbackParser)
@@ -263,7 +264,8 @@ mod tests {
             let actual_name = parser.name();
             assert!(
                 actual_name.contains(expected_type),
-                "For input '{input_name}', expected parser containing '{expected_type}', got '{actual_name}'"
+                "For input '{input_name}', expected parser containing '{expected_type}', got \
+                    '{actual_name}'"
             );
         }
     }

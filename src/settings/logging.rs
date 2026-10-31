@@ -8,7 +8,8 @@ pub fn log_mapping_config(config: &MappingConfig, prefix: &str) {
     log::info!(target: "Tracking", "Mode: {:?}", config.mode);
     log::info!(
         target: "Tracking",
-        "Active Area -> Width: {:.2}, Height: {:.2} | Offsets -> X: {:.2}, Y: {:.2} | Rotation: {:.1} deg",
+        "Active Area -> Width: {:.2}, Height: {:.2} | Offsets -> X: {:.2}, Y: {:.2} | Rotation: \
+            {:.1} deg",
         config.active_area.w,
         config.active_area.h,
         config.active_area.x,
@@ -30,7 +31,8 @@ pub fn log_mapping_config(config: &MappingConfig, prefix: &str) {
     );
     log::info!(
         target: "Tracking",
-        "Stylus -> Tip Threshold: {} | Eraser Threshold: {} | Disable Pressure: {} | Disable Tilt: {}",
+        "Stylus -> Tip Threshold: {} | Eraser Threshold: {} | Disable Pressure: {} | Disable Tilt: \
+            {}",
         config.tip_threshold,
         config.eraser_threshold,
         config.disable_pressure,

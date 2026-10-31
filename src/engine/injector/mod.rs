@@ -46,7 +46,8 @@ pub trait InputSink {
     /// Moves to an absolute position (`Absolute` mode).
     #[allow(
         clippy::too_many_arguments,
-        reason = "the position, pressure and tilt fields of one pen sample, as every sink receives them"
+        reason = "the position, pressure and tilt fields of one pen sample, as every sink receives \
+            them"
     )]
     fn move_absolute(
         &mut self,

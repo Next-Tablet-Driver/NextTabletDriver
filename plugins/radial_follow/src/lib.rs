@@ -2,7 +2,8 @@
 //!
 //! **Creator**: `AbstractQbit`
 //!
-//! Smooths pen cursor movement within an inner and outer radial boundary using a soft-knee transition.
+//! Smooths pen cursor movement within an inner and outer radial boundary using a soft-knee
+//! transition.
 
 use ntd_plugin_api::{
     NextTabletPlugin, PluginContext, PluginManifest, PluginPacket, PropertyDescriptor,
@@ -171,13 +172,19 @@ impl NextTabletPlugin for RadialFollowPlugin {
             name: "Radial Follow Smoothing".to_string(),
             version: "1.0.0".to_string(),
             author: "AbstractQbit".to_string(),
-            description: "Smooths pen cursor movement within an inner and outer radial boundary using a soft-knee transition.".to_string(),
+            description: "Smooths pen cursor movement within an inner and outer radial boundary \
+                using a soft-knee transition."
+                .to_string(),
             icon: Some("🎯".to_string()),
             properties: vec![
                 PropertyDescriptor {
                     id: "outer_radius".to_string(),
                     name: "Outer Radius".to_string(),
-                    tooltip: Some("Maximum distance the cursor can lag behind reading before catching up rapidly.".to_string()),
+                    tooltip: Some(
+                        "Maximum distance the cursor can lag behind reading before \
+                        catching up rapidly."
+                            .to_string(),
+                    ),
                     kind: PropertyKind::Float {
                         min: 0.0,
                         max: 500.0,
@@ -189,7 +196,11 @@ impl NextTabletPlugin for RadialFollowPlugin {
                 PropertyDescriptor {
                     id: "inner_radius".to_string(),
                     name: "Inner Radius".to_string(),
-                    tooltip: Some("Deadzone distance within which input deviations produce no cursor movement.".to_string()),
+                    tooltip: Some(
+                        "Deadzone distance within which input deviations produce no \
+                        cursor movement."
+                            .to_string(),
+                    ),
                     kind: PropertyKind::Float {
                         min: 0.0,
                         max: 500.0,
@@ -201,7 +212,11 @@ impl NextTabletPlugin for RadialFollowPlugin {
                 PropertyDescriptor {
                     id: "smoothing_coefficient".to_string(),
                     name: "Smoothing Coefficient".to_string(),
-                    tooltip: Some("Determines how fast the cursor descends from outer radius to inner radius (higher = smoother).".to_string()),
+                    tooltip: Some(
+                        "Determines how fast the cursor descends from outer radius to \
+                        inner radius (higher = smoother)."
+                            .to_string(),
+                    ),
                     kind: PropertyKind::Float {
                         min: 0.0,
                         max: 1.0,
@@ -213,7 +228,11 @@ impl NextTabletPlugin for RadialFollowPlugin {
                 PropertyDescriptor {
                     id: "soft_knee_scale".to_string(),
                     name: "Soft Knee Scale".to_string(),
-                    tooltip: Some("Controls transition softness around the outer radius boundary (higher = softer).".to_string()),
+                    tooltip: Some(
+                        "Controls transition softness around the outer radius boundary \
+                        (higher = softer)."
+                            .to_string(),
+                    ),
                     kind: PropertyKind::Float {
                         min: 0.0,
                         max: 100.0,
@@ -225,7 +244,11 @@ impl NextTabletPlugin for RadialFollowPlugin {
                 PropertyDescriptor {
                     id: "smoothing_leak_coefficient".to_string(),
                     name: "Smoothing Leak Coefficient".to_string(),
-                    tooltip: Some("Allows smoothing to persist past the outer radius at a reduced rate.".to_string()),
+                    tooltip: Some(
+                        "Allows smoothing to persist past the outer radius at a reduced \
+                        rate."
+                            .to_string(),
+                    ),
                     kind: PropertyKind::Float {
                         min: 0.0,
                         max: 1.0,
@@ -237,9 +260,18 @@ impl NextTabletPlugin for RadialFollowPlugin {
                 PropertyDescriptor {
                     id: "space".to_string(),
                     name: "Coordinate Space".to_string(),
-                    tooltip: Some("Selects whether the radius boundaries are evaluated in Screen pixels or Tablet millimeters.".to_string()),
+                    tooltip: Some(
+                        "Selects whether the radius boundaries are evaluated in Screen \
+                        pixels or Tablet millimeters."
+                            .to_string(),
+                    ),
                     kind: PropertyKind::Choice {
-                        options: vec!["Screen Space (px)".to_string(), "Tablet Space (mm)".to_string()],
+                        options: vec![
+                            "Screen Space (px)".to_string(),
+                            "Tablet Space \
+                            (mm)"
+                                .to_string(),
+                        ],
                         default_index: 0,
                     },
                 },

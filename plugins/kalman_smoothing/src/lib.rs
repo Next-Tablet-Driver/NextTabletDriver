@@ -87,13 +87,19 @@ impl NextTabletPlugin for KalmanSmoothingPlugin {
             name: "Kalman Smoothing".to_string(),
             version: "1.0.0".to_string(),
             author: "OpenTabletDriver Community".to_string(),
-            description: "Discrete dual-axis Kalman filter reducing hardware noise with minimal phase delay.".to_string(),
+            description: "Discrete dual-axis Kalman filter reducing hardware noise with minimal \
+                phase delay."
+                .to_string(),
             icon: Some("CHART_LINE".to_string()),
             properties: vec![
                 PropertyDescriptor {
                     id: "process_noise".to_string(),
                     name: "Process Noise (Q)".to_string(),
-                    tooltip: Some("How rapidly the true pen trajectory is expected to change (higher = faster response).".to_string()),
+                    tooltip: Some(
+                        "How rapidly the true pen trajectory is expected to change \
+                        (higher = faster response)."
+                            .to_string(),
+                    ),
                     kind: PropertyKind::Float {
                         min: 0.0001,
                         max: 1.0,
@@ -105,7 +111,11 @@ impl NextTabletPlugin for KalmanSmoothingPlugin {
                 PropertyDescriptor {
                     id: "measurement_noise".to_string(),
                     name: "Measurement Noise (R)".to_string(),
-                    tooltip: Some("Estimated hardware jitter level (higher = stronger noise filtering).".to_string()),
+                    tooltip: Some(
+                        "Estimated hardware jitter level (higher = stronger noise \
+                        filtering)."
+                            .to_string(),
+                    ),
                     kind: PropertyKind::Float {
                         min: 0.0001,
                         max: 1.0,

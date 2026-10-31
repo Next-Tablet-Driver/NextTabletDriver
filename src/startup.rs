@@ -105,7 +105,8 @@ mod platform {
             .join(r"AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup")
             .join(format!("{APP_NAME}.lnk"));
         if shortcut.exists() && fs::remove_file(&shortcut).is_ok() {
-            log::info!(target: "Startup", "Removed legacy startup shortcut: {}", shortcut.display());
+            log::info!(target: "Startup", "Removed legacy startup shortcut: \
+                {}", shortcut.display());
         }
     }
 
@@ -322,7 +323,8 @@ pub fn get_memory_info() -> Option<u64> {
         ullAvailVirtual: 0,
         ullAvailExtendedVirtual: 0,
     };
-    // SAFETY: mem_status is valid, dwLength is initialized, and GlobalMemoryStatusEx is a safe Win32 query.
+    // SAFETY: mem_status is valid, dwLength is initialized, and GlobalMemoryStatusEx is a safe
+    // Win32 query.
     let success = unsafe { GlobalMemoryStatusEx(&raw mut mem_status) };
     if success != 0 {
         Some(mem_status.ullTotalPhys)
@@ -374,7 +376,8 @@ pub fn set_fast_timer(enable: bool) {
         return;
     }
 
-    // SAFETY: `GetProcAddress` is called with a valid static C string function name on a verified ntdll handle.
+    // SAFETY: `GetProcAddress` is called with a valid static C string function name on a verified
+    // ntdll handle.
     let addr_set = unsafe { GetProcAddress(ntdll, c"NtSetTimerResolution".as_ptr().cast::<u8>()) };
     // SAFETY: Same as above; the name is a valid static C string and `ntdll` is a valid handle.
     let addr_query =
@@ -396,7 +399,8 @@ pub fn set_fast_timer(enable: bool) {
         // SAFETY: All three pointers refer to live local `u32`s.
         let _ = unsafe { nt_query(&raw mut min, &raw mut max, &raw mut cur) };
 
-        log::debug!(target: "Timer", "System Timer Resolution: Min={:.1}ms, Max={:.1}ms, Current={:.1}ms",
+        log::debug!(target: "Timer", "System Timer Resolution: Min={:.1}ms, Max={:.1}ms, \
+            Current={:.1}ms",
             f64::from(min) / 10000.0, f64::from(max) / 10000.0, f64::from(cur) / 10000.0);
 
         let enable_val = u8::from(enable);
@@ -415,9 +419,11 @@ pub fn set_fast_timer(enable: bool) {
         let status = unsafe { nt_set(max, enable_val, &raw mut new_cur) };
 
         if status == 0 {
-            log::info!(target: "Timer", "Timer resolution adjusted to {:.1}ms (enabled: {})", f64::from(new_cur) / 10000.0, enable);
+            log::info!(target: "Timer", "Timer resolution adjusted to {:.1}ms (enabled: \
+                {})", f64::from(new_cur) / 10000.0, enable);
         } else {
-            log::warn!(target: "Timer", "Failed to adjust timer resolution (NTSTATUS: 0x{status:08X})");
+            log::warn!(target: "Timer", "Failed to adjust timer resolution (NTSTATUS: \
+                0x{status:08X})");
         }
     } else {
         log::warn!(target: "Timer", "Could not find timer resolution functions in ntdll.dll");
@@ -481,7 +487,8 @@ pub fn log_system_hardware() {
     log::info!(target: "Tracking", "Hostname: {hostname} | User: {username}");
     log::info!(target: "Tracking", "CPU Model: {cpu_identifier} | Cores: {num_processors}");
     if let Some(ram) = total_ram {
-        log::info!(target: "Tracking", "Total Physical RAM: {:.2} GB", ram as f64 / 1_073_741_824.0);
+        log::info!(target: "Tracking", "Total Physical RAM: {:.2} \
+            GB", ram as f64 / 1_073_741_824.0);
     } else {
         log::info!(target: "Tracking", "Total Physical RAM: Unknown");
     }

@@ -57,13 +57,19 @@ impl NextTabletPlugin for HawkuSmoothingPlugin {
             name: "Hawku Smoothing".to_string(),
             version: "1.0.0".to_string(),
             author: "Hawku".to_string(),
-            description: "Classic low-pass exponential smoothing filter designed to reduce cursor tremor while minimizing latency.".to_string(),
+            description: "Classic low-pass exponential smoothing filter designed to reduce cursor \
+                tremor while minimizing latency."
+                .to_string(),
             icon: Some("LINE_SEGMENTS".to_string()),
             properties: vec![
                 PropertyDescriptor {
                     id: "latency".to_string(),
                     name: "Latency".to_string(),
-                    tooltip: Some("Smoothing latency in milliseconds (e.g. 15-25ms for Wacom-like feel, 2-10ms for snappy response).".to_string()),
+                    tooltip: Some(
+                        "Smoothing latency in milliseconds (e.g. 15-25ms for Wacom-like \
+                        feel, 2-10ms for snappy response)."
+                            .to_string(),
+                    ),
                     kind: PropertyKind::Float {
                         min: 0.1,
                         max: 500.0,
@@ -75,7 +81,11 @@ impl NextTabletPlugin for HawkuSmoothingPlugin {
                 PropertyDescriptor {
                     id: "frequency".to_string(),
                     name: "Filter Rate".to_string(),
-                    tooltip: Some("Expected update frequency of input reports (typically 1000Hz).".to_string()),
+                    tooltip: Some(
+                        "Expected update frequency of input reports (typically \
+                        1000Hz)."
+                            .to_string(),
+                    ),
                     kind: PropertyKind::Float {
                         min: 60.0,
                         max: 8000.0,
@@ -95,7 +105,8 @@ impl NextTabletPlugin for HawkuSmoothingPlugin {
         let target_x = packet.u * width_mm;
         let target_y = packet.v * height_mm;
 
-        // If elapsed time is greater than 100ms (packet.timestamp_ns or fallback) or not initialized, snap immediately
+        // If elapsed time is greater than 100ms (packet.timestamp_ns or fallback) or not
+        // initialized, snap immediately
         let time_delta_ms =
             if self.last_timestamp_ns > 0 && packet.timestamp_ns >= self.last_timestamp_ns {
                 (packet.timestamp_ns - self.last_timestamp_ns) as f32 / 1_000_000.0_f32

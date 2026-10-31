@@ -21,6 +21,7 @@ members = [
     "crates/ntd-plugin-api",
     "plugins/*",
     "tools/ntd-recorder",
+    "xtask",
 ]
 
 [workspace.package]

@@ -21,7 +21,8 @@ impl<T> LockRecoveryExt<T> for LockResult<T> {
         match self {
             Ok(guard) => guard,
             Err(poisoned) => {
-                log::error!(target: "State", "CRITICAL: Lock '{lock_name}' poisoned! Using potentially corrupted guard.");
+                log::error!(target: "State", "CRITICAL: Lock '{lock_name}' poisoned! Using \
+                    potentially corrupted guard.");
                 poisoned.into_inner()
             }
         }
@@ -43,7 +44,8 @@ impl<'a, T: Default> WriteRecoverExt for LockResult<std::sync::RwLockWriteGuard<
         match self {
             Ok(guard) => guard,
             Err(poisoned) => {
-                log::warn!(target: "State", "Write lock '{lock_name}' poisoned! Repairing by resetting to default state.");
+                log::warn!(target: "State", "Write lock '{lock_name}' poisoned! Repairing by \
+                    resetting to default state.");
                 let mut guard = poisoned.into_inner();
                 *guard = T::default();
                 guard
@@ -58,7 +60,8 @@ impl<'a, T: Default> WriteRecoverExt for LockResult<std::sync::MutexGuard<'a, T>
         match self {
             Ok(guard) => guard,
             Err(poisoned) => {
-                log::warn!(target: "State", "Mutex '{lock_name}' poisoned! Repairing by resetting to default state.");
+                log::warn!(target: "State", "Mutex '{lock_name}' poisoned! Repairing by resetting \
+                    to default state.");
                 let mut guard = poisoned.into_inner();
                 *guard = T::default();
                 guard
@@ -151,7 +154,8 @@ pub struct PipelineState {
     /// tilt, tip state). Published by whichever loop drives the pipeline, the desktop
     /// `tablet_manager` or the SDK's embedded engine.
     pub processed_frame: RwLock<ProcessedFrame>,
-    /// A rapidly incrementing counter of USB packets received, used by the UI to calculate real-time Hz.
+    /// A rapidly incrementing counter of USB packets received, used by the UI to calculate
+    /// real-time Hz.
     pub packet_count: AtomicU32,
     /// Tracking statistics for developer debugging (e.g., dropped packets, parse errors).
     pub stats: RwLock<crate::drivers::DriverStats>,
@@ -178,7 +182,8 @@ impl PipelineState {
 
 /// Application/engine lifecycle flags, independent of tablet data or configuration.
 pub struct LifecycleState {
-    /// Flag indicating if the user has never launched the application before (triggers welcome modal).
+    /// Flag indicating if the user has never launched the application before (triggers welcome
+    /// modal).
     pub is_first_run: RwLock<bool>,
     /// Status of the background polling engine (e.g. HID API initialization failure).
     pub engine_status: RwLock<EngineStatus>,
@@ -285,7 +290,8 @@ mod tests {
 
         // Ensure the underlying data is actually reset
         drop(guard);
-        // The lock remains poisoned in the OS-level primitive; use unwrap_or_log to access the inner value.
+        // The lock remains poisoned in the OS-level primitive; use unwrap_or_log to access the
+        // inner value.
         let inner = m.lock().unwrap_or_log("test_mutex_check");
         assert_eq!(*inner, String::default());
         drop(inner);

@@ -13,7 +13,8 @@ pub(crate) fn evaluate_log_arguments() {
     log::set_max_level(log::LevelFilter::Trace);
 }
 
-/// Keeps the new, empty settings folder of a test alive. The folder is removed when this is dropped.
+/// Keeps the new, empty settings folder of a test alive. The folder is removed when this is
+/// dropped.
 pub(crate) struct EmptySettingsDir(std::path::PathBuf);
 
 impl Drop for EmptySettingsDir {

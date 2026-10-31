@@ -135,7 +135,8 @@ impl TelemetryWorker {
 
         match res {
             Ok(_) => {
-                log::trace!(target: "Telemetry", "Successfully sent batch of {} events", self.batch_queue.len());
+                log::trace!(target: "Telemetry", "Successfully sent batch of {} \
+                    events", self.batch_queue.len());
                 self.batch_queue.clear();
             }
             Err(e) => {

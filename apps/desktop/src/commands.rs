@@ -1,6 +1,7 @@
 #![allow(
     clippy::needless_pass_by_value,
-    reason = "Tauri passes `State` and the command arguments by value; the `#[command]` signature requires it"
+    reason = "Tauri passes `State` and the command arguments by value; the `#[command]` signature \
+        requires it"
 )]
 #![allow(
     clippy::unreachable,
@@ -258,7 +259,8 @@ pub(crate) fn get_available_plugins(
     state: State<'_, Arc<SharedState>>,
 ) -> Vec<ntd_plugin_api::PluginManifest> {
     let manifests = state.plugins.loaded_manifests();
-    log::info!(target: "Plugins", "Frontend requested available plugins. Found {} plugins.", manifests.len());
+    log::info!(target: "Plugins", "Frontend requested available plugins. Found {} \
+        plugins.", manifests.len());
     manifests
 }
 
@@ -401,12 +403,17 @@ pub(crate) async fn trust_plugin(
     let confirmed = app
         .dialog()
         .message(format!(
-            "\"{}\" was found in the plugins folder but was not installed through NextTabletDriver.\n\nPlugins run native code with full access to your system. Only trust it if you know where it comes from.\n\nSHA-256: {short_hash}...",
+            "\"{}\" was found in the plugins folder but was not installed through \
+            NextTabletDriver.\n\nPlugins run native code with full access to your system. Only \
+            trust it if you know where it comes from.\n\nSHA-256: {short_hash}...",
             pending.file_name
         ))
         .title("Trust this plugin?")
         .kind(MessageDialogKind::Warning)
-        .buttons(MessageDialogButtons::OkCancelCustom("Trust and load".into(), "Cancel".into()))
+        .buttons(MessageDialogButtons::OkCancelCustom(
+            "Trust and load".into(),
+            "Cancel".into(),
+        ))
         .blocking_show();
     if !confirmed {
         return Ok(false);
