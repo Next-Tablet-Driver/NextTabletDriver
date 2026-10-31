@@ -27,6 +27,7 @@
 12. [Qualité de code](#12-qualité-de-code)
 13. [CI/CD](#13-cicd)
 14. [Contributions, IA et AGENTS.md](#14-contributions-ia-et-agentsmd)
+15. [Outils internes](#15-outils-internes)
 
 ---
 
@@ -160,8 +161,13 @@ apps/
 plugins/                   # plugins officiels, membres du workspace
 frontend/                  # inchangé dans sa structure
 tablets/                   # données des tablettes (embarquées par ntd-tablets)
-qa/fuzz/                   # cibles fuzz sur ntd-tablets et ntd-pipeline
-xtask/                     # tâches de dev (génération des types TS, vérifs)
+qa/fuzz/                   # cibles fuzz sur ntd-tablets, ntd-pipeline et ntd-interop
+tools/
+  ntd-codegen/             # tablets/*.json → Rust généré dans ntd-tablets (§15.1)
+  ntd-tester/              # replay HID → moteur réel → sortie factice (§15.2)
+  ntd-recorder/            # capture HID d'une tablette pour les issues (§15.3)
+  ntd-stress/              # stress du websocket et du protocole interop (§15.5)
+xtask/                     # tâches de dev (types TS, lint-style, plan CI)
 ```
 
 ### 4.2 Responsabilités et dépendances
@@ -244,7 +250,7 @@ chaque commande Tauri verrouille et modifie à sa façon.
 ```toml
 [workspace]
 resolver = "3"
-members = ["crates/*", "apps/*", "plugins/*", "xtask"]
+members = ["crates/*", "apps/*", "plugins/*", "tools/*", "xtask"]
 
 [workspace.package]
 edition = "2024"
@@ -363,6 +369,8 @@ Chaque phase = plusieurs petites PR. **Critère de sortie** obligatoire avant la
 - Corriger la clé publique de l'updater (§11).
 - Ajouter des **tests de golden files** pour les parsers : pour chaque tablette, des rapports HID
   bruts → rapport parsé attendu (snapshot). C'est le filet le plus important.
+- Écrire `ntd-recorder` (§15.3) en premier : c'est lui qui produit les captures dont les golden
+  files ont besoin.
 - Ajouter un **benchmark de latence** du pipeline (criterion existe déjà) et noter la référence.
 - Figer le contrat IPC actuel (§5.2 étape 1) avec génération TS.
 - **Sortie** : CI verte, golden files pour toutes les tablettes supportées, latence de référence notée.
@@ -387,7 +395,8 @@ Dans l'ordre : `ntd-core` → `ntd-tablets` → `ntd-pipeline`.
   Wacom par un état local au parser (un parser ne devrait pas avoir besoin d'un verrou) ou, à défaut,
   déplacer l'utilitaire dans `ntd-core`.
 - Pour `ntd-pipeline` : introduire `trait Filter`, couper le cycle avec les plugins.
-- Brancher `qa/fuzz` sur ces crates directement.
+- Brancher `qa/fuzz` sur ces crates directement, et ajouter les cibles des parsers (§15.4).
+- Remplacer `include_dir` + parsing JSON au démarrage par `ntd-codegen` (§15.1).
 - **Sortie** : ces crates n'ont **aucune** dépendance I/O (vérifié dans `cargo tree`), golden files
   identiques, latence identique.
 
@@ -404,8 +413,7 @@ avec un fake dans `ntd-test-support`.
 - `ntd-engine` avec `EngineHandle` + `EngineEvent` (§4.5).
 - Découper `polling.rs` (715 l.) et `owner.rs` : lecture, parsing, pipeline, sortie, boutons.
 - Télémétrie sortie du moteur (événements).
-- **Sortie** : test d'intégration « fake HID → engine → fake output » avec horloge simulée ;
-  latence ≤ référence.
+- **Sortie** : `ntd-tester` (§15.2) passe sur toutes les captures ; latence ≤ référence.
 
 ### Phase 5 — Services et application
 
@@ -680,6 +688,16 @@ avec un fake dans `ntd-test-support`.
 100. **NE PAS** figer une version précise de Rust dans `rust-toolchain.toml` ou dans un workflow.
      La toolchain est `stable` (§12.6). Quand une nouvelle version casse la CI, on corrige le
      code, on ne revient pas à une version figée.
+101. **NE PAS** modifier à la main un fichier dans `crates/ntd-tablets/src/generated/`. On modifie
+     le JSON dans `tablets/` ou le générateur, puis on régénère.
+102. **NE PAS** committer des fichiers régénérés sans rapport avec la PR. Un passage de codegen
+     peut toucher d'autres fichiers : on garde ceux qui sont nécessaires et on annule le reste.
+103. **NE PAS** inventer ou retoucher une capture `ntd-recorder`. Une capture vient d'une vraie
+     tablette ; si elle est fausse, on en refait une.
+104. **NE PAS** mettre des données personnelles dans une capture (nom de machine, chemins,
+     numéro de série complet) : `ntd-recorder` les retire, et on vérifie avant de committer.
+105. **NE PAS** supprimer une entrée du corpus fuzz qui a fait planter le code : elle devient un
+     test de régression.
 
 ---
 
@@ -952,7 +970,7 @@ Conséquences et règles :
 
 | Job | Contenu |
 |---|---|
-| `plan` | Crates touchés, ou exécution complète |
+| `plan` | `cargo xtask ci-plan` : crates touchés, ou exécution complète (§15.6) |
 | `fmt` | `cargo fmt --all --check` |
 | `style` | `cargo xtask lint-style` (§12.5) |
 | `typos` | `crate-ci/typos` sur le code, les commentaires et `docs/` (config `typos.toml`, exclusions : `tablets/`, fichiers générés) |
@@ -963,6 +981,9 @@ Conséquences et règles :
 | `test` | `cargo nextest run` + doctests, matrice Windows x64 et Linux x64 |
 | `golden` | golden files des parsers (§7, phase 0) |
 | `bindings` | `cargo xtask gen-ts && git diff --exit-code` |
+| `codegen` | `cargo run --locked -p ntd-codegen && git diff --exit-code` (§15.1) |
+| `tester` | `cargo run --locked -p ntd-tester` sur toutes les captures (§15.2) |
+| `fuzz` | chaque cible fuzz pendant 60 s sur les PR qui touchent les crates concernés ; plus longtemps dans le workflow nightly |
 | `coverage` | `cargo llvm-cov` + seuils de `coverage-thresholds.json` (exécution complète) |
 | `bench` | benchmark de latence comparé à la référence, sur `main` et sur les PR étiquetées `perf` |
 | `frontend` | `npm run check`, `lint`, `test`, `build` |
@@ -995,7 +1016,17 @@ sur la toolchain `beta`. Il n'est pas bloquant et ouvre une issue s'il échoue (
    de son propre endpoint stable. Les utilisateurs s'y abonnent avec une option « recevoir les
    bêtas » dans les paramètres.
 
-### 13.5 `release.yml` : release (tag `vX.Y.Z`)
+### 13.5 `nightly.yml` : build de nuit
+
+- Chaque nuit, **seulement s'il y a eu des commits** sur `main` depuis le dernier nightly.
+- Build de la matrice complète, signature, publication sous un tag `nightly` qu'on **écrase**
+  (pre-release GitHub, marquée comme non supportée).
+- Fuzzing long (par exemple 30 min par cible) et `ntd-stress` sur le build produit.
+- Canal d'update `nightly` séparé, opt-in, avec son propre endpoint (même raison que le canal bêta).
+- Ne tourne que sur le dépôt principal (`if: github.repository == 'Next-Tablet-Driver/NextTabletDriver'`),
+  jamais sur les forks.
+
+### 13.6 `release.yml` : release (tag `vX.Y.Z`)
 
 Mêmes étapes que la pré-release, plus :
 - publication en `latest` et mise à jour de `latest.json` (canal stable) ;
@@ -1068,3 +1099,128 @@ Une PR peut être fermée sans review complète si :
 ## Usage de l'IA
 <!-- Aucun / partiel (préciser quoi) / majoritaire -->
 ```
+
+---
+
+## 15. Outils internes
+
+Ces outils s'inspirent de ceux de PumpkinMC (`tools/pumpkin-codegen`, `tools/pumpkin-tester`,
+`tools/pumpkin-fuzzer`, l'Extractor et `.github/scripts/ci_packages.py`), adaptés à un pilote de
+tablette. Ce sont des binaires dans `tools/`, membres du workspace. Ils suivent les lints du
+workspace : un outil CLI qui écrit sur la sortie standard le déclare avec
+`#[expect(clippy::print_stdout, reason = "...")]` sur sa fonction `main`, pas par un `allow`
+global.
+
+### 15.1 `ntd-codegen` : les tablettes deviennent du code
+
+**Problème v2** : `src/drivers/config_loader.rs` embarque `tablets/` avec `include_dir` et
+parse le JSON **au démarrage**. Un JSON invalide n'est donc découvert qu'à l'exécution, chez
+l'utilisateur.
+
+**Ce que fait l'outil** :
+- lit `tablets/**/*.json`, les valide (champs obligatoires, VID/PID uniques, parser référencé
+  existant, dimensions cohérentes) ;
+- génère des tables statiques Rust dans `crates/ntd-tablets/src/generated/`, avec un en-tête
+  « fichier généré par ntd-codegen, ne pas modifier » ;
+- les fichiers générés sont **commités**, comme chez Pumpkin : les diffs se relisent en review et
+  la compilation ne dépend pas d'un `build.rs`.
+
+**Commandes** : `cargo run --locked -p ntd-codegen` régénère tout. La CI régénère et échoue s'il y
+a une différence.
+
+**Conséquences** : plus de `serde_json` ni d'`include_dir` dans le chemin de démarrage, plus
+d'erreur de descripteur à l'exécution, et le matching VID/PID devient une recherche dans une
+table statique.
+
+Un `tools/ntd-codegen/AGENTS.md` décrit comment ajouter un champ de descripteur.
+
+### 15.2 `ntd-tester` : le moteur réel, sans tablette
+
+**Équivalent** de `pumpkin-tester` (vrai serveur + bots + scénarios).
+
+**Ce que fait l'outil** :
+- démarre le **vrai** `ntd-engine` avec un `HidBackend` qui rejoue une capture (§15.3), un
+  `OutputSink` qui enregistre ce qui serait injecté, une horloge simulée et des `Paths` dans un
+  dossier temporaire ;
+- pour chaque scénario, compare la sortie (positions, pression, clics, touches) à un fichier
+  attendu, avec une tolérance explicite pour les flottants ;
+- couvre ce que les tests unitaires ne voient pas : profils (mapping, rotation, mode relatif),
+  chaîne de filtres et plugins officiels, bindings des boutons, débranchement et rebranchement
+  au milieu d'une capture.
+
+**Format d'un scénario** : `qa/scenarios/<nom>/` contient la capture, le profil et la sortie
+attendue. Ajouter un scénario ne demande aucun code.
+
+**Commande** : `cargo run --locked -p ntd-tester` (ou `-- <nom>` pour un seul scénario). Il
+renvoie un code de sortie non nul au premier écart et affiche un diff lisible.
+
+### 15.3 `ntd-recorder` : capturer une tablette
+
+**Équivalent** de l'Extractor de Pumpkin, qui produit les données de référence depuis le jeu.
+Ici, les données de référence viennent de la tablette de l'utilisateur.
+
+**Ce que fait l'outil** :
+- liste les périphériques HID, l'utilisateur choisit sa tablette ;
+- enregistre le descripteur de rapport HID, les infos du périphérique (VID, PID, chaînes produit,
+  interfaces) et une session de rapports bruts horodatés pendant que l'utilisateur suit des
+  consignes à l'écran (« survole sans toucher », « appuie doucement puis fort », « clique sur le
+  bouton 1 », « incline le stylet »…) ;
+- écrit un seul fichier (`.ntdcap`, JSON ou binaire versionné), **sans données personnelles**
+  (numéro de série tronqué, pas de nom de machine ni de chemin) ;
+- est distribué en binaire autonome et documenté dans `docs/adding-a-tablet.md`. Le modèle
+  d'issue `tablet_support.yml` demande ce fichier.
+
+**Usages** :
+1. Ajout d'une tablette : la capture sert à écrire le descripteur, puis devient golden file et
+   scénario `ntd-tester`.
+2. Rapport de bug : on rejoue la capture du rapporteur au lieu de deviner.
+3. Corpus de départ pour le fuzzing (§15.4).
+
+### 15.4 Fuzzing des parsers et du protocole
+
+**Constat v2** : `qa/fuzz/fuzz_targets/` ne couvre que les maths (`rotate_point`,
+`normalized_to_screen`, `physical_to_normalized`, `apply_relative_delta`). **Aucun parser HID
+n'est fuzzé**, alors que c'est la surface qui reçoit des octets extérieurs.
+
+**À ajouter** (cargo-fuzz) :
+- une cible par famille de parser (`wacom`, `huion`, `xp_pen`, `uclogic`, `veikk`…) qui envoie des
+  octets arbitraires au parser et vérifie qu'il renvoie `Ok`/`Err`/`None` **sans paniquer**, et
+  que les valeurs produites restent dans les bornes du descripteur ;
+- une cible pour le décodage du protocole de commandes `ntd-interop` et une pour les messages
+  websocket entrants ;
+- une cible pour le chargement des profils et la migration v2 → v3 (`ntd-settings`).
+
+**Corpus** : il démarre avec les captures `ntd-recorder` ; chaque crash trouvé est ajouté au
+corpus **et** devient un test unitaire.
+
+### 15.5 `ntd-stress` : stress du websocket et de l'IPC
+
+**Équivalent** de `pumpkin-fuzzer`, qui bombarde un serveur lancé avec des paquets aléatoires.
+
+**Ce que fait l'outil** :
+- se connecte à un NTD lancé (websocket local et protocole de commandes interop) ;
+- modes : messages aléatoires, messages valides mais hors bornes, trames corrompues ou
+  tronquées, connexions et déconnexions en rafale, clients lents qui ne lisent pas ;
+- options : durée, concurrence, mode ;
+- vérifie à la fin que le processus est vivant, que la mémoire est revenue à la normale et que
+  la latence du pipeline n'a pas bougé.
+
+Il tourne dans le workflow nightly (§13.5), pas sur chaque PR : c'est un test long.
+
+### 15.6 `cargo xtask ci-plan` : CI par crate touché
+
+**Inspiré de** `.github/scripts/ci_packages.py` de Pumpkin, mais **écrit en Rust dans `xtask`**
+plutôt qu'en Python : une seule langue pour les outils, et il réutilise `cargo metadata`.
+
+**Ce que fait la commande** :
+- calcule les fichiers modifiés entre la base et la tête de la PR ;
+- les associe aux crates, puis ajoute **tous les crates qui en dépendent** (graphe inverse de
+  `cargo metadata`) ;
+- bascule en exécution complète si un fichier global change (liste en §13.1), sur `main`, sur
+  les tags et sur le nightly ;
+- écrit dans `$GITHUB_OUTPUT` la liste des crates et la matrice de test (Linux et Windows x64
+  sur les PR, matrice complète avec ARM64 en exécution complète).
+
+Les jobs `clippy`, `test` et `build` lisent cette sortie et passent `-p <crate>` pour chaque
+crate. Le script a ses propres tests unitaires (graphe de dépendances factice).
+
