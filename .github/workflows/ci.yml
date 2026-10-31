@@ -15,8 +15,89 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  # Decides which jobs a pull request needs, from the files it changes. Each job runs only when a
+  # file it builds or checks has changed: a change to the documentation runs none of them, a change
+  # to the frontend does not build the Rust code, a change to a plugin does not build the app.
+  # Pushes to main and manual runs always run everything. A skipped job counts as passed in
+  # `ci-success`. When you add a folder that holds code, add it to the patterns below.
+  changes:
+    name: Changed paths
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      root: ${{ steps.filter.outputs.root }}
+      sdk: ${{ steps.filter.outputs.sdk }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+      coverage: ${{ steps.filter.outputs.coverage }}
+      tauri: ${{ steps.filter.outputs.tauri }}
+      deps: ${{ steps.filter.outputs.deps }}
+    steps:
+      - name: Decide what to run
+        id: filter
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          PR: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          emit() { echo "$1=$2" >> "$GITHUB_OUTPUT"; }
+          all() { for k in root sdk frontend coverage tauri deps; do emit "$k" true; done; }
+
+          if [ "$EVENT" != "pull_request" ]; then
+            all
+            exit 0
+          fi
+
+          files=$(gh api "repos/$REPO/pulls/$PR/files" --paginate --jq '.[].filename')
+          if [ -z "$files" ]; then
+            all
+            exit 0
+          fi
+
+          # Files that cannot change what the code does: documentation, licences, templates.
+          code=$(echo "$files" | grep -Ev '\.md$|^docs/|^licenses/|^LICENSE$|^\.github/(ISSUE_TEMPLATE/|CODEOWNERS|labeler\.yml|pull_request_template\.md)' || true)
+          echo "Files that can change the code:"; echo "${code:-<none>}"
+
+          match() { if echo "$code" | grep -Eq "$1"; then echo true; else echo false; fi; }
+
+          # Shared by every Rust job: this workflow and the toolchain and lint configuration.
+          common='^\.github/workflows/ci\.yml$|^(rust-toolchain|clippy|rustfmt)\.toml$|^\.cargo/'
+
+          # What the root crate is built from: sources, the tablet definitions and locales it
+          # embeds, and the plugin API it depends on. Tests and benchmarks (qa/) are added only
+          # for the jobs that run them.
+          built_from='^(src|tablets|resources)/|^sdk/plugin_api/|^Cargo\.(toml|lock)$'
+
+          # Rust quality check of the root crate.
+          root=$(match "$built_from|^qa/|$common")
+
+          # SDK, plugin API, plugins and examples. The SDK embeds the root crate, and this job also
+          # checks the lint policy of every Cargo.toml.
+          sdk=$(match "^(sdk|plugins)/|^(src|tablets|resources)/|(^|/)Cargo\.toml$|$common")
+
+          # Frontend lint, types, unit tests and build; the E2E tests run on the same files. The
+          # generated bindings are committed under frontend/, so they are covered.
+          frontend=$(match "^frontend/|^\.github/workflows/ci\.yml$")
+
+          # Coverage of the root crate and of the frontend, and the scripts that gate it.
+          coverage=$(match "$built_from|^qa/|^frontend/|^coverage-thresholds\.json$|^scripts/(test_)?coverage_gate\.py$|$common")
+
+          # The desktop app: its own crate, everything it embeds, and the build scripts it uses.
+          tauri=$(match "$built_from|^(src-tauri|frontend)/|^scripts/(99-nexttabletdriver\.rules|assert-gui-subsystem\.ps1|smoke-windows\.ps1)$|$common")
+
+          # Dependency policy: any manifest or lockfile, and the policy itself.
+          deps=$(match '(^|/)Cargo\.(toml|lock)$|^deny\.toml$|^\.github/workflows/ci\.yml$')
+
+          emit root "$root"; emit sdk "$sdk"; emit frontend "$frontend"
+          emit coverage "$coverage"; emit tauri "$tauri"; emit deps "$deps"
+
   rust:
     name: Rust Quality Check (${{ matrix.os }})
+    needs: changes
+    if: needs.changes.outputs.root == 'true'
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -89,6 +170,8 @@ jobs:
   # SDK, plugin API, bundled plugins or example plugin; check them explicitly.
   plugins:
     name: SDK, plugin API, plugins and examples
+    needs: changes
+    if: needs.changes.outputs.sdk == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -174,6 +257,8 @@ jobs:
 
   frontend:
     name: Frontend (lint, types, tests, build)
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -206,6 +291,8 @@ jobs:
   # failures are kept as an artifact.
   e2e:
     name: E2E (Playwright)
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -244,6 +331,8 @@ jobs:
   # named-pipe, mutex and shared-memory code of the engine is compiled and tested.
   coverage:
     name: Coverage
+    needs: changes
+    if: needs.changes.outputs.coverage == 'true'
     runs-on: windows-latest
     permissions:
       contents: read
@@ -340,6 +429,8 @@ jobs:
   # checked by security.yml: a new advisory must not fail unrelated pull requests.
   deny:
     name: Dependency policy (cargo-deny)
+    needs: changes
+    if: needs.changes.outputs.deps == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -363,6 +454,8 @@ jobs:
   # release build is caught on every PR instead of on the day of a tag.
   tauri:
     name: Tauri build (${{ matrix.os }})
+    needs: changes
+    if: needs.changes.outputs.tauri == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -463,12 +556,13 @@ jobs:
   ci-success:
     name: CI success
     if: always()
-    needs: [rust, plugins, frontend, e2e, coverage, deny, tauri]
+    needs: [changes, rust, plugins, frontend, e2e, coverage, deny, tauri]
     runs-on: ubuntu-latest
     steps:
-      - name: Require every job to have succeeded
+      - name: Require every job that ran to have succeeded
         env:
           NEEDS: ${{ toJSON(needs) }}
         run: |
           echo "$NEEDS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
-          echo "$NEEDS" | jq -e 'all(.[]; .result == "success")' > /dev/null
+          # A job skipped because its files did not change counts as passed.
+          echo "$NEEDS" | jq -e 'all(.[]; .result == "success" or .result == "skipped")' > /dev/null
