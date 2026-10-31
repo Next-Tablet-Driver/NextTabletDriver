@@ -1545,8 +1545,8 @@ just the application.
 | | |
 |---|---|
 | **Current phase** | Phase 1: Workspace, quality, CI, contribution rules |
-| **Last completed task** | P1.14 |
-| **Next task** | P1.15 |
+| **Last completed task** | P1.15 |
+| **Next task** | P1.16 |
 | **v1 bridge release** | not started (P7.5a) |
 | **Last updated** | 2026-10-31 |
 
@@ -1780,11 +1780,22 @@ phase 1; §12, §13, §14).
   - Notes: `npm run lint` is `eslint . --max-warnings 0`, `npm run check` passes
     `--fail-on-warnings` to `svelte-check`, and `npm run format:check` is `prettier --check .`.
     The three rules added in P1.12 and `svelte/sort-attributes` are errors now.
-- [ ] **P1.15** Rework `ci.yml` (§13.1, §13.2)
+- [x] **P1.15** Rework `ci.yml` (§13.1, §13.2) (branch `chore/v3-phase-1`)
   - Depends on: P1.8, P1.9, P1.10, P1.11, P1.14
   - Done when: the §13.2 jobs that already have something to check exist (fmt, style, typos,
     machete, clippy, clippy-release, doc, test, golden, bindings, coverage, bench, frontend, e2e,
     build); actions pinned by SHA; `ci-success` aggregates everything.
+  - Notes: `plan` runs `cargo xtask ci-plan` (which gained a `frontend` output) and the other
+    jobs read it; the `changes` job of the targeted-CI change is gone. `bench` only checks that the
+    benchmarks compile: comparing latencies against `docs/perf-baseline.md` on shared runners is too
+    noisy, so the 5 % tolerance stays a manual check (three runs, median). The `deny` job moved
+    to `security.yml` (P1.16). Jobs not listed in §13.2 yet (`codegen`, `tester`, `fuzz`,
+    `check-targets`) do not exist because their tools do not. Every action of every workflow is
+    pinned by SHA with the tag in a comment, `.github/actions/linux-deps` holds the shared Linux
+    packages, and each job has a timeout. **Not verified**: none of this has run on GitHub yet (no
+    `actionlint` here; YAML parses and every `needs` and plan output is checked); the ARM64 runner
+    labels (`ubuntu-24.04-arm`, `windows-11-arm`) are new, so those two test jobs are allowed to fail
+    until they have run green.
 - [ ] **P1.16** Rework `security.yml` (§13.3)
   - Depends on: P1.1
   - Done when: a single `cargo deny check`, `npm audit`, dependency review on PRs; secret scanning

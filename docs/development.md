@@ -214,34 +214,30 @@ If you change `frontend/package-lock.json`, update the npm hash in `nix/default.
 
 ## The CI
 
-A pull request only runs the jobs that its files need. A first job, *Changed paths*, reads the list of changed files, and each job below runs only when a file it builds or checks has changed.
+The CI runs on every pull request and every push to `main`. A first job, **Plan**, decides what to run (`cargo xtask ci-plan`, see [Which crates does my change touch?](#which-crates-does-my-change-touch)); every other job reads its answer. A job that was skipped counts as passed. The single required check is **CI success**: it passes when every job that ran has passed. A push to `main` and a manual run always run everything.
 
-| Job | Runs when you change |
-| --- | --- |
-| Rust Quality Check | `src/`, `qa/`, `tablets/`, `resources/`, `crates/ntd-plugin-api/`, the root `Cargo.toml` or `Cargo.lock`, the toolchain or lint files (`rust-toolchain.toml`, `clippy.toml`, `rustfmt.toml`, `.cargo/`) |
-| SDK, plugin API, plugins and examples | `apps/sdk/`, `crates/`, `plugins/`, `tools/`, `src/`, `tablets/`, `resources/` (the SDK embeds the root crate), the root `Cargo.lock` (the only lockfile), any `Cargo.toml`, the toolchain or lint files |
-| Frontend, E2E | `frontend/` |
-| Coverage | `src/`, `qa/`, `tablets/`, `resources/`, `crates/ntd-plugin-api/`, the root `Cargo.*`, `frontend/`, `coverage-thresholds.json`, `scripts/coverage_gate.py`, the toolchain files |
-| Tauri build | `apps/desktop/`, `frontend/`, and what the root crate is built from (`src/`, `tablets/`, `resources/`, `crates/ntd-plugin-api/`, the root `Cargo.*`), the scripts the build uses (`scripts/assert-gui-subsystem.ps1`, `scripts/smoke-windows.ps1`, `scripts/99-nexttabletdriver.rules`), the toolchain files. It does **not** run for `qa/` |
-| Dependency policy | any `Cargo.toml` or `Cargo.lock`, `deny.toml` |
+| Job | What it checks | Runs when |
+| --- | --- | --- |
+| Plan | Which crates the change touches, and the test matrix. | always |
+| Format | `cargo fmt --all --check`. | a crate is touched |
+| Style | `cargo xtask lint-style`: lines over 100 characters, banners, to-dos, `unsafe`, `rustfmt::skip`. | a crate is touched |
+| Typos | The spell checker (`typos.toml`), on code, comments and documentation. | always |
+| Unused dependencies | `cargo machete`. | a crate is touched |
+| Clippy, Clippy (release) | Clippy with every lint of the workspace as an error, on the touched crates and their dependents, in debug and release. | a crate is touched |
+| Documentation | `cargo doc` with every documentation warning as an error. | a crate is touched |
+| Test | `cargo nextest` and the doctests, on Linux and Windows (x64). A full run adds ARM64, which may fail without failing the CI until it has run green once. | a crate is touched |
+| Parser golden files | Every capture of `qa/golden/` replayed through its parser. | the root crate or what it depends on |
+| TypeScript bindings | The committed `bindings.ts` is what the Rust code generates. | the desktop app or what it depends on |
+| Benchmarks build | The benchmarks compile. The 5 % tolerance of [`perf-baseline.md`](perf-baseline.md) is checked by hand: shared runners are too noisy. | the root crate or what it depends on |
+| Example plugins | The Rust and C example plugins build and export the seven plugin functions. | the plugin API or the Rust example plugin |
+| Frontend | Prettier, types, lint, unit tests and the production build. | `frontend/` |
+| E2E (Playwright) | Every screen in a browser, with the fake backend. | `frontend/` |
+| Coverage | The coverage floors. | a crate is touched, or `frontend/` |
+| Build the app (Ubuntu, Windows) | The full app builds, and a smoke test starts the real app. On Windows it also checks that the app has no console window. | the desktop app, what it depends on, or `frontend/` |
 
-So a change only to the documentation, the licences or the issue templates runs none of them; a change only to a plugin runs only the SDK job; a change only to `apps/desktop/` runs only the Tauri build. Changing `.github/workflows/ci.yml` runs everything.
+All the actions are pinned by commit SHA, and the Rust jobs install the `stable` toolchain from `rust-toolchain.toml` and fail on any warning (`RUSTFLAGS=-D warnings`). The system libraries that Linux needs are installed by `.github/actions/linux-deps`.
 
-A push to `main` and a manual run always run everything. A job that is skipped counts as passed. The single required check is **CI success**: it passes when every job that ran has passed.
-
-The filter is the `changes` job in `.github/workflows/ci.yml`. If you add a folder that holds code, add it there, or its changes will not trigger the jobs.
-
-| Job | What it checks |
-| --- | --- |
-| Rust Quality Check (Ubuntu, Windows) | Format, `cargo check`, Clippy, `cargo doc`, tests and doctests of the root crate. |
-| SDK, plugin API, plugins and examples | Format, Clippy and tests of these workspace members, the Rust example plugin included. It also builds both example plugins (Rust and C) and checks that each exports the seven plugin functions. |
-| Frontend | Lint, types, unit tests and the production build. |
-| E2E (Playwright) | Every screen in a browser, with the fake backend. |
-| Coverage | The coverage floors. |
-| Dependency policy (cargo-deny) | Licenses, bans and sources, for every crate. |
-| Tauri build (Ubuntu, Windows) | The full app builds, and a smoke test starts the real app. On Windows it also checks that the app has no console window. |
-
-Other workflows: **CodeQL** (code scanning), **Security** (weekly check of known security problems in dependencies), **Conventional PR title**, **PR labels**, **Nix**, **Release Build** (on a version tag, see [Releasing](releasing.md)) and **Publish to WinGet**.
+Other workflows: **CodeQL** (code scanning), **Security** (known security problems in dependencies), **Nix** (the Nix package), **Release** (installers on a tag), and two small ones that check the title of a pull request and label it.
 
 ## Common build problems
 

@@ -7,6 +7,8 @@
 //!
 //! - `full`: `true` when everything runs;
 //! - `any`: `true` when at least one crate is affected;
+//! - `frontend`: `true` when the frontend has to be checked (it is not a crate): a change under
+//!   `frontend/`, or a full run;
 //! - `crates`: the affected crates, as a JSON array;
 //! - `packages`: the same crates as `-p name` arguments for cargo;
 //! - `matrix`: the operating systems to test on, as a JSON object for `strategy.matrix`.
@@ -59,6 +61,8 @@ struct Plan {
     full: bool,
     /// The affected crates, sorted by name.
     crates: Vec<String>,
+    /// The frontend has to be checked.
+    frontend: bool,
 }
 
 impl Graph {
@@ -106,6 +110,7 @@ fn plan(graph: &Graph, files: &[String], event: &str) -> Plan {
         return Plan {
             full: true,
             crates: graph.all_names().into_iter().collect(),
+            frontend: true,
         };
     }
     let touched: BTreeSet<String> = files
@@ -116,6 +121,7 @@ fn plan(graph: &Graph, files: &[String], event: &str) -> Plan {
     Plan {
         full: false,
         crates: graph.with_dependents(&touched).into_iter().collect(),
+        frontend: files.iter().any(|f| f.starts_with("frontend/")),
     }
 }
 
@@ -290,6 +296,7 @@ fn write_outputs(result: &Plan) -> Result<(), String> {
     let outputs: BTreeMap<&str, String> = BTreeMap::from([
         ("full", result.full.to_string()),
         ("any", (!result.crates.is_empty()).to_string()),
+        ("frontend", result.frontend.to_string()),
         ("crates", json!(result.crates).to_string()),
         ("packages", packages),
         ("matrix", matrix(result.full).to_string()),
@@ -348,6 +355,15 @@ mod tests {
         );
         assert!(!result.full);
         assert!(result.crates.is_empty());
+    }
+
+    #[test]
+    fn the_frontend_is_checked_when_it_changes_and_on_a_full_run() {
+        let graph = fake();
+        assert!(plan(&graph, &files(&["frontend/src/a.ts"]), "pull_request").frontend);
+        assert!(!plan(&graph, &files(&["src/a.rs", "docs/a.md"]), "pull_request").frontend);
+        assert!(plan(&graph, &files(&["docs/a.md"]), "push").frontend);
+        assert!(plan(&graph, &files(&["Cargo.lock"]), "pull_request").frontend);
     }
 
     #[test]

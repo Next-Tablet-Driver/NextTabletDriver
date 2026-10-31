@@ -1,5 +1,10 @@
 name: CI
 
+# Tests and quality, on every pull request and every push to main. A first job (`plan`) decides what
+# to run from the files the change touches (`cargo xtask ci-plan`, docs/development.md); every other
+# job reads its answer. A job that was skipped counts as passed in `ci-success`, the only check the
+# branch ruleset requires.
+
 on:
   push:
     branches: [main]
@@ -14,223 +19,314 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+env:
+  CARGO_TERM_COLOR: always
+  # Warnings fail the build. Cargo does not apply this to dependencies.
+  RUSTFLAGS: -D warnings
+
 jobs:
-  # Decides which jobs a pull request needs, from the files it changes. Each job runs only when a
-  # file it builds or checks has changed: a change to the documentation runs none of them, a change
-  # to the frontend does not build the Rust code, a change to a plugin does not build the app.
-  # Pushes to main and manual runs always run everything. A skipped job counts as passed in
-  # `ci-success`. When you add a folder that holds code, add it to the patterns below.
-  changes:
-    name: Changed paths
+  plan:
+    name: Plan
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: read
+    timeout-minutes: 15
     outputs:
-      root: ${{ steps.filter.outputs.root }}
-      sdk: ${{ steps.filter.outputs.sdk }}
-      frontend: ${{ steps.filter.outputs.frontend }}
-      coverage: ${{ steps.filter.outputs.coverage }}
-      tauri: ${{ steps.filter.outputs.tauri }}
-      deps: ${{ steps.filter.outputs.deps }}
-    steps:
-      - name: Decide what to run
-        id: filter
-        env:
-          GH_TOKEN: ${{ github.token }}
-          EVENT: ${{ github.event_name }}
-          PR: ${{ github.event.pull_request.number }}
-          REPO: ${{ github.repository }}
-        run: |
-          set -euo pipefail
-          emit() { echo "$1=$2" >> "$GITHUB_OUTPUT"; }
-          all() { for k in root sdk frontend coverage tauri deps; do emit "$k" true; done; }
-
-          if [ "$EVENT" != "pull_request" ]; then
-            all
-            exit 0
-          fi
-
-          files=$(gh api "repos/$REPO/pulls/$PR/files" --paginate --jq '.[].filename')
-          if [ -z "$files" ]; then
-            all
-            exit 0
-          fi
-
-          # Files that cannot change what the code does: documentation, licences, templates.
-          code=$(echo "$files" | grep -Ev '\.md$|^docs/|^licenses/|^LICENSE$|^\.github/(ISSUE_TEMPLATE/|CODEOWNERS|labeler\.yml|pull_request_template\.md)' || true)
-          echo "Files that can change the code:"; echo "${code:-<none>}"
-
-          match() { if echo "$code" | grep -Eq "$1"; then echo true; else echo false; fi; }
-
-          # Shared by every Rust job: this workflow and the toolchain and lint configuration.
-          common='^\.github/workflows/ci\.yml$|^(rust-toolchain|clippy|rustfmt)\.toml$|^\.cargo/'
-
-          # What the root crate is built from: sources, the tablet definitions and locales it
-          # embeds, and the plugin API it depends on. Tests and benchmarks (qa/) are added only
-          # for the jobs that run them.
-          built_from='^(src|tablets|resources)/|^crates/ntd-plugin-api/|^Cargo\.(toml|lock)$'
-
-          # Rust quality check of the root crate.
-          root=$(match "$built_from|^qa/|$common")
-
-          # SDK, plugin API, plugins and examples. The SDK embeds the root crate, and this job also
-          # checks the lint policy of every Cargo.toml.
-          sdk=$(match "^(apps/sdk|crates|plugins|tools)/|^(src|tablets|resources)/|^Cargo\.lock$|(^|/)Cargo\.toml$|$common")
-
-          # Frontend lint, types, unit tests and build; the E2E tests run on the same files. The
-          # generated bindings are committed under frontend/, so they are covered.
-          frontend=$(match "^frontend/|^\.github/workflows/ci\.yml$")
-
-          # Coverage of the root crate and of the frontend, and the scripts that gate it.
-          coverage=$(match "$built_from|^qa/|^frontend/|^coverage-thresholds\.json$|^scripts/(test_)?coverage_gate\.py$|$common")
-
-          # The desktop app: its own crate, everything it embeds, and the build scripts it uses.
-          tauri=$(match "$built_from|^(apps/desktop|frontend)/|^scripts/(99-nexttabletdriver\.rules|assert-gui-subsystem\.ps1|smoke-windows\.ps1)$|$common")
-
-          # Dependency policy: any manifest or lockfile, and the policy itself.
-          deps=$(match '(^|/)Cargo\.(toml|lock)$|^deny\.toml$|^\.github/workflows/ci\.yml$')
-
-          emit root "$root"; emit sdk "$sdk"; emit frontend "$frontend"
-          emit coverage "$coverage"; emit tauri "$tauri"; emit deps "$deps"
-
-  rust:
-    name: Rust Quality Check (${{ matrix.os }})
-    needs: changes
-    if: needs.changes.outputs.root == 'true'
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest]
-
+      full: ${{ steps.plan.outputs.full }}
+      any: ${{ steps.plan.outputs.any }}
+      frontend: ${{ steps.plan.outputs.frontend }}
+      crates: ${{ steps.plan.outputs.crates }}
+      packages: ${{ steps.plan.outputs.packages }}
+      matrix: ${{ steps.plan.outputs.matrix }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          submodules: recursive
+          # The plan diffs against the base branch.
+          fetch-depth: 0
 
-      - name: Setup Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+      - name: Install the Rust toolchain
+        uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
         with:
-          components: clippy,rustfmt
+          toolchain: stable
 
       - name: Rust cache
-        uses: swatinem/rust-cache@v2
+        uses: swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
         with:
-          key: ${{ matrix.os }}
-          # Only main writes the cache, pull requests just read it.
+          key: plan
           save-if: ${{ github.ref == 'refs/heads/main' }}
 
-      - name: Install system dependencies (Linux)
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y pkg-config libudev-dev libgtk-3-dev libglib2.0-dev libgdk-pixbuf2.0-dev libpango1.0-dev libcairo2-dev libatk1.0-dev libx11-dev libxrandr-dev libxfixes-dev libxrender-dev libx11-xcb-dev libxkbcommon-dev libgl1-mesa-dev libegl1-mesa-dev libgles2-mesa-dev libfuse2 libxdo-dev
-
-      - name: Rustfmt check
-        run: cargo fmt --all -- --check
-
-      - name: Cargo check
-        run: cargo check -p next_tablet_driver --all-targets --all-features
-
-      - name: Clippy
-        run: cargo clippy -p next_tablet_driver --all-targets --all-features -- -D warnings
-
-      - name: Documentation
-        if: matrix.os == 'ubuntu-latest'
+      - name: Plan
+        id: plan
         env:
-          # A few public docs link to private modules; everything else must be warning-free.
-          RUSTDOCFLAGS: -D warnings -A rustdoc::private_intra_doc_links
-        run: cargo doc -p next_tablet_driver --no-deps --all-features
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.base_ref || 'main' }}
+        run: cargo run --locked --quiet -p xtask -- ci-plan --base "origin/$BASE" --event "$EVENT"
 
-      - name: Install cargo-nextest
-        uses: taiki-e/install-action@v2
+  fmt:
+    name: Format
+    needs: plan
+    if: needs.plan.outputs.any == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          toolchain: stable
+          components: rustfmt
+      - name: cargo fmt
+        run: cargo fmt --all --check
+
+  style:
+    name: Style (lint-style)
+    needs: plan
+    if: needs.plan.outputs.any == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          toolchain: stable
+      - uses: swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
+        with:
+          key: xtask
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      - name: cargo xtask lint-style
+        run: cargo run --locked --quiet -p xtask -- lint-style
+
+  typos:
+    name: Typos
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Spell check
+        uses: crate-ci/typos@b41eb62e9a8096c9ba6636e2365d3f56018a203c # master
+
+  machete:
+    name: Unused dependencies
+    needs: plan
+    if: needs.plan.outputs.any == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          toolchain: stable
+      - uses: taiki-e/install-action@68a389c788b2cd04016ce8c80ee23b80d2ab3d68 # v2
+        with:
+          tool: cargo-machete
+      - name: cargo machete
+        run: cargo machete
+
+  clippy:
+    name: Clippy
+    needs: plan
+    if: needs.plan.outputs.any == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          submodules: recursive
+      - uses: ./.github/actions/linux-deps
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          toolchain: stable
+          components: clippy
+      - uses: swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
+        with:
+          key: clippy
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      - name: cargo clippy
+        run: cargo clippy --locked --all-targets --all-features ${{ needs.plan.outputs.packages }} -- -D warnings
+
+  clippy-release:
+    name: Clippy (release)
+    needs: plan
+    if: needs.plan.outputs.any == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          submodules: recursive
+      - uses: ./.github/actions/linux-deps
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          toolchain: stable
+          components: clippy
+      - uses: swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
+        with:
+          key: clippy-release
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      - name: cargo clippy --release
+        run: cargo clippy --locked --release --all-targets --all-features ${{ needs.plan.outputs.packages }} -- -D warnings
+
+  doc:
+    name: Documentation
+    needs: plan
+    if: needs.plan.outputs.any == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      # A few public docs link to private modules; everything else must be warning-free.
+      RUSTDOCFLAGS: -D warnings -A rustdoc::private_intra_doc_links
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          submodules: recursive
+      - uses: ./.github/actions/linux-deps
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          toolchain: stable
+      - uses: swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
+        with:
+          key: doc
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      - name: cargo doc
+        run: cargo doc --locked --no-deps --all-features ${{ needs.plan.outputs.packages }}
+
+  test:
+    name: Test (${{ matrix.name }})
+    needs: plan
+    if: needs.plan.outputs.any == 'true'
+    runs-on: ${{ matrix.os }}
+    # A runner label that does not exist would queue forever: bound it.
+    timeout-minutes: 60
+    # The ARM64 runners of a full run are new and not verified yet: they may fail without failing
+    # the workflow, until they have run green once (roadmap P1.15).
+    continue-on-error: ${{ contains(matrix.name, 'ARM64') }}
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.plan.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          submodules: recursive
+      - name: System dependencies (Linux)
+        if: runner.os == 'Linux'
+        uses: ./.github/actions/linux-deps
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          toolchain: stable
+      - uses: swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
+        with:
+          key: test-${{ matrix.os }}
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      - uses: taiki-e/install-action@68a389c788b2cd04016ce8c80ee23b80d2ab3d68 # v2
         with:
           tool: nextest
-
-      - name: Run tests
-        run: cargo nextest run -p next_tablet_driver --all-features --profile ci
-
-      # nextest does not run doctests.
-      - name: Run doctests
-        run: cargo test -p next_tablet_driver --all-features --doc
-
-      - name: Upload test report
+      - name: Run the tests
+        run: cargo nextest run --locked --all-features ${{ needs.plan.outputs.packages }} --profile ci
+      # nextest does not run doctests; the desktop app crate has none and breaks the linking of the
+      # others when it is built with them, so only the root crate is checked.
+      - name: Run the doctests
+        if: contains(fromJson(needs.plan.outputs.crates), 'next_tablet_driver')
+        run: cargo test --locked --all-features --doc -p next_tablet_driver
+      - name: Upload the test report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: nextest-junit-${{ matrix.os }}
           path: target/nextest/ci/junit.xml
           if-no-files-found: ignore
 
-  # The jobs above are limited to the root crate (`-p next_tablet_driver`): the workspace also holds
-  # the desktop app, which needs the system libraries of the Tauri job. Check the SDK, the plugin
-  # API, the bundled plugins and the example plugin explicitly here.
-  plugins:
-    name: SDK, plugin API, plugins and examples
-    needs: changes
-    if: needs.changes.outputs.sdk == 'true'
+  golden:
+    name: Parser golden files
+    needs: plan
+    if: contains(fromJson(needs.plan.outputs.crates), 'next_tablet_driver')
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           submodules: recursive
-
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y pkg-config libudev-dev libgtk-3-dev libglib2.0-dev libgdk-pixbuf2.0-dev libpango1.0-dev libcairo2-dev libatk1.0-dev libx11-dev libxrandr-dev libxfixes-dev libxrender-dev libx11-xcb-dev libxkbcommon-dev libxdo-dev
-
-      - name: Setup Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+      - uses: ./.github/actions/linux-deps
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
         with:
-          components: clippy,rustfmt
-
-      - name: Rust cache
-        uses: swatinem/rust-cache@v2
+          toolchain: stable
+      - uses: swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
         with:
-          workspaces: ". -> target"
+          key: golden
           save-if: ${{ github.ref == 'refs/heads/main' }}
+      # Every capture of qa/golden/ replayed through its parser, compared with its snapshot.
+      - name: Golden files
+        run: cargo test --locked -p next_tablet_driver --test golden
 
-      - name: Install cargo-nextest
-        uses: taiki-e/install-action@v2
+  bindings:
+    name: TypeScript bindings
+    needs: plan
+    if: contains(fromJson(needs.plan.outputs.crates), 'app')
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          tool: nextest
+          submodules: recursive
+      - uses: ./.github/actions/linux-deps
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          toolchain: stable
+      - uses: swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
+        with:
+          key: bindings
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      # The bindings are generated from the Rust commands, events and types. Fails when the
+      # committed file differs from what the code generates; regenerate it with
+      # `UPDATE_BINDINGS=1 cargo test -p app --test bindings`.
+      - name: Bindings are up to date
+        run: cargo test --locked -p app --test bindings
 
-      # Every crate still keeps its own copy of the lint policy until the shared
-      # `[workspace.lints]` table exists (roadmap P1.6). Fail if a copy drops a rule.
-      - name: Check that every crate keeps the lint policy
-        run: |
-          set -e
-          for manifest in Cargo.toml apps/sdk/Cargo.toml crates/ntd-plugin-api/Cargo.toml apps/desktop/Cargo.toml plugins/*/Cargo.toml tools/ntd-recorder/Cargo.toml; do
-            for rule in 'unwrap_used = "deny"' 'expect_used = "deny"' 'panic = "deny"' 'todo = "deny"' 'unimplemented = "deny"' 'exit = "deny"' 'pedantic = { level = "warn", priority = -1 }'; do
-              if ! grep -qF "$rule" "$manifest"; then
-                echo "::error file=$manifest::missing lint rule: $rule"
-                exit 1
-              fi
-            done
-          done
+  bench:
+    name: Benchmarks build
+    needs: plan
+    if: contains(fromJson(needs.plan.outputs.crates), 'next_tablet_driver')
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          submodules: recursive
+      - uses: ./.github/actions/linux-deps
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          toolchain: stable
+      - uses: swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
+        with:
+          key: bench
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      # Shared runners are too noisy to compare latencies against docs/perf-baseline.md (the 5 %
+      # tolerance is checked by hand, on one machine); the benchmarks must at least compile.
+      - name: Benchmarks compile
+        run: cargo bench --locked --no-run -p next_tablet_driver
 
-      - name: Check plugin API, plugins and the example plugin
-        run: |
-          set -e
-          for manifest in crates/ntd-plugin-api/Cargo.toml apps/sdk/Cargo.toml plugins/*/Cargo.toml apps/sdk/examples/rust_plugin/Cargo.toml tools/ntd-recorder/Cargo.toml; do
-            echo "::group::$manifest"
-            cargo fmt --manifest-path "$manifest" -- --check
-            cargo clippy --manifest-path "$manifest" --all-targets -- -D warnings
-            cargo nextest run --manifest-path "$manifest" --no-tests=pass
-            echo "::endgroup::"
-          done
-
+  example-plugins:
+    name: Example plugins
+    needs: plan
+    if: contains(fromJson(needs.plan.outputs.crates), 'ntd_plugin_api') || contains(fromJson(needs.plan.outputs.crates), 'simple_smoothing')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          submodules: recursive
+      - uses: ./.github/actions/linux-deps
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          toolchain: stable
+      - uses: swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
+        with:
+          key: example-plugins
+          save-if: ${{ github.ref == 'refs/heads/main' }}
       # The two example plugins in docs/plugin-development.md must keep working. Build both as
       # real libraries and check that each exports the seven functions every plugin needs, so a
       # change to the plugin interface cannot break them without the CI noticing.
       - name: Build the example plugins and check their exports
         run: |
           set -e
-          cargo build --release --manifest-path apps/sdk/examples/rust_plugin/Cargo.toml
+          cargo build --locked --release -p simple_smoothing
           cc -std=c11 -O2 -Wall -Wextra -Werror -shared -fPIC apps/sdk/examples/c_plugin/plugin.c -o "$RUNNER_TEMP/libc_flip_x.so"
 
           # The seven functions that every plugin must export, in alphabetical order.
@@ -246,33 +342,28 @@ jobs:
           done
 
   frontend:
-    name: Frontend (lint, types, tests, build)
-    needs: changes
-    if: needs.changes.outputs.frontend == 'true'
+    name: Frontend (format, types, lint, tests, build)
+    needs: plan
+    if: needs.plan.outputs.frontend == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: frontend/package-lock.json
-
       - name: Install dependencies
         run: npm ci --prefix frontend
-
-      - name: Lint
-        run: npm --prefix frontend run lint
-
+      - name: Format
+        run: npm --prefix frontend run format:check
       - name: Type-check
         run: npm --prefix frontend run check
-
+      - name: Lint
+        run: npm --prefix frontend run lint
       - name: Tests
         run: npm --prefix frontend run test -- --run
-
       - name: Build
         run: npm --prefix frontend run build
 
@@ -281,33 +372,27 @@ jobs:
   # failures are kept as an artifact.
   e2e:
     name: E2E (Playwright)
-    needs: changes
-    if: needs.changes.outputs.frontend == 'true'
+    needs: plan
+    if: needs.plan.outputs.frontend == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: frontend/package-lock.json
-
       - name: Install dependencies
         run: npm ci --prefix frontend
-
       - name: Install Chromium
         working-directory: frontend
         run: npx playwright install --with-deps chromium
-
       - name: Run the end-to-end tests
         run: npm --prefix frontend run e2e
-
       - name: Upload the report and the traces
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: playwright-report
           path: |
@@ -321,68 +406,55 @@ jobs:
   # named-pipe, mutex and shared-memory code of the engine is compiled and tested.
   coverage:
     name: Coverage
-    needs: changes
-    if: needs.changes.outputs.coverage == 'true'
+    needs: plan
+    if: needs.plan.outputs.any == 'true' || needs.plan.outputs.frontend == 'true'
     runs-on: windows-latest
+    timeout-minutes: 60
     permissions:
       contents: read
       pull-requests: write
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           submodules: recursive
-
-      - name: Setup Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
         with:
+          toolchain: stable
           components: llvm-tools-preview
-
-      - name: Rust cache
-        uses: swatinem/rust-cache@v2
+      - uses: swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
         with:
           key: coverage
           save-if: ${{ github.ref == 'refs/heads/main' }}
-
-      - name: Install cargo-llvm-cov and cargo-nextest
-        uses: taiki-e/install-action@v2
+      - uses: taiki-e/install-action@68a389c788b2cd04016ce8c80ee23b80d2ab3d68 # v2
         with:
           tool: cargo-llvm-cov,nextest
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: frontend/package-lock.json
-
       - name: Install frontend dependencies
         run: npm ci --prefix frontend
-
       - name: Rust coverage
-        run: cargo llvm-cov nextest -p next_tablet_driver --all-features --profile ci --lcov --output-path lcov.info
-
+        run: cargo llvm-cov nextest --locked -p next_tablet_driver --all-features --profile ci --lcov --output-path lcov.info
       - name: Frontend coverage
         run: npm --prefix frontend run test -- --run --coverage
-
       - name: Test the coverage gate
         run: python -m unittest scripts/test_coverage_gate.py
-
       - name: Enforce the coverage floors
         id: gate
         continue-on-error: true
         shell: bash
         run: |
           status=0
-          python scripts/coverage_gate.py             --lcov lcov.info             --frontend frontend/coverage/coverage-summary.json             --markdown coverage.md || status=$?
+          python scripts/coverage_gate.py --lcov lcov.info --frontend frontend/coverage/coverage-summary.json --markdown coverage.md || status=$?
           if [ -f coverage.md ]; then cat coverage.md >> "$GITHUB_STEP_SUMMARY"; fi
           exit $status
-
       - name: Comment the report on the pull request
         if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
         # Dependabot and forks get a read-only token: the report stays in the job summary.
         continue-on-error: true
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         with:
           script: |
             const fs = require('fs');
@@ -397,10 +469,9 @@ jobs:
             } else {
               await github.rest.issues.createComment({ owner, repo, issue_number, body });
             }
-
       - name: Upload the coverage reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: coverage-reports
           path: |
@@ -409,87 +480,43 @@ jobs:
             frontend/coverage/lcov.info
             frontend/coverage/coverage-summary.json
           if-no-files-found: ignore
-
       - name: Fail when a floor is not met
         if: steps.gate.outcome == 'failure'
         run: exit 1
 
-  # Deterministic checks on the lockfiles (bans, licenses, sources). Security advisories are
-  # checked by security.yml: a new advisory must not fail unrelated pull requests.
-  deny:
-    name: Dependency policy (cargo-deny)
-    needs: changes
-    if: needs.changes.outputs.deps == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install cargo-deny
-        uses: taiki-e/install-action@v2
-        with:
-          tool: cargo-deny
-
-      # One workspace, one lockfile: a single run covers every crate.
-      - name: Check every crate
-        run: cargo deny check bans licenses sources
-
-  # Compiles the whole desktop app (frontend + Rust) without bundling, so a broken
-  # release build is caught on every PR instead of on the day of a tag.
-  tauri:
-    name: Tauri build (${{ matrix.os }})
-    needs: changes
-    if: needs.changes.outputs.tauri == 'true'
+  # Compiles the whole desktop app (frontend + Rust) without bundling, so a broken release build
+  # is caught on every pull request instead of on the day of a tag.
+  build:
+    name: Build the app (${{ matrix.os }})
+    needs: plan
+    if: contains(fromJson(needs.plan.outputs.crates), 'app') || needs.plan.outputs.frontend == 'true'
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-22.04, windows-latest]
     runs-on: ${{ matrix.os }}
-
+    timeout-minutes: 60
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           submodules: recursive
-
-      - name: Install Linux dependencies
+      - name: System dependencies (Linux)
         if: startsWith(matrix.os, 'ubuntu')
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential pkg-config patchelf \
-            libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev \
-            libudev-dev libxdo-dev libssl-dev
-
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Rust cache
-        uses: swatinem/rust-cache@v2
+        uses: ./.github/actions/linux-deps
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
         with:
-          workspaces: ". -> target"
+          toolchain: stable
+      - uses: swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
+        with:
+          key: build-${{ matrix.os }}
           save-if: ${{ github.ref == 'refs/heads/main' }}
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: frontend/package-lock.json
-
       - name: Install frontend dependencies
         run: npm ci --prefix frontend
-
-      - name: Clippy (Tauri crate)
-        if: startsWith(matrix.os, 'ubuntu')
-        run: cargo clippy --manifest-path apps/desktop/Cargo.toml --all-targets -- -D warnings
-
-      # The TypeScript bindings are generated from the Rust commands, events and types. Fails when
-      # the committed file differs from what the code generates; regenerate it with
-      # `UPDATE_BINDINGS=1 cargo test -p app --test bindings`.
-      - name: Bindings are up to date
-        if: startsWith(matrix.os, 'ubuntu')
-        run: cargo test -p app --test bindings
-
       - name: Build app (no bundle)
         # The updater artifacts need the signing key, which is only available on releases.
         # `tauri/custom-protocol` embeds the frontend like a shipped build does; without it a
@@ -498,12 +525,10 @@ jobs:
           node frontend/node_modules/@tauri-apps/cli/tauri.js build
           --debug --no-bundle --features tauri/custom-protocol
           --config '{"bundle":{"createUpdaterArtifacts":false}}'
-
       - name: Verify the app does not open a console window
         if: runner.os == 'Windows'
         shell: pwsh
         run: ./scripts/assert-gui-subsystem.ps1 target/debug/app.exe
-
       # Smoke test of the app that was just built. Linux: driven through tauri-driver (WebDriver),
       # nothing is mocked, the Rust backend and the webview are the ones that ship. Windows: the
       # WebView2 runtime of the runners ignores the remote-debugging switch msedgedriver relies
@@ -511,34 +536,47 @@ jobs:
       - name: Install the WebDriver tooling (Linux)
         if: startsWith(matrix.os, 'ubuntu')
         run: sudo apt-get install -y webkit2gtk-driver xvfb
-
       - name: Cache tauri-driver
         if: startsWith(matrix.os, 'ubuntu')
         id: tauri-driver-cache
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: ~/.cargo/bin/tauri-driver
           key: tauri-driver-${{ runner.os }}-v1
-
       - name: Install tauri-driver
         if: startsWith(matrix.os, 'ubuntu') && steps.tauri-driver-cache.outputs.cache-hit != 'true'
         run: cargo install tauri-driver --locked
-
       - name: Smoke test the real app (Linux, WebDriver)
         if: startsWith(matrix.os, 'ubuntu')
         run: xvfb-run -a npm --prefix frontend run e2e:native
-
       - name: Smoke test the real app (Windows, startup and window)
         if: runner.os == 'Windows'
         shell: pwsh
         run: ./scripts/smoke-windows.ps1 target/debug/app.exe
 
-  # Single required status check: the branch ruleset only has to know this name, so
-  # adding or renaming jobs above never requires touching the ruleset.
+  # Single required status check: the branch ruleset only has to know this name, so adding or
+  # renaming jobs above never requires touching the ruleset. A skipped job counts as passed.
   ci-success:
     name: CI success
     if: always()
-    needs: [changes, rust, plugins, frontend, e2e, coverage, deny, tauri]
+    needs:
+      - plan
+      - fmt
+      - style
+      - typos
+      - machete
+      - clippy
+      - clippy-release
+      - doc
+      - test
+      - golden
+      - bindings
+      - bench
+      - example-plugins
+      - frontend
+      - e2e
+      - coverage
+      - build
     runs-on: ubuntu-latest
     steps:
       - name: Require every job that ran to have succeeded
@@ -546,5 +584,4 @@ jobs:
           NEEDS: ${{ toJSON(needs) }}
         run: |
           echo "$NEEDS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
-          # A job skipped because its files did not change counts as passed.
           echo "$NEEDS" | jq -e 'all(.[]; .result == "success" or .result == "skipped")' > /dev/null
