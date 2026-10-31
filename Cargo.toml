@@ -83,53 +83,52 @@ uuid = "1.23.3"
 windows-sys = "0.61.2"
 
 [workspace.lints.rust]
-# Introduced as `warn` (roadmap P1.6) and switched to `deny` once the code is clean (P1.8).
-unsafe_code = "warn"
-missing_docs = "warn"
-unreachable_pub = "warn"
+unsafe_code = "deny"
+missing_docs = "deny"
+unreachable_pub = "deny"
 dead_code = "deny"
 
 [workspace.lints.rustdoc]
-broken_intra_doc_links = "warn"
+broken_intra_doc_links = "deny"
 
 [workspace.lints.clippy]
 # Groups.
-all = { level = "warn", priority = -1 }
-pedantic = { level = "warn", priority = -1 }
-nursery = { level = "warn", priority = -1 }
-cargo = { level = "warn", priority = -1 }
+all = { level = "deny", priority = -1 }
+pedantic = { level = "deny", priority = -1 }
+nursery = { level = "deny", priority = -1 }
+cargo = { level = "deny", priority = -1 }
 
 # Error handling: no external data may make the driver panic.
 unwrap_used = "deny"
 expect_used = "deny"
 panic = "deny"
 indexing_slicing = "deny"
-unreachable = "warn"
+unreachable = "deny"
 todo = "deny"
 unimplemented = "deny"
 exit = "deny"
 lossy_float_literal = "deny"
 
 # Output: everything goes through `log`.
-print_stdout = "warn"
-print_stderr = "warn"
-dbg_macro = "warn"
+print_stdout = "deny"
+print_stderr = "deny"
+dbg_macro = "deny"
 
 # unsafe and FFI.
-undocumented_unsafe_blocks = "warn"
-multiple_unsafe_ops_per_block = "warn"
-uninit_assumed_init = "warn"
-uninit_vec = "warn"
-cast_ptr_alignment = "warn"
-ptr_as_ptr = "warn"
-fn_to_numeric_cast_any = "warn"
+undocumented_unsafe_blocks = "deny"
+multiple_unsafe_ops_per_block = "deny"
+uninit_assumed_init = "deny"
+uninit_vec = "deny"
+cast_ptr_alignment = "deny"
+ptr_as_ptr = "deny"
+fn_to_numeric_cast_any = "deny"
 
 # Documentation.
-missing_errors_doc = "warn"
-missing_panics_doc = "warn"
+missing_errors_doc = "deny"
+missing_panics_doc = "deny"
 
 # Every #[allow] must carry its justification: #[allow(lint, reason = "...")].
-allow_attributes_without_reason = "warn"
+allow_attributes_without_reason = "deny"
 
 # Exceptions, carried over from v2.
 # HID reports mix u8/u16/i16/f32: the conversions are intended and bounded.

@@ -1545,8 +1545,8 @@ just the application.
 | | |
 |---|---|
 | **Current phase** | Phase 1: Workspace, quality, CI, contribution rules |
-| **Last completed task** | P1.7 |
-| **Next task** | P1.8 |
+| **Last completed task** | P1.8 |
+| **Next task** | P1.9 |
 | **v1 bridge release** | not started (P7.5a) |
 | **Last updated** | 2026-10-31 |
 
@@ -1713,9 +1713,11 @@ phase 1; §12, §13, §14).
     keeps `pub` (cbindgen only exports `pub` items); `redundant_pub_crate` is allowed because it
     contradicts `unreachable_pub` (added to §12.3); the new documentation names the OpenTabletDriver
     class each parser is ported from.
-- [ ] **P1.8** Switch the lints to `deny`
+- [x] **P1.8** Switch the lints to `deny` (branch `chore/v3-phase-1`)
   - Depends on: P1.7
   - Done when: `[workspace.lints]` is exactly the one in §12.3.
+  - Notes: it is the §12.3 block, with the one added exception (`redundant_pub_crate`). The local
+    hooks run clippy with `-D warnings` again.
 - [ ] **P1.9** `xtask` and `cargo xtask lint-style` (§12.5)
   - Depends on: P1.1
   - Done when: the command checks the 5 points of §12.5, has tests, and passes on the repository.
