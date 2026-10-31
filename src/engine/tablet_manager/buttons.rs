@@ -12,9 +12,9 @@
 //! button is counted, and the operating system only sees the first press and the last
 //! release.
 
-use crate::engine::injector::InputSink;
 use ntd_core::config::models::MappingConfig;
 use ntd_core::input::{Binding, Key, MouseButton};
+use ntd_core::output::OutputSink;
 use ntd_tablets::{TabletData, TabletStatus};
 
 /// How many buttons of one kind the router follows: `TabletData::buttons` is a byte.
@@ -60,7 +60,7 @@ impl ButtonRouter {
     }
 
     /// Applies the button state carried by one report.
-    pub(super) fn update<I: InputSink>(
+    pub(super) fn update<I: OutputSink>(
         &mut self,
         sink: &mut I,
         data: &TabletData,
@@ -96,18 +96,18 @@ impl ButtonRouter {
 
     /// Releases everything the pen buttons hold. Called when the pen leaves the tablet, where
     /// a button can no longer be reported as released.
-    pub(super) fn release_pen<I: InputSink>(&mut self, sink: &mut I) {
+    pub(super) fn release_pen<I: OutputSink>(&mut self, sink: &mut I) {
         Self::apply(&mut self.pen, &mut self.key_refs, sink, 0, &[]);
     }
 
     /// Releases everything that is held, pen buttons and tablet keys. Called when the tablet
     /// goes away or the engine stops, so no key stays pressed.
-    pub(super) fn release_all<I: InputSink>(&mut self, sink: &mut I) {
+    pub(super) fn release_all<I: OutputSink>(&mut self, sink: &mut I) {
         Self::apply(&mut self.pen, &mut self.key_refs, sink, 0, &[]);
         Self::apply(&mut self.aux, &mut self.key_refs, sink, 0, &[]);
     }
 
-    fn apply<I: InputSink>(
+    fn apply<I: OutputSink>(
         group: &mut ButtonGroup,
         refs: &mut KeyRefs,
         sink: &mut I,
@@ -153,7 +153,7 @@ fn parse_binding(index: usize, text: &str) -> Binding {
     })
 }
 
-fn press<I: InputSink>(refs: &mut KeyRefs, sink: &mut I, binding: &Binding) {
+fn press<I: OutputSink>(refs: &mut KeyRefs, sink: &mut I, binding: &Binding) {
     match binding {
         Binding::None => {}
         Binding::Mouse(button) => {
@@ -177,7 +177,7 @@ fn press<I: InputSink>(refs: &mut KeyRefs, sink: &mut I, binding: &Binding) {
     }
 }
 
-fn release<I: InputSink>(refs: &mut KeyRefs, sink: &mut I, binding: &Binding) {
+fn release<I: OutputSink>(refs: &mut KeyRefs, sink: &mut I, binding: &Binding) {
     match binding {
         Binding::None => {}
         Binding::Mouse(button) => {
@@ -218,7 +218,7 @@ mod tests {
         events: Vec<Event>,
     }
 
-    impl InputSink for Recorder {
+    impl OutputSink for Recorder {
         fn set_proximity(&mut self, _in_proximity: bool) {}
         fn move_absolute(
             &mut self,

@@ -34,42 +34,9 @@
 //!   speculative optimization.
 
 use ntd_core::input::{Key, MouseButton};
+use ntd_core::output::OutputSink;
 
-/// What the polling loop needs from an OS input injector.
-///
-/// The real [`Injector`] talks to the operating system. Having the loop depend on this trait
-/// instead makes the per-packet code runnable without injecting anything, which is what lets
-/// the benchmarks (`qa/benches/hot_path.rs`) measure the real code path.
-pub trait InputSink {
-    /// Updates stylus proximity.
-    fn set_proximity(&mut self, in_proximity: bool);
-    /// Moves to an absolute position (`Absolute` mode).
-    #[allow(
-        clippy::too_many_arguments,
-        reason = "the position, pressure and tilt fields of one pen sample, as every sink receives \
-            them"
-    )]
-    fn move_absolute(
-        &mut self,
-        target_x: f32,
-        target_y: f32,
-        u: f32,
-        v: f32,
-        pressure: i32,
-        tilt_x: i32,
-        tilt_y: i32,
-    );
-    /// Moves by a delta (`Relative` mode).
-    fn move_relative(&mut self, dx: f32, dy: f32);
-    /// Presses or releases the tip button.
-    fn set_left_button(&mut self, is_down: bool);
-    /// Presses or releases a mouse button on behalf of a button binding.
-    fn set_mouse_button(&mut self, button: MouseButton, is_down: bool);
-    /// Presses or releases a keyboard key on behalf of a button binding.
-    fn set_key(&mut self, key: Key, is_down: bool);
-}
-
-impl InputSink for Injector {
+impl OutputSink for Injector {
     fn set_proximity(&mut self, in_proximity: bool) {
         Self::set_proximity(self, in_proximity);
     }
@@ -128,7 +95,7 @@ mod tests {
     #[test]
     fn the_injector_forwards_the_calls_that_need_no_os_event() {
         let mut injector = Injector::try_new().unwrap();
-        let sink: &mut dyn InputSink = &mut injector;
+        let sink: &mut dyn OutputSink = &mut injector;
         sink.set_proximity(true);
         // Less than a pixel: accumulated, not injected.
         sink.move_relative(0.25, 0.25);
@@ -139,7 +106,7 @@ mod tests {
     #[test]
     fn the_sink_is_object_safe() {
         struct Nothing;
-        impl InputSink for Nothing {
+        impl OutputSink for Nothing {
             fn set_proximity(&mut self, _in_proximity: bool) {}
             fn move_absolute(
                 &mut self,
@@ -157,7 +124,7 @@ mod tests {
             fn set_mouse_button(&mut self, _button: MouseButton, _is_down: bool) {}
             fn set_key(&mut self, _key: Key, _is_down: bool) {}
         }
-        let mut sink: Box<dyn InputSink> = Box::new(Nothing);
+        let mut sink: Box<dyn OutputSink> = Box::new(Nothing);
         sink.set_proximity(false);
         sink.move_absolute(1.0, 2.0, 0.1, 0.2, 3, 4, 5);
         sink.move_relative(1.0, 2.0);

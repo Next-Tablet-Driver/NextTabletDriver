@@ -121,7 +121,7 @@ impl Injector {
     /// * `_tilt_x` / `_tilt_y` - Tilt (unused on Windows).
     #[allow(
         clippy::too_many_arguments,
-        reason = "implements the `InputSink` method of the same signature"
+        reason = "implements the `OutputSink` method of the same signature"
     )]
     pub fn move_absolute(
         &mut self,

@@ -307,7 +307,7 @@ impl Injector {
     /// * `tilt_x` / `tilt_y` - Absolute tilt values.
     #[allow(
         clippy::too_many_arguments,
-        reason = "implements the `InputSink` method of the same signature"
+        reason = "implements the `OutputSink` method of the same signature"
     )]
     pub fn move_absolute(
         &mut self,

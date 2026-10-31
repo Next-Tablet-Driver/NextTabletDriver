@@ -44,7 +44,7 @@ The desktop app is a thin shell around this engine. It adds a window (the user i
 | `packaging/`, `nix/`, `scripts/` | Packaging recipes, Nix modules, helper scripts, udev rules. |
 | `.github/` | CI workflows, issue and pull request templates, repository rules. |
 
-The repository is one Cargo workspace with a single `Cargo.lock`. The root crate, `apps/desktop`, `apps/sdk`, `crates/ntd-pipeline`, `crates/ntd-plugin-api`, each plugin and the example plugin are its members, so `cargo build --workspace` builds all of them into one `target/` folder (the checks of the root crate use `-p next_tablet_driver`). `tools/ntd-recorder` and `tools/ntd-codegen` are members too.
+The repository is one Cargo workspace with a single `Cargo.lock`. The root crate, `apps/desktop`, `apps/sdk`, `crates/ntd-pipeline`, `crates/ntd-test-support`, `crates/ntd-plugin-api`, each plugin and the example plugin are its members, so `cargo build --workspace` builds all of them into one `target/` folder (the checks of the root crate use `-p next_tablet_driver`). `tools/ntd-recorder` and `tools/ntd-codegen` are members too.
 
 ## Life of a pen packet
 

@@ -2561,6 +2561,7 @@ dependencies = [
  "ntd-core",
  "ntd-pipeline",
  "ntd-tablets",
+ "ntd-test-support",
  "ntd_plugin_api",
  "proptest",
  "regex",
@@ -2627,6 +2628,7 @@ dependencies = [
  "log",
  "ntd-core",
  "ntd-tablets",
+ "ntd-test-support",
  "ntd_plugin_api",
  "serde_json",
  "thiserror 2.0.21",
@@ -2649,6 +2651,13 @@ dependencies = [
  "ntd-core",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "ntd-test-support"
+version = "0.1.0"
+dependencies = [
+ "ntd-core",
 ]
 
 [[package]]

@@ -400,7 +400,7 @@ mod tests {
 
     #[test]
     fn relative_tracking_restarts_after_the_configured_inactivity_on_the_injected_clock() {
-        let clock = Arc::new(ntd_core::clock::ManualClock::new());
+        let clock = Arc::new(ntd_test_support::ManualClock::new());
         let mut pipeline = Pipeline::with_clock(clock.clone());
         let mut config = MappingConfig {
             mode: DriverMode::Relative,

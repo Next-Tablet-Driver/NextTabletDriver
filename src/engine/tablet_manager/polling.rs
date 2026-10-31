@@ -3,11 +3,12 @@
 
 use super::buttons::ButtonRouter;
 use super::sdk_bridge::publish_shm_state;
-use crate::engine::injector::{Injector, InputSink};
+use crate::engine::injector::Injector;
 use crate::engine::interop::shm::ShmWriter;
 use crate::engine::state::SharedState;
 use crossbeam_channel::Sender;
 use ntd_core::config::models::{DriverMode, MappingConfig};
+use ntd_core::output::OutputSink;
 use ntd_core::sync::{LockRecoveryExt, WriteRecoverExt};
 use ntd_pipeline::FilterPipeline;
 use ntd_pipeline::{Pipeline, ProcessedFrame};
@@ -141,7 +142,7 @@ pub(super) fn run_polling_loop(
 /// cursor (absolute or relative, per the active driver mode) before syncing
 /// the button state. Kept here rather than in the pipeline so that `Pipeline`
 /// never touches the OS, which is required for the embedded SDK use case.
-fn inject_frame<I: InputSink>(
+fn inject_frame<I: OutputSink>(
     injector: &mut I,
     data: &TabletData,
     config: &MappingConfig,
@@ -196,7 +197,7 @@ const STATS_INTERVAL: Duration = Duration::from_millis(16);
     reason = "each argument is a distinct piece of per-device state the loop borrows; a parameter \
         struct would only move the list"
 )]
-fn process_packet<I: InputSink>(
+fn process_packet<I: OutputSink>(
     raw: &[u8],
     read_start: Instant,
     read_duration: Duration,
@@ -355,7 +356,7 @@ impl Default for PacketLoopState {
     reason = "each argument is a distinct piece of per-device state the loop borrows; a parameter \
         struct would only move the list"
 )]
-pub fn process_packet_for_bench<I: InputSink>(
+pub fn process_packet_for_bench<I: OutputSink>(
     raw: &[u8],
     driver: &dyn ntd_tablets::NextTabletDriver,
     shared: &Arc<SharedState>,
@@ -410,37 +411,9 @@ fn maybe_reload_config(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ntd_core::input::{Key, MouseButton};
     use ntd_tablets::parsers::ReportParser;
     use ntd_tablets::parsers::fallback::FallbackParser;
-
-    /// Records calls instead of injecting real input, so running the tests never moves the
-    /// developer's cursor.
-    #[derive(Default)]
-    struct RecordingSink {
-        moves: usize,
-    }
-    impl InputSink for RecordingSink {
-        fn set_proximity(&mut self, _in_proximity: bool) {}
-        fn move_absolute(
-            &mut self,
-            _x: f32,
-            _y: f32,
-            _u: f32,
-            _v: f32,
-            _p: i32,
-            _tx: i32,
-            _ty: i32,
-        ) {
-            self.moves += 1;
-        }
-        fn move_relative(&mut self, _dx: f32, _dy: f32) {
-            self.moves += 1;
-        }
-        fn set_left_button(&mut self, _is_down: bool) {}
-        fn set_mouse_button(&mut self, _button: MouseButton, _is_down: bool) {}
-        fn set_key(&mut self, _key: Key, _is_down: bool) {}
-    }
+    use ntd_test_support::RecordingSink;
 
     struct MockDriver;
     impl ntd_tablets::NextTabletDriver for MockDriver {
@@ -469,7 +442,7 @@ mod tests {
 
         let (tx, rx) = crossbeam_channel::bounded(16);
         let mut pipeline = Pipeline::new();
-        let mut injector = RecordingSink::default();
+        let mut injector = RecordingSink::new();
         let mut filters = FilterPipeline::new();
         let local_config = MappingConfig {
             mode: DriverMode::Relative,
@@ -534,7 +507,7 @@ mod tests {
             .expect("UI channel should receive packet when visible");
         assert_eq!(received.x, 112);
         assert_eq!(received.y, 128);
-        assert!(injector.moves >= 2, "every packet is injected");
+        assert!(injector.moves() >= 2, "every packet is injected");
     }
 
     /// The per-stage timings are only measured for the packet that refreshes the statistics.
@@ -544,7 +517,7 @@ mod tests {
         shared.lifecycle.is_visible.store(false, Ordering::Relaxed);
         let (tx, _rx) = crossbeam_channel::bounded(16);
         let mut pipeline = Pipeline::new();
-        let mut injector = RecordingSink::default();
+        let mut injector = RecordingSink::new();
         let mut filters = FilterPipeline::new();
         let config = MappingConfig::default();
         let driver = MockDriver;
@@ -602,7 +575,7 @@ mod tests {
         shared.lifecycle.is_visible.store(false, Ordering::Relaxed);
         let (tx, _rx) = crossbeam_channel::bounded(4);
         let mut pipeline = Pipeline::new();
-        let mut sink = RecordingSink::default();
+        let mut sink = RecordingSink::new();
         let mut filters = FilterPipeline::new();
         let mut state = PacketLoopState::default();
         let config = MappingConfig::default();
@@ -624,7 +597,7 @@ mod tests {
         assert_eq!(shared.pipeline.packet_count.load(Ordering::Relaxed), 3);
         let data = shared.pipeline.tablet_data.read().unwrap().clone();
         assert_eq!((data.x, data.y, data.pressure), (80, 96, 128));
-        assert!(sink.moves >= 3);
+        assert!(sink.moves() >= 3);
     }
 
     #[test]
@@ -632,7 +605,7 @@ mod tests {
         let shared = Arc::new(SharedState::new());
         let (tx, rx) = crossbeam_channel::bounded(4);
         let mut pipeline = Pipeline::new();
-        let mut sink = RecordingSink::default();
+        let mut sink = RecordingSink::new();
         let mut filters = FilterPipeline::new();
         let mut state = PacketLoopState::new();
 
@@ -649,7 +622,7 @@ mod tests {
         );
 
         assert_eq!(shared.pipeline.packet_count.load(Ordering::Relaxed), 0);
-        assert_eq!(sink.moves, 0);
+        assert_eq!(sink.moves(), 0);
         assert!(rx.try_recv().is_err());
     }
 

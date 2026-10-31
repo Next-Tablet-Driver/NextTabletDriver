@@ -21,6 +21,7 @@ members = [
     "crates/ntd-core",
     "crates/ntd-pipeline",
     "crates/ntd-plugin-api",
+    "crates/ntd-test-support",
     "crates/ntd-tablets",
     "plugins/*",
     "tools/ntd-codegen",
@@ -50,6 +51,7 @@ ntd-core = { path = "crates/ntd-core" }
 ntd-pipeline = { path = "crates/ntd-pipeline" }
 ntd_plugin_api = { path = "crates/ntd-plugin-api" }
 ntd-tablets = { path = "crates/ntd-tablets" }
+ntd-test-support = { path = "crates/ntd-test-support" }
 # Third party
 base64 = "0.23.1"
 cargo-husky = { version = "1.5.0", default-features = false }
@@ -201,6 +203,7 @@ nix = { workspace = true, features = ["sched", "fs", "mman"] }
 libc = { workspace = true }
 
 [dev-dependencies]
+ntd-test-support = { workspace = true }
 cargo-husky = { workspace = true, features = ["user-hooks"] }
 criterion = { workspace = true }
 minisign = { workspace = true }
