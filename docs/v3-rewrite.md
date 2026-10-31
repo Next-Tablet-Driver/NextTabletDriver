@@ -1545,8 +1545,8 @@ just the application.
 | | |
 |---|---|
 | **Current phase** | Phase 1: Workspace, quality, CI, contribution rules |
-| **Last completed task** | P1.20 |
-| **Next task** | GATE 1 |
+| **Last completed task** | GATE 1 |
+| **Next task** | P2.1 |
 | **v1 bridge release** | not started (P7.5a) |
 | **Last updated** | 2026-10-31 |
 
@@ -1841,7 +1841,7 @@ phase 1; §12, §13, §14).
     one, and its licence paragraph now says the parsers are LGPL-3.0. The PR template is the §14.6
     one (What, Why, Impact, How it was tested, Known limitations, AI usage, Roadmap) plus the
     checklist.
-- [~] **GATE 1** (branch `chore/v3-phase-1`; waiting for the CI of the pull request)
+- [x] **GATE 1** (branch `chore/v3-phase-1`, pull request 181)
   - Done when: P1.1 to P1.20 are `[x]`; CI green; golden files, latency (within +5 %) and E2E
     identical to phase 0.
   - Verified locally on 2026-10-31: P1.1 to P1.20 are `[x]`. Golden files: the golden test passes
@@ -1852,8 +1852,11 @@ phase 1; §12, §13, §14).
     the doctests, `cargo doc`, `lint-style`, `machete`, `typos`, `cargo deny check`, the benchmarks
     build, the TypeScript bindings test, and on the frontend format, types, lint, 263 unit tests, the
     build and `npm audit`.
-  - **Still to do**: CI green. None of the workflows has run on GitHub with these changes (the plan job
-    and the new ci.yml in particular): tick this box once the pull request's `CI success` is green.
+  - CI: the 34 checks of the pull request are green, `CI success` included. The first run failed on
+    code that only compiles on Linux (documentation and visibility lints), the Nix hash and build
+    directory, `zip` 4.6.1 (updated through `tauri-plugin-updater`), the user name written to the
+    log, the `glib` advisory (allowed in `.github/dependency-review-config.yml`), and a torn read of
+    the shared memory on ARM64 (fixed with fences).
 
 ---
 
