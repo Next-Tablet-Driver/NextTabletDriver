@@ -48,8 +48,8 @@
 | How many crates? | **About fifteen, no more** | Enough to enforce dependency direction, not so many that it becomes bureaucracy. |
 | Platforms? | **Windows, Linux, macOS; x64, 32-bit x86, ARM** | Not all in 3.0: v3 ships Windows and Linux first, but the architecture leaves room for every platform (§16). |
 | Language? | **English everywhere** | Code, comments, commits, PRs, AGENTS.md and `docs/`, including this document. |
-| 2.x releases during the rewrite? | **Total freeze** after one transition release | The only 2.x release is the one that ships the real updater key (§2, P0.2). No exceptions. |
-| 2.x maintenance after 3.0? | **None** | Everyone moves to 3.0 through auto-update. |
+| Existing installs | **Still on v1** (`v1.26.*`, custom updater); no 2.x was ever released | v1 cannot read a semver tag, so one last **v1 bridge release** is published just before 3.0.0 (§2, P7.5a). |
+| v1 maintenance after 3.0? | **None** | Everyone moves to 3.0 through auto-update. |
 | v2 plugins in v3? | **Not supported: new ABI v3** | Official plugins are rebuilt; third-party authors follow a migration guide. |
 | Websocket and SDK? | **Versioned v3 protocol, websocket v2 kept for all of 3.x** | Overlays and integrations keep working; v2 websocket is removed in 4.0. |
 | Telemetry? | **On by default (opt-out), as in v2** | Anonymous, no personal data, can be turned off in Settings. |
@@ -102,7 +102,7 @@ to get boundaries that are **checked by the compiler**.
    - `src-tauri/tauri.conf.json` → `https://github.com/Next-Tablet-Driver/NextTabletDriver/releases/latest/download/latest.json`
    - `src/application/services/autoupdate/github.rs` → `api.github.com/repos/Next-Tablet-Driver/NextTabletDriver/releases`
 
-   If v3 lives in another repository, **every v2 install stays on v2 forever** without knowing it.
+   If v3 lives in another repository, **every v1 install stays on v1 forever** without knowing it.
    This is the strongest reason and it settles the question on its own.
 2. **Git history**: `git blame` on a Wacom parser explains *why* a given byte is masked. That
    knowledge is irreplaceable. A new repository cuts it off.
@@ -113,12 +113,19 @@ to get boundaries that are **checked by the compiler**.
 ### What we do instead
 
 - Work on `main` in small PRs (§3). No long-lived `v3` branch.
-- **Transition release, then total freeze.** Today's updater public key is a placeholder (§11).
-  One last 2.x release ships the real key (roadmap P0.2) so that every v2 install can verify and
-  accept 3.0. After it, **no 2.x release is published** until `3.0.0-beta.1`, not even a security
-  fix.
-- **No 2.x maintenance after 3.0**: there is no `release/2.x` branch. Everyone moves to 3.0
-  through auto-update.
+- **Develop v3 without caring about auto-update, then publish a v1 bridge release.** Installed
+  apps are v1 (`v1.26.*`); 2.0.0 was never released. The v1 updater (`src/app/autoupdate/` at tag
+  `v1.26.1708.00`) is not Tauri: it reads `releases/latest`, only parses tags shaped
+  `vX.YY.DDMM.NN` (so a `3.0.0` tag means "no update" forever), and needs a `<installer>.sha256`
+  asset next to the first `.exe` (or the AppImage). There is no signature check, so the updater key
+  (§11.1) only matters for v3 → v3.
+- **The bridge release** (P7.5a) is built from the v1 code, with a v1-shaped tag newer than
+  `v1.26.1708.00`. Its updater understands semver tags, picks the right architecture and accepts
+  the v3 `.sha256` assets. It is published just before `3.0.0`.
+- Until then, every v3 beta is a GitHub **pre-release** (`releases/latest` ignores them), so v1
+  users never receive anything unstable. No v1 release other than the bridge.
+- **No v1 maintenance after 3.0**: no `release/1.x` branch. Everyone moves to 3.0 through
+  auto-update.
 - If the project is ever renamed: **rename the repository** on GitHub (redirects are kept) **and**
   ship a release whose updater points to the new endpoint first. Never the other way round.
 
@@ -396,8 +403,7 @@ detailed, checkable task list is the roadmap (§17).
 
 ### Phase 0: Safety nets (before touching the architecture)
 
-- Fix the updater public key (§11), publish the **transition 2.x release**, then start the
-  release freeze (§2).
+- Fix the updater public key (§11). The v1 bridge release comes last (P7.5a, §2).
 - Write `ntd-recorder` (§15.3) first: it produces the captures that golden files need.
 - Add **golden file tests** for the parsers: for each tablet, raw HID reports → expected parsed
   report (snapshot). This is the most important safety net.
@@ -467,7 +473,7 @@ behind a trait with a fake in `ntd-test-support`.
 
 - Update channels, release workflows, `3.0.0-beta.1` on the pre-release channel.
 - **4-week** public beta, then `3.0.0`.
-- No 2.x maintenance afterwards (§2).
+- No v1 maintenance afterwards (§2).
 
 ---
 
@@ -692,7 +698,7 @@ behind a trait with a fake in `ntd-test-support`.
 76. **DO NOT** publish a release whose signature was not verified with the public key actually
     embedded in the application.
 77. **DO NOT** publish v3 as `latest` before the 4-week beta on the pre-release channel.
-78. **DO NOT** remove from the transition 2.x release (P0.2) the ability to auto-update to v3.
+78. **DO NOT** publish `3.0.0` before the v1 bridge release (P7.5a) is out: v1 installs cannot see it.
 
 ### 9.11 Specific to LLMs and coding assistants
 
@@ -778,8 +784,8 @@ behind a trait with a fake in `ntd-test-support`.
 
 116. **DO NOT** write code, comments, commit messages, PR titles or descriptions, `AGENTS.md` or
      `docs/` in any language other than English.
-117. **DO NOT** publish any 2.x release after the transition release (P0.2), not even a security
-     fix. The freeze lasts until `3.0.0-beta.1`.
+117. **DO NOT** publish any v1 release other than the bridge release (P7.5a), and never let `latest`
+     point to a tag the v1 updater cannot parse (`vX.YY.DDMM.NN`) before the bridge is out.
 118. **DO NOT** remove or change the websocket v2 protocol during 3.x. It is removed in 4.0 only.
 119. **DO NOT** break the SDK API or `ntd-plugin-api` within 3.x.
 
@@ -826,7 +832,7 @@ These points are handled **in phase 0**, independently of the rewrite:
    (`.github/workflows/release.yml`, `TAURI_SIGNING_PRIVATE_KEY`), but the application cannot
    verify that signature with this key. Depending on the updater's behaviour, auto-update either
    fails or is unprotected. **Fix this before anything else**, since the whole v2 → v3 migration
-   relies on auto-update; it ships in the transition release (P0.2).
+   relies on auto-update; the v1 bridge release (P7.5a) carries v1 users to v3.
 2. **Licence of `tablets/OpenTabletDriver`**: it is a git submodule of the OpenTabletDriver
    repository. Identify its licence, check compatibility with the project's MIT licence, and add
    the required attribution.
@@ -1531,9 +1537,9 @@ just the application.
 | | |
 |---|---|
 | **Current phase** | Phase 0: Safety nets |
-| **Last completed task** | none |
-| **Next task** | P0.1 |
-| **Release freeze** | not started (starts after P0.2) |
+| **Last completed task** | P0.1 |
+| **Next task** | P0.3 |
+| **v1 bridge release** | not started (P7.5a) |
 | **Last updated** | 2026-10-31 |
 
 This table is updated by **every** PR that ticks a task.
@@ -1574,16 +1580,14 @@ This table is updated by **every** PR that ticks a task.
 
 Goal: be able to detect any regression **before** touching the architecture (§7, phase 0).
 
-- [ ] **P0.1** Fix the updater public key (§11.1)
+- [x] **P0.1** Fix the updater public key (§11.1) (PR: to be linked)
   - Depends on: —
   - Done when: `tauri.conf.json` contains the real public key matching
     `TAURI_SIGNING_PRIVATE_KEY`; a signed test update is accepted by the application and an
     update signed with another key is refused.
-- [ ] **P0.2** Transition 2.x release, then start the freeze (§2)
-  - Depends on: P0.1
-  - Done when: a 2.x release with the real key is published and installed v2 builds update to it;
-    the README and release notes announce the freeze until `3.0.0-beta.1`; §17.1 says the freeze
-    has started. No 2.x release is published after this (rule 117).
+- [-] **P0.2** ~~Transition 2.x release, then freeze~~
+  - Dropped: no 2.x was ever released and the v1 updater has no signature check. Replaced by the
+    v1 bridge release, P7.5a (§2).
 - [ ] **P0.3** Check the licence of `tablets/OpenTabletDriver` (§11.2)
   - Depends on: —
   - Done when: the upstream licence is identified, the required attribution is added (or
@@ -1623,7 +1627,7 @@ Goal: be able to detect any regression **before** touching the architecture (§7
   - Done when: `commands.ts` and `events.ts` have no hand-written DTO interface left;
     `npm run check`, `npm test`, `npm run e2e` green.
 - [ ] **GATE 0**
-  - Done when: P0.1 to P0.10 are `[x]`, CI is green, the freeze has started and
+  - Done when: P0.1 and P0.3 to P0.10 are `[x]` (P0.2 is dropped), CI is green and
     `docs/perf-baseline.md` exists.
 
 ---
@@ -1931,16 +1935,22 @@ Goal: ship v3 without leaving a single v2 user behind (§2, §13).
     its major version against the ABI version.
 - [ ] **P7.5** `3.0.0-beta.1` and a 4-week beta
   - Depends on: P7.2, P7.4
-  - Done when: the beta is published (this ends the freeze); after 4 weeks there is no open
+  - Done when: the beta is published as a GitHub pre-release; after 4 weeks there is no open
     blocking bug on tier 1 platforms.
-- [ ] **P7.6** `3.0.0`
+- [ ] **P7.5a** v1 bridge release (§2)
   - Depends on: P7.5
-  - Done when: the release is published and reaches 2.x installs through auto-update; README and
+  - Done when: a release built from the v1 code, tagged `v1.YY.DDMM.NN` (newer than
+    `v1.26.1708.00`), is published; its updater parses semver tags, selects the right
+    architecture and accepts per-installer `.sha256` assets; a real v1 install updates to it, then
+    to a v3 test release.
+- [ ] **P7.6** `3.0.0`
+  - Depends on: P7.5a
+  - Done when: the release is published and reaches v1 installs through auto-update (via the bridge); README and
     `docs/` are up to date, with the §16.2 support tiers (rule 112), the websocket v2 deprecation
     notice, the plugin and SDK migration guides.
-- [ ] **P7.7** Announce the end of 2.x
+- [ ] **P7.7** Announce the end of v1
   - Depends on: P7.6
-  - Done when: the release notes and README state that 2.x is no longer maintained.
+  - Done when: the release notes and README state that v1 is no longer maintained.
 - [ ] **GATE 7: v3.0 done**
 
 ---

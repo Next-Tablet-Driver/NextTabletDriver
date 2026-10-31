@@ -9,6 +9,7 @@ debug.log
 flamegraph
 .claude/
 crash.log
+.secret/
 
 # Test coverage reports
 frontend/coverage/
