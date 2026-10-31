@@ -76,7 +76,7 @@ jobs:
 
           # SDK, plugin API, plugins and examples. The SDK embeds the root crate, and this job also
           # checks the lint policy of every Cargo.toml.
-          sdk=$(match "^(apps/sdk|crates|plugins)/|^(src|tablets|resources)/|^Cargo\.lock$|(^|/)Cargo\.toml$|$common")
+          sdk=$(match "^(apps/sdk|crates|plugins|tools)/|^(src|tablets|resources)/|^Cargo\.lock$|(^|/)Cargo\.toml$|$common")
 
           # Frontend lint, types, unit tests and build; the E2E tests run on the same files. The
           # generated bindings are committed under frontend/, so they are covered.
@@ -207,7 +207,7 @@ jobs:
       - name: Check that every crate keeps the lint policy
         run: |
           set -e
-          for manifest in Cargo.toml apps/sdk/Cargo.toml crates/ntd-plugin-api/Cargo.toml apps/desktop/Cargo.toml plugins/*/Cargo.toml; do
+          for manifest in Cargo.toml apps/sdk/Cargo.toml crates/ntd-plugin-api/Cargo.toml apps/desktop/Cargo.toml plugins/*/Cargo.toml tools/ntd-recorder/Cargo.toml; do
             for rule in 'unwrap_used = "deny"' 'expect_used = "deny"' 'panic = "deny"' 'todo = "deny"' 'unimplemented = "deny"' 'exit = "deny"' 'pedantic = { level = "warn", priority = -1 }'; do
               if ! grep -qF "$rule" "$manifest"; then
                 echo "::error file=$manifest::missing lint rule: $rule"
@@ -219,7 +219,7 @@ jobs:
       - name: Check plugin API, plugins and the example plugin
         run: |
           set -e
-          for manifest in crates/ntd-plugin-api/Cargo.toml apps/sdk/Cargo.toml plugins/*/Cargo.toml apps/sdk/examples/rust_plugin/Cargo.toml; do
+          for manifest in crates/ntd-plugin-api/Cargo.toml apps/sdk/Cargo.toml plugins/*/Cargo.toml apps/sdk/examples/rust_plugin/Cargo.toml tools/ntd-recorder/Cargo.toml; do
             echo "::group::$manifest"
             cargo fmt --manifest-path "$manifest" -- --check
             cargo clippy --manifest-path "$manifest" --all-targets -- -D warnings

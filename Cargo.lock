@@ -2614,6 +2614,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ntd-recorder"
+version = "0.1.0"
+dependencies = [
+ "hidapi",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "ntd_plugin_api"
 version = "0.1.0"
 dependencies = [

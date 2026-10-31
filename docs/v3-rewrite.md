@@ -1542,8 +1542,8 @@ just the application.
 | | |
 |---|---|
 | **Current phase** | Phase 1: Workspace, quality, CI, contribution rules |
-| **Last completed task** | P1.1 |
-| **Next task** | P1.2 |
+| **Last completed task** | P1.2 |
+| **Next task** | P1.3 |
 | **v1 bridge release** | not started (P7.5a) |
 | **Last updated** | 2026-10-31 |
 
@@ -1660,9 +1660,10 @@ phase 1; §12, §13, §14).
     crate, because the workspace also holds the desktop app (needs the Tauri system libraries, and
     its dependencies break the root crate's doctests when unified). Run the tests with
     `cargo nextest`: plain `cargo test` shares process-wide state between tests.
-- [ ] **P1.2** Bring `tools/ntd-recorder` into the workspace
+- [x] **P1.2** Bring `tools/ntd-recorder` into the workspace (branch `chore/v3-phase-1`)
   - Depends on: P1.1
   - Done when: its separate `Cargo.lock` is deleted.
+  - Notes: it now also runs in the CI job that checks the SDK, the plugins and the examples.
 - [ ] **P1.3** `[workspace.dependencies]` and `[workspace.package]`
   - Depends on: P1.1
   - Done when: no member crate declares a dependency version (rule 22); metadata is inherited.

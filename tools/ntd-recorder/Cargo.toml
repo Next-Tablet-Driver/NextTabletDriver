@@ -7,9 +7,6 @@ license = "MIT"
 publish = false
 rust-version = "1.99.0"
 
-# Temporary: this tool has its own lockfile until it joins the workspace (roadmap P1.2).
-[workspace]
-
 [dependencies]
 hidapi = "2.6.3"
 serde = { version = "1.0", features = ["derive"] }

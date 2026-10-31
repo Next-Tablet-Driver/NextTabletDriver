@@ -40,7 +40,7 @@ windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_Syste
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-updater = "2"
 
-# Same policy as the root crate (copied: this crate has its own lockfile).
+# Same policy as the root crate (copied until the shared `[workspace.lints]` table exists, P1.6).
 [lints.rust]
 dead_code = "deny"
 

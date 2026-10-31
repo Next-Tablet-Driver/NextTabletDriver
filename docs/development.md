@@ -207,7 +207,7 @@ A pull request only runs the jobs that its files need. A first job, *Changed pat
 | Job | Runs when you change |
 | --- | --- |
 | Rust Quality Check | `src/`, `qa/`, `tablets/`, `resources/`, `crates/ntd-plugin-api/`, the root `Cargo.toml` or `Cargo.lock`, the toolchain or lint files (`rust-toolchain.toml`, `clippy.toml`, `rustfmt.toml`, `.cargo/`) |
-| SDK, plugin API, plugins and examples | `apps/sdk/`, `crates/`, `plugins/`, `src/`, `tablets/`, `resources/` (the SDK embeds the root crate), the root `Cargo.lock` (the only lockfile), any `Cargo.toml`, the toolchain or lint files |
+| SDK, plugin API, plugins and examples | `apps/sdk/`, `crates/`, `plugins/`, `tools/`, `src/`, `tablets/`, `resources/` (the SDK embeds the root crate), the root `Cargo.lock` (the only lockfile), any `Cargo.toml`, the toolchain or lint files |
 | Frontend, E2E | `frontend/` |
 | Coverage | `src/`, `qa/`, `tablets/`, `resources/`, `crates/ntd-plugin-api/`, the root `Cargo.*`, `frontend/`, `coverage-thresholds.json`, `scripts/coverage_gate.py`, the toolchain files |
 | Tauri build | `apps/desktop/`, `frontend/`, and what the root crate is built from (`src/`, `tablets/`, `resources/`, `crates/ntd-plugin-api/`, the root `Cargo.*`), the scripts the build uses (`scripts/assert-gui-subsystem.ps1`, `scripts/smoke-windows.ps1`, `scripts/99-nexttabletdriver.rules`), the toolchain files. It does **not** run for `qa/` |
@@ -217,7 +217,7 @@ So a change only to the documentation, the licences or the issue templates runs 
 
 A push to `main` and a manual run always run everything. A job that is skipped counts as passed. The single required check is **CI success**: it passes when every job that ran has passed.
 
-The filter is the `changes` job in `.github/workflows/ci.yml`. If you add a folder that holds code, add it there, or its changes will not trigger the jobs. `tools/` has no job yet: a change there runs nothing.
+The filter is the `changes` job in `.github/workflows/ci.yml`. If you add a folder that holds code, add it there, or its changes will not trigger the jobs.
 
 | Job | What it checks |
 | --- | --- |

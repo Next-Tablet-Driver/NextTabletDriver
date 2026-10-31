@@ -20,9 +20,8 @@ members = [
     "apps/sdk/examples/rust_plugin",
     "crates/ntd-plugin-api",
     "plugins/*",
+    "tools/ntd-recorder",
 ]
-# Temporary: its own lockfile until it joins the workspace (roadmap P1.2).
-exclude = ["tools/ntd-recorder"]
 
 [features]
 default = ["desktop"]
