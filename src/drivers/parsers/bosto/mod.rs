@@ -1,6 +1,7 @@
 use crate::drivers::TabletData;
 use crate::drivers::parsers::ReportParser;
 
+/// Parser for Bosto tablets, a port of the `BostoReportParser` of `OpenTabletDriver`.
 pub struct BostoParser;
 
 impl ReportParser for BostoParser {
@@ -45,7 +46,10 @@ impl ReportParser for BostoParser {
 }
 
 #[cfg(test)]
-#[allow(clippy::float_cmp)]
+#[allow(
+    clippy::float_cmp,
+    reason = "the tests compare floats that are exact by construction or copied unchanged"
+)]
 mod tests {
     use super::*;
 

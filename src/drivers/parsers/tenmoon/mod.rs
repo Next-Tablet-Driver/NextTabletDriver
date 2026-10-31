@@ -1,6 +1,7 @@
 use crate::drivers::TabletData;
 use crate::drivers::parsers::ReportParser;
 
+/// Parser for 10moon tablets, a port of the `10moon report parser` of `OpenTabletDriver`.
 pub struct TenMoonParser;
 
 impl ReportParser for TenMoonParser {
@@ -91,7 +92,10 @@ impl ReportParser for TenMoonParser {
 }
 
 #[cfg(test)]
-#[allow(clippy::float_cmp)]
+#[allow(
+    clippy::float_cmp,
+    reason = "the tests compare floats that are exact by construction or copied unchanged"
+)]
 mod tests {
     use super::*;
 

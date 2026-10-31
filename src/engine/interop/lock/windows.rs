@@ -1,5 +1,6 @@
 //! Windows implementation of the HID owner lock via a named mutex
 //! (`Local\NextTabletDriver_HidOwner`), tried non-blockingly.
+#![allow(unsafe_code, reason = "Win32 named mutex calls through windows-sys")]
 
 use std::ptr;
 use windows_sys::Win32::Foundation::{CloseHandle, HANDLE, WAIT_ABANDONED, WAIT_OBJECT_0};
@@ -10,7 +11,7 @@ const MUTEX_NAME: &str = "Local\\NextTabletDriver_HidOwner";
 /// Wraps the mutex handle. Dropping it releases and closes the handle, which
 /// hands ownership back to the OS and makes the lock available to the next
 /// process that tries, including automatically if this process crashes.
-pub struct OwnerHandle(HANDLE);
+pub(super) struct OwnerHandle(HANDLE);
 
 // SAFETY: the wrapped HANDLE is a plain Win32 kernel object reference with no
 // thread-affinity requirements; it's fine to move between threads as long as
@@ -34,7 +35,7 @@ impl Drop for OwnerHandle {
 
 /// Tries to become the HID owner by creating (or opening) the named mutex and
 /// attempting to acquire it with a zero-millisecond wait.
-pub fn try_acquire() -> Option<OwnerHandle> {
+pub(super) fn try_acquire() -> Option<OwnerHandle> {
     try_acquire_named(MUTEX_NAME)
 }
 
@@ -69,7 +70,10 @@ fn try_acquire_named(name: &str) -> Option<OwnerHandle> {
 }
 
 #[cfg(test)]
-#[allow(clippy::float_cmp)]
+#[allow(
+    clippy::float_cmp,
+    reason = "the tests compare floats that are exact by construction or copied unchanged"
+)]
 mod tests {
     use super::*;
 

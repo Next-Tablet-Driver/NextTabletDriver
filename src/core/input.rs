@@ -84,7 +84,10 @@ macro_rules! keys {
         #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
         #[repr(u8)]
         pub enum Key {
-            $($variant,)+
+            $(
+                #[doc = concat!("The `", stringify!($variant), "` key.")]
+                $variant,
+            )+
         }
 
         impl Key {

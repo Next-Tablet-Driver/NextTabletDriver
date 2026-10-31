@@ -30,7 +30,7 @@ pkgver() {
 prepare() {
   cd nexttabletdriver
 
-  cargo fetch --locked --manifest-path src-tauri/Cargo.toml --target "${CARCH}-unknown-linux-gnu"
+  cargo fetch --locked --manifest-path apps/desktop/Cargo.toml --target "${CARCH}-unknown-linux-gnu"
   npm ci --prefix frontend
   bash scripts/generate_udev_rules.sh
 }
@@ -46,13 +46,13 @@ build() {
 package() {
   cd nexttabletdriver
 
-  install -Dm755 "src-tauri/target/release/app" \
+  install -Dm755 "target/release/app" \
     "${pkgdir}/usr/bin/next_tablet_driver"
 
   install -Dm644 scripts/99-nexttabletdriver.rules \
     "${pkgdir}/usr/lib/udev/rules.d/99-nexttabletdriver.rules"
 
-  install -Dm644 src-tauri/icons/128x128.png \
+  install -Dm644 apps/desktop/icons/128x128.png \
     "${pkgdir}/usr/share/pixmaps/nexttabletdriver.png"
 
   install -Dm644 LICENSE \

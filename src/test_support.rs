@@ -9,12 +9,13 @@
 ///
 /// The macros skip their arguments when the level is off, which would leave those lines
 /// unexecuted (and unchecked for panics) in the tests.
-pub fn evaluate_log_arguments() {
+pub(crate) fn evaluate_log_arguments() {
     log::set_max_level(log::LevelFilter::Trace);
 }
 
-/// Keeps the new, empty settings folder of a test alive. The folder is removed when this is dropped.
-pub struct EmptySettingsDir(std::path::PathBuf);
+/// Keeps the new, empty settings folder of a test alive. The folder is removed when this is
+/// dropped.
+pub(crate) struct EmptySettingsDir(std::path::PathBuf);
 
 impl Drop for EmptySettingsDir {
     fn drop(&mut self) {
@@ -28,7 +29,7 @@ impl Drop for EmptySettingsDir {
 /// that expects "no plugins" fails on any machine where a plugin is installed, which includes
 /// the machine of a developer who tries the plugins.
 #[must_use]
-pub fn empty_settings_dir() -> EmptySettingsDir {
+pub(crate) fn empty_settings_dir() -> EmptySettingsDir {
     let nanos = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map_or(0, |d| d.as_nanos());

@@ -1,6 +1,8 @@
 use crate::drivers::TabletData;
 use crate::drivers::parsers::ReportParser;
 
+/// Parser for the 64-bit auxiliary reports of some Wacom tablets, a port of the
+/// `Wacom64bAuxReportParser` of `OpenTabletDriver`.
 pub struct Wacom64bAuxParser;
 
 impl ReportParser for Wacom64bAuxParser {
@@ -46,7 +48,10 @@ impl ReportParser for Wacom64bAuxParser {
 }
 
 #[cfg(test)]
-#[allow(clippy::float_cmp)]
+#[allow(
+    clippy::float_cmp,
+    reason = "the tests compare floats that are exact by construction or copied unchanged"
+)]
 mod tests {
     use super::*;
     use crate::drivers::TabletStatus;

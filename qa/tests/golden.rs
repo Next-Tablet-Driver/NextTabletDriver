@@ -12,7 +12,8 @@
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::panic,
-    clippy::indexing_slicing
+    clippy::indexing_slicing,
+    reason = "a test that panics is a failing test"
 )]
 
 use next_tablet_driver::drivers::TabletData;
@@ -102,7 +103,8 @@ fn parser_name(capture: &Capture) -> String {
 /// run and say nothing about the parser's logic.
 fn render(data: &TabletData) -> String {
     format!(
-        "status={} x={} y={} pressure={} tilt=({},{}) buttons={:#04x} eraser={} hover={} connected={}",
+        "status={} x={} y={} pressure={} tilt=({},{}) buttons={:#04x} eraser={} hover={} \
+            connected={}",
         data.status,
         data.x,
         data.y,

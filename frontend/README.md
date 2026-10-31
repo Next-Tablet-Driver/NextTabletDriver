@@ -1,17 +1,17 @@
 # Frontend
 
-This folder has the interface of NextTabletDriver. It is a [Svelte](https://svelte.dev) 5 and TypeScript app, built with [Vite](https://vite.dev). The desktop app ([`src-tauri`](../src-tauri)) shows it inside a window. The engine itself is written in Rust and lives in the root crate. To see how the pieces fit together, read [Architecture](../docs/architecture.md).
+This folder has the interface of NextTabletDriver. It is a [Svelte](https://svelte.dev) 5 and TypeScript app, built with [Vite](https://vite.dev). The desktop app ([`apps/desktop`](../apps/desktop)) shows it inside a window. The engine itself is written in Rust and lives in the root crate. To see how the pieces fit together, read [Architecture](../docs/architecture.md).
 
 ## Stack
 
-| Tool | Used for |
-| --- | --- |
-| Svelte 5 (with runes) and TypeScript | The interface. |
-| Vite | Dev server and production build. |
-| Vitest and Testing Library (jsdom) | Unit and component tests. |
-| Playwright | End-to-end tests of every screen, and a smoke test of the real app. |
-| ESLint (`typescript-eslint`, `eslint-plugin-svelte`) | Lint rules. |
-| Tauri API and plugins (dialog, process, shell, updater) | Talk to the Rust side and the operating system. |
+| Tool                                                    | Used for                                                            |
+| ------------------------------------------------------- | ------------------------------------------------------------------- |
+| Svelte 5 (with runes) and TypeScript                    | The interface.                                                      |
+| Vite                                                    | Dev server and production build.                                    |
+| Vitest and Testing Library (jsdom)                      | Unit and component tests.                                           |
+| Playwright                                              | End-to-end tests of every screen, and a smoke test of the real app. |
+| ESLint (`typescript-eslint`, `eslint-plugin-svelte`)    | Lint rules.                                                         |
+| Tauri API and plugins (dialog, process, shell, updater) | Talk to the Rust side and the operating system.                     |
 
 ## Run it
 
@@ -21,17 +21,17 @@ Install the packages once. All commands run from the root of the repository.
 npm --prefix frontend ci
 ```
 
-| You want to... | Command |
-| --- | --- |
-| Run the full app (Rust and interface) with hot reload | `npm run tauri-dev` |
-| Run the interface alone in your browser, with a fake backend | `npm --prefix frontend run dev`, then open `http://localhost:5173/?mock` |
-| Build the interface | `npm --prefix frontend run build` |
-| Check TypeScript and Svelte types | `npm --prefix frontend run check` |
-| Lint | `npm --prefix frontend run lint` |
-| Run the unit tests | `npm --prefix frontend run test -- --run` |
-| Run the end-to-end tests | `npm --prefix frontend run e2e` |
-| Run the smoke test of the real built app | `npm --prefix frontend run e2e:native` (needs `tauri-driver` and a built app, see `.github/workflows/ci.yml`) |
-| See what is in the bundle | `npm --prefix frontend run build:audit` |
+| You want to...                                               | Command                                                                                                       |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------- |
+| Run the full app (Rust and interface) with hot reload        | `npm run tauri-dev`                                                                                           |
+| Run the interface alone in your browser, with a fake backend | `npm --prefix frontend run dev`, then open `http://localhost:5173/?mock`                                      |
+| Build the interface                                          | `npm --prefix frontend run build`                                                                             |
+| Check TypeScript and Svelte types                            | `npm --prefix frontend run check`                                                                             |
+| Lint                                                         | `npm --prefix frontend run lint`                                                                              |
+| Run the unit tests                                           | `npm --prefix frontend run test -- --run`                                                                     |
+| Run the end-to-end tests                                     | `npm --prefix frontend run e2e`                                                                               |
+| Run the smoke test of the real built app                     | `npm --prefix frontend run e2e:native` (needs `tauri-driver` and a built app, see `.github/workflows/ci.yml`) |
+| See what is in the bundle                                    | `npm --prefix frontend run build:audit`                                                                       |
 
 ## Folders
 
@@ -59,9 +59,9 @@ Tests sit next to the code they test, in `__tests__` folders, and are named `*.t
 
 ## Talking to the engine
 
-The interface never reads files or touches the system itself. It calls Rust *commands* and listens to *events*.
+The interface never reads files or touches the system itself. It calls Rust _commands_ and listens to _events_.
 
-- **Commands** are typed wrappers in [`src/lib/infrastructure/tauri/commands.ts`](src/lib/infrastructure/tauri/commands.ts). Use them in your components instead of calling `invoke` with a string. Each wrapper matches one `#[tauri::command]` function in [`src-tauri/src/commands.rs`](../src-tauri/src/commands.rs).
+- **Commands** are typed wrappers in [`src/lib/infrastructure/tauri/commands.ts`](src/lib/infrastructure/tauri/commands.ts). Use them in your components instead of calling `invoke` with a string. Each wrapper matches one `#[tauri::command]` function in [`apps/desktop/src/commands.rs`](../apps/desktop/src/commands.rs).
 - **Events** from Rust, such as `tablet-event` (pen data, about 60 times a second) and `device-changed`, are in `infrastructure/events.ts`.
 - **The settings type** `Config` in `commands.ts` mirrors `MappingConfig` in `src/core/config/models.rs`. If you add a field on one side, add it on the other side, and give it a default in Rust so old settings files still load.
 

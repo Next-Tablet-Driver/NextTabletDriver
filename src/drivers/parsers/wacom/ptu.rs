@@ -1,6 +1,7 @@
 use crate::drivers::TabletData;
 use crate::drivers::parsers::ReportParser;
 
+/// Parser for Wacom PTU tablets, a port of the `PTUReportParser` of `OpenTabletDriver`.
 pub struct PTUParser;
 
 impl ReportParser for PTUParser {
@@ -46,7 +47,10 @@ impl ReportParser for PTUParser {
 }
 
 #[cfg(test)]
-#[allow(clippy::float_cmp)]
+#[allow(
+    clippy::float_cmp,
+    reason = "the tests compare floats that are exact by construction or copied unchanged"
+)]
 mod tests {
     use super::*;
     use crate::drivers::TabletStatus;

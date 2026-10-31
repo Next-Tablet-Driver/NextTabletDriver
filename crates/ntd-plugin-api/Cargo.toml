@@ -1,0 +1,25 @@
+[package]
+name = "ntd_plugin_api"
+version = "0.1.0"
+authors.workspace = true
+description = "Plugin ABI and SDK for NextTabletDriver dynamic filters"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[features]
+# Derives `specta::Type` on the manifest types so the desktop shell can export TypeScript
+# definitions of them. Off by default: plugin authors do not need it.
+specta = ["dep:specta"]
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+specta = { workspace = true, optional = true }
+
+[lints]
+workspace = true

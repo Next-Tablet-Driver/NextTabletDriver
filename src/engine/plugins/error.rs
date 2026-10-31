@@ -84,7 +84,10 @@ pub enum DeletePluginError {
 }
 
 #[cfg(test)]
-#[allow(clippy::float_cmp)]
+#[allow(
+    clippy::float_cmp,
+    reason = "the tests compare floats that are exact by construction or copied unchanged"
+)]
 mod tests {
     use super::*;
     use std::error::Error;
@@ -161,6 +164,10 @@ mod tests {
     }
 
     #[test]
+    #[allow(
+        unsafe_code,
+        reason = "loads a library that does not exist, to build a real error"
+    )]
     fn library_loading_errors_convert_and_keep_their_source() {
         // SAFETY: loading a library that does not exist runs no initialisation code.
         let cause = unsafe { libloading::Library::new("ntd-no-such-library-for-tests") }

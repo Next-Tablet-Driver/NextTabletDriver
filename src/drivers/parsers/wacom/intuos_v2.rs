@@ -3,9 +3,11 @@ use crate::drivers::parsers::ReportParser;
 
 // Intuos V2
 
+/// Parser for Wacom Intuos V2 tablets, a port of the `IntuosV2ReportParser` of `OpenTabletDriver`.
 pub struct IntuosV2Parser;
 
 impl IntuosV2Parser {
+    /// Creates a parser with its initial state.
     #[must_use]
     pub const fn new() -> Self {
         Self
@@ -151,9 +153,12 @@ impl ReportParser for IntuosV2Parser {
     }
 }
 
+/// Parser for Wacom Intuos V2 tablets driven with the Wacom driver protocol, a port of the
+/// `WacomDriverIntuosV2ReportParser` of `OpenTabletDriver`.
 pub struct WacomDriverIntuosV2Parser;
 
 impl WacomDriverIntuosV2Parser {
+    /// Creates a parser with its initial state.
     #[must_use]
     pub const fn new() -> Self {
         Self
@@ -176,7 +181,10 @@ impl ReportParser for WacomDriverIntuosV2Parser {
 }
 
 #[cfg(test)]
-#[allow(clippy::float_cmp)]
+#[allow(
+    clippy::float_cmp,
+    reason = "the tests compare floats that are exact by construction or copied unchanged"
+)]
 mod tests {
     use super::*;
 
@@ -274,7 +282,10 @@ mod tests {
     }
 
     #[test]
-    #[allow(clippy::default_constructed_unit_structs)]
+    #[allow(
+        clippy::default_constructed_unit_structs,
+        reason = "the test checks that `Default` and `new` agree"
+    )]
     fn the_default_parsers_behave_like_the_new_ones() {
         let plain = IntuosV2Parser::default();
         assert!(plain.parse(&[0x11, 0x01]).is_some());

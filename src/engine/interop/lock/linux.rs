@@ -12,8 +12,8 @@ const LOCK_FILE_NAME: &str = "ntd_hid_owner.lock";
 
 // The `Flock` is held only for its `Drop` side effect (releasing the lock
 // when the handle is dropped); it is never read directly.
-#[allow(dead_code)]
-pub struct OwnerHandle(Flock<File>);
+#[allow(dead_code, reason = "held only for its `Drop` side effect")]
+pub(super) struct OwnerHandle(Flock<File>);
 
 fn lock_path() -> PathBuf {
     let dir = std::env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| "/tmp".to_string());
@@ -22,7 +22,7 @@ fn lock_path() -> PathBuf {
 
 /// Tries to become the HID owner by opening (creating if needed) the lock
 /// file and attempting a non-blocking exclusive `flock`.
-pub fn try_acquire() -> Option<OwnerHandle> {
+pub(super) fn try_acquire() -> Option<OwnerHandle> {
     let path = lock_path();
     let file = OpenOptions::new()
         .create(true)

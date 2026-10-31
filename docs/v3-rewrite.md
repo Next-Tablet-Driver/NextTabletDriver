@@ -983,6 +983,9 @@ too_many_lines = "allow"
 assert_is_empty = "allow"
 # Duplicate versions are handled by cargo-deny (bans) with a reviewed exception list.
 multiple_crate_versions = "allow"
+# Contradicts `unreachable_pub`: an item used only inside its crate is `pub(crate)`, even in a
+# private module.
+redundant_pub_crate = "allow"
 ```
 
 Notes:
@@ -1542,8 +1545,8 @@ just the application.
 | | |
 |---|---|
 | **Current phase** | Phase 1: Workspace, quality, CI, contribution rules |
-| **Last completed task** | GATE 0 |
-| **Next task** | P1.1 |
+| **Last completed task** | GATE 1 |
+| **Next task** | P2.1 |
 | **v1 bridge release** | not started (P7.5a) |
 | **Last updated** | 2026-10-31 |
 
@@ -1645,87 +1648,215 @@ Goal: be able to detect any regression **before** touching the architecture (§7
 Goal: one workspace and the whole quality policy in place, **with no behaviour change** (§7,
 phase 1; §12, §13, §14).
 
-- [ ] **P1.1** Create the workspace and move the applications
+- [x] **P1.1** Create the workspace and move the applications (branch `chore/v3-phase-1`)
   - Depends on: GATE 0
   - Done when: `[workspace]` at the root; `src-tauri` → `apps/desktop`, `sdk` → `apps/sdk`,
     `sdk/plugin_api` → `crates/ntd-plugin-api`, official plugins are members; **one**
     `Cargo.lock`; `cargo build --workspace` and `cargo test --workspace` green; pure move diff
     (`git diff -M`).
-- [ ] **P1.2** Bring `tools/ntd-recorder` into the workspace
+  - Notes: the root crate stays at the root (it becomes the crates of §4 in phase 2). The single
+    `Cargo.lock` starts from the desktop app's lockfile, so the 495 crates it shipped keep their
+    exact versions (55 are added for tests, benchmarks and plugins). `tools/ntd-recorder` stays
+    outside until P1.2. The release profile is now the workspace one for every member (the SDK's was
+    identical; the desktop app and the plugins now get LTO and `strip`). The CI, the hooks and the
+    docs keep the scope they had: `-p next_tablet_driver` replaces `--workspace` for the root
+    crate, because the workspace also holds the desktop app (needs the Tauri system libraries, and
+    its dependencies break the root crate's doctests when unified). Run the tests with
+    `cargo nextest`: plain `cargo test` shares process-wide state between tests.
+- [x] **P1.2** Bring `tools/ntd-recorder` into the workspace (branch `chore/v3-phase-1`)
   - Depends on: P1.1
   - Done when: its separate `Cargo.lock` is deleted.
-- [ ] **P1.3** `[workspace.dependencies]` and `[workspace.package]`
+  - Notes: it now also runs in the CI job that checks the SDK, the plugins and the examples.
+- [x] **P1.3** `[workspace.dependencies]` and `[workspace.package]` (branch `chore/v3-phase-1`)
   - Depends on: P1.1
   - Done when: no member crate declares a dependency version (rule 22); metadata is inherited.
-- [ ] **P1.4** `stable` toolchain (§12.6)
+  - Notes: `Cargo.lock` is unchanged, so no dependency version moved. Four plugins written by other
+    people keep their own `authors` (credit) and declare no licence; the first-party crates inherit
+    all the metadata.
+- [x] **P1.4** `stable` toolchain (§12.6) (branch `chore/v3-phase-1`)
   - Depends on: P1.1
   - Done when: `rust-toolchain.toml` on `channel = "stable"`, no Rust version in workflows,
     `rust-version` declared once in `[workspace.package]`.
-- [ ] **P1.5** Formatting and editor (§12.1)
+  - Notes: the jobs use `dtolnay/rust-toolchain@stable` without a version; `flake.nix` follows
+    `rust-bin.stable.latest` of its pinned overlay. `rust-version` (1.99.0) is only the MSRV.
+- [x] **P1.5** Formatting and editor (§12.1) (branch `chore/v3-phase-1`)
   - Depends on: P1.1
   - Done when: `rustfmt.toml` and `.editorconfig` match §12.1; `cargo fmt --all --check` green.
-- [ ] **P1.6** Introduce `[workspace.lints]` as `warn` (§12.3)
+  - Notes: the two new rustfmt options (`use_field_init_shorthand`, `use_try_shorthand`) changed no
+    line of code. `.gitattributes` already forces LF on `*.rs`, which `newline_style = "Unix"` needs.
+- [x] **P1.6** Introduce `[workspace.lints]` as `warn` (§12.3) (branch `chore/v3-phase-1`)
   - Depends on: P1.3
   - Done when: the §12.3 block is in place with the groups as `warn` **temporarily**; the number
     of warnings per crate is recorded in the PR.
-- [ ] **P1.7** Fix lint warnings (several PRs, one area per PR)
+  - Notes: the lints v2 already denied (`unwrap_used`, `expect_used`, `panic`, `indexing_slicing`,
+    `todo`, `unimplemented`, `exit`, `lossy_float_literal`, `dead_code`) stay `deny`; the groups and
+    the new lints are `warn`. Every crate has `[lints] workspace = true`, so the example plugin and
+    `tools/ntd-recorder` follow the same policy. The local hooks run clippy without `-D warnings`
+    until P1.8.
+  - **Warnings per crate** (`cargo clippy --workspace --all-targets --all-features`, 699 in
+    total): `next_tablet_driver` 474, `app` 71, `ntd_sdk` 48, `ntd-recorder` 29, `hand_speed` 20,
+    `devocub_antichatter` 16, `radial_follow` 12, `hawku_smoothing` 9, `simple_smoothing` 9,
+    `kalman_smoothing` 8, `ntd_plugin_api` 3.
+  - **By lint**: `missing_docs` 375, `unsafe_code` 92, `allow_attributes_without_reason` 87,
+    `unreachable_pub` 71, `cargo_common_metadata` 33 (3 per crate), `needless_pass_by_value` 17
+    (desktop commands), `print_stdout` 14, `print_stderr` 5, `unreachable` 2, `suboptimal_flops` 2,
+    `doc_markdown` 1.
+- [x] **P1.7** Fix lint warnings (several PRs, one area per PR) (branch `chore/v3-phase-1`)
   - Depends on: P1.6
   - Done when: zero warnings on the workspace; each PR only fixes lints, with no behaviour change
     (golden files and E2E identical).
-- [ ] **P1.8** Switch the lints to `deny`
+  - Notes: 699 warnings to 0, in nine commits (metadata, visibility, `unsafe`, `allow` reasons,
+    exceptions, then the documentation by area). Golden files and the 639 tests are unchanged; the
+    frontend was not touched except the regenerated `bindings.ts` (comments only). Choices the next
+    phases should know: `unsafe_code` is allowed per module, with a reason, in the root crate, the
+    SDK, the desktop app and the example (the future FFI crates of §4 replace this); the SDK's C ABI
+    keeps `pub` (cbindgen only exports `pub` items); `redundant_pub_crate` is allowed because it
+    contradicts `unreachable_pub` (added to §12.3); the new documentation names the OpenTabletDriver
+    class each parser is ported from.
+- [x] **P1.8** Switch the lints to `deny` (branch `chore/v3-phase-1`)
   - Depends on: P1.7
   - Done when: `[workspace.lints]` is exactly the one in §12.3.
-- [ ] **P1.9** `xtask` and `cargo xtask lint-style` (§12.5)
+  - Notes: it is the §12.3 block, with the one added exception (`redundant_pub_crate`). The local
+    hooks run clippy with `-D warnings` again.
+- [x] **P1.9** `xtask` and `cargo xtask lint-style` (§12.5) (branch `chore/v3-phase-1`)
   - Depends on: P1.1
   - Done when: the command checks the 5 points of §12.5, has tests, and passes on the repository.
-- [ ] **P1.10** `typos` and `cargo-machete`
+  - Notes: `xtask/` is a workspace member with no dependency, 18 tests, and `cargo xtask` is an
+    alias in `.cargo/config.toml`. Two deviations from §12.5, both documented in the tool: a line that
+    holds a URL is exempt from the 100-character limit (a URL cannot be split), and the crates
+    allowed to use `unsafe` are the ones that already do (`src/`, `apps/sdk/`, `apps/desktop/`,
+    `crates/ntd-plugin-api/`) until phase 2 narrows the list to the FFI crates. Bringing the
+    repository to 100 columns meant re-wrapping 33 comments and splitting about 140 lines, mostly
+    long log messages, with `\` continuations (the strings are byte-identical, checked with a
+    script).
+- [x] **P1.10** `typos` and `cargo-machete` (branch `chore/v3-phase-1`)
   - Depends on: P1.1
   - Done when: `typos.toml` exists and both tools pass on the repository.
-- [ ] **P1.11** `cargo xtask ci-plan` (§15.6)
+  - Notes: `typos.toml` excludes the data we do not write (the OpenTabletDriver definitions,
+    captures, raw benchmark output, lockfiles, the French translation) and allows `iy` and `UE`.
+    Machete found six unused dependencies: `serde` in the five plugins was removed; `serde_json` in
+    the desktop app is a false positive (the `tauri::generate_context!` macro needs it) and is
+    listed in `[package.metadata.cargo-machete]`. Seven French comments in two Svelte components
+    were translated.
+- [x] **P1.11** `cargo xtask ci-plan` (§15.6) (branch `chore/v3-phase-1`)
   - Depends on: P1.9
   - Done when: the command produces the list of touched crates + dependents and the matrix, with
     tests on a fake graph.
-- [ ] **P1.12** Frontend quality tooling as warnings (§12.7)
+  - Notes: 11 tests on a fake graph (documentation only, a leaf crate, transitive dependents, the
+    root crate's own folders, global files, non-PR events, the matrix, the `cargo metadata`
+    reader). It reads `cargo metadata --no-deps`, so it needs no network. The ARM64 runner labels in
+    the full-run matrix (`ubuntu-24.04-arm`, `windows-11-arm`) are not verified: P1.15 wires them.
+- [x] **P1.12** Frontend quality tooling as warnings (§12.7) (branch `chore/v3-phase-1`)
   - Depends on: —
   - Done when: Prettier (`printWidth: 100`), the TypeScript options and the ESLint rules of §12.7
     are configured, temporarily as warnings; `npm run format:check` exists; the number of
     warnings is recorded in the PR.
-- [ ] **P1.13** Fix frontend warnings (several PRs)
+  - Notes: most ESLint rules of §12.7 were already errors and pass. Added as warnings:
+    `no-console` (no longer allowing `warn` and `error`, except in `infrastructure/log.ts`),
+    `no-restricted-imports` for `@tauri-apps/*` (allowed in `infrastructure/tauri/`, `os.ts` and
+    the tests) and an explicit `ban-ts-comment`. `noUncheckedIndexedAccess` and `noImplicitOverride`
+    live in `tsconfig.strict.json`, checked by `npm run check:strict`, until P1.14 moves them into
+    `tsconfig.app.json`. Prettier is `printWidth: 100` with `prettier-plugin-svelte`.
+  - **Warnings recorded** (before P1.13): ESLint 51 (`no-console` 41, `no-restricted-imports` 10);
+    TypeScript strict options 15 errors (`design-tokens.test.ts` 4, `ReleaseCard.svelte` 4,
+    `Filters.svelte` 3, `mapping-state.svelte.ts` 2, `Select.svelte` 1, `tauri-mock.ts` 1);
+    `svelte-check` 0; Prettier would reformat 115 files.
+- [x] **P1.13** Fix frontend warnings (several PRs) (branch `chore/v3-phase-1`)
   - Depends on: P1.12
   - Done when: zero ESLint, `svelte-check` and TypeScript warnings; Prettier applied; no behaviour
     change (E2E identical); `infrastructure/log.ts` is the only place using `console`.
-- [ ] **P1.14** Switch the frontend rules to errors
+  - Notes: 51 ESLint warnings and 15 strict TypeScript errors to 0; unit tests (263) and E2E (65)
+    unchanged. Prettier was applied in its own commit (114 files, formatting only). Only
+    `infrastructure/tauri/` and `infrastructure/os.ts` import `@tauri-apps/*` now: `events.ts` and
+    `window.ts` moved into `tauri/`, and `os.ts` gained `confirm`, `message`, `checkForUpdate` and
+    `openWindow`. Raw `invoke("...")` calls in `MenuBar` and `Release` became the typed commands
+    (`saveConfig`, `resetConfig`, `loadProfile`, `getCoreVersion`, `getPresets`, `getReleases`).
+    `noUncheckedIndexedAccess` and `noImplicitOverride` are in `tsconfig.app.json`, so
+    `tsconfig.strict.json` is gone. `no-console` stays off for the tests and the Node smoke script.
+- [x] **P1.14** Switch the frontend rules to errors (branch `chore/v3-phase-1`)
   - Depends on: P1.13
   - Done when: `eslint --max-warnings 0`, `svelte-check --fail-on-warnings` and
     `prettier --check` are in place as in §12.7.
-- [ ] **P1.15** Rework `ci.yml` (§13.1, §13.2)
+  - Notes: `npm run lint` is `eslint . --max-warnings 0`, `npm run check` passes
+    `--fail-on-warnings` to `svelte-check`, and `npm run format:check` is `prettier --check .`.
+    The three rules added in P1.12 and `svelte/sort-attributes` are errors now.
+- [x] **P1.15** Rework `ci.yml` (§13.1, §13.2) (branch `chore/v3-phase-1`)
   - Depends on: P1.8, P1.9, P1.10, P1.11, P1.14
   - Done when: the §13.2 jobs that already have something to check exist (fmt, style, typos,
     machete, clippy, clippy-release, doc, test, golden, bindings, coverage, bench, frontend, e2e,
     build); actions pinned by SHA; `ci-success` aggregates everything.
-- [ ] **P1.16** Rework `security.yml` (§13.3)
+  - Notes: `plan` runs `cargo xtask ci-plan` (which gained a `frontend` output) and the other
+    jobs read it; the `changes` job of the targeted-CI change is gone. `bench` only checks that the
+    benchmarks compile: comparing latencies against `docs/perf-baseline.md` on shared runners is too
+    noisy, so the 5 % tolerance stays a manual check (three runs, median). The `deny` job moved
+    to `security.yml` (P1.16). Jobs not listed in §13.2 yet (`codegen`, `tester`, `fuzz`,
+    `check-targets`) do not exist because their tools do not. Every action of every workflow is
+    pinned by SHA with the tag in a comment, `.github/actions/linux-deps` holds the shared Linux
+    packages, and each job has a timeout. **Not verified**: none of this has run on GitHub yet (no
+    `actionlint` here; YAML parses and every `needs` and plan output is checked); the ARM64 runner
+    labels (`ubuntu-24.04-arm`, `windows-11-arm`) are new, so those two test jobs are allowed to fail
+    until they have run green.
+- [x] **P1.16** Rework `security.yml` (§13.3) (branch `chore/v3-phase-1`)
   - Depends on: P1.1
   - Done when: a single `cargo deny check`, `npm audit`, dependency review on PRs; secret scanning
     and push protection enabled.
-- [ ] **P1.17** `toolchain-beta.yml` (§12.6)
+  - Done in the repository: `security.yml` runs one `cargo deny check`, `npm audit --omit=dev` and the
+    dependency review (pull requests), on every PR and push to `main` and daily. The two advisories
+    that made `cargo deny` fail on `main` are fixed (`rustls-webpki` 0.103.16, `webpki-roots` 1.0.11);
+    `fxhash` (unmaintained, no replacement release, pulled in by `display-info`) is listed in
+    `deny.toml` with its reason. `npm audit` reports 0 vulnerabilities.
+  - Repository settings: secret scanning and push protection were disabled; the maintainer agreed
+    and both are now enabled (checked with the API).
+- [x] **P1.17** `toolchain-beta.yml` (§12.6) (branch `chore/v3-phase-1`)
   - Depends on: P1.15
   - Done when: weekly non-blocking job that opens an issue on failure.
-- [ ] **P1.18** Protect `main` (§14.4)
+  - Notes: every Monday at 04:00 UTC, clippy and the tests on beta (`RUSTUP_TOOLCHAIN=beta` overrides
+    `rust-toolchain.toml`); on failure it opens one issue (not a second while one is open). It cannot
+    be tried before it is on `main`; trigger it with `workflow_dispatch` once merged.
+- [x] **P1.18** Protect `main` (§14.4) (branch `chore/v3-phase-1`)
   - Depends on: P1.15
   - Done when: `ci-success` is the only required check; direct pushes to `main` are forbidden;
     the maintainer can merge their own PRs after green CI.
-- [ ] **P1.19** Root `AGENTS.md` and `CLAUDE.md` (§14.1)
+  - Notes: the ruleset **Protect main** already existed and already does the rest: it requires a pull
+    request (0 approvals, so the maintainer merges their own PRs after green CI, squash only, linear
+    history), forbids deleting `main` and forcing a push, and has one bypass actor that can only
+    bypass through a pull request. **Deviation, agreed with the maintainer**: it requires two checks,
+    `CI success` and `Conventional PR title`, not only `CI success`. The title must be checked again
+    when it is edited, which a CI run does not do without running everything again, so the title
+    check stays its own workflow (`pr-title.yml`). Nothing was changed in the ruleset.
+- [x] **P1.19** Root `AGENTS.md` and `CLAUDE.md` (§14.1) (branch `chore/v3-phase-1`)
   - Depends on: P1.1
   - Done when: `AGENTS.md` describes the project, layout and commands, and points to §9 and §17;
     `CLAUDE.md` is a symlink to it.
-- [ ] **P1.20** Contribution: language, AI policy, review, closing criteria, PR template
-  (§14.2 to §14.6)
+  - Notes: `CLAUDE.md` is a git symlink (mode 120000) to `AGENTS.md`. On Windows with
+    `core.symlinks=false` git writes it as a one-line text file; Linux and macOS get a real symlink.
+    The per-area `AGENTS.md` files of §14.1 come with the crates they describe (phase 2 onward).
+- [x] **P1.20** Contribution: language, AI policy, review, closing criteria, PR template
+  (§14.2 to §14.6) (branch `chore/v3-phase-1`)
   - Depends on: —
   - Done when: `.github/CONTRIBUTING.md` and `.github/pull_request_template.md` are up to date and
     in English.
-- [ ] **GATE 1**
+  - Notes: `CONTRIBUTING.md` gained Language, AI-assisted contributions (including that an agent
+    never opens the PR), Review and merge, and the closing criteria; its check list is the current
+    one, and its licence paragraph now says the parsers are LGPL-3.0. The PR template is the §14.6
+    one (What, Why, Impact, How it was tested, Known limitations, AI usage, Roadmap) plus the
+    checklist.
+- [x] **GATE 1** (branch `chore/v3-phase-1`, pull request 181)
   - Done when: P1.1 to P1.20 are `[x]`; CI green; golden files, latency (within +5 %) and E2E
     identical to phase 0.
+  - Verified locally on 2026-10-31: P1.1 to P1.20 are `[x]`. Golden files: the golden test passes
+    and no file of `qa/golden/` changed since `main`. Latency (3 runs of `hot_path`, median of the
+    means, against `docs/perf-baseline.md`): `tray_hidden` 136.1 ns (+2.8 %), `ui_60hz` 139.0 ns
+    (+1.0 %), `ui_stress` 231.3 ns (+0.9 %), all within +5 %. E2E: 65 passed, as in phase 0. Also
+    green locally: `cargo fmt`, clippy on the workspace with `-D warnings`, 669 tests with nextest,
+    the doctests, `cargo doc`, `lint-style`, `machete`, `typos`, `cargo deny check`, the benchmarks
+    build, the TypeScript bindings test, and on the frontend format, types, lint, 263 unit tests, the
+    build and `npm audit`.
+  - CI: the 34 checks of the pull request are green, `CI success` included. The first run failed on
+    code that only compiles on Linux (documentation and visibility lints), the Nix hash and build
+    directory, `zip` 4.6.1 (updated through `tauri-plugin-updater`), the user name written to the
+    log, the `glib` advisory (allowed in `.github/dependency-review-config.yml`), and a torn read of
+    the shared memory on ARM64 (fixed with fences).
 
 ---
 

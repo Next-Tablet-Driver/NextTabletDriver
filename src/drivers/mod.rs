@@ -6,18 +6,23 @@
 //! byte arrays from various protocols into a unified format).
 //!
 //! Tablet configurations are sourced from the [OpenTabletDriver](https://github.com/OpenTabletDriver/OpenTabletDriver)
-//! project via a git submodule at `tablets/OpenTabletDriver`, kept separate from this
-//! crate's MIT-licensed sources since `OpenTabletDriver` is LGPLv3-licensed. To add support
+//! project via a git submodule at `tablets/OpenTabletDriver`. `OpenTabletDriver` is `LGPLv3`
+//! licensed: the definitions are embedded unmodified, and the report parsers in `parsers/` are
+//! ports of its C# parsers, so they are `LGPLv3` too (see `THIRD_PARTY_NOTICES.md`). To add support
 //! for a new tablet, contribute the configuration upstream to `OpenTabletDriver`; it will be
 //! picked up here on the next submodule update.
 
 pub mod config;
+/// Loading of the tablet definitions embedded from `OpenTabletDriver`.
 pub mod config_loader;
+/// Detection of the connected tablet among the HID devices.
 pub mod detection;
 pub mod generic;
 #[cfg(windows)]
 pub mod hid_caps;
+/// Types shared by every driver: pen status, packets and statistics.
 pub mod models;
+/// Parsers that decode the raw reports of each tablet family.
 pub mod parsers;
 
 pub use config::TabletConfiguration;

@@ -3,9 +3,12 @@ use crate::engine::state::{ConfigState, LifecycleState, PipelineState, SharedSta
 use std::sync::Arc;
 use std::sync::RwLock;
 
+/// Builds the shared state that the engine and the interface use.
 pub struct SharedStateFactory;
 
 impl SharedStateFactory {
+    /// Creates the shared state from `config`; `is_first_run` records whether this is the first run
+    /// of the application.
     #[must_use]
     pub fn create(config: MappingConfig, is_first_run: bool) -> Arc<SharedState> {
         Arc::new(SharedState {
@@ -25,7 +28,10 @@ impl SharedStateFactory {
 }
 
 #[cfg(test)]
-#[allow(clippy::float_cmp)]
+#[allow(
+    clippy::float_cmp,
+    reason = "the tests compare floats that are exact by construction or copied unchanged"
+)]
 mod tests {
     use super::*;
     use std::sync::atomic::Ordering;

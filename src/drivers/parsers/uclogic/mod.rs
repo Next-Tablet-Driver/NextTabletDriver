@@ -70,6 +70,7 @@ fn parse_uclogic_tablet(data: &[u8], has_tilt: bool) -> Option<TabletData> {
     }
 }
 
+/// Parser for UC-Logic tablets, a port of the `UCLogicReportParser` of `OpenTabletDriver`.
 pub struct UCLogicParser;
 
 impl ReportParser for UCLogicParser {
@@ -82,6 +83,8 @@ impl ReportParser for UCLogicParser {
     }
 }
 
+/// Parser for UC-Logic tablets of the first generation, a port of the `UCLogicV1ReportParser` of
+/// `OpenTabletDriver`.
 pub struct UCLogicV1Parser;
 
 impl ReportParser for UCLogicV1Parser {
@@ -94,6 +97,8 @@ impl ReportParser for UCLogicV1Parser {
     }
 }
 
+/// Parser for UC-Logic tablets of the second generation, a port of the `UCLogicV2ReportParser` of
+/// `OpenTabletDriver`.
 pub struct UCLogicV2Parser;
 
 impl ReportParser for UCLogicV2Parser {
@@ -107,6 +112,8 @@ impl ReportParser for UCLogicV2Parser {
     }
 }
 
+/// Parser for UC-Logic tablets that report pen tilt, a port of the `UCLogicTiltReportParser` of
+/// `OpenTabletDriver`.
 pub struct UCLogicTiltParser;
 
 impl ReportParser for UCLogicTiltParser {
@@ -120,7 +127,10 @@ impl ReportParser for UCLogicTiltParser {
 }
 
 #[cfg(test)]
-#[allow(clippy::float_cmp)]
+#[allow(
+    clippy::float_cmp,
+    reason = "the tests compare floats that are exact by construction or copied unchanged"
+)]
 mod tests {
     use super::*;
 

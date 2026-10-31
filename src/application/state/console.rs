@@ -1,6 +1,9 @@
 /// UI state for the console/log viewer tab: search, level filters, and the
 /// derived filtered-log cache.
-#[allow(clippy::struct_excessive_bools)]
+#[allow(
+    clippy::struct_excessive_bools,
+    reason = "each bool is an independent log-level filter toggle"
+)]
 pub struct ConsoleState {
     /// Sub-string filter for searching the console logs.
     pub search: String,

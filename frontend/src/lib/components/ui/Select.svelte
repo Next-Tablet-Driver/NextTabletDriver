@@ -7,11 +7,10 @@
 </script>
 
 <script generics="T extends string | number" lang="ts">
-
   let {
     value = $bindable<T>(),
     options = [],
-    onchange
+    onchange,
   }: {
     value?: T;
     options?: (T | SelectOption<T>)[];
@@ -20,35 +19,29 @@
 
   const normalizedOptions = $derived(
     options.map((option): SelectOption<T> =>
-      typeof option !== 'object'
-        ? { value: option, label: String(option) }
-        : option
-    )
+      typeof option !== "object" ? { value: option, label: String(option) } : option,
+    ),
   );
 
-  const selectedOption = $derived(
-    normalizedOptions.find((option) => option.value === value)
-  );
+  const selectedOption = $derived(normalizedOptions.find((option) => option.value === value));
 
-  const selectedLabel = $derived(
-    selectedOption?.label ?? String(value)
-  );
+  const selectedLabel = $derived(selectedOption?.label ?? String(value));
 
   let isOpen = $state(false);
   let selectRef = $state<HTMLDivElement | null>(null);
   let dropdownRef = $state<HTMLDivElement | null>(null);
-  let side = $state<'bottom' | 'top'>('bottom');
+  let side = $state<"bottom" | "top">("bottom");
 
-  function calculateSide(): 'bottom' | 'top' {
-    if (selectRef === null) return 'bottom';
+  function calculateSide(): "bottom" | "top" {
+    if (selectRef === null) return "bottom";
     const rect = selectRef.getBoundingClientRect();
     const estimatedHeight = normalizedOptions.length * 32 + 10;
     const spaceBelow = window.innerHeight - rect.bottom;
-    
+
     if (spaceBelow < estimatedHeight && rect.top > spaceBelow) {
-      return 'top';
+      return "top";
     }
-    return 'bottom';
+    return "bottom";
   }
 
   function toggleOpen(event: MouseEvent): void {
@@ -79,18 +72,18 @@
 
   function handleKeydown(event: KeyboardEvent): void {
     switch (event.key) {
-      case 'Escape':
+      case "Escape":
         event.preventDefault();
         isOpen = false;
         break;
 
-      case 'Enter':
-      case ' ':
+      case "Enter":
+      case " ":
         event.preventDefault();
         isOpen = !isOpen;
         break;
 
-      case 'ArrowDown':
+      case "ArrowDown":
         event.preventDefault();
 
         if (!isOpen) {
@@ -101,7 +94,7 @@
         }
         break;
 
-      case 'ArrowUp':
+      case "ArrowUp":
         event.preventDefault();
 
         if (!isOpen) {
@@ -115,23 +108,19 @@
   }
 
   function moveSelection(direction: number): void {
-    const enabledOptions = normalizedOptions.filter(
-      (option) => option.disabled !== true
-    );
+    const enabledOptions = normalizedOptions.filter((option) => option.disabled !== true);
 
     if (enabledOptions.length === 0) return;
 
-    const currentIndex = enabledOptions.findIndex(
-      (option) => option.value === value
-    );
+    const currentIndex = enabledOptions.findIndex((option) => option.value === value);
 
     const nextIndex =
       currentIndex === -1
         ? 0
-        : (currentIndex + direction + enabledOptions.length) %
-          enabledOptions.length;
+        : (currentIndex + direction + enabledOptions.length) % enabledOptions.length;
 
-    value = enabledOptions[nextIndex].value;
+    const next = enabledOptions[nextIndex];
+    if (next !== undefined) value = next.value;
   }
 </script>
 
@@ -173,8 +162,12 @@
       bind:this={dropdownRef}
       class="dropdown"
       data-side={side}
-      onclick={(event) => { event.stopPropagation(); }}
-      onkeydown={(event) => { event.stopPropagation(); }}
+      onclick={(event) => {
+        event.stopPropagation();
+      }}
+      onkeydown={(event) => {
+        event.stopPropagation();
+      }}
       role="listbox"
       tabindex="-1"
     >
@@ -185,7 +178,9 @@
           class:selected={option.value === value}
           aria-selected={option.value === value}
           disabled={option.disabled}
-          onclick={(event) => { selectOption(option, event); }}
+          onclick={(event) => {
+            selectOption(option, event);
+          }}
           role="option"
           type="button"
         >
@@ -194,12 +189,7 @@
           </span>
 
           {#if option.value === value}
-            <svg
-              class="check"
-              aria-hidden="true"
-              fill="none"
-              viewBox="0 0 16 16"
-            >
+            <svg class="check" aria-hidden="true" fill="none" viewBox="0 0 16 16">
               <path
                 d="M3 8L6.5 11.5L13 4.5"
                 stroke="currentColor"
@@ -314,12 +304,12 @@
     animation: dropdown-in var(--transition-fast) ease-out;
   }
 
-  .dropdown[data-side='bottom'] {
+  .dropdown[data-side="bottom"] {
     top: calc(100% + 3px);
     transform-origin: top;
   }
 
-  .dropdown[data-side='top'] {
+  .dropdown[data-side="top"] {
     bottom: calc(100% + 3px);
     transform-origin: bottom;
   }

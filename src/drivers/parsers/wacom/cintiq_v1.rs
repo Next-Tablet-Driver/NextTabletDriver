@@ -2,11 +2,13 @@ use super::intuos_v1::IntuosV1Parser;
 use crate::drivers::TabletData;
 use crate::drivers::parsers::ReportParser;
 
+/// Parser for Wacom Cintiq V1 tablets, a port of the `CintiqV1ReportParser` of `OpenTabletDriver`.
 pub struct CintiqV1Parser {
     inner_v1: IntuosV1Parser,
 }
 
 impl CintiqV1Parser {
+    /// Creates a parser with its initial state.
     #[must_use]
     pub const fn new() -> Self {
         Self {
@@ -71,7 +73,10 @@ impl ReportParser for CintiqV1Parser {
 }
 
 #[cfg(test)]
-#[allow(clippy::float_cmp)]
+#[allow(
+    clippy::float_cmp,
+    reason = "the tests compare floats that are exact by construction or copied unchanged"
+)]
 mod tests {
     use super::*;
     use crate::drivers::TabletStatus;
@@ -105,7 +110,8 @@ mod tests {
 
     #[test]
     fn every_express_key_bit_lands_on_its_own_button() {
-        // b5 bit 0 is button 0, b6 bits 0..7 are buttons 1..8; only eight buttons fit in the output.
+        // b5 bit 0 is button 0, b6 bits 0..7 are buttons 1..8; only eight buttons fit in the
+        // output.
         for bit in 0..8u32 {
             let data = [0x0C, 0, 0, 0, 0, 0, 1u8 << bit, 0, 0, 0];
             let parsed = CintiqV1Parser::new().parse(&data).unwrap();

@@ -1,12 +1,12 @@
 <script lang="ts">
-  import type { Snippet } from 'svelte';
+  import type { Snippet } from "svelte";
 
-  const { 
-      muted = false,
-      children
+  const {
+    muted = false,
+    children,
   }: {
-      muted?: boolean,
-      children: Snippet
+    muted?: boolean;
+    children: Snippet;
   } = $props();
 </script>
 

@@ -1,6 +1,7 @@
 use crate::drivers::TabletData;
 use crate::drivers::parsers::ReportParser;
 
+/// Parser for Lifetec tablets, a port of the `LifetecReportParser` of `OpenTabletDriver`.
 pub struct LifetecParser;
 
 impl ReportParser for LifetecParser {
@@ -45,7 +46,10 @@ impl ReportParser for LifetecParser {
 }
 
 #[cfg(test)]
-#[allow(clippy::float_cmp)]
+#[allow(
+    clippy::float_cmp,
+    reason = "the tests compare floats that are exact by construction or copied unchanged"
+)]
 mod tests {
     use super::*;
 

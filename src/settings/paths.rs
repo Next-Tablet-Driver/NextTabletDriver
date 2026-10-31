@@ -6,9 +6,11 @@ use std::path::PathBuf;
 
 #[cfg(test)]
 thread_local! {
-    static TEST_SETTINGS_DIR: std::cell::RefCell<Option<PathBuf>> = const { std::cell::RefCell::new(None) };
+    static TEST_SETTINGS_DIR: std::cell::RefCell<Option<PathBuf>> =
+        const { std::cell::RefCell::new(None) };
 }
 
+/// Redirects the settings folder to `path` for the current test thread.
 #[cfg(test)]
 pub fn set_test_settings_dir(path: PathBuf) {
     TEST_SETTINGS_DIR.with(|dir| {
@@ -16,6 +18,7 @@ pub fn set_test_settings_dir(path: PathBuf) {
     });
 }
 
+/// Returns the folder where profiles, sessions and preferences are stored.
 #[must_use]
 pub fn get_settings_dir() -> PathBuf {
     #[cfg(test)]
@@ -110,7 +113,10 @@ pub fn migrate_profiles_to_subdir() {
 }
 
 #[cfg(test)]
-#[allow(clippy::float_cmp)]
+#[allow(
+    clippy::float_cmp,
+    reason = "the tests compare floats that are exact by construction or copied unchanged"
+)]
 mod tests {
     use super::*;
 

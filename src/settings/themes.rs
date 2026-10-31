@@ -20,6 +20,7 @@ pub const MAX_THEME_FILES: usize = 100;
 pub struct ThemeFile {
     /// Stable id derived from the file name; what `custom:<id>` refers to.
     pub id: String,
+    /// File name of the theme in the themes folder.
     pub file_name: String,
     /// Raw file content, parsed and validated by the frontend.
     pub content: String,
@@ -166,7 +167,8 @@ pub fn list_theme_files() -> Vec<ThemeFile> {
     for path in paths.into_iter().take(MAX_THEME_FILES) {
         match read_theme(&path) {
             Ok(theme) if themes.iter().any(|t| t.id == theme.id) => {
-                log::warn!(target: "Theme", "Skipping {}: another theme already uses the id '{}'", theme.file_name, theme.id);
+                log::warn!(target: "Theme", "Skipping {}: another theme already uses the id \
+                    '{}'", theme.file_name, theme.id);
             }
             Ok(theme) => themes.push(theme),
             Err(e) => log::warn!(target: "Theme", "Skipping theme file {}: {e}", path.display()),

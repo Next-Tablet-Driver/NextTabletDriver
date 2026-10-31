@@ -1,5 +1,7 @@
 use crate::drivers::TabletData;
 
+/// Decodes the standard XP-Pen pen report: a report ID, a status byte, then 16-bit little-endian X,
+/// Y and pressure. Returns `None` for a shorter report.
 #[must_use]
 pub fn parse(data: &[u8]) -> Option<TabletData> {
     match data {
@@ -58,7 +60,10 @@ pub fn parse(data: &[u8]) -> Option<TabletData> {
 }
 
 #[cfg(test)]
-#[allow(clippy::float_cmp)]
+#[allow(
+    clippy::float_cmp,
+    reason = "the tests compare floats that are exact by construction or copied unchanged"
+)]
 mod tests {
     use super::*;
     use crate::drivers::TabletStatus;

@@ -10,7 +10,9 @@ use super::{REQUEST_SIZE, RESPONSE_SIZE};
 pub enum Request {
     /// Liveness check: does nothing but confirms an owner is listening.
     Ping,
+    /// Switches the driver mode.
     SetMode(DriverMode),
+    /// Replaces the active area.
     SetActiveArea(ActiveArea),
 }
 
@@ -112,6 +114,7 @@ impl Request {
 /// The owner's reply to a [`Request`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Response {
+    /// The owner applied the request.
     Ok,
     /// The owner received the request but couldn't decode or apply it.
     Rejected,
@@ -142,7 +145,9 @@ impl Response {
 /// loop each provide their own implementation that applies the write through
 /// the exact same validation/config path a local caller would use.
 pub trait CommandHandler: Send + Sync {
+    /// Applies a mode change that a reader requested.
     fn set_mode(&self, mode: DriverMode);
+    /// Applies an active area change that a reader requested.
     fn set_active_area(&self, area: ActiveArea);
 }
 

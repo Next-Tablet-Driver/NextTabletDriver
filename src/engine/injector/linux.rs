@@ -1,3 +1,5 @@
+//! Linux injection through virtual `/dev/uinput` devices (an absolute pen and a relative mouse).
+
 use crate::core::input::{Key, MouseButton};
 use evdev::{
     AbsInfo, AbsoluteAxisCode, AttributeSet, BusType, InputEvent, InputId, KeyCode,
@@ -12,6 +14,7 @@ const ABS_MAX: i32 = 32767;
 /// Individual tablets may have different maximums, but we normalize to this range.
 const PRESSURE_MAX: i32 = 8191;
 
+/// Sends the processed pen frames to the kernel as events of two `/dev/uinput` devices.
 pub struct Injector {
     /// The virtual tablet device for absolute coordinate injection.
     /// Registered as a pen digitizer in the kernel via `/dev/uinput`.
@@ -47,11 +50,14 @@ pub struct Injector {
     last_known_display_count: Option<usize>,
 }
 
-const UINPUT_HELP: &str = "Failed to open /dev/uinput. This typically means the uinput kernel module is not loaded or you don't have permission to write to it.
-1. Load the module: sudo modprobe uinput
-2. Allow the 'input' group to use it: echo 'KERNEL==\"uinput\", GROUP=\"input\", MODE=\"0660\", OPTIONS+=\"static_node=uinput\"' | sudo tee /etc/udev/rules.d/99-uinput.rules
-3. Add your user to the group: sudo usermod -aG input $USER
-4. Log out/in, or run: sudo udevadm control --reload-rules && sudo udevadm trigger --sysname-match=uinput";
+const UINPUT_HELP: &str = "Failed to open /dev/uinput. This typically means the uinput kernel \
+module is not loaded or you don't have permission to write to it.\n\
+1. Load the module: sudo modprobe uinput\n\
+2. Allow the 'input' group to use it: echo 'KERNEL==\"uinput\", GROUP=\"input\", MODE=\"0660\", \
+OPTIONS+=\"static_node=uinput\"' | sudo tee /etc/udev/rules.d/99-uinput.rules\n\
+3. Add your user to the group: sudo usermod -aG input $USER\n\
+4. Log out/in, or run: sudo udevadm control --reload-rules \
+&& sudo udevadm trigger --sysname-match=uinput";
 
 /// Errors produced while creating the virtual input devices.
 #[derive(Debug, thiserror::Error)]
@@ -138,7 +144,8 @@ impl Injector {
             .build()
             .map_err(setup("create virtual tablet device"))?;
 
-        log::info!(target: "Injector", "Virtual tablet device created: NextTabletDriver Virtual Pen");
+        log::info!(target: "Injector", "Virtual tablet device created: NextTabletDriver Virtual \
+            Pen");
 
         let mut mouse_keys = AttributeSet::<KeyCode>::new();
         mouse_keys.insert(KeyCode::BTN_LEFT);
@@ -161,7 +168,8 @@ impl Injector {
             .build()
             .map_err(setup("create virtual mouse device"))?;
 
-        log::info!(target: "Injector", "Virtual mouse device created: NextTabletDriver Virtual Mouse");
+        log::info!(target: "Injector", "Virtual mouse device created: NextTabletDriver Virtual \
+            Mouse");
 
         let mut keyboard_keys = AttributeSet::<KeyCode>::new();
         for &key in Key::ALL {
@@ -176,7 +184,8 @@ impl Injector {
             .build()
             .map_err(setup("create virtual keyboard device"))?;
 
-        log::info!(target: "Injector", "Virtual keyboard device created: NextTabletDriver Virtual Keyboard");
+        log::info!(target: "Injector", "Virtual keyboard device created: NextTabletDriver Virtual \
+            Keyboard");
 
         let now = std::time::Instant::now();
         Ok(Self {
@@ -229,7 +238,8 @@ impl Injector {
                 {
                     log::info!(
                         target: "Injector",
-                        "Screen bounds resolved from {display_count} display(s): desktop spans ({mx}, {my}) to ({ax}, {ay})"
+                        "Screen bounds resolved from {display_count} display(s): desktop spans \
+                            ({mx}, {my}) to ({ax}, {ay})"
                     );
                 }
 
@@ -258,12 +268,14 @@ impl Injector {
         let (min_x, min_y, max_x, max_y) = self.screen_bounds;
         log::warn!(
             target: "Injector",
-            "{reason}. AREA mapping will use the hardcoded fallback area ({min_x}, {min_y}) to ({max_x}, {max_y}) \
-            until display geometry becomes available. On Wayland this commonly happens when the compositor \
-            does not expose output geometry through the standard wl_output protocol."
+            "{reason}. AREA mapping will use the hardcoded fallback area ({min_x}, {min_y}) to \
+            ({max_x}, {max_y}) until display geometry becomes available. On Wayland this \
+            commonly happens when the compositor does not expose output geometry through the \
+            standard wl_output protocol."
         );
     }
 
+    /// Reports the pen entering or leaving the tablet range, only when the state changes.
     pub fn set_proximity(&mut self, in_proximity: bool) {
         if Some(in_proximity) == self.last_proximity {
             return;
@@ -293,7 +305,10 @@ impl Injector {
     /// * `u` / `v` - Normalized UV coordinates in [0.0, 1.0] from the pipeline.
     /// * `pressure` - Normalized pressure.
     /// * `tilt_x` / `tilt_y` - Absolute tilt values.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "implements the `InputSink` method of the same signature"
+    )]
     pub fn move_absolute(
         &mut self,
         target_x: f32,

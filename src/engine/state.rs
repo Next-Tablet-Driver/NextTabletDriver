@@ -21,7 +21,8 @@ impl<T> LockRecoveryExt<T> for LockResult<T> {
         match self {
             Ok(guard) => guard,
             Err(poisoned) => {
-                log::error!(target: "State", "CRITICAL: Lock '{lock_name}' poisoned! Using potentially corrupted guard.");
+                log::error!(target: "State", "CRITICAL: Lock '{lock_name}' poisoned! Using \
+                    potentially corrupted guard.");
                 poisoned.into_inner()
             }
         }
@@ -30,6 +31,7 @@ impl<T> LockRecoveryExt<T> for LockResult<T> {
 
 /// Extension trait for self-healing transient write locks.
 pub trait WriteRecoverExt {
+    /// The lock guard that [`WriteRecoverExt::unwrap_or_reset`] hands back.
     type Guard;
     /// Extracts the guard and explicitly overwrites the corrupted data with `Default::default()`.
     /// Used for transient state like tablet coordinates, stats, or device metadata.
@@ -42,7 +44,8 @@ impl<'a, T: Default> WriteRecoverExt for LockResult<std::sync::RwLockWriteGuard<
         match self {
             Ok(guard) => guard,
             Err(poisoned) => {
-                log::warn!(target: "State", "Write lock '{lock_name}' poisoned! Repairing by resetting to default state.");
+                log::warn!(target: "State", "Write lock '{lock_name}' poisoned! Repairing by \
+                    resetting to default state.");
                 let mut guard = poisoned.into_inner();
                 *guard = T::default();
                 guard
@@ -57,7 +60,8 @@ impl<'a, T: Default> WriteRecoverExt for LockResult<std::sync::MutexGuard<'a, T>
         match self {
             Ok(guard) => guard,
             Err(poisoned) => {
-                log::warn!(target: "State", "Mutex '{lock_name}' poisoned! Repairing by resetting to default state.");
+                log::warn!(target: "State", "Mutex '{lock_name}' poisoned! Repairing by resetting \
+                    to default state.");
                 let mut guard = poisoned.into_inner();
                 *guard = T::default();
                 guard
@@ -66,21 +70,30 @@ impl<'a, T: Default> WriteRecoverExt for LockResult<std::sync::MutexGuard<'a, T>
     }
 }
 
+/// State of the input engine.
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub enum EngineStatus {
+    /// The engine is running.
     #[default]
     Running,
+    /// The engine stopped; the text says why.
     Failed(String),
 }
 
 /// An atomic snapshot of device properties.
 #[derive(Clone, Debug, PartialEq)]
 pub struct DeviceState {
+    /// Name of the connected tablet.
     pub name: String,
+    /// USB vendor ID of the connected tablet.
     pub vid: u16,
+    /// USB product ID of the connected tablet.
     pub pid: u16,
+    /// Width and height of the tablet surface, in millimetres.
     pub physical_size: (f32, f32),
+    /// Largest X and Y the sensor reports, in raw units.
     pub hardware_size: (f32, f32),
+    /// Largest raw pressure the tablet reports.
     pub max_pressure: f32,
     /// Number of buttons on the pen (0 when the tablet description does not say).
     pub pen_button_count: u8,
@@ -121,6 +134,7 @@ impl Default for ConfigState {
 }
 
 impl ConfigState {
+    /// Creates the state with the default configuration and version 0.
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -140,7 +154,8 @@ pub struct PipelineState {
     /// tilt, tip state). Published by whichever loop drives the pipeline, the desktop
     /// `tablet_manager` or the SDK's embedded engine.
     pub processed_frame: RwLock<ProcessedFrame>,
-    /// A rapidly incrementing counter of USB packets received, used by the UI to calculate real-time Hz.
+    /// A rapidly incrementing counter of USB packets received, used by the UI to calculate
+    /// real-time Hz.
     pub packet_count: AtomicU32,
     /// Tracking statistics for developer debugging (e.g., dropped packets, parse errors).
     pub stats: RwLock<crate::drivers::DriverStats>,
@@ -153,6 +168,7 @@ impl Default for PipelineState {
 }
 
 impl PipelineState {
+    /// Creates the state with empty tablet data and an empty processed frame.
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -166,7 +182,8 @@ impl PipelineState {
 
 /// Application/engine lifecycle flags, independent of tablet data or configuration.
 pub struct LifecycleState {
-    /// Flag indicating if the user has never launched the application before (triggers welcome modal).
+    /// Flag indicating if the user has never launched the application before (triggers welcome
+    /// modal).
     pub is_first_run: RwLock<bool>,
     /// Status of the background polling engine (e.g. HID API initialization failure).
     pub engine_status: RwLock<EngineStatus>,
@@ -185,6 +202,7 @@ impl Default for LifecycleState {
 }
 
 impl LifecycleState {
+    /// Creates the state: not the first run, engine running, no shutdown requested, window visible.
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -203,6 +221,7 @@ impl Default for SharedState {
 }
 
 impl SharedState {
+    /// Creates the shared state with default values.
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -214,6 +233,7 @@ impl SharedState {
         }
     }
 
+    /// Creates the default shared state, for tests.
     #[must_use]
     pub fn test_default() -> Self {
         Self::new()
@@ -244,7 +264,10 @@ pub struct SharedState {
 }
 
 #[cfg(test)]
-#[allow(clippy::float_cmp)]
+#[allow(
+    clippy::float_cmp,
+    reason = "the tests compare floats that are exact by construction or copied unchanged"
+)]
 mod tests {
     use super::*;
     use std::sync::{Arc, Mutex, RwLock};
@@ -267,7 +290,8 @@ mod tests {
 
         // Ensure the underlying data is actually reset
         drop(guard);
-        // The lock remains poisoned in the OS-level primitive; use unwrap_or_log to access the inner value.
+        // The lock remains poisoned in the OS-level primitive; use unwrap_or_log to access the
+        // inner value.
         let inner = m.lock().unwrap_or_log("test_mutex_check");
         assert_eq!(*inner, String::default());
         drop(inner);

@@ -1,6 +1,7 @@
 use crate::drivers::TabletData;
 use crate::drivers::parsers::ReportParser;
 
+/// Parser for the Wacom Bamboo Pad, a port of the `BambooPadReportParser` of `OpenTabletDriver`.
 pub struct BambooPadParser;
 
 impl ReportParser for BambooPadParser {
@@ -63,7 +64,10 @@ impl ReportParser for BambooPadParser {
 }
 
 #[cfg(test)]
-#[allow(clippy::float_cmp)]
+#[allow(
+    clippy::float_cmp,
+    reason = "the tests compare floats that are exact by construction or copied unchanged"
+)]
 mod tests {
     use super::*;
     use crate::drivers::TabletStatus;

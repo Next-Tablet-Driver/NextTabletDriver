@@ -1,6 +1,8 @@
 use crate::drivers::TabletData;
 use crate::drivers::parsers::ReportParser;
 
+/// Parser for the auxiliary reports of Wacom Bamboo V2 tablets, a port of the
+/// `BambooV2AuxReportParser` of `OpenTabletDriver`.
 pub struct BambooV2AuxParser;
 
 impl ReportParser for BambooV2AuxParser {
@@ -22,7 +24,10 @@ impl ReportParser for BambooV2AuxParser {
 }
 
 #[cfg(test)]
-#[allow(clippy::float_cmp)]
+#[allow(
+    clippy::float_cmp,
+    reason = "the tests compare floats that are exact by construction or copied unchanged"
+)]
 mod tests {
     use super::*;
     use crate::drivers::TabletStatus;

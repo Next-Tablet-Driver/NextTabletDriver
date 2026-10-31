@@ -31,6 +31,10 @@
 //!     cargo bench --bench hot_path
 //!
 //! Results are recorded in `qa/benches/RESULTS_hot_path.md`.
+#![allow(
+    clippy::print_stdout,
+    reason = "the benchmark prints its tail-latency table"
+)]
 
 use criterion::{Criterion, Throughput, criterion_group};
 use crossbeam_channel::bounded;

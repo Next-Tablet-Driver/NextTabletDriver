@@ -26,7 +26,13 @@ use linux as os;
 /// The wrapped platform handle is never read again after acquisition; it's
 /// kept purely so that dropping this guard (process exit, or an explicit
 /// `drop`) releases the lock via its `Drop` impl.
-pub struct HidOwnerGuard(#[allow(dead_code)] os::OwnerHandle);
+pub struct HidOwnerGuard(
+    #[allow(
+        dead_code,
+        reason = "held only so that dropping the guard releases the lock"
+    )]
+    os::OwnerHandle,
+);
 
 /// Attempts to become the HID owner.
 ///

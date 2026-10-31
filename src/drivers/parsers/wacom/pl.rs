@@ -3,12 +3,14 @@ use crate::drivers::parsers::ReportParser;
 use crate::engine::state::{LockRecoveryExt, WriteRecoverExt};
 use std::sync::Mutex;
 
+/// Parser for Wacom PL tablets, a port of the `PLReportParser` of `OpenTabletDriver`.
 pub struct PLParser {
     initial_eraser: Mutex<bool>,
     last_report_out_of_range: Mutex<bool>,
 }
 
 impl PLParser {
+    /// Creates a parser with its initial state.
     #[must_use]
     pub const fn new() -> Self {
         Self {
@@ -93,7 +95,10 @@ impl ReportParser for PLParser {
 }
 
 #[cfg(test)]
-#[allow(clippy::float_cmp)]
+#[allow(
+    clippy::float_cmp,
+    reason = "the tests compare floats that are exact by construction or copied unchanged"
+)]
 mod tests {
     use super::*;
     use crate::drivers::TabletStatus;

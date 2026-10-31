@@ -1,0 +1,9 @@
+# Settings of actions/dependency-review-action (see .github/workflows/security.yml).
+fail-on-severity: moderate
+
+# Advisories that cannot be fixed by an upgrade of ours.
+allow-ghsas:
+  # glib 0.18.5 (RUSTSEC-2024-0429): the gtk3-rs bindings that Tauri 2 uses on Linux stay on this
+  # version, and the unsound `VariantStrIter` is not used by this project. Remove this line when
+  # Tauri moves to gtk4-rs or a patched glib 0.18.
+  - GHSA-wrw7-89jp-8q8g

@@ -91,7 +91,8 @@ fn run_manager_loop(
             break;
         }
 
-        log::warn!(target: "TabletManager", "Engine context terminated, restarting in {restart_delay:?}...");
+        log::warn!(target: "TabletManager", "Engine context terminated, restarting in \
+            {restart_delay:?}...");
         thread::sleep(restart_delay);
     }
 }
@@ -129,7 +130,10 @@ fn manager_iteration_with(
 }
 
 #[cfg(test)]
-#[allow(clippy::float_cmp)]
+#[allow(
+    clippy::float_cmp,
+    reason = "the tests compare floats that are exact by construction or copied unchanged"
+)]
 mod tests {
     use super::*;
     use crossbeam_channel::bounded;

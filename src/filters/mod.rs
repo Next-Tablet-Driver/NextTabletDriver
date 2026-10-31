@@ -137,7 +137,13 @@ impl FilterPipeline {
 }
 
 #[cfg(test)]
-#[allow(clippy::float_cmp, clippy::undocumented_unsafe_blocks)]
+#[allow(
+    clippy::float_cmp,
+    clippy::undocumented_unsafe_blocks,
+    unsafe_code,
+    reason = "the tests drive a mock plugin through the C ABI and compare floats it returns \
+        unchanged"
+)]
 mod tests {
     use super::*;
     use crate::core::config::models::{DynamicPluginSettings, MappingConfig};

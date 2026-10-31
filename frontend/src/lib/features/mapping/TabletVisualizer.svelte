@@ -1,7 +1,8 @@
 <script lang="ts">
+  import { log } from "../../infrastructure/log";
   import { onMount } from "svelte";
   import { getTabletStatus } from "../../infrastructure/tauri/commands";
-  import { events } from "../../infrastructure/events";
+  import { events } from "../../infrastructure/tauri/events";
   import type { MappingState } from "./mapping-state.svelte";
   import Title from "../../components/ui/Title.svelte";
   import Checkbox from "../../components/ui/Checkbox.svelte";
@@ -52,15 +53,17 @@
             tabletMaxY = tabletStatus.max_y ?? tabletMaxY;
           }
         } catch (e) {
-          console.warn("Could not load tablet data", e);
+          log.warn("Could not load tablet data", e);
         }
       };
 
       await updateTabletData();
-      cleanupDeviceUnlisten = await events.onDeviceChanged(() => { void updateTabletData(); });
+      cleanupDeviceUnlisten = await events.onDeviceChanged(() => {
+        void updateTabletData();
+      });
 
       cleanupUnlisten = await events.onTabletEvent((data): void => {
-        const payload = data as { status?: string, x: number, y: number } | null;
+        const payload = data as { status?: string; x: number; y: number } | null;
         if (payload?.status !== undefined) {
           clearTimeout(penTimeout);
 
@@ -88,7 +91,8 @@
 
     return () => {
       if (cleanupUnlisten !== null && cleanupUnlisten !== undefined) cleanupUnlisten();
-      if (cleanupDeviceUnlisten !== null && cleanupDeviceUnlisten !== undefined) cleanupDeviceUnlisten();
+      if (cleanupDeviceUnlisten !== null && cleanupDeviceUnlisten !== undefined)
+        cleanupDeviceUnlisten();
       clearTimeout(penTimeout);
     };
   });
@@ -112,9 +116,7 @@
   function onTabletPointerMove(e: PointerEvent): void {
     if (!isDraggingTablet || vizTabletContainer === undefined) return;
 
-    const canvas = vizTabletContainer.querySelector(
-      ".tablet-canvas",
-    );
+    const canvas = vizTabletContainer.querySelector(".tablet-canvas");
     if (canvas === null) return;
 
     const canvasWidth = canvas.getBoundingClientRect().width;
@@ -125,17 +127,13 @@
 
     mapping.tabletX =
       Math.round(
-        Math.max(
-          mapping.tabletW / 2,
-          Math.min(startTabletX + dx, physW - mapping.tabletW / 2),
-        ) * 100,
+        Math.max(mapping.tabletW / 2, Math.min(startTabletX + dx, physW - mapping.tabletW / 2)) *
+          100,
       ) / 100;
     mapping.tabletY =
       Math.round(
-        Math.max(
-          mapping.tabletH / 2,
-          Math.min(startTabletY + dy, physH - mapping.tabletH / 2),
-        ) * 100,
+        Math.max(mapping.tabletH / 2, Math.min(startTabletY + dy, physH - mapping.tabletH / 2)) *
+          100,
       ) / 100;
   }
 
@@ -149,9 +147,7 @@
     change: (e: Event) => void;
   }
 
-  function makeHandler(
-    applyFn: (val: number, input: HTMLInputElement) => void,
-  ): HandlerObject {
+  function makeHandler(applyFn: (val: number, input: HTMLInputElement) => void): HandlerObject {
     return {
       input: (e: Event) => {
         const el = e.currentTarget as HTMLInputElement;
@@ -167,16 +163,13 @@
 
   const wHandlers = makeHandler((w, input) => {
     if (!Number.isNaN(w)) {
-      const clampedW =
-        physW > 0 ? Math.max(1.0, Math.min(w, physW)) : Math.max(1.0, w);
+      const clampedW = physW > 0 ? Math.max(1.0, Math.min(w, physW)) : Math.max(1.0, w);
       if (mapping.forceAspectRatio && mapping.tabletH > 0) {
         const ratio = mapping.tabletW / mapping.tabletH;
         mapping.tabletW = Math.round(clampedW * 100) / 100;
         mapping.tabletH =
           physH > 0
-            ? Math.round(
-                Math.max(1.0, Math.min(clampedW / ratio, physH)) * 100,
-              ) / 100
+            ? Math.round(Math.max(1.0, Math.min(clampedW / ratio, physH)) * 100) / 100
             : Math.round(Math.max(1.0, clampedW / ratio) * 100) / 100;
       } else {
         mapping.tabletW = Math.round(clampedW * 100) / 100;
@@ -184,18 +177,14 @@
       if (physW > 0)
         mapping.tabletX =
           Math.round(
-            Math.max(
-              mapping.tabletW / 2,
-              Math.min(mapping.tabletX, physW - mapping.tabletW / 2),
-            ) * 100,
+            Math.max(mapping.tabletW / 2, Math.min(mapping.tabletX, physW - mapping.tabletW / 2)) *
+              100,
           ) / 100;
       if (physH > 0)
         mapping.tabletY =
           Math.round(
-            Math.max(
-              mapping.tabletH / 2,
-              Math.min(mapping.tabletY, physH - mapping.tabletH / 2),
-            ) * 100,
+            Math.max(mapping.tabletH / 2, Math.min(mapping.tabletY, physH - mapping.tabletH / 2)) *
+              100,
           ) / 100;
     }
     input.value = String(mapping.tabletW);
@@ -203,16 +192,13 @@
 
   const hHandlers = makeHandler((h, input) => {
     if (!Number.isNaN(h)) {
-      const clampedH =
-        physH > 0 ? Math.max(1.0, Math.min(h, physH)) : Math.max(1.0, h);
+      const clampedH = physH > 0 ? Math.max(1.0, Math.min(h, physH)) : Math.max(1.0, h);
       if (mapping.forceAspectRatio && mapping.tabletH > 0) {
         const ratio = mapping.tabletW / mapping.tabletH;
         mapping.tabletH = Math.round(clampedH * 100) / 100;
         mapping.tabletW =
           physW > 0
-            ? Math.round(
-                Math.max(1.0, Math.min(clampedH * ratio, physW)) * 100,
-              ) / 100
+            ? Math.round(Math.max(1.0, Math.min(clampedH * ratio, physW)) * 100) / 100
             : Math.round(Math.max(1.0, clampedH * ratio) * 100) / 100;
       } else {
         mapping.tabletH = Math.round(clampedH * 100) / 100;
@@ -220,18 +206,14 @@
       if (physW > 0)
         mapping.tabletX =
           Math.round(
-            Math.max(
-              mapping.tabletW / 2,
-              Math.min(mapping.tabletX, physW - mapping.tabletW / 2),
-            ) * 100,
+            Math.max(mapping.tabletW / 2, Math.min(mapping.tabletX, physW - mapping.tabletW / 2)) *
+              100,
           ) / 100;
       if (physH > 0)
         mapping.tabletY =
           Math.round(
-            Math.max(
-              mapping.tabletH / 2,
-              Math.min(mapping.tabletY, physH - mapping.tabletH / 2),
-            ) * 100,
+            Math.max(mapping.tabletH / 2, Math.min(mapping.tabletY, physH - mapping.tabletH / 2)) *
+              100,
           ) / 100;
     }
     input.value = String(mapping.tabletH);
@@ -242,10 +224,7 @@
       mapping.tabletX =
         physW > 0
           ? Math.round(
-              Math.max(
-                mapping.tabletW / 2,
-                Math.min(x, physW - mapping.tabletW / 2),
-              ) * 100,
+              Math.max(mapping.tabletW / 2, Math.min(x, physW - mapping.tabletW / 2)) * 100,
             ) / 100
           : Math.round(x * 100) / 100;
     }
@@ -257,10 +236,7 @@
       mapping.tabletY =
         physH > 0
           ? Math.round(
-              Math.max(
-                mapping.tabletH / 2,
-                Math.min(y, physH - mapping.tabletH / 2),
-              ) * 100,
+              Math.max(mapping.tabletH / 2, Math.min(y, physH - mapping.tabletH / 2)) * 100,
             ) / 100
           : Math.round(y * 100) / 100;
     }
@@ -285,13 +261,13 @@
     bind:clientWidth={tabletAreaW}
     bind:clientHeight={tabletAreaH}
   >
-    <div
-      style:width="{tabletCanvasW}px" style:height="{tabletCanvasH}px"
-      class="tablet-canvas"
-    >
+    <div style:width="{tabletCanvasW}px" style:height="{tabletCanvasH}px" class="tablet-canvas">
       <div
-        style:left="{((mapping.tabletX - mapping.tabletW / 2) / physW) *
-          100}%" style:top="{((mapping.tabletY - mapping.tabletH / 2) / physH) * 100}%" style:height="{(mapping.tabletH / physH) * 100}%" style:transform="rotate({mapping.tabletRotation}deg)" style:width="{(mapping.tabletW / physW) * 100}%"
+        style:left="{((mapping.tabletX - mapping.tabletW / 2) / physW) * 100}%"
+        style:top="{((mapping.tabletY - mapping.tabletH / 2) / physH) * 100}%"
+        style:height="{(mapping.tabletH / physH) * 100}%"
+        style:transform="rotate({mapping.tabletRotation}deg)"
+        style:width="{(mapping.tabletW / physW) * 100}%"
         class="active-area"
         onpointercancel={onTabletPointerUp}
         onpointerdown={onTabletPointerDown}
@@ -301,18 +277,15 @@
       >
         {#if mapping.showOsuPlayfield}
           <div
-            style:width="{((mapping.targetH * OSU_PLAYFIELD_ASPECT) /
-              mapping.targetW) *
-              100}%" style:height="{(OSU_MENU_INNER_H / mapping.targetH) * 100}%" style:left="{50 -
-              ((mapping.targetH * OSU_PLAYFIELD_ASPECT) / mapping.targetW) *
-                50}%" style:top="{50 - (OSU_MENU_Y_OFFSET / mapping.targetH) * 100}%"
+            style:width="{((mapping.targetH * OSU_PLAYFIELD_ASPECT) / mapping.targetW) * 100}%"
+            style:height="{(OSU_MENU_INNER_H / mapping.targetH) * 100}%"
+            style:left="{50 - ((mapping.targetH * OSU_PLAYFIELD_ASPECT) / mapping.targetW) * 50}%"
+            style:top="{50 - (OSU_MENU_Y_OFFSET / mapping.targetH) * 100}%"
             class="osu-playfield"
           ></div>
         {/if}
         <div class="ratio-text">
-          {mapping.tabletH !== 0
-            ? (mapping.tabletW / mapping.tabletH).toFixed(4)
-            : "0.0000"}
+          {mapping.tabletH !== 0 ? (mapping.tabletW / mapping.tabletH).toFixed(4) : "0.0000"}
         </div>
         <div class="dimensions">
           <span class="dim-top">{mapping.tabletW.toFixed(2)}mm</span>
@@ -322,9 +295,8 @@
 
       {#if isPenActive}
         <div
-          style:left="{(currentPenX / tabletMaxX) * 100}%" style:top="{(currentPenY /
-            tabletMaxY) *
-            100}%"
+          style:left="{(currentPenX / tabletMaxX) * 100}%"
+          style:top="{(currentPenY / tabletMaxY) * 100}%"
           class="pen-cursor"
         ></div>
       {/if}
@@ -333,18 +305,15 @@
 
   <div class="controls">
     <div
-      style:display="flex" style:gap="var(--spacing-md)" style:justify-content="space-between" style:align-items="center"
+      style:display="flex"
+      style:gap="var(--spacing-md)"
+      style:justify-content="space-between"
+      style:align-items="center"
       class="checkbox-row"
     >
       <div style:display="flex" style:gap="var(--spacing-md)">
-        <Checkbox
-          label="Force Aspect Ratio"
-          bind:checked={mapping.forceAspectRatio}
-        />
-        <Checkbox
-          label="Show Osu!Playfield"
-          bind:checked={mapping.showOsuPlayfield}
-        />
+        <Checkbox label="Force Aspect Ratio" bind:checked={mapping.forceAspectRatio} />
+        <Checkbox label="Show Osu!Playfield" bind:checked={mapping.showOsuPlayfield} />
       </div>
     </div>
 
@@ -423,7 +392,7 @@
     overflow: hidden;
     border: var(--border-width) solid var(--border);
   }
-  
+
   .tablet-canvas {
     position: relative;
     background-color: var(--bg-panel);
@@ -449,7 +418,7 @@
 
   /* Center dot for the active area - Tablet Area */
   .active-area::after {
-    content: "" ;
+    content: "";
     position: absolute;
     top: 50%;
     left: 50%;

@@ -1,24 +1,43 @@
+/// Parser for Acepen tablets.
 pub mod acepen;
+/// Parser for Bosto tablets.
 pub mod bosto;
+/// Parser for tablets that have no dedicated parser.
 pub mod fallback;
+/// Parser for `FlooGoo` tablets.
 pub mod floogoo;
+/// Parsers for Genius tablets.
 pub mod genius;
+/// Parser for Huion tablets (Inspiroy and Giano).
 pub mod huion;
+/// Parser for Lifetec tablets.
 pub mod lifetec;
+/// Parser for `RobotPen` tablets.
 pub mod robotpen;
+/// Parser for tablets whose reports start with a byte to ignore.
 pub mod skip_byte;
+/// Parser for 10moon tablets.
 pub mod tenmoon;
+/// Parsers for UC-Logic tablets.
 pub mod uclogic;
+/// Parsers for Veikk tablets.
 pub mod veikk;
+/// Parser for `ViewSonic` tablets.
 pub mod viewsonic;
+/// Parsers for Wacom tablets.
 pub mod wacom;
+/// Parser for Xencelabs tablets.
 pub mod xencelabs;
+/// Parser for XENX tablets.
 pub mod xenx;
+/// Parsers for XP-Pen tablets.
 pub mod xp_pen;
 
 use crate::drivers::TabletData;
 
+/// Decodes the raw HID reports of one family of tablets into [`TabletData`].
 pub trait ReportParser: Send + Sync {
+    /// Decodes one raw report. Returns `None` when it is not a report this parser understands.
     fn parse(&self, data: &[u8]) -> Option<TabletData>;
 
     /// Returns the static type name of this parser for debugging and testing.
@@ -27,6 +46,8 @@ pub trait ReportParser: Send + Sync {
     }
 }
 
+/// Returns the parser for the C# parser class that a tablet definition names, or the fallback
+/// parser when the name is unknown.
 #[must_use]
 pub fn create_parser(parser_name: &str) -> Box<dyn ReportParser> {
     match parser_name {
@@ -134,7 +155,8 @@ pub fn create_parser(parser_name: &str) -> Box<dyn ReportParser> {
             if !parser_name.is_empty() {
                 log::warn!(
                     target: "Driver",
-                    "Unknown report parser '{parser_name}' specified in configuration. Falling back to FallbackParser."
+                    "Unknown report parser '{parser_name}' specified in configuration. Falling \
+                        back to FallbackParser."
                 );
             }
             Box::new(fallback::FallbackParser)
@@ -242,7 +264,8 @@ mod tests {
             let actual_name = parser.name();
             assert!(
                 actual_name.contains(expected_type),
-                "For input '{input_name}', expected parser containing '{expected_type}', got '{actual_name}'"
+                "For input '{input_name}', expected parser containing '{expected_type}', got \
+                    '{actual_name}'"
             );
         }
     }

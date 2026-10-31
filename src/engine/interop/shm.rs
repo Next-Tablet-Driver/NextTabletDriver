@@ -9,8 +9,12 @@
 //! number of readers in other processes copy out a consistent snapshot
 //! without ever blocking the writer: a reader retries whenever it detects the
 //! writer was mid-publish, instead of taking a mutex.
+#![allow(
+    unsafe_code,
+    reason = "the shared segment is read and written through raw pointers (seqlock)"
+)]
 
-use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::atomic::{AtomicU32, Ordering, fence};
 
 #[cfg(windows)]
 mod windows;
@@ -39,31 +43,50 @@ pub const DEVICE_NAME_CAPACITY: usize = 64;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct SdkPublicState {
+    /// A pen is detected.
     pub is_connected: bool,
     /// Raw `TabletStatus` discriminant.
     pub status: u8,
+    /// Horizontal position inside the active area, from 0 to 1.
     pub u: f32,
+    /// Vertical position inside the active area, from 0 to 1.
     pub v: f32,
+    /// Horizontal position on screen in pixels, or movement since the last packet in relative mode.
     pub screen_x: f32,
+    /// Vertical position on screen in pixels, or movement since the last packet in relative mode.
     pub screen_y: f32,
+    /// Pressure, from 0 to 8191.
     pub pressure: i32,
+    /// Horizontal tilt, in degrees.
     pub tilt_x: i32,
+    /// Vertical tilt, in degrees.
     pub tilt_y: i32,
+    /// Bits of the pen buttons that are pressed.
     pub buttons: u8,
+    /// The tip counts as touching.
     pub is_down: bool,
+    /// The eraser end of the pen is in use.
     pub eraser: bool,
     /// UTF-8 device name, truncated to fit; only the first `device_name_len`
     /// bytes are meaningful.
     pub device_name: [u8; DEVICE_NAME_CAPACITY],
+    /// Number of valid bytes in `device_name`.
     pub device_name_len: u32,
+    /// USB vendor ID of the tablet.
     pub vid: u16,
+    /// USB product ID of the tablet.
     pub pid: u16,
     /// Raw `DriverMode` discriminant.
     pub mode: u8,
+    /// Left edge of the active area, in millimetres.
     pub active_area_x: f32,
+    /// Top edge of the active area, in millimetres.
     pub active_area_y: f32,
+    /// Width of the active area, in millimetres.
     pub active_area_w: f32,
+    /// Height of the active area, in millimetres.
     pub active_area_h: f32,
+    /// Rotation of the active area, in degrees.
     pub active_area_rotation: f32,
     /// Incremented by the owner every time the config changes, so readers
     /// (and command-channel callers) can tell config writes apart from noise.
@@ -147,6 +170,12 @@ impl ShmWriter {
         segment
             .abi_version
             .store(SDK_ABI_VERSION, Ordering::Release);
+        // The segment outlives its owner. A previous owner killed between the two increments of
+        // `publish` leaves an odd counter, which every reader would take for a write in progress.
+        let seq = segment.seq.load(Ordering::Acquire);
+        if seq % 2 != 0 {
+            segment.seq.store(seq.wrapping_add(1), Ordering::Release);
+        }
         Some(Self { mapping })
     }
 
@@ -155,13 +184,18 @@ impl ShmWriter {
         // SAFETY: see `ShmSegment`'s doc comment; this writer is the sole
         // publisher for the lifetime of the mapping.
         let segment = unsafe { &*self.mapping.as_ptr().cast::<ShmSegment>() };
-        segment.seq.fetch_add(1, Ordering::AcqRel);
+        let seq = segment.seq.load(Ordering::Relaxed);
+        segment.seq.store(seq.wrapping_add(1), Ordering::Relaxed);
+        // Keeps the payload stores below from becoming visible before the odd counter: a
+        // release store alone only orders the operations that come before it (weakly ordered
+        // CPUs such as ARM64 reorder the rest).
+        fence(Ordering::Release);
         // SAFETY: exclusive-writer invariant above; readers never dereference
         // this pointer, they only ever copy through it after checking `seq`.
         unsafe {
             *segment.payload.get() = *payload;
         }
-        segment.seq.fetch_add(1, Ordering::Release);
+        segment.seq.store(seq.wrapping_add(2), Ordering::Release);
     }
 }
 
@@ -207,7 +241,9 @@ impl ShmReader {
             // whose consistency is validated by the matching `seq` check
             // below, per the seqlock protocol.
             let snapshot = unsafe { *segment.payload.get() };
-            let after = segment.seq.load(Ordering::Acquire);
+            // Keeps the payload loads above from being delayed past the second counter load.
+            fence(Ordering::Acquire);
+            let after = segment.seq.load(Ordering::Relaxed);
             if before == after {
                 return Some(snapshot);
             }

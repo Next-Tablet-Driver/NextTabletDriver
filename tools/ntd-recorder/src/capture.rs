@@ -8,15 +8,15 @@ use std::fmt::Write as _;
 use std::path::Path;
 
 /// Name of the format, written in every file so other tools can recognise it.
-pub const FORMAT: &str = "ntdcap";
+pub(crate) const FORMAT: &str = "ntdcap";
 /// Version of the layout below. Bump it on any incompatible change.
-pub const FORMAT_VERSION: u32 = 1;
+pub(crate) const FORMAT_VERSION: u32 = 1;
 
 /// How many trailing characters of the serial number are kept.
 const SERIAL_HINT_LEN: usize = 4;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Capture {
+pub(crate) struct Capture {
     pub format: String,
     pub format_version: u32,
     pub tool_version: String,
@@ -27,7 +27,7 @@ pub struct Capture {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct DeviceInfo {
+pub(crate) struct DeviceInfo {
     pub vendor_id: u16,
     pub product_id: u16,
     pub manufacturer: Option<String>,
@@ -39,7 +39,7 @@ pub struct DeviceInfo {
 
 /// One HID interface (collection) of the device. Tablets usually expose several.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct InterfaceInfo {
+pub(crate) struct InterfaceInfo {
     /// Position in this file; `Report::interface` refers to it.
     pub index: usize,
     pub interface_number: i32,
@@ -50,7 +50,7 @@ pub struct InterfaceInfo {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct StepInfo {
+pub(crate) struct StepInfo {
     pub id: String,
     pub instruction: String,
     pub start_ms: u64,
@@ -58,7 +58,7 @@ pub struct StepInfo {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Report {
+pub(crate) struct Report {
     /// Milliseconds since the start of the session.
     pub t_ms: u64,
     pub interface: usize,
@@ -69,7 +69,7 @@ pub struct Report {
 
 /// Lowercase hexadecimal encoding of `bytes`.
 #[must_use]
-pub fn to_hex(bytes: &[u8]) -> String {
+pub(crate) fn to_hex(bytes: &[u8]) -> String {
     bytes
         .iter()
         .fold(String::with_capacity(bytes.len() * 2), |mut out, b| {
@@ -80,7 +80,7 @@ pub fn to_hex(bytes: &[u8]) -> String {
 
 /// Keeps only the end of a serial number, enough to tell two tablets apart but not to identify one.
 #[must_use]
-pub fn serial_hint(serial: &str) -> Option<String> {
+pub(crate) fn serial_hint(serial: &str) -> Option<String> {
     let serial = serial.trim();
     if serial.is_empty() {
         return None;
@@ -94,7 +94,7 @@ pub fn serial_hint(serial: &str) -> Option<String> {
 
 impl Capture {
     #[must_use]
-    pub fn new(device: DeviceInfo) -> Self {
+    pub(crate) fn new(device: DeviceInfo) -> Self {
         Self {
             format: FORMAT.to_owned(),
             format_version: FORMAT_VERSION,
@@ -109,7 +109,7 @@ impl Capture {
     /// Keeps at most `per_step` reports of each step, evenly spaced, so a capture of several
     /// megabytes becomes small enough to commit as a golden file. Order is preserved.
     #[must_use]
-    pub fn trimmed(&self, per_step: usize) -> Self {
+    pub(crate) fn trimmed(&self, per_step: usize) -> Self {
         let mut out = self.clone();
         out.reports.clear();
         for step in 0..self.steps.len() {
@@ -128,7 +128,7 @@ impl Capture {
     ///
     /// # Errors
     /// Returns an error when the file cannot be written.
-    pub fn write(&self, path: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    pub(crate) fn write(&self, path: &Path) -> Result<(), Box<dyn std::error::Error>> {
         std::fs::write(path, serde_json::to_string_pretty(self)?)?;
         Ok(())
     }
@@ -137,7 +137,7 @@ impl Capture {
     ///
     /// # Errors
     /// Returns an error when the file is unreadable, is not JSON, or is not a supported capture.
-    pub fn read(path: &Path) -> Result<Self, Box<dyn std::error::Error>> {
+    pub(crate) fn read(path: &Path) -> Result<Self, Box<dyn std::error::Error>> {
         let capture: Self = serde_json::from_str(&std::fs::read_to_string(path)?)?;
         if capture.format != FORMAT {
             return Err(format!("not a {FORMAT} file (format = {:?})", capture.format).into());

@@ -25,10 +25,10 @@
           overlays = [ rust-overlay.overlays.default ];
         };
 
-        # Keep in sync with `rust-version` in Cargo.toml and the CI toolchain.
-        rustVersion = "1.99.0";
-        rustToolchain = pkgs.rust-bin.stable.${rustVersion}.minimal;
-        devToolchain = pkgs.rust-bin.stable.${rustVersion}.default.override {
+        # The latest stable release the pinned rust-overlay knows about, like rust-toolchain.toml.
+        # `rust-version` in Cargo.toml is only the oldest version that builds the project.
+        rustToolchain = pkgs.rust-bin.stable.latest.minimal;
+        devToolchain = pkgs.rust-bin.stable.latest.default.override {
           extensions = [ "rust-src" ];
         };
         rustPlatform = pkgs.makeRustPlatform {

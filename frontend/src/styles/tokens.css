@@ -55,8 +55,8 @@
   --radius-pill: 20px;
 
   /* --- Typography --- */
-  --font-sans: 'Helvetica', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  --font-mono: 'Consolas', 'Courier New', monospace;
+  --font-sans: "Helvetica", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  --font-mono: "Consolas", "Courier New", monospace;
 
   --font-xs: 10px;
   --font-sm: 11px;

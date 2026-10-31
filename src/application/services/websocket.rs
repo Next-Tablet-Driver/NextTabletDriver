@@ -95,7 +95,10 @@ fn is_origin_allowed(origin: &str) -> bool {
     host.eq_ignore_ascii_case("localhost") || host == "127.0.0.1" || host == "::1"
 }
 
-#[allow(clippy::result_large_err)]
+#[allow(
+    clippy::result_large_err,
+    reason = "the handshake callback signature is fixed by tungstenite"
+)]
 fn check_origin(request: &Request, response: Response) -> Result<Response, ErrorResponse> {
     let allowed = request
         .headers()
@@ -219,7 +222,8 @@ pub fn websocket_loop(shared: &Arc<SharedState>) {
                             listener = Some(l);
                         }
                         Err(e) => {
-                            log::error!(target: "WebSocket", "Failed to set WebSocket listener to non-blocking: {e}");
+                            log::error!(target: "WebSocket", "Failed to set WebSocket listener to \
+                                non-blocking: {e}");
                             listener = None;
                         }
                     },
@@ -236,10 +240,12 @@ pub fn websocket_loop(shared: &Arc<SharedState>) {
                 Ok((stream, addr)) => {
                     let pending = pending_handshakes.load(Ordering::Acquire);
                     if clients.len() + pending >= MAX_CLIENTS || pending >= MAX_PENDING_HANDSHAKES {
-                        log::warn!(target: "WebSocket", "Too many clients or pending handshakes, rejecting {addr}");
+                        log::warn!(target: "WebSocket", "Too many clients or pending handshakes, \
+                            rejecting {addr}");
                     } else {
                         log::info!(target: "WebSocket", "New connection from {addr}");
-                        // The blocking handshake runs off-thread so it can never stall the broadcast.
+                        // The blocking handshake runs off-thread so it can never stall the
+                        // broadcast.
                         spawn_handshake(stream, &pending_handshakes, &ready_tx);
                     }
                 }

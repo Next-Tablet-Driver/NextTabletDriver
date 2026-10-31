@@ -31,7 +31,7 @@ struct ButtonGroup {
 
 /// Follows the pen buttons and the tablet keys and presses or releases what they are bound to.
 #[derive(Default)]
-pub struct ButtonRouter {
+pub(super) struct ButtonRouter {
     pen: ButtonGroup,
     aux: ButtonGroup,
     key_refs: KeyRefs,
@@ -55,12 +55,12 @@ impl Default for KeyRefs {
 impl ButtonRouter {
     /// A router with nothing held.
     #[must_use]
-    pub fn new() -> Self {
+    pub(super) fn new() -> Self {
         Self::default()
     }
 
     /// Applies the button state carried by one report.
-    pub fn update<I: InputSink>(
+    pub(super) fn update<I: InputSink>(
         &mut self,
         sink: &mut I,
         data: &TabletData,
@@ -96,13 +96,13 @@ impl ButtonRouter {
 
     /// Releases everything the pen buttons hold. Called when the pen leaves the tablet, where
     /// a button can no longer be reported as released.
-    pub fn release_pen<I: InputSink>(&mut self, sink: &mut I) {
+    pub(super) fn release_pen<I: InputSink>(&mut self, sink: &mut I) {
         Self::apply(&mut self.pen, &mut self.key_refs, sink, 0, &[]);
     }
 
     /// Releases everything that is held, pen buttons and tablet keys. Called when the tablet
     /// goes away or the engine stops, so no key stays pressed.
-    pub fn release_all<I: InputSink>(&mut self, sink: &mut I) {
+    pub(super) fn release_all<I: InputSink>(&mut self, sink: &mut I) {
         Self::apply(&mut self.pen, &mut self.key_refs, sink, 0, &[]);
         Self::apply(&mut self.aux, &mut self.key_refs, sink, 0, &[]);
     }

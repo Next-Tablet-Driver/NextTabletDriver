@@ -1,3 +1,4 @@
+import { log } from "../infrastructure/log";
 /**
  * Theming entry point.
  *
@@ -14,13 +15,15 @@ export const themeStore = new ThemeStore();
  * Outside the desktop app, or if the backend call fails, there are simply no user themes.
  */
 export async function refreshUserThemes(): Promise<void> {
-    try {
-        const files = await listThemes();
-        themeStore.setUserThemes(files.map((f) => ({ id: f.id, fileName: f.file_name, content: f.content })));
-    } catch (e) {
-        console.error("Failed to load user themes:", e);
-        themeStore.setUserThemes([]);
-    }
+  try {
+    const files = await listThemes();
+    themeStore.setUserThemes(
+      files.map((f) => ({ id: f.id, fileName: f.file_name, content: f.content })),
+    );
+  } catch (e) {
+    log.error("Failed to load user themes:", e);
+    themeStore.setUserThemes([]);
+  }
 }
 
 export { BUILTIN_THEMES, CUSTOM_PREFIX, SYSTEM_THEME } from "./apply";

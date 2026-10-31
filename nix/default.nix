@@ -8,10 +8,10 @@ rustPlatform.buildRustPackage {
 
   src = ../.;
 
-  # The Tauri app lives in src-tauri/ (it pulls the core crate in by path).
-  cargoRoot = "src-tauri";
-  buildAndTestSubdir = "src-tauri";
-  cargoLock.lockFile = ../src-tauri/Cargo.lock;
+  # The Tauri app lives in apps/desktop/ (it pulls the core crate in by path); the whole
+  # repository is one Cargo workspace with a single lockfile.
+  buildAndTestSubdir = "apps/desktop";
+  cargoLock.lockFile = ../Cargo.lock;
 
   # Svelte frontend, built by vite and embedded into the binary by Tauri.
   npmRoot = "frontend";
@@ -19,7 +19,7 @@ rustPlatform.buildRustPackage {
     src = ../frontend;
     # Update this hash whenever frontend/package-lock.json changes: `nix build .#default`
     # fails with the expected hash, paste it here.
-    hash = "sha256-Env3czQvCMnxpzkdAdpa1ch/eB3Ca26U16H9hO+g/KE=";
+    hash = "sha256-FwJM9a+FiLehiIDAai2+wStP+K8ljx3GGLsU3EDvQvY=";
   };
 
   nativeBuildInputs = with pkgs; [
@@ -42,8 +42,17 @@ rustPlatform.buildRustPackage {
     libusb1
   ];
 
-  # The updater artifacts need a signing key, which a Nix build does not have.
-  tauriBuildFlags = [ "--config" ''{"bundle":{"createUpdaterArtifacts":false}}'' ];
+  # The updater artifacts need a signing key, which a Nix build does not have. The frontend is
+  # built below instead of by `beforeBuildCommand`, which Tauri would run from `apps/` here, and
+  # the hook splits the flags on spaces so the command cannot be given inline.
+  tauriBuildFlags = [
+    "--config"
+    ''{"bundle":{"createUpdaterArtifacts":false},"build":{"beforeBuildCommand":""}}''
+  ];
+
+  postConfigure = ''
+    npm --prefix frontend run build
+  '';
 
   postInstall = ''
     install -Dm644 ${../scripts/99-nexttabletdriver.rules} \

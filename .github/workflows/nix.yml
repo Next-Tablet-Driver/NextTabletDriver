@@ -8,7 +8,7 @@ on:
       - "flake.lock"
       - "nix/**"
       - "frontend/package-lock.json"
-      - "src-tauri/Cargo.lock"
+      - "Cargo.lock"
       - "scripts/99-nexttabletdriver.rules"
       - ".github/workflows/nix.yml"
   pull_request:
@@ -18,7 +18,7 @@ on:
       - "flake.lock"
       - "nix/**"
       - "frontend/package-lock.json"
-      - "src-tauri/Cargo.lock"
+      - "Cargo.lock"
       - "scripts/99-nexttabletdriver.rules"
       - ".github/workflows/nix.yml"
   workflow_dispatch: {}
@@ -30,12 +30,12 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           submodules: recursive
 
       - name: Install Nix
-        uses: cachix/install-nix-action@v27
+        uses: cachix/install-nix-action@ba0dd844c9180cbf77aa72a116d6fbc515d0e87b # v27
         with:
           extra_nix_config: |
             experimental-features = nix-command flakes
@@ -49,12 +49,12 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           submodules: recursive
 
       - name: Install Nix
-        uses: cachix/install-nix-action@v27
+        uses: cachix/install-nix-action@ba0dd844c9180cbf77aa72a116d6fbc515d0e87b # v27
         with:
           extra_nix_config: |
             experimental-features = nix-command flakes

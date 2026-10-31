@@ -2,36 +2,20 @@
 name = "ntd-recorder"
 description = "Captures the HID reports of a drawing tablet into a .ntdcap file for bug reports and tablet support"
 version = "0.1.0"
-edition = "2024"
-license = "MIT"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
 publish = false
-rust-version = "1.99.0"
-
-# Temporary: this tool has its own lockfile until it joins the workspace (roadmap P1.2).
-[workspace]
+rust-version.workspace = true
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
 
 [dependencies]
-hidapi = "2.6.3"
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
+hidapi = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
 
-[lints.rust]
-dead_code = "deny"
-
-[lints.clippy]
-unwrap_used = "deny"
-expect_used = "deny"
-panic = "deny"
-indexing_slicing = "deny"
-exit = "deny"
-todo = "deny"
-unimplemented = "deny"
-
-all = { level = "warn", priority = -1 }
-pedantic = { level = "warn", priority = -1 }
-nursery = { level = "warn", priority = -1 }
-missing_errors_doc = "warn"
-
-cast_possible_truncation = "allow"
-cast_sign_loss = "allow"
-too_many_lines = "allow"
+[lints]
+workspace = true

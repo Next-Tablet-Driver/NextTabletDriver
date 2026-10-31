@@ -5,6 +5,7 @@ use std::fs;
 use std::path::Path;
 use std::time::Instant;
 
+/// The tablet definitions of `OpenTabletDriver`, embedded in the binary at compile time.
 pub static TABLET_CONFIGS_DIR: Dir = include_dir!(
     "$CARGO_MANIFEST_DIR/tablets/OpenTabletDriver/OpenTabletDriver.Configurations/Configurations"
 );
@@ -28,10 +29,13 @@ fn load_and_index_configurations() -> ConfigIndex {
         }
     }
 
-    log::info!(target: "Driver", "Indexed {} configurations across {} unique VID:PID pairs", index.values().flatten().count(), index.len());
+    log::info!(target: "Driver", "Indexed {} configurations across {} unique VID:PID \
+        pairs", index.values().flatten().count(), index.len());
     index
 }
 
+/// Loads every tablet definition: the ones in the local `tablets` folder first, then the embedded
+/// ones.
 #[must_use]
 pub fn load_configurations() -> Vec<TabletConfiguration> {
     load_configurations_from(Path::new("tablets"))
@@ -96,12 +100,14 @@ fn load_embedded_recursive(
                                     }
                                 }
                                 Err(e) => {
-                                    log::error!(target: "Driver", "Failed to parse embedded config {}: {e}", file.path().display());
+                                    log::error!(target: "Driver", "Failed to parse embedded config \
+                                        {}: {e}", file.path().display());
                                 }
                             }
                         }
                         None => {
-                            log::warn!(target: "Driver", "Embedded config file {} is not valid UTF-8", file.path().display());
+                            log::warn!(target: "Driver", "Embedded config file {} is not valid \
+                                UTF-8", file.path().display());
                         }
                     }
                 }
@@ -130,11 +136,13 @@ fn load_from_disk_recursive(
                             }
                         }
                         Err(e) => {
-                            log::error!(target: "Driver", "Failed to parse disk config {}: {e}", p.display());
+                            log::error!(target: "Driver", "Failed to parse disk config {}: \
+                                {e}", p.display());
                         }
                     },
                     Err(e) => {
-                        log::error!(target: "Driver", "Failed to read disk config {}: {e}", p.display());
+                        log::error!(target: "Driver", "Failed to read disk config {}: \
+                            {e}", p.display());
                     }
                 }
             }
@@ -143,7 +151,10 @@ fn load_from_disk_recursive(
 }
 
 #[cfg(test)]
-#[allow(clippy::float_cmp)]
+#[allow(
+    clippy::float_cmp,
+    reason = "the tests compare floats that are exact by construction or copied unchanged"
+)]
 mod tests {
     use super::*;
     use std::path::PathBuf;

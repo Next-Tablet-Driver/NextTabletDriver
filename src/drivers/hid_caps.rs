@@ -5,6 +5,7 @@
 //! data sample. Some tablets stay silent until the pen comes into
 //! proximity, which makes a sample-read-based check unreliable at boot
 //! time; this queries the OS-reported capability instead.
+#![allow(unsafe_code, reason = "Win32 HID API calls through windows-sys")]
 
 use std::ffi::CStr;
 use windows_sys::Win32::Devices::HumanInterfaceDevice::{
@@ -77,7 +78,10 @@ fn query_caps(handle: HANDLE) -> Option<usize> {
 }
 
 #[cfg(test)]
-#[allow(clippy::float_cmp)]
+#[allow(
+    clippy::float_cmp,
+    reason = "the tests compare floats that are exact by construction or copied unchanged"
+)]
 mod tests {
     use super::*;
 

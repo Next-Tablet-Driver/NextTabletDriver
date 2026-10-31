@@ -1,6 +1,8 @@
 use crate::drivers::TabletData;
 use crate::drivers::parsers::ReportParser;
 
+/// Parser for Huion Inspiroy and Giano tablets, a port of the `GianoReportParser` of
+/// `OpenTabletDriver`.
 pub struct InspiroyParser;
 
 impl ReportParser for InspiroyParser {
@@ -92,7 +94,10 @@ impl ReportParser for InspiroyParser {
 }
 
 #[cfg(test)]
-#[allow(clippy::float_cmp)]
+#[allow(
+    clippy::float_cmp,
+    reason = "the tests compare floats that are exact by construction or copied unchanged"
+)]
 mod tests {
     use super::*;
 

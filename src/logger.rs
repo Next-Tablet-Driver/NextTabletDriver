@@ -47,7 +47,8 @@ pub static LOG_BUFFER: LazyLock<Arc<RwLock<VecDeque<LogEntry>>>> =
 ///
 /// Incremented every time a log is successfully added to `LOG_BUFFER` or the buffer is cleared.
 /// The UI uses this sequence number to invalidate its console cache instead of relying on
-/// `LOG_BUFFER.len()`, which fails to trigger updates once the circular buffer reaches `MAX_LOGS` capacity.
+/// `LOG_BUFFER.len()`, which fails to trigger updates once the circular buffer reaches `MAX_LOGS`
+/// capacity.
 pub static LOG_SEQUENCE: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
 impl Log for GlobalLogger {
@@ -135,6 +136,10 @@ pub enum LoggerError {
 /// This function returns an error if:
 /// - It fails to spawn the background logger worker thread.
 /// - It fails to set the global logger instance.
+#[allow(
+    clippy::print_stdout,
+    reason = "debug builds also echo the log to the terminal from the logger thread"
+)]
 pub fn init() -> Result<(), LoggerError> {
     let (sender, receiver) = crossbeam_channel::bounded::<LogEntry>(LOG_QUEUE_CAPACITY);
 
@@ -212,7 +217,10 @@ pub fn init() -> Result<(), LoggerError> {
 }
 
 #[cfg(test)]
-#[allow(clippy::float_cmp)]
+#[allow(
+    clippy::float_cmp,
+    reason = "the tests compare floats that are exact by construction or copied unchanged"
+)]
 mod tests {
     use super::*;
     use crossbeam_channel::{Receiver, bounded};

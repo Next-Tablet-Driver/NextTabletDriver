@@ -16,7 +16,10 @@ use super::{NextTabletDriver, TabletData};
 /// to the specific sub-parser (Wacom, Huion, XP-Pen, etc.) defined in the config.
 pub struct GenericNextTabletDriver {
     config: TabletConfiguration,
-    #[allow(dead_code)]
+    #[allow(
+        dead_code,
+        reason = "the matched identifier is stored with the driver, but no code reads it yet"
+    )]
     digitizer: Option<DigitizerIdentifier>,
     vid: u16,
     pid: u16,
@@ -24,6 +27,8 @@ pub struct GenericNextTabletDriver {
 }
 
 impl GenericNextTabletDriver {
+    /// Creates the driver for the tablet described by `config`, using the parser that `digitizer`
+    /// names.
     #[must_use]
     pub fn new(
         config: TabletConfiguration,
@@ -110,7 +115,10 @@ impl NextTabletDriver for GenericNextTabletDriver {
 }
 
 #[cfg(test)]
-#[allow(clippy::float_cmp)]
+#[allow(
+    clippy::float_cmp,
+    reason = "the tests compare floats that are exact by construction or copied unchanged"
+)]
 mod tests {
     use super::*;
     use crate::drivers::TabletStatus;

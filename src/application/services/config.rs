@@ -1,12 +1,16 @@
 use crate::core::config::models::MappingConfig;
 use crate::settings::load_last_session;
 
+/// Loads the configuration the application starts with.
 pub struct ConfigService {
+    /// The configuration to start with: the one of the last session, or the defaults.
     pub config: MappingConfig,
+    /// Repairs made while loading, to report to the user.
     pub corrections: Vec<String>,
 }
 
 impl ConfigService {
+    /// Loads the configuration of the last session, or the defaults when there is none.
     #[must_use]
     pub fn load() -> Self {
         let loaded = load_last_session();
@@ -28,7 +32,10 @@ impl ConfigService {
 }
 
 #[cfg(test)]
-#[allow(clippy::float_cmp)]
+#[allow(
+    clippy::float_cmp,
+    reason = "the tests compare floats that are exact by construction or copied unchanged"
+)]
 mod tests {
     use super::*;
     use crate::settings::{save_last_session, set_test_settings_dir};

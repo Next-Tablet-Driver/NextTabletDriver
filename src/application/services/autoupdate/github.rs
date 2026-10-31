@@ -46,7 +46,10 @@ fn fetch_releases_from(url: &str) -> Result<Vec<Release>, UpdateError> {
 }
 
 #[cfg(test)]
-#[allow(clippy::float_cmp)]
+#[allow(
+    clippy::float_cmp,
+    reason = "the tests compare floats that are exact by construction or copied unchanged"
+)]
 mod tests {
     use super::*;
     use std::io::{Read, Write};
@@ -57,7 +60,8 @@ mod tests {
         let listener = TcpListener::bind("127.0.0.1:0").unwrap();
         let address = listener.local_addr().unwrap();
         let response = format!(
-            "HTTP/1.1 {status_line}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+            "HTTP/1.1 {status_line}\r\nContent-Type: application/json\r\nContent-Length: \
+                {}\r\nConnection: close\r\n\r\n{body}",
             body.len()
         );
         std::thread::spawn(move || {

@@ -24,13 +24,13 @@
     width = "50px",
     precision = undefined,
     oninput = undefined,
-    onchange = undefined
+    onchange = undefined,
   }: Props = $props();
 
   let inputRef = $state<HTMLInputElement>();
   let labelRef = $state<HTMLElement>();
 
-  const DRAG_THRESHOLD = 6; // px avant de considérer un swipe sur l'input
+  const DRAG_THRESHOLD = 6; // px before a swipe on the input is recognised
 
   function getStep(): number {
     const s = parseFloat(String(step));
@@ -64,14 +64,24 @@
   }
 
   function handleBlur(): void {
-    if (type === 'number' && precision !== undefined && inputRef !== undefined && value !== undefined) {
+    if (
+      type === "number" &&
+      precision !== undefined &&
+      inputRef !== undefined &&
+      value !== undefined
+    ) {
       inputRef.value = Number(value).toFixed(precision);
     }
   }
 
   // Format initial value if needed
   $effect(() => {
-    if (type === 'number' && precision !== undefined && inputRef !== undefined && document.activeElement !== inputRef) {
+    if (
+      type === "number" &&
+      precision !== undefined &&
+      inputRef !== undefined &&
+      document.activeElement !== inputRef
+    ) {
       inputRef.value = Number(value).toFixed(precision);
     }
   });
@@ -94,13 +104,15 @@
     if (el === undefined) return;
     // non-passif, sinon preventDefault est ignoré
     el.addEventListener("wheel", handleWheel, { passive: false });
-    return () => { el.removeEventListener("wheel", handleWheel); };
+    return () => {
+      el.removeEventListener("wheel", handleWheel);
+    };
   });
 
   // ── Swipe / drag (pointer events natifs) ──────────────────────────
-  // Sur le label : drag immédiat (souris, tactile, stylet).
-  // Sur l'input : swipe horizontal tactile uniquement (après un seuil),
-  // pour ne pas gêner la sélection de texte à la souris.
+  // On the label: immediate drag (mouse, touch, pen).
+  // On the input: horizontal touch swipe only (after a threshold),
+  // so that selecting text with the mouse is not disturbed.
   let pending = false;
   let dragging = false;
   let startX = 0;
@@ -185,11 +197,7 @@
 
 <div class="measure-input-group">
   {#if label}
-    <span
-      bind:this={labelRef}
-      class="label"
-      class:draggable={type === 'number'}
-    >
+    <span bind:this={labelRef} class="label" class:draggable={type === "number"}>
       {label}
     </span>
   {/if}
@@ -197,7 +205,7 @@
     <input
       bind:this={inputRef}
       style:width
-      class:is-number={type === 'number'}
+      class:is-number={type === "number"}
       {max}
       {min}
       onblur={handleBlur}
@@ -306,8 +314,8 @@
     appearance: textfield;
   }
 
-  .input-wrapper input[type=number]::-webkit-inner-spin-button,
-  .input-wrapper input[type=number]::-webkit-outer-spin-button {
+  .input-wrapper input[type="number"]::-webkit-inner-spin-button,
+  .input-wrapper input[type="number"]::-webkit-outer-spin-button {
     -webkit-appearance: none;
     margin: 0;
   }

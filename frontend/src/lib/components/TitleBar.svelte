@@ -1,13 +1,16 @@
 <script lang="ts">
-  import { windowControls } from "../infrastructure/window";
-  import { check, type Update } from "@tauri-apps/plugin-updater";
-  import { os } from "../infrastructure/os";
+  import { log } from "../infrastructure/log";
+  import { windowControls } from "../infrastructure/tauri/window";
+  import { os, type Update } from "../infrastructure/os";
   import { onMount } from "svelte";
   import { Minus, RefreshCcw, Square, X } from "@lucide/svelte";
   import iconUrl from "../../assets/icon.png";
   import Button from "./ui/Button.svelte";
 
-  const { title = "NextTabletDriver", systemTrayOnMinimize = false } = $props<{ title?: string, systemTrayOnMinimize?: boolean }>();
+  const { title = "NextTabletDriver", systemTrayOnMinimize = false } = $props<{
+    title?: string;
+    systemTrayOnMinimize?: boolean;
+  }>();
 
   function minimize(): void {
     if (systemTrayOnMinimize) {
@@ -33,13 +36,13 @@
   onMount(() => {
     void (async (): Promise<void> => {
       try {
-        const u = await check();
+        const u = await os.checkForUpdate();
         if (u !== null) {
           updateObj = u;
           updateAvailable = true;
         }
       } catch (e) {
-        console.error("Failed to check for updates:", e);
+        log.error("Failed to check for updates:", e);
       }
     })();
   });
@@ -53,23 +56,23 @@
 
       await updateObj.downloadAndInstall((event) => {
         switch (event.event) {
-          case 'Started':
+          case "Started":
             contentLength = event.data.contentLength ?? 0;
             break;
-          case 'Progress':
+          case "Progress":
             downloaded += event.data.chunkLength;
             if (contentLength > 0) {
               updateProgress = Math.round((downloaded / contentLength) * 100);
             }
             break;
-          case 'Finished':
+          case "Finished":
             updateProgress = 100;
             break;
         }
       });
       await os.relaunch();
     } catch (e) {
-      console.error("Update installation failed:", e);
+      log.error("Update installation failed:", e);
       isUpdating = false;
     }
   }
@@ -87,7 +90,7 @@
   {#if updateAvailable}
     <Button class="update-btn" disabled={isUpdating} onclick={installUpdate} variant="primary">
       <RefreshCcw class={isUpdating ? "spinning" : ""} size={13} strokeWidth={2.5} />
-      <span>{isUpdating ? `Updating (${String(updateProgress)}%)` : 'Update'}</span>
+      <span>{isUpdating ? `Updating (${String(updateProgress)}%)` : "Update"}</span>
     </Button>
   {/if}
 

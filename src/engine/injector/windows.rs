@@ -11,6 +11,10 @@
 //! cursor is the source of truth, since another input source could move it
 //! between our packets, and expressing relative moves as absolute ones keeps
 //! them immune to the OS pointer speed/acceleration curve.
+#![allow(
+    unsafe_code,
+    reason = "Win32 cursor and input injection calls through windows-sys"
+)]
 
 use crate::core::input::{Key, MouseButton};
 use std::time::{Duration, Instant};
@@ -35,6 +39,7 @@ use windows_sys::Win32::UI::WindowsAndMessaging::{
 /// change or monitor hot-plug.
 const SCREEN_METRICS_REFRESH: Duration = Duration::from_millis(250);
 
+/// Sends the processed pen frames to Windows as cursor movement and button events.
 pub struct Injector {
     /// Tracks the previous state of the primary pen button (tip) to avoid spamming
     /// unnecessary "Button Down" events every frame while dragging.
@@ -114,7 +119,10 @@ impl Injector {
     /// * `_u` / `_v` - Normalized UV coordinates (unused on Windows).
     /// * `_pressure` - Pressure (unused on Windows).
     /// * `_tilt_x` / `_tilt_y` - Tilt (unused on Windows).
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "implements the `InputSink` method of the same signature"
+    )]
     pub fn move_absolute(
         &mut self,
         target_x: f32,
@@ -438,7 +446,10 @@ fn send_mouse_input_with_data(dx: i32, dy: i32, mouse_data: u32, flags: u32) {
 }
 
 #[cfg(test)]
-#[allow(clippy::float_cmp)]
+#[allow(
+    clippy::float_cmp,
+    reason = "the tests compare floats that are exact by construction or copied unchanged"
+)]
 mod tests {
     use super::*;
 

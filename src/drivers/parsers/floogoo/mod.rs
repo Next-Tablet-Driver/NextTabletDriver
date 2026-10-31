@@ -1,6 +1,7 @@
 use crate::drivers::TabletData;
 use crate::drivers::parsers::ReportParser;
 
+/// Parser for `FlooGoo` tablets, a port of the `FlooGooReportParser` of `OpenTabletDriver`.
 pub struct FlooGooParser;
 
 impl ReportParser for FlooGooParser {
@@ -66,7 +67,10 @@ impl ReportParser for FlooGooParser {
 }
 
 #[cfg(test)]
-#[allow(clippy::float_cmp)]
+#[allow(
+    clippy::float_cmp,
+    reason = "the tests compare floats that are exact by construction or copied unchanged"
+)]
 mod tests {
     use super::*;
 

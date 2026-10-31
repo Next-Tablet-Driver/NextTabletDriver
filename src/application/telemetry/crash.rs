@@ -3,6 +3,8 @@
 use super::capture_event;
 use serde_json::{Value, json};
 
+/// Installs a panic hook that writes an anonymized crash report to the settings folder, then calls
+/// the previous hook.
 pub fn setup_panic_hook() {
     let default_hook = std::panic::take_hook();
     std::panic::set_hook(Box::new(move |panic_info| {
@@ -18,6 +20,8 @@ pub fn setup_panic_hook() {
     }));
 }
 
+/// Sends the crash report left by the previous run, if there is one, as a telemetry event, then
+/// deletes it.
 pub fn send_pending_crash_reports() {
     send_pending_crash_reports_with(&|name, properties| capture_event(name, Some(properties)));
 }

@@ -5,17 +5,29 @@ use crate::engine::state::{LockRecoveryExt, SharedState};
 /// An immutable, lock-free snapshot of the application state for a single UI frame.
 #[derive(Clone, Debug)]
 pub struct UiSnapshot {
+    /// Name of the connected tablet.
     pub tablet_name: String,
+    /// USB vendor ID of the connected tablet.
     pub tablet_vid: u16,
+    /// USB product ID of the connected tablet.
     pub tablet_pid: u16,
+    /// Latest packet parsed from the tablet.
     pub tablet_data: TabletData,
+    /// The mapping configuration in effect.
     pub config: MappingConfig,
+    /// Width and height of the tablet surface, in millimetres.
     pub physical_size: (f32, f32),
+    /// Largest X and Y the sensor reports, in raw units.
     pub hardware_size: (f32, f32),
+    /// Largest raw pressure the tablet reports.
     pub max_pressure: f32,
+    /// Packet and timing statistics of the driver.
     pub stats: crate::drivers::DriverStats,
+    /// Number of packets processed since the engine started.
     pub packet_count: u32,
+    /// Whether this is the first run of the application.
     pub is_first_run: bool,
+    /// State of the input engine.
     pub engine_status: crate::engine::state::EngineStatus,
 }
 
@@ -58,7 +70,10 @@ impl UiSnapshot {
 }
 
 #[cfg(test)]
-#[allow(clippy::float_cmp)]
+#[allow(
+    clippy::float_cmp,
+    reason = "the tests compare floats that are exact by construction or copied unchanged"
+)]
 mod tests {
     use super::*;
     use std::sync::atomic::Ordering;

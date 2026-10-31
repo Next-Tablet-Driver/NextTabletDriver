@@ -42,7 +42,8 @@ fn reader_loop(
     try_acquire: &dyn Fn() -> Option<Box<dyn Any>>,
     take_over: &dyn Fn(&Arc<SharedState>, &Sender<TabletData>),
 ) {
-    log::info!(target: "TabletManager", "Another process owns the HID device; running in reader mode");
+    log::info!(target: "TabletManager", "Another process owns the HID device; running in reader \
+        mode");
 
     let mut reader = ShmReader::open();
     let mut last_config_version = None;
@@ -65,7 +66,8 @@ fn reader_loop(
             // Held for the rest of this function's life, same as the
             // top-level branch in `manager_thread_iteration`.
             if let Some(_hid_owner) = try_acquire() {
-                log::info!(target: "TabletManager", "Promoted to HID owner, taking over the real device");
+                log::info!(target: "TabletManager", "Promoted to HID owner, taking over the real \
+                    device");
                 take_over(shared, sender);
                 return;
             }
@@ -84,7 +86,10 @@ fn reader_loop(
 }
 
 #[cfg(test)]
-#[allow(clippy::float_cmp)]
+#[allow(
+    clippy::float_cmp,
+    reason = "the tests compare floats that are exact by construction or copied unchanged"
+)]
 mod tests {
     use super::*;
     use crate::engine::interop::shm::{SdkPublicState, ShmWriter};

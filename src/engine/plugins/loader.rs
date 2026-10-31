@@ -2,6 +2,10 @@
 //!
 //! Loads dynamic libraries, executes the ABI handshake, parses the plugin manifest,
 //! and extracts function pointers into a thread-safe `LoadedLibrary`.
+#![allow(
+    unsafe_code,
+    reason = "loading plugin libraries and calling their C ABI through function pointers"
+)]
 
 use super::error::PluginError;
 use super::trust::PinnedLibrary;
@@ -128,7 +132,8 @@ impl PluginLoader {
             ));
         }
 
-        // SAFETY: manifest_ptr is checked non-null and points to a null-terminated C string in static memory.
+        // SAFETY: manifest_ptr is checked non-null and points to a null-terminated C string in
+        // static memory.
         let manifest_cstr = unsafe { CStr::from_ptr(manifest_ptr) };
         let manifest_json = manifest_cstr.to_str().map_err(|e| {
             PluginError::ManifestError(format!("Manifest contains invalid UTF-8: {e}"))
@@ -188,9 +193,9 @@ mod tests {
     #[test]
     fn test_load_radial_follow_plugin_if_present() {
         #[cfg(target_os = "windows")]
-        let dev_path = PathBuf::from("plugins/radial_follow/target/debug/radial_follow.dll");
+        let dev_path = PathBuf::from("target/debug/radial_follow.dll");
         #[cfg(not(target_os = "windows"))]
-        let dev_path = PathBuf::from("plugins/radial_follow/target/debug/libradial_follow.so");
+        let dev_path = PathBuf::from("target/debug/libradial_follow.so");
 
         let dll_path = if dev_path.exists() {
             dev_path

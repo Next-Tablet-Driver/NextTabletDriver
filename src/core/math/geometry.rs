@@ -30,7 +30,11 @@ impl ActiveAreaGeometry {
     /// * `active_area` - The active area configuration.
     /// * `target_w`, `target_h` - The target screen resolution (for osu! playfield).
     /// * `show_osu_playfield` - Whether to calculate the osu! playfield points.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "one argument per physical and screen dimension; a struct would be built once and \
+            used once"
+    )]
     #[must_use]
     pub fn calculate(
         phys_w: f32,
@@ -113,7 +117,10 @@ impl ActiveAreaGeometry {
 }
 
 #[cfg(test)]
-#[allow(clippy::float_cmp)]
+#[allow(
+    clippy::float_cmp,
+    reason = "the tests compare floats that are exact by construction or copied unchanged"
+)]
 mod tests {
     use super::*;
     use crate::core::config::models::ActiveArea;

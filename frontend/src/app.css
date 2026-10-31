@@ -1,6 +1,6 @@
-@import './fonts.css';
-@import './styles/tokens.css';
-@import './styles/themes.css';
+@import "./fonts.css";
+@import "./styles/tokens.css";
+@import "./styles/themes.css";
 
 * {
   box-sizing: border-box;

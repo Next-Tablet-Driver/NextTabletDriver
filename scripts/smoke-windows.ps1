@@ -19,7 +19,7 @@
   How long to wait for the window to appear.
 #>
 param(
-    [string]$App = 'src-tauri/target/debug/app.exe',
+    [string]$App = 'target/debug/app.exe',
     [int]$TimeoutSeconds = 90
 )
 

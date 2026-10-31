@@ -1,6 +1,7 @@
 use crate::drivers::TabletData;
 use crate::drivers::parsers::ReportParser;
 
+/// Parser for `RobotPen` tablets, a port of the `RobotPenReportParser` of `OpenTabletDriver`.
 pub struct RobotPenParser;
 
 impl ReportParser for RobotPenParser {
@@ -42,7 +43,10 @@ impl ReportParser for RobotPenParser {
 }
 
 #[cfg(test)]
-#[allow(clippy::float_cmp)]
+#[allow(
+    clippy::float_cmp,
+    reason = "the tests compare floats that are exact by construction or copied unchanged"
+)]
 mod tests {
     use super::*;
 

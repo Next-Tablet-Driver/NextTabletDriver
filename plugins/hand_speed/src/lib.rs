@@ -20,14 +20,20 @@ const FLUSH_INTERVAL: Duration = Duration::from_millis(16);
 /// Supported display units for hand speed.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum SpeedUnit {
+    /// Millimetres per second, the unit the speed is computed in.
     #[default]
     MillimetersPerSecond = 0,
+    /// Metres per second.
     MetersPerSecond = 1,
+    /// Kilometres per hour.
     KilometersPerHour = 2,
+    /// Miles per hour.
     MilesPerHour = 3,
 }
 
 impl SpeedUnit {
+    /// Returns the unit at position `idx` of the plugin's choice list, or millimetres per second
+    /// when the index is unknown.
     #[must_use]
     pub const fn from_index(idx: usize) -> Self {
         match idx {
@@ -38,6 +44,7 @@ impl SpeedUnit {
         }
     }
 
+    /// Converts a speed in millimetres per second to this unit.
     #[must_use]
     pub fn convert_from_mm_s(self, speed_mm_s: f32) -> f32 {
         match self {
@@ -51,9 +58,13 @@ impl SpeedUnit {
 
 /// Standalone plugin implementing Hand Speed and travel distance tracking.
 pub struct HandSpeedPlugin {
+    /// Whether the WebSocket server that broadcasts the statistics runs.
     pub enabled: bool,
+    /// Address the WebSocket server binds to.
     pub ip: String,
+    /// TCP port of the WebSocket server.
     pub port: u16,
+    /// Unit of the speed in the broadcast data.
     pub unit: SpeedUnit,
 
     last_pos_mm: Option<(f32, f32)>,
@@ -120,21 +131,29 @@ impl NextTabletPlugin for HandSpeedPlugin {
             name: "Hand Speed & Stats".to_string(),
             version: "1.0.0".to_string(),
             author: "nzbasic".to_string(),
-            description: "Calculates real-time pen speed and cumulative travel distance with an embedded WebSocket server for stream overlays.".to_string(),
+            description: "Calculates real-time pen speed and cumulative travel distance with an \
+                embedded WebSocket server for stream overlays."
+                .to_string(),
             icon: Some("SPEEDOMETER".to_string()),
             properties: vec![
                 PropertyDescriptor {
                     id: "enabled".to_string(),
                     name: "WebSocket Server".to_string(),
-                    tooltip: Some("Enables the background WebSocket broadcast server for streaming overlays.".to_string()),
-                    kind: PropertyKind::Bool {
-                        default: true,
-                    },
+                    tooltip: Some(
+                        "Enables the background WebSocket broadcast server for streaming \
+                        overlays."
+                            .to_string(),
+                    ),
+                    kind: PropertyKind::Bool { default: true },
                 },
                 PropertyDescriptor {
                     id: "ip".to_string(),
                     name: "Server IP".to_string(),
-                    tooltip: Some("Bind IP address for the WebSocket server (e.g. 127.0.0.1).".to_string()),
+                    tooltip: Some(
+                        "Bind IP address for the WebSocket server (e.g. \
+                        127.0.0.1)."
+                            .to_string(),
+                    ),
                     kind: PropertyKind::String {
                         default: "127.0.0.1".to_string(),
                     },
@@ -142,7 +161,11 @@ impl NextTabletPlugin for HandSpeedPlugin {
                 PropertyDescriptor {
                     id: "port".to_string(),
                     name: "Port".to_string(),
-                    tooltip: Some("TCP port number for incoming overlay WebSocket connections.".to_string()),
+                    tooltip: Some(
+                        "TCP port number for incoming overlay WebSocket \
+                        connections."
+                            .to_string(),
+                    ),
                     kind: PropertyKind::Int {
                         min: 1024,
                         max: 65535,

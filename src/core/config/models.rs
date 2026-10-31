@@ -43,7 +43,8 @@ impl ActiveArea {
         self.normalize_rotation();
     }
 
-    /// Adjusts the width or height to match the target aspect ratio, ensuring it stays within physical limits.
+    /// Adjusts the width or height to match the target aspect ratio, ensuring it stays within
+    /// physical limits.
     pub fn apply_aspect_ratio(
         &mut self,
         target_ratio: f32,
@@ -120,14 +121,22 @@ pub enum DriverMode {
 /// profile.
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub enum ThemePreference {
+    /// Follows the theme of the operating system.
     #[default]
     System,
+    /// The light theme.
     Light,
+    /// The dark theme.
     Dark,
+    /// The Catppuccin Latte palette.
     CatppuccinLatte,
+    /// The Catppuccin Frappé palette.
     CatppuccinFrappe,
+    /// The Catppuccin Macchiato palette.
     CatppuccinMacchiato,
+    /// The Catppuccin Mocha palette.
     CatppuccinMocha,
+    /// A user theme, identified by the id of its file in the themes folder.
     Custom(String),
 }
 
@@ -259,7 +268,10 @@ const fn default_ws_hz() -> u32 {
 
 /// Configuration for the embedded WebSocket server.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[allow(clippy::struct_excessive_bools)]
+#[allow(
+    clippy::struct_excessive_bools,
+    reason = "each bool is an independent user setting, stored and serialized as such"
+)]
 #[cfg_attr(feature = "specta", derive(specta::Type))]
 pub struct WebSocketConfig {
     /// Whether the WebSocket server is enabled.
@@ -307,10 +319,16 @@ impl Default for WebSocketConfig {
 #[cfg(feature = "specta")]
 #[derive(Serialize, specta::Type)]
 #[serde(untagged)]
-#[allow(dead_code)]
+#[allow(
+    dead_code,
+    reason = "only describes the TypeScript type of a plugin property; never constructed"
+)]
 pub enum PluginPropertyValue {
+    /// A number: a `Float` or `Int` property, or the chosen index of a `Choice`.
     Number(f64),
+    /// A `Bool` property.
     Bool(bool),
+    /// A `String` property.
     Text(String),
 }
 
@@ -384,7 +402,10 @@ impl Default for PressureCurveConfig {
 /// primary object serialized to disk. Default struct fields are provided by individual functions
 /// to facilitate serde compatibility for adding new fields to older config files.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[allow(clippy::struct_excessive_bools)]
+#[allow(
+    clippy::struct_excessive_bools,
+    reason = "each bool is an independent user setting, stored and serialized as such"
+)]
 #[cfg_attr(feature = "specta", derive(specta::Type))]
 pub struct MappingConfig {
     /// The active tracking mode (Absolute or Relative).
@@ -428,7 +449,8 @@ pub struct MappingConfig {
     /// Whether minimizing the application window hides it to the system tray.
     #[serde(default = "default_false")]
     pub system_tray_on_minimize: bool,
-    /// Whether to force the Windows system timer resolution to 0.5ms for low-latency tablet polling.
+    /// Whether to force the Windows system timer resolution to 0.5ms for low-latency tablet
+    /// polling.
     #[serde(default = "default_true")]
     pub force_high_resolution_timer: bool,
     /// WebSocket server broadcast configuration.
@@ -652,7 +674,10 @@ impl MappingConfig {
 }
 
 #[cfg(test)]
-#[allow(clippy::float_cmp)]
+#[allow(
+    clippy::float_cmp,
+    reason = "the tests compare floats that are exact by construction or copied unchanged"
+)]
 mod tests {
     use super::*;
 

@@ -7,13 +7,13 @@ How NextTabletDriver numbers and publishes releases, how an installed copy finds
 Since **2.0.0** the project follows [Semantic Versioning](https://semver.org): `MAJOR.MINOR.PATCH`, with an optional pre-release suffix (`2.1.0-beta.1`). A release tag is the version prefixed with `v` (`v2.0.0`) and must match the version in all of these places:
 
 - `Cargo.toml`
-- `src-tauri/Cargo.toml`
-- `src-tauri/tauri.conf.json`
+- `apps/desktop/Cargo.toml`
+- `apps/desktop/tauri.conf.json`
 - `frontend/package.json`
 - the `VERSION` constant in `src/lib.rs` (the app shows it)
 - `.github/CITATION.cff`
 
-The SDK (`sdk/Cargo.toml`) has its own version number, which changes only when the SDK changes.
+The SDK (`apps/sdk/Cargo.toml`) has its own version number, which changes only when the SDK changes.
 
 The Tauri updater compares the `version` of `latest.json`, which comes from `tauri.conf.json`, not the tag. If the version is not bumped, `latest.json` advertises the version users already have and nobody sees an update. CI does not check this yet: verify it by hand before tagging.
 
@@ -94,4 +94,4 @@ Rules:
 5. **Test the update path from the oldest supported version on a clean machine before tagging**, with the dry run of `release.yml` (`workflow_dispatch`). Keep an installer of every supported version for that purpose.
 6. **Announce breaking changes where users will see them.** The `body` of the Latest release is displayed by the legacy copies; keep it readable.
 
-Enforcement today is code review only (`CODEOWNERS`). Nothing in CI checks these rules yet: checking that the tag matches the manifests, the shape of the release assets and the update test are open items. A pull request that touches `release.yml`, `winget-release.yml`, `tauri.conf.json` (`bundle`, `plugins.updater`), `src-tauri/windows/` or the update code is touching this document and must say so.
+Enforcement today is code review only (`CODEOWNERS`). Nothing in CI checks these rules yet: checking that the tag matches the manifests, the shape of the release assets and the update test are open items. A pull request that touches `release.yml`, `winget-release.yml`, `tauri.conf.json` (`bundle`, `plugins.updater`), `apps/desktop/windows/` or the update code is touching this document and must say so.

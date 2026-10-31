@@ -121,7 +121,8 @@ pub fn parse_otd_profile_str(content: &str) -> Result<MappingConfig, OtdImportEr
             x_sensitivity: rel.x_sens,
             y_sensitivity: rel.y_sens,
             rotation: rel.rotation,
-            reset_time_ms: 100, // OTD uses a string TimeSpan like "00:00:00.1000000", fallback to default 100ms
+            // OTD uses a string TimeSpan like "00:00:00.1000000": fall back to the default 100 ms.
+            reset_time_ms: 100,
         };
     }
 
@@ -130,19 +131,24 @@ pub fn parse_otd_profile_str(content: &str) -> Result<MappingConfig, OtdImportEr
     Ok(config)
 }
 
-/// Imports an `OpenTabletDriver` configuration or preset file into a `NextTabletDriver` `MappingConfig`.
+/// Imports an `OpenTabletDriver` configuration or preset file into a `NextTabletDriver`
+/// `MappingConfig`.
 ///
 /// # Errors
 /// Returns an error if the file could not be read or parsed.
 pub fn import_otd_profile(path: &Path) -> Result<MappingConfig, OtdImportError> {
     let content = fs::read_to_string(path).map_err(OtdImportError::Read)?;
     let config = parse_otd_profile_str(&content)?;
-    log::info!(target: "Config", "Successfully imported OTD profile from {:?}", path.file_name().unwrap_or_default().display());
+    log::info!(target: "Config", "Successfully imported OTD profile from \
+        {:?}", path.file_name().unwrap_or_default().display());
     Ok(config)
 }
 
 #[cfg(test)]
-#[allow(clippy::float_cmp)]
+#[allow(
+    clippy::float_cmp,
+    reason = "the tests compare floats that are exact by construction or copied unchanged"
+)]
 mod tests {
     use super::*;
 
@@ -259,8 +265,13 @@ mod tests {
                 {
                     "OutputMode": { "Path": "AbsoluteMode" },
                     "AbsoluteModeSettings": {
-                        "Display": { "Width": 1920.0, "Height": 1080.0, "X": 960.0, "Y": 540.0, "Rotation": 0.0 },
-                        "Tablet": { "Width": 100.0, "Height": 100.0, "X": 50.0, "Y": 50.0, "Rotation": 0.0 }
+                        "Display": {
+                            "Width": 1920.0, "Height": 1080.0,
+                            "X": 960.0, "Y": 540.0, "Rotation": 0.0
+                        },
+                        "Tablet": {
+                            "Width": 100.0, "Height": 100.0, "X": 50.0, "Y": 50.0, "Rotation": 0.0
+                        }
                     }
                 }
             ]
@@ -305,7 +316,8 @@ mod tests {
         let path = std::env::temp_dir().join(format!("ntd_otd_import_{nanos}.json"));
         fs::write(
             &path,
-            r#"{ "Profiles": [ { "OutputMode": { "Path": "OpenTabletDriver.Desktop.Output.RelativeMode" } } ] }"#,
+            r#"{ "Profiles": [ { "OutputMode": {
+                "Path": "OpenTabletDriver.Desktop.Output.RelativeMode" } } ] }"#,
         )
         .unwrap();
         let config = import_otd_profile(&path).unwrap();

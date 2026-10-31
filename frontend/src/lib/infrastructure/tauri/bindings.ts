@@ -87,7 +87,9 @@ export type ActiveArea = {
 
 /**  Represents an individual file (asset) attached to a GitHub Release. */
 export type Asset = {
+	/**  File name of the asset. */
 	name: string,
+	/**  URL the asset can be downloaded from. */
 	browser_download_url: string,
 };
 
@@ -152,9 +154,13 @@ export type LogEntry = {
  *  reads `get_logs` instead).
  */
 export type LogEvent = {
+	/**  Formatted timestamp of the log line. */
 	time: string,
+	/**  Level of the log line: `INFO`, `DEBUG`, `WARN` or `ERROR`. */
 	level: string,
+	/**  Module or subsystem that wrote the log line. */
 	group: string,
+	/**  Text of the log line. */
 	message: string,
 };
 
@@ -206,7 +212,10 @@ export type MappingConfig_Deserialize = {
 	run_at_startup?: boolean,
 	/**  Whether minimizing the application window hides it to the system tray. */
 	system_tray_on_minimize?: boolean,
-	/**  Whether to force the Windows system timer resolution to 0.5ms for low-latency tablet polling. */
+	/**
+	 *  Whether to force the Windows system timer resolution to 0.5ms for low-latency tablet
+	 *  polling.
+	 */
 	force_high_resolution_timer?: boolean,
 	/**  WebSocket server broadcast configuration. */
 	websocket?: WebSocketConfig_Deserialize,
@@ -265,7 +274,10 @@ export type MappingConfig_Serialize = {
 	run_at_startup: boolean,
 	/**  Whether minimizing the application window hides it to the system tray. */
 	system_tray_on_minimize: boolean,
-	/**  Whether to force the Windows system timer resolution to 0.5ms for low-latency tablet polling. */
+	/**
+	 *  Whether to force the Windows system timer resolution to 0.5ms for low-latency tablet
+	 *  polling.
+	 */
 	force_high_resolution_timer: boolean,
 	/**  WebSocket server broadcast configuration. */
 	websocket: WebSocketConfig_Serialize,
@@ -334,7 +346,13 @@ export type PluginManifest_Serialize = {
  *  runtime the values are `serde_json::Value`, and a plugin only ever stores one of these three
  *  kinds.
  */
-export type PluginPropertyValue = number | null | boolean | string;
+export type PluginPropertyValue = 
+/**  A number: a `Float` or `Int` property, or the chosen index of a `Choice`. */
+number | null | 
+/**  A `Bool` property. */
+boolean | 
+/**  A `String` property. */
+string;
 
 export type PresetInfo = {
 	name: string,
@@ -478,30 +496,47 @@ export type Release = Release_Serialize | Release_Deserialize;
 
 /**  Represents a GitHub Release object returned from the API. */
 export type Release_Deserialize = {
+	/**  Git tag of the release, for example `v1.26.1708.00`. */
 	tag_name: string,
+	/**  Display name of the release. */
 	name?: string | null,
+	/**  Release notes, in Markdown. */
 	body?: string | null,
+	/**  Publication date, as GitHub formats it (ISO 8601). */
 	published_at?: string | null,
+	/**  Files attached to the release. */
 	assets?: Asset[],
 };
 
 /**  Represents a GitHub Release object returned from the API. */
 export type Release_Serialize = {
+	/**  Git tag of the release, for example `v1.26.1708.00`. */
 	tag_name: string,
+	/**  Display name of the release. */
 	name: string | null,
+	/**  Release notes, in Markdown. */
 	body: string | null,
+	/**  Publication date, as GitHub formats it (ISO 8601). */
 	published_at: string | null,
+	/**  Files attached to the release. */
 	assets: Asset[],
 };
 
 /**  One pen packet, about 60 times per second while a window is visible. */
 export type TabletEvent = {
+	/**  Pen status as text, for example `Hover` or `Contact`. */
 	status: string,
+	/**  Horizontal position, in raw units of the tablet sensor. */
 	x: number,
+	/**  Vertical position, in raw units of the tablet sensor. */
 	y: number,
+	/**  Raw pressure, from 0 up to the maximum pressure of the tablet. */
 	pressure: number,
+	/**  Distance of the pen above the surface, as the tablet reports it. */
 	hover_distance: number,
+	/**  Horizontal tilt of the pen, in degrees. */
 	tilt_x: number,
+	/**  Vertical tilt of the pen, in degrees. */
 	tilt_y: number,
 };
 
@@ -539,6 +574,7 @@ export type TargetArea = {
 export type ThemeFile = {
 	/**  Stable id derived from the file name; what `custom:<id>` refers to. */
 	id: string,
+	/**  File name of the theme in the themes folder. */
 	file_name: string,
 	/**  Raw file content, parsed and validated by the frontend. */
 	content: string,

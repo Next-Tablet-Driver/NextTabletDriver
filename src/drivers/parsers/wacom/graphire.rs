@@ -1,6 +1,7 @@
 use crate::drivers::TabletData;
 use crate::drivers::parsers::ReportParser;
 
+/// Parser for Wacom Graphire tablets, a port of the `GraphireReportParser` of `OpenTabletDriver`.
 pub struct GraphireParser;
 
 impl ReportParser for GraphireParser {
@@ -103,7 +104,10 @@ impl ReportParser for GraphireParser {
 }
 
 #[cfg(test)]
-#[allow(clippy::float_cmp)]
+#[allow(
+    clippy::float_cmp,
+    reason = "the tests compare floats that are exact by construction or copied unchanged"
+)]
 mod tests {
     use super::*;
     use crate::drivers::TabletStatus;

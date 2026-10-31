@@ -6,6 +6,11 @@
 //! ntd-recorder check file.ntdcap
 //! ntd-recorder trim in.ntdcap out.ntdcap [--per-step N]
 //! ```
+#![allow(
+    clippy::print_stdout,
+    clippy::print_stderr,
+    reason = "an interactive command-line tool: its output is the user interface"
+)]
 
 mod capture;
 

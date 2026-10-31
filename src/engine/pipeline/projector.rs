@@ -74,7 +74,8 @@ impl Projector {
     /// # Arguments
     /// * `x_mm` - The current physical X coordinate (mm).
     /// * `y_mm` - The current physical Y coordinate (mm).
-    /// * `config` - The current global configuration containing relative movement limits and sensitivities.
+    /// * `config` - The current global configuration containing relative movement limits and
+    ///   sensitivities.
     ///
     /// # Returns
     /// A tuple `(delta_x, delta_y)` representing the relative movement offset.
@@ -107,7 +108,10 @@ impl Projector {
 }
 
 #[cfg(test)]
-#[allow(clippy::float_cmp)]
+#[allow(
+    clippy::float_cmp,
+    reason = "the tests compare floats that are exact by construction or copied unchanged"
+)]
 mod tests {
     use super::*;
     use crate::core::config::models::MappingConfig;

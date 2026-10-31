@@ -20,7 +20,11 @@ use std::time::{Duration, Instant};
 ///
 /// Polls the raw HID device for byte reports and coordinates configuration reloading and packet
 /// processing.
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "each argument is a distinct piece of per-device state the loop borrows; a parameter \
+        struct would only move the list"
+)]
 pub(super) fn run_polling_loop(
     device: &hidapi::HidDevice,
     driver: &dyn crate::drivers::NextTabletDriver,
@@ -186,7 +190,11 @@ const STATS_INTERVAL: Duration = Duration::from_millis(16);
 /// consecutive active reports exceeds 25.0ms.
 ///
 /// Emits statistics updates and forwards output frames to the GUI thread.
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "each argument is a distinct piece of per-device state the loop borrows; a parameter \
+        struct would only move the list"
+)]
 fn process_packet<I: InputSink>(
     raw: &[u8],
     read_start: Instant,
@@ -241,7 +249,9 @@ fn process_packet<I: InputSink>(
         if total_dur > Duration::from_millis(5) {
             log::warn!(
                 target: "PerfSpike",
-                "LAG SPIKE: Packet parsing & processing took {total_dur:.2?} (parsing: {parse_duration:.2?}, inject: {inject_duration:.2?}, HID read: {read_duration:.2?}; stage timings are only recorded for sampled packets)"
+                "LAG SPIKE: Packet parsing & processing took {total_dur:.2?} (parsing: \
+                {parse_duration:.2?}, inject: {inject_duration:.2?}, HID read: \
+                {read_duration:.2?}; stage timings are only recorded for sampled packets)"
             );
         }
 
@@ -259,7 +269,8 @@ fn process_packet<I: InputSink>(
                 if interval > Duration::from_millis(25) {
                     log::warn!(
                         target: "PerfSpike",
-                        "LAG SPIKE: Delay between active packets was {interval:.2?} (exceeded 25ms threshold)"
+                        "LAG SPIKE: Delay between active packets was {interval:.2?} (exceeded 25ms \
+                            threshold)"
                     );
                 }
             }
@@ -338,7 +349,11 @@ impl Default for PacketLoopState {
 /// the shared-memory publication. Not part of the public API: it exists so benchmarks measure
 /// production code rather than a copy of it.
 #[doc(hidden)]
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "each argument is a distinct piece of per-device state the loop borrows; a parameter \
+        struct would only move the list"
+)]
 pub fn process_packet_for_bench<I: InputSink>(
     raw: &[u8],
     driver: &dyn crate::drivers::NextTabletDriver,

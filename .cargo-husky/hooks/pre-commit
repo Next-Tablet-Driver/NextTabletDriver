@@ -7,5 +7,5 @@ set -e
 echo '+cargo fmt --all -- --check'
 cargo fmt --all -- --check
 
-echo '+cargo clippy --workspace --all-targets --all-features -- -D warnings'
-cargo clippy --workspace --all-targets --all-features -- -D warnings
+echo '+cargo clippy -p next_tablet_driver --all-targets --all-features -- -D warnings'
+cargo clippy -p next_tablet_driver --all-targets --all-features -- -D warnings

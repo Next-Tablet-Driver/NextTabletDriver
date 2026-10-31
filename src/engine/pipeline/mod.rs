@@ -20,12 +20,20 @@ use std::sync::Arc;
 ///
 /// Refactored into a component-based architecture for better modularity.
 pub struct Pipeline {
+    /// Stage that converts raw sensor coordinates to millimetres on the tablet surface.
     pub transformer: Transformer,
+    /// Stage that maps a position on the tablet to normalized coordinates inside the active area.
     pub normalizer: Normalizer,
+    /// Stage that projects normalized coordinates on the screen, or turns movement into deltas in
+    /// relative mode.
     pub projector: Projector,
 
+    /// Raw pressure above which the tip counts as touching, derived from the configured percentage
+    /// and the maximum pressure of the tablet.
     pub tip_threshold_raw: f32,
+    /// Maximum pressure the raw threshold was computed for.
     pub last_max_p: f32,
+    /// Configured threshold, in percent, the raw threshold was computed from.
     pub last_threshold: u16,
 }
 
@@ -36,6 +44,7 @@ impl Default for Pipeline {
 }
 
 impl Pipeline {
+    /// Creates a pipeline with its default stages and no threshold computed yet.
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -146,6 +155,8 @@ impl Pipeline {
         frame
     }
 
+    /// Returns whether `pressure_raw` counts as the tip touching, recomputing the raw threshold
+    /// first when the configured threshold or `max_p` changed.
     pub fn evaluate_pressure(
         &mut self,
         pressure_raw: u16,
@@ -170,7 +181,10 @@ impl Pipeline {
 }
 
 #[cfg(test)]
-#[allow(clippy::float_cmp)]
+#[allow(
+    clippy::float_cmp,
+    reason = "the tests compare floats that are exact by construction or copied unchanged"
+)]
 mod tests {
     use super::*;
     use crate::core::config::models::MappingConfig;

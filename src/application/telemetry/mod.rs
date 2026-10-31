@@ -45,6 +45,8 @@ enum TelemetryMessage {
     Shutdown { ack: Sender<()> },
 }
 
+/// Entry point of telemetry: starts the worker that sends anonymous events, only when the user has
+/// agreed.
 pub struct TelemetryService;
 
 impl TelemetryService {
@@ -113,7 +115,10 @@ fn send_message(msg: TelemetryMessage) {
 }
 
 #[cfg(test)]
-#[allow(clippy::float_cmp)]
+#[allow(
+    clippy::float_cmp,
+    reason = "the tests compare floats that are exact by construction or copied unchanged"
+)]
 mod tests {
     use super::*;
     use crate::engine::state::SharedState;
@@ -147,7 +152,8 @@ mod tests {
 
     #[test]
     fn smoke_the_app_closed_summary_without_a_worker_does_not_panic() {
-        // Smoke test: the summary is only sent when a worker exists, so this checks it cannot panic.
+        // Smoke test: the summary is only sent when a worker exists, so this checks it cannot
+        // panic.
         let shared = SharedState::new();
         shared
             .pipeline

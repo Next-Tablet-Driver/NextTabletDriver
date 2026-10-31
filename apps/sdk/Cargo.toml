@@ -1,0 +1,29 @@
+[package]
+name = "ntd_sdk"
+authors.workspace = true
+description = "Native SDK for embedding NextTabletDriver's tablet engine in third-party applications"
+repository.workspace = true
+version = "1.1.0"
+publish = false
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[lib]
+name = "ntd_sdk"
+crate-type = ["cdylib", "staticlib"]
+
+[dependencies]
+next_tablet_driver = { workspace = true }
+hidapi = { workspace = true }
+log = { workspace = true }
+
+[build-dependencies]
+cbindgen = { workspace = true }
+csbindgen = { workspace = true }
+
+[lints]
+workspace = true
