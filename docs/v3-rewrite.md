@@ -1545,8 +1545,8 @@ just the application.
 | | |
 |---|---|
 | **Current phase** | Phase 1: Workspace, quality, CI, contribution rules |
-| **Last completed task** | P2.1 |
-| **Next task** | P2.2 |
+| **Last completed task** | P2.2 |
+| **Next task** | P2.3 |
 | **v1 bridge release** | not started (P7.5a) |
 | **Last updated** | 2026-10-31 |
 
@@ -1875,10 +1875,14 @@ Goal: `ntd-core`, `ntd-tablets`, `ntd-pipeline` without any I/O (§7, phase 2).
     are not "really shared" and leave it when `ntd-settings` is created. The `qa/fuzz` targets only
     use `ntd_core::math`, so that crate no longer depends on `next_tablet_driver`. The doctests of
     `ntd-core` run next to the root crate's in the CI and in `AGENTS.md`.
-- [ ] **P2.2** Remove the `drivers` → `engine::state` dependency
+- [x] **P2.2** Remove the `drivers` → `engine::state` dependency (branch `chore/v3-phase-2`)
   - Depends on: P2.1
   - Done when: `parsers/wacom/intuos_v1.rs` and `pl.rs` no longer import `engine::state`
     (parser-local state, or helper moved to `ntd-core`); golden files identical.
+  - Notes: the only thing the two parsers took from `engine::state` was the poisoned-lock helpers
+    `LockRecoveryExt` and `WriteRecoverExt`. They moved to `ntd_core::sync` (`ntd-core` gained
+    `log`, a facade that does no I/O), and every caller now imports them from there. `drivers`
+    no longer imports `engine` at all. The golden test passes and `qa/golden/` did not change.
 - [ ] **P2.3** Extract `ntd-tablets`
   - Depends on: P2.2
   - Done when: parsers, models and descriptor loading are in `crates/ntd-tablets`; no I/O; golden
