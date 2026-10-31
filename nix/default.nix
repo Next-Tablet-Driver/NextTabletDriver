@@ -42,13 +42,17 @@ rustPlatform.buildRustPackage {
     libusb1
   ];
 
-  # The updater artifacts need a signing key, which a Nix build does not have. Tauri runs the
-  # frontend build from the parent of the directory that holds tauri.conf.json (`apps/` here)
-  # when there is no package.json above the current directory, hence `../frontend`.
+  # The updater artifacts need a signing key, which a Nix build does not have. The frontend is
+  # built below instead of by `beforeBuildCommand`, which Tauri would run from `apps/` here, and
+  # the hook splits the flags on spaces so the command cannot be given inline.
   tauriBuildFlags = [
     "--config"
-    ''{"bundle":{"createUpdaterArtifacts":false},"build":{"beforeBuildCommand":"npm run build --prefix ../frontend"}}''
+    ''{"bundle":{"createUpdaterArtifacts":false},"build":{"beforeBuildCommand":""}}''
   ];
+
+  postConfigure = ''
+    npm --prefix frontend run build
+  '';
 
   postInstall = ''
     install -Dm644 ${../scripts/99-nexttabletdriver.rules} \
