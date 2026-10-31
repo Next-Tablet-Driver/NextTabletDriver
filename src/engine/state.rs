@@ -30,6 +30,7 @@ impl<T> LockRecoveryExt<T> for LockResult<T> {
 
 /// Extension trait for self-healing transient write locks.
 pub trait WriteRecoverExt {
+    /// The lock guard that [`WriteRecoverExt::unwrap_or_reset`] hands back.
     type Guard;
     /// Extracts the guard and explicitly overwrites the corrupted data with `Default::default()`.
     /// Used for transient state like tablet coordinates, stats, or device metadata.
@@ -66,21 +67,30 @@ impl<'a, T: Default> WriteRecoverExt for LockResult<std::sync::MutexGuard<'a, T>
     }
 }
 
+/// State of the input engine.
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub enum EngineStatus {
+    /// The engine is running.
     #[default]
     Running,
+    /// The engine stopped; the text says why.
     Failed(String),
 }
 
 /// An atomic snapshot of device properties.
 #[derive(Clone, Debug, PartialEq)]
 pub struct DeviceState {
+    /// Name of the connected tablet.
     pub name: String,
+    /// USB vendor ID of the connected tablet.
     pub vid: u16,
+    /// USB product ID of the connected tablet.
     pub pid: u16,
+    /// Width and height of the tablet surface, in millimetres.
     pub physical_size: (f32, f32),
+    /// Largest X and Y the sensor reports, in raw units.
     pub hardware_size: (f32, f32),
+    /// Largest raw pressure the tablet reports.
     pub max_pressure: f32,
     /// Number of buttons on the pen (0 when the tablet description does not say).
     pub pen_button_count: u8,
@@ -121,6 +131,7 @@ impl Default for ConfigState {
 }
 
 impl ConfigState {
+    /// Creates the state with the default configuration and version 0.
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -153,6 +164,7 @@ impl Default for PipelineState {
 }
 
 impl PipelineState {
+    /// Creates the state with empty tablet data and an empty processed frame.
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -185,6 +197,7 @@ impl Default for LifecycleState {
 }
 
 impl LifecycleState {
+    /// Creates the state: not the first run, engine running, no shutdown requested, window visible.
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -203,6 +216,7 @@ impl Default for SharedState {
 }
 
 impl SharedState {
+    /// Creates the shared state with default values.
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -214,6 +228,7 @@ impl SharedState {
         }
     }
 
+    /// Creates the default shared state, for tests.
     #[must_use]
     pub fn test_default() -> Self {
         Self::new()

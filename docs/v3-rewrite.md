@@ -1545,8 +1545,8 @@ just the application.
 | | |
 |---|---|
 | **Current phase** | Phase 1: Workspace, quality, CI, contribution rules |
-| **Last completed task** | P1.6 |
-| **Next task** | P1.7 |
+| **Last completed task** | P1.7 |
+| **Next task** | P1.8 |
 | **v1 bridge release** | not started (P7.5a) |
 | **Last updated** | 2026-10-31 |
 
@@ -1701,10 +1701,18 @@ phase 1; §12, §13, §14).
     `unreachable_pub` 71, `cargo_common_metadata` 33 (3 per crate), `needless_pass_by_value` 17
     (desktop commands), `print_stdout` 14, `print_stderr` 5, `unreachable` 2, `suboptimal_flops` 2,
     `doc_markdown` 1.
-- [ ] **P1.7** Fix lint warnings (several PRs, one area per PR)
+- [x] **P1.7** Fix lint warnings (several PRs, one area per PR) (branch `chore/v3-phase-1`)
   - Depends on: P1.6
   - Done when: zero warnings on the workspace; each PR only fixes lints, with no behaviour change
     (golden files and E2E identical).
+  - Notes: 699 warnings to 0, in nine commits (metadata, visibility, `unsafe`, `allow` reasons,
+    exceptions, then the documentation by area). Golden files and the 639 tests are unchanged; the
+    frontend was not touched except the regenerated `bindings.ts` (comments only). Choices the next
+    phases should know: `unsafe_code` is allowed per module, with a reason, in the root crate, the
+    SDK, the desktop app and the example (the future FFI crates of §4 replace this); the SDK's C ABI
+    keeps `pub` (cbindgen only exports `pub` items); `redundant_pub_crate` is allowed because it
+    contradicts `unreachable_pub` (added to §12.3); the new documentation names the OpenTabletDriver
+    class each parser is ported from.
 - [ ] **P1.8** Switch the lints to `deny`
   - Depends on: P1.7
   - Done when: `[workspace.lints]` is exactly the one in §12.3.

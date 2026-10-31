@@ -39,6 +39,7 @@ use windows_sys::Win32::UI::WindowsAndMessaging::{
 /// change or monitor hot-plug.
 const SCREEN_METRICS_REFRESH: Duration = Duration::from_millis(250);
 
+/// Sends the processed pen frames to Windows as cursor movement and button events.
 pub struct Injector {
     /// Tracks the previous state of the primary pen button (tip) to avoid spamming
     /// unnecessary "Button Down" events every frame while dragging.
