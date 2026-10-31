@@ -1,6 +1,6 @@
 <script lang="ts">
     import { onMount } from "svelte";
-    import { Download, Star, Tag } from "lucide-svelte";
+    import { Download, Star, Tag } from "@lucide/svelte";
     import StatCard from "../features/credits/StatCard.svelte";
     import ContributorRow from "../features/credits/ContributorRow.svelte";
 

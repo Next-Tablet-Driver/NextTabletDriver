@@ -1542,8 +1542,8 @@ just the application.
 | | |
 |---|---|
 | **Current phase** | Phase 0: Safety nets |
-| **Last completed task** | P0.3 |
-| **Next task** | P0.4 |
+| **Last completed task** | P0.4 |
+| **Next task** | P0.5 |
 | **v1 bridge release** | not started (P7.5a) |
 | **Last updated** | 2026-10-31 |
 
@@ -1597,7 +1597,7 @@ Goal: be able to detect any regression **before** touching the architecture (§7
   - Depends on: —
   - Done when: the upstream licence is identified, the required attribution is added (or
     incompatible files are replaced), and the decision is written in the PR.
-- [ ] **P0.4** Remove the duplicate icon library (§11.3)
+- [x] **P0.4** Remove the duplicate icon library (§11.3) (PR: to be linked)
   - Depends on: —
   - Done when: a single Lucide library in `frontend/package.json`; `npm run check`, `npm test` and
     `npm run e2e` green.

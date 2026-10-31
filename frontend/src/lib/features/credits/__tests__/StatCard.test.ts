@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/svelte";
-import { Star } from "lucide-svelte";
+import { Star } from "@lucide/svelte";
 import StatCard from "../StatCard.svelte";
 
 describe("StatCard", () => {

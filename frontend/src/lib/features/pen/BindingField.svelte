@@ -1,6 +1,6 @@
 <script lang="ts">
     import { onDestroy } from "svelte";
-    import { Keyboard } from "lucide-svelte";
+    import { Keyboard } from "@lucide/svelte";
     import Button from "../../components/ui/Button.svelte";
     import Select from "../../components/ui/Select.svelte";
     import { normalizeBinding } from "../../infrastructure/tauri/commands";

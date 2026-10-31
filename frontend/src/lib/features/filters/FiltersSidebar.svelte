@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { Plus, Folder, RefreshCw, Activity, Settings2, Waves } from "lucide-svelte";
+    import { Plus, Folder, RefreshCw, Activity, Settings2, Waves } from "@lucide/svelte";
     import type { PluginManifest, DynamicPluginSettings } from "../../infrastructure/tauri/commands";
     import Button from "../../components/ui/Button.svelte";
 

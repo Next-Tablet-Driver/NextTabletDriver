@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { Wifi } from "lucide-svelte";
+    import { Wifi } from "@lucide/svelte";
     import type { MappingState } from "../../features/mapping/mapping-state.svelte";
     import Checkbox from "../../components/ui/Checkbox.svelte";
     import Input from "../../components/ui/Input.svelte";

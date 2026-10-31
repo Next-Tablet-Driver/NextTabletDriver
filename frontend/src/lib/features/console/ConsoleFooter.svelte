@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { Trash2, Copy, Download } from "lucide-svelte";
+    import { Trash2, Copy, Download } from "@lucide/svelte";
     import Button from "../../components/ui/Button.svelte";
     
     const { clearConsole, copyVisible, exportAll, filteredCount, totalCount } = $props();

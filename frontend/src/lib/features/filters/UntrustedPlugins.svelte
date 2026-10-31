@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { ShieldAlert } from "lucide-svelte";
+    import { ShieldAlert } from "@lucide/svelte";
     import type { UntrustedPlugin } from "../../infrastructure/tauri/commands";
     import Button from "../../components/ui/Button.svelte";
 

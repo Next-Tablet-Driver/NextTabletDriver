@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { Languages } from "lucide-svelte";
+    import { Languages } from "@lucide/svelte";
     import type { MappingState } from "../../features/mapping/mapping-state.svelte";
     import Select from "../../components/ui/Select.svelte";
 

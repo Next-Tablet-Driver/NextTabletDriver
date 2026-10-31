@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { Activity, Settings2, Waves, Trash2, Info, RefreshCw } from "lucide-svelte";
+    import { Activity, Settings2, Waves, Trash2, Info, RefreshCw } from "@lucide/svelte";
     import type { PluginManifest, DynamicPluginSettings, PropertyValue } from "../../infrastructure/tauri/commands";
     import Checkbox from "../../components/ui/Checkbox.svelte";
     import Button from "../../components/ui/Button.svelte";

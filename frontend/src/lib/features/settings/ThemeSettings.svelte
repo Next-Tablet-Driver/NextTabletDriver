@@ -1,6 +1,6 @@
 <script lang="ts">
     import { onMount } from "svelte";
-    import { Palette, FolderOpen, Download, RefreshCw, Trash2, Copy, TriangleAlert, Globe } from "lucide-svelte";
+    import { Palette, FolderOpen, Download, RefreshCw, Trash2, Copy, TriangleAlert, Globe } from "@lucide/svelte";
     import { confirm } from "@tauri-apps/plugin-dialog";
     import type { MappingState } from "../../features/mapping/mapping-state.svelte";
     import { deleteTheme, importTheme, openThemesFolder } from "../../infrastructure/tauri/commands";

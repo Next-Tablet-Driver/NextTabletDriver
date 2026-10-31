@@ -1,6 +1,6 @@
 <script lang="ts">
     import { onMount } from "svelte";
-    import { Box } from "lucide-svelte";
+    import { Box } from "@lucide/svelte";
     import type { MappingState } from "../features/mapping/mapping-state.svelte";
     import { getAvailablePlugins, reloadPlugins, openPluginsFolder, installPlugin, deletePlugin, getUntrustedPlugins, trustPlugin, type UntrustedPlugin, type PluginManifest, type DynamicPluginSettings, type PropertyValue } from "../infrastructure/tauri/commands";
     
