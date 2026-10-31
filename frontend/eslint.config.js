@@ -52,7 +52,7 @@ export default tseslint.config(
       "svelte/prefer-style-directive": "error",
       "svelte/shorthand-attribute": "error",
       "svelte/shorthand-directive": "error",
-      "svelte/sort-attributes": "warn",
+      "svelte/sort-attributes": "error",
       "svelte/spaced-html-comment": "error",
     },
   },
@@ -133,10 +133,9 @@ export default tseslint.config(
 
       // ── General code quality ──
       eqeqeq: ["error", "always"],
-      // Roadmap P1.12: warnings until the code is clean (P1.13), errors after (P1.14).
-      "no-console": "warn",
+      "no-console": "error",
       "no-restricted-imports": [
-        "warn",
+        "error",
         {
           patterns: [
             {
@@ -148,7 +147,7 @@ export default tseslint.config(
         },
       ],
       "@typescript-eslint/ban-ts-comment": [
-        "warn",
+        "error",
         {
           "ts-expect-error": "allow-with-description",
           "ts-ignore": true,

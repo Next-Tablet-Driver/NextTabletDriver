@@ -117,8 +117,9 @@ nm -D --defined-only libc_flip_x.so | grep ntd_plugin_
 **The frontend:**
 
 ```bash
-npm --prefix frontend run lint
-npm --prefix frontend run check            # TypeScript and Svelte types
+npm --prefix frontend run format:check      # Prettier, printWidth 100 (`run format` fixes it)
+npm --prefix frontend run lint              # ESLint, a warning fails
+npm --prefix frontend run check             # TypeScript and Svelte types, a warning fails
 npm --prefix frontend run test -- --run    # unit tests (Vitest)
 ```
 

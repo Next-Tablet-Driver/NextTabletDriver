@@ -1545,8 +1545,8 @@ just the application.
 | | |
 |---|---|
 | **Current phase** | Phase 1: Workspace, quality, CI, contribution rules |
-| **Last completed task** | P1.13 |
-| **Next task** | P1.14 |
+| **Last completed task** | P1.14 |
+| **Next task** | P1.15 |
 | **v1 bridge release** | not started (P7.5a) |
 | **Last updated** | 2026-10-31 |
 
@@ -1773,10 +1773,13 @@ phase 1; §12, §13, §14).
     (`saveConfig`, `resetConfig`, `loadProfile`, `getCoreVersion`, `getPresets`, `getReleases`).
     `noUncheckedIndexedAccess` and `noImplicitOverride` are in `tsconfig.app.json`, so
     `tsconfig.strict.json` is gone. `no-console` stays off for the tests and the Node smoke script.
-- [ ] **P1.14** Switch the frontend rules to errors
+- [x] **P1.14** Switch the frontend rules to errors (branch `chore/v3-phase-1`)
   - Depends on: P1.13
   - Done when: `eslint --max-warnings 0`, `svelte-check --fail-on-warnings` and
     `prettier --check` are in place as in §12.7.
+  - Notes: `npm run lint` is `eslint . --max-warnings 0`, `npm run check` passes
+    `--fail-on-warnings` to `svelte-check`, and `npm run format:check` is `prettier --check .`.
+    The three rules added in P1.12 and `svelte/sort-attributes` are errors now.
 - [ ] **P1.15** Rework `ci.yml` (§13.1, §13.2)
   - Depends on: P1.8, P1.9, P1.10, P1.11, P1.14
   - Done when: the §13.2 jobs that already have something to check exist (fmt, style, typos,
