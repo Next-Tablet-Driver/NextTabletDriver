@@ -20,3 +20,6 @@ frontend/test-results/
 frontend/playwright-report/
 frontend/blob-report/
 coverage.md
+
+# Raw tablet captures (the trimmed ones live in qa/golden/)
+/*.ntdcap

@@ -106,6 +106,24 @@ impl Capture {
         }
     }
 
+    /// Keeps at most `per_step` reports of each step, evenly spaced, so a capture of several
+    /// megabytes becomes small enough to commit as a golden file. Order is preserved.
+    #[must_use]
+    pub fn trimmed(&self, per_step: usize) -> Self {
+        let mut out = self.clone();
+        out.reports.clear();
+        for step in 0..self.steps.len() {
+            let of_step: Vec<&Report> = self.reports.iter().filter(|r| r.step == step).collect();
+            let keep = per_step.min(of_step.len());
+            for k in 0..keep {
+                if let Some(r) = of_step.get(k * of_step.len() / keep) {
+                    out.reports.push((*r).clone());
+                }
+            }
+        }
+        out
+    }
+
     /// Writes the capture as pretty JSON.
     ///
     /// # Errors
@@ -205,6 +223,36 @@ mod tests {
         let read = Capture::read(&path);
         let _ = std::fs::remove_file(&path);
         assert_eq!(read.ok(), Some(capture));
+    }
+
+    #[test]
+    fn trimming_keeps_an_even_sample_of_each_step_in_order() {
+        let mut capture = Capture::new(device());
+        for id in ["a", "b"] {
+            capture.steps.push(StepInfo {
+                id: id.into(),
+                instruction: String::new(),
+                start_ms: 0,
+                end_ms: 0,
+            });
+        }
+        for (step, count) in [(0, 100_u64), (1, 3)] {
+            for t in 0..count {
+                capture.reports.push(Report {
+                    t_ms: t,
+                    interface: 0,
+                    step,
+                    data_hex: format!("{t:02x}"),
+                });
+            }
+        }
+        let trimmed = capture.trimmed(10);
+        let of = |step| trimmed.reports.iter().filter(|r| r.step == step).count();
+        assert_eq!(of(0), 10);
+        assert_eq!(of(1), 3, "a short step is kept whole");
+        let times: Vec<u64> = trimmed.reports.iter().map(|r| r.t_ms).collect();
+        assert!(times.windows(2).all(|w| w[0] <= w[1] || w[1] < 3));
+        assert_eq!(trimmed.reports.first().map(|r| r.t_ms), Some(0));
     }
 
     #[test]

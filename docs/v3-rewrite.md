@@ -1542,8 +1542,8 @@ just the application.
 | | |
 |---|---|
 | **Current phase** | Phase 0: Safety nets |
-| **Last completed task** | P0.5 |
-| **Next task** | P0.6 |
+| **Last completed task** | P0.6 |
+| **Next task** | P0.7 |
 | **v1 bridge release** | not started (P7.5a) |
 | **Last updated** | 2026-10-31 |
 
@@ -1608,7 +1608,7 @@ Goal: be able to detect any regression **before** touching the architecture (§7
   - Done when: the tool lists devices, captures descriptor + guided reports, writes a versioned
     `.ntdcap` without personal data; `docs/adding-a-tablet.md` and
     `.github/ISSUE_TEMPLATE/tablet_support.yml` ask for this file.
-- [ ] **P0.6** Golden file harness (`qa/golden`)
+- [x] **P0.6** Golden file harness (`qa/golden`) (PR: to be linked)
   - Depends on: P0.5
   - Done when: `cargo test` replays every capture through the v2 parser and compares it with a
     committed snapshot; changing one byte in a parser fails the test.

@@ -4,6 +4,7 @@
 //! ntd-recorder list
 //! ntd-recorder record [VID:PID] [--out file.ntdcap]
 //! ntd-recorder check file.ntdcap
+//! ntd-recorder trim in.ntdcap out.ntdcap [--per-step N]
 //! ```
 
 mod capture;
@@ -68,7 +69,8 @@ const STEPS: &[(&str, &str, u64)] = &[
 const USAGE: &str = "usage:
   ntd-recorder list
   ntd-recorder record [VID:PID] [--out FILE]
-  ntd-recorder check FILE";
+  ntd-recorder check FILE
+  ntd-recorder trim IN OUT [--per-step N]";
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
@@ -78,6 +80,7 @@ fn main() -> ExitCode {
         Some("list") => list(),
         Some("record") => record(args.get(1..).unwrap_or_default()),
         Some("check") => check(args.get(1).map(String::as_str)),
+        Some("trim") => trim(args.get(1..).unwrap_or_default()),
         _ => Err(USAGE.into()),
     };
     match result {
@@ -274,6 +277,29 @@ fn check(path: Option<&str>) -> Result<()> {
         cap.device.product.as_deref().unwrap_or("?"),
         cap.interfaces.len(),
         cap.steps.len(),
+        cap.reports.len()
+    );
+    Ok(())
+}
+
+/// Default number of reports kept per step by `trim`.
+const DEFAULT_PER_STEP: usize = 40;
+
+fn trim(args: &[String]) -> Result<()> {
+    let (Some(input), Some(output)) = (args.first(), args.get(1)) else {
+        return Err(USAGE.into());
+    };
+    let per_step = match args.get(2).map(String::as_str) {
+        Some("--per-step") => args.get(3).ok_or("--per-step needs a number")?.parse()?,
+        Some(other) => return Err(format!("unexpected argument {other}").into()),
+        None => DEFAULT_PER_STEP,
+    };
+    let cap = Capture::read(&PathBuf::from(input))?;
+    let small = cap.trimmed(per_step);
+    small.write(&PathBuf::from(output))?;
+    println!(
+        "Kept {} of {} reports.",
+        small.reports.len(),
         cap.reports.len()
     );
     Ok(())

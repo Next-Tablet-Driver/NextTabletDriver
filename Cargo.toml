@@ -61,6 +61,10 @@ proptest = "1"
 name = "transform_properties"
 path = "qa/tests/transform_properties.rs"
 
+[[test]]
+name = "golden"
+path = "qa/tests/golden.rs"
+
 [[bench]]
 name = "pipeline"
 path = "qa/benches/pipeline.rs"
