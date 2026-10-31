@@ -16,9 +16,11 @@ pub use normalizer::Normalizer;
 pub use projector::Projector;
 pub use transformer::Transformer;
 
+use ntd_core::clock::{Clock, SystemClock};
 use ntd_core::config::models::{DriverMode, MappingConfig};
 use ntd_plugin_api::{PluginContext, PluginPacket};
 use ntd_tablets::TabletData;
+use std::sync::Arc;
 
 /// The core processing pipeline for tablet input events.
 ///
@@ -31,6 +33,9 @@ pub struct Pipeline {
     /// Stage that projects normalized coordinates on the screen, or turns movement into deltas in
     /// relative mode.
     pub projector: Projector,
+    /// Where the pipeline reads the time from (relative mode only). Injected, never read
+    /// from the OS, so a test decides what time it is.
+    pub clock: Arc<dyn Clock>,
 
     /// Raw pressure above which the tip counts as touching, derived from the configured percentage
     /// and the maximum pressure of the tablet.
@@ -48,13 +53,21 @@ impl Default for Pipeline {
 }
 
 impl Pipeline {
-    /// Creates a pipeline with its default stages and no threshold computed yet.
+    /// Creates a pipeline with its default stages, the system clock and no threshold computed
+    /// yet.
     #[must_use]
     pub fn new() -> Self {
+        Self::with_clock(Arc::new(SystemClock::new()))
+    }
+
+    /// Like [`Pipeline::new`], with the clock the pipeline reads the time from.
+    #[must_use]
+    pub fn with_clock(clock: Arc<dyn Clock>) -> Self {
         Self {
             transformer: Transformer::default(),
             normalizer: Normalizer,
             projector: Projector::default(),
+            clock,
             tip_threshold_raw: 0.0,
             last_max_p: 0.0,
             last_threshold: 0,
@@ -148,7 +161,9 @@ impl Pipeline {
                 frame.screen_y = sy;
             }
             DriverMode::Relative => {
-                let (dx, dy) = self.projector.project_relative(x_mm, y_mm, config);
+                let (dx, dy) =
+                    self.projector
+                        .project_relative(x_mm, y_mm, config, self.clock.now());
                 frame.screen_x = dx;
                 frame.screen_y = dy;
             }
@@ -381,6 +396,38 @@ mod tests {
         let f2 = pipeline.process(&d2, &driver, &config, &mut filters);
         assert!((f2.screen_x - 2.0).abs() < 1e-4);
         assert!((f2.screen_y - 3.0).abs() < 1e-4);
+    }
+
+    #[test]
+    fn relative_tracking_restarts_after_the_configured_inactivity_on_the_injected_clock() {
+        let clock = Arc::new(ntd_core::clock::ManualClock::new());
+        let mut pipeline = Pipeline::with_clock(clock.clone());
+        let mut config = MappingConfig {
+            mode: DriverMode::Relative,
+            ..Default::default()
+        };
+        config.relative_config.x_sensitivity = 1.0;
+        config.relative_config.y_sensitivity = 1.0;
+        config.relative_config.rotation = 0.0;
+        config.relative_config.reset_time_ms = 100;
+        let mut filters = FilterPipeline::new();
+        let driver = MockDriver;
+        let at = |x| TabletData {
+            is_connected: true,
+            status: ntd_tablets::TabletStatus::Hover,
+            x,
+            y: 500,
+            ..Default::default()
+        };
+
+        let _ = pipeline.process(&at(500), &driver, &config, &mut filters);
+        clock.advance(std::time::Duration::from_millis(50));
+        let quick = pipeline.process(&at(520), &driver, &config, &mut filters);
+        clock.advance(std::time::Duration::from_millis(500));
+        let after_pause = pipeline.process(&at(560), &driver, &config, &mut filters);
+
+        assert!((quick.screen_x - 2.0).abs() < 1e-4);
+        assert_eq!(after_pause.screen_x, 0.0);
     }
 
     struct MockDegenerateDriver;

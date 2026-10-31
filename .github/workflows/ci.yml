@@ -282,6 +282,62 @@ jobs:
       - name: Fail on any difference
         run: git diff --exit-code -- crates/ntd-tablets/src/generated
 
+  fuzz:
+    name: Fuzz ${{ matrix.target }}
+    needs: plan
+    if: >-
+      contains(fromJson(needs.plan.outputs.crates), 'ntd-tablets') ||
+      contains(fromJson(needs.plan.outputs.crates), 'ntd-core') ||
+      contains(fromJson(needs.plan.outputs.crates), 'next_tablet_driver')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - parser_acepen
+          - parser_bosto
+          - parser_fallback
+          - parser_floogoo
+          - parser_genius
+          - parser_huion
+          - parser_lifetec
+          - parser_robotpen
+          - parser_skip_byte
+          - parser_tenmoon
+          - parser_uclogic
+          - parser_veikk
+          - parser_viewsonic
+          - parser_wacom
+          - parser_xencelabs
+          - parser_xenx
+          - parser_xp_pen
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          submodules: recursive
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          toolchain: nightly
+      - uses: swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
+        with:
+          workspaces: qa/fuzz
+          key: fuzz
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      - name: Install cargo-fuzz
+        run: cargo install --locked cargo-fuzz --version 0.13.2
+      # 60 seconds per parser family, from the committed corpus. A crash fails the job and its
+      # input is uploaded: it becomes a unit test and joins the corpus (qa/fuzz/README.md).
+      - name: Fuzz
+        run: cargo fuzz run ${{ matrix.target }} --fuzz-dir qa/fuzz -- -max_total_time=60
+      - name: Upload the crashing input
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: fuzz-crash-${{ matrix.target }}
+          path: qa/fuzz/artifacts/${{ matrix.target }}
+          if-no-files-found: ignore
+
   bindings:
     name: TypeScript bindings
     needs: plan
@@ -598,6 +654,7 @@ jobs:
       - test
       - golden
       - codegen
+      - fuzz
       - bindings
       - bench
       - example-plugins

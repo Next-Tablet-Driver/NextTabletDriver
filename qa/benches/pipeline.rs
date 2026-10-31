@@ -273,8 +273,8 @@ fn bench_absolute_cold(c: &mut Criterion) {
 /// Measures relative-mode steady-state processing.
 ///
 /// Why: relative projection has different state and timing behavior from
-/// absolute projection. `Projector::project_relative()` also calls
-/// `Instant::now()`, so it must be benchmarked as production code rather than
+/// absolute projection. `Projector::project_relative()` also reads the clock of the pipeline,
+/// so it must be benchmarked as production code rather than
 /// replaced by a pure mathematical approximation.
 fn bench_relative_warm(c: &mut Criterion) {
     c.bench_function("pipeline/relative/warm/no_filters/linear", |b| {

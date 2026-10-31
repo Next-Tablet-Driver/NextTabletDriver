@@ -2,8 +2,11 @@
 //!
 //! The types and the maths that every other crate of `NextTabletDriver` shares: button bindings,
 //! the coordinate transforms of the pipeline and the mapping configuration. This crate does no
-//! input or output, starts no thread and has no `unsafe` code.
+//! input or output (reading a clock is its only contact with the OS), starts no thread and has no
+//! `unsafe` code.
 
+/// A source of time that can be replaced.
+pub mod clock;
 /// Configuration models shared by the engine and the interface.
 pub mod config;
 pub mod input;
