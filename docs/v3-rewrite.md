@@ -1545,8 +1545,8 @@ just the application.
 | | |
 |---|---|
 | **Current phase** | Phase 1: Workspace, quality, CI, contribution rules |
-| **Last completed task** | P2.3 |
-| **Next task** | P2.4 |
+| **Last completed task** | P2.4 |
+| **Next task** | P2.5 |
 | **v1 bridge release** | not started (P7.5a) |
 | **Last updated** | 2026-10-31 |
 
@@ -1897,11 +1897,23 @@ Goal: `ntd-core`, `ntd-tablets`, `ntd-pipeline` without any I/O (§7, phase 2).
     `include_dir`, `log`, `serde` and `serde_json`. Its licence field is `MIT AND LGPL-3.0-only`
     because of the parsers. The matching of a device to a definition (VID/PID) is still in
     `detection`, with the enumeration: it moves with `ntd-hid`.
-- [ ] **P2.4** `ntd-codegen` (§15.1)
+- [x] **P2.4** `ntd-codegen` (§15.1) (branch `chore/v3-phase-2`)
   - Depends on: P2.3
   - Done when: `tablets/*.json` is validated and generates `crates/ntd-tablets/src/generated/`;
     `include_dir` and JSON parsing at startup are gone; CI `codegen` job;
     `tools/ntd-codegen/AGENTS.md` and `crates/ntd-tablets/AGENTS.md` written.
+  - Notes: `tools/ntd-codegen` reads `tablets/OpenTabletDriver/.../Configurations/**/*.json` (the
+    definitions are not at the top of `tablets/`: it is the submodule), refuses unknown keys, and
+    checks: unique names, positive dimensions and pressure, valid base64 init reports, a parser
+    class that exists upstream, and no two tablets with the same VID:PID, report lengths and
+    device strings. It writes `generated/tablets.rs` (352 `TabletDescriptor`s plus a `BY_ID`
+    table sorted by VID:PID) and `generated/mod.rs`; both are committed. The per-OS fields of
+    §16.3 do not exist yet, so nothing validates them. `ntd-tablets` lost `include_dir`: the
+    embedded catalogue is `descriptor::all()`, `EMBEDDED_INDEX` is built from it without parsing,
+    and `descriptor::find(vid, pid)` is the static lookup. `serde_json` stays in `ntd-tablets`
+    for the `Deserialize` types that the root crate still uses for the local `tablets` folder
+    (until `ntd-hid`). `include_dir` stays in the root crate for the translations (`i18n`).
+    CI job `codegen` regenerates and fails on any diff. Golden files did not change.
 - [ ] **P2.5** Extract `ntd-pipeline` with `trait Filter` (§4.4)
   - Depends on: P2.1
   - Done when: `engine/pipeline` and the filter chain are in `crates/ntd-pipeline`; the
