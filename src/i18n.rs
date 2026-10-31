@@ -25,8 +25,10 @@ static I18N: LazyLock<RwLock<I18n>> = LazyLock::new(|| RwLock::new(I18n::new(Loc
 /// Supported application locales.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum Locale {
+    /// English, the default locale.
     #[default]
     English,
+    /// French.
     French,
 }
 

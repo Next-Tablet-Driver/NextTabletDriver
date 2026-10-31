@@ -120,14 +120,22 @@ pub enum DriverMode {
 /// profile.
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub enum ThemePreference {
+    /// Follows the theme of the operating system.
     #[default]
     System,
+    /// The light theme.
     Light,
+    /// The dark theme.
     Dark,
+    /// The Catppuccin Latte palette.
     CatppuccinLatte,
+    /// The Catppuccin Frappé palette.
     CatppuccinFrappe,
+    /// The Catppuccin Macchiato palette.
     CatppuccinMacchiato,
+    /// The Catppuccin Mocha palette.
     CatppuccinMocha,
+    /// A user theme, identified by the id of its file in the themes folder.
     Custom(String),
 }
 
@@ -315,8 +323,11 @@ impl Default for WebSocketConfig {
     reason = "only describes the TypeScript type of a plugin property; never constructed"
 )]
 pub enum PluginPropertyValue {
+    /// A number: a `Float` or `Int` property, or the chosen index of a `Choice`.
     Number(f64),
+    /// A `Bool` property.
     Bool(bool),
+    /// A `String` property.
     Text(String),
 }
 

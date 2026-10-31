@@ -84,7 +84,10 @@ macro_rules! keys {
         #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
         #[repr(u8)]
         pub enum Key {
-            $($variant,)+
+            $(
+                #[doc = concat!("The key printed as \"", $label, "\".")]
+                $variant,
+            )+
         }
 
         impl Key {

@@ -1,4 +1,6 @@
+/// Preferences stored outside the profiles, such as the theme and the language.
 pub mod app_preferences;
+/// Import of `OpenTabletDriver` profiles.
 pub mod otd_import;
 pub mod themes;
 

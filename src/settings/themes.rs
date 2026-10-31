@@ -20,6 +20,7 @@ pub const MAX_THEME_FILES: usize = 100;
 pub struct ThemeFile {
     /// Stable id derived from the file name; what `custom:<id>` refers to.
     pub id: String,
+    /// File name of the theme in the themes folder.
     pub file_name: String,
     /// Raw file content, parsed and validated by the frontend.
     pub content: String,

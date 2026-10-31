@@ -7,9 +7,12 @@ use std::time::Duration;
 /// How long the background saver waits for further changes before writing the session.
 const SAVE_DEBOUNCE: Duration = Duration::from_millis(500);
 
+/// Starts the background threads of the application.
 pub struct ThreadSupervisor;
 
 impl ThreadSupervisor {
+    /// Starts the input engine thread, which reads the tablet and sends each processed frame on
+    /// `sender`.
     pub fn spawn_engine(shared: Arc<SharedState>, sender: Sender<crate::drivers::TabletData>) {
         log::info!(target: "App", "Spawning Input Engine thread");
         std::thread::spawn(move || {
@@ -17,6 +20,7 @@ impl ThreadSupervisor {
         });
     }
 
+    /// Starts the thread of the WebSocket server.
     pub fn spawn_websocket(shared: Arc<SharedState>) {
         log::info!(target: "WebSocket", "Spawning WebSocket thread");
         std::thread::spawn(move || {
@@ -24,6 +28,8 @@ impl ThreadSupervisor {
         });
     }
 
+    /// Starts the thread that saves the configuration after a change, waiting a moment so that
+    /// quick successive changes are written once.
     pub fn spawn_saver(receiver: Receiver<MappingConfig>) {
         Self::spawn_saver_with(receiver, SAVE_DEBOUNCE, crate::settings::save_last_session);
     }

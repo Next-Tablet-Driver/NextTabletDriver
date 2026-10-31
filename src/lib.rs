@@ -32,13 +32,17 @@
 //! *   **[`settings`]**: Persistence logic for user configurations.
 //! *   **[`startup`]**: Platform-specific autostart registration.
 
+/// Application layer: services, the state the interface reads, and telemetry.
 pub mod application;
+/// Core types and maths: configuration models, input bindings and coordinate maths.
 pub mod core;
 pub mod drivers;
 pub mod engine;
 pub mod filters;
 pub mod i18n;
+/// Logging to a file and to the in-memory buffer behind the console.
 pub mod logger;
+/// Persistence of profiles, sessions, themes and preferences.
 pub mod settings;
 pub mod startup;
 

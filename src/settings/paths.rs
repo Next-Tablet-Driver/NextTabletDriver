@@ -9,6 +9,7 @@ thread_local! {
     static TEST_SETTINGS_DIR: std::cell::RefCell<Option<PathBuf>> = const { std::cell::RefCell::new(None) };
 }
 
+/// Redirects the settings folder to `path` for the current test thread.
 #[cfg(test)]
 pub fn set_test_settings_dir(path: PathBuf) {
     TEST_SETTINGS_DIR.with(|dir| {
@@ -16,6 +17,7 @@ pub fn set_test_settings_dir(path: PathBuf) {
     });
 }
 
+/// Returns the folder where profiles, sessions and preferences are stored.
 #[must_use]
 pub fn get_settings_dir() -> PathBuf {
     #[cfg(test)]

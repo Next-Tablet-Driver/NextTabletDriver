@@ -45,6 +45,8 @@ enum TelemetryMessage {
     Shutdown { ack: Sender<()> },
 }
 
+/// Entry point of telemetry: starts the worker that sends anonymous events, only when the user has
+/// agreed.
 pub struct TelemetryService;
 
 impl TelemetryService {
