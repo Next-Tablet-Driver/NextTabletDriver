@@ -1545,8 +1545,8 @@ just the application.
 | | |
 |---|---|
 | **Current phase** | Phase 3: Extract the I/O adapters |
-| **Last completed task** | P3.3 |
-| **Next task** | P3.4 |
+| **Last completed task** | P3.6 |
+| **Next task** | P3.7 |
 | **v1 bridge release** | not started (P7.5a) |
 | **Last updated** | 2026-10-31 |
 
@@ -2047,18 +2047,64 @@ Goal: every OS access behind a trait, with a fake and room for each platform (§
     old code listed the devices seen when `HidApi` was created, so a tablet plugged after the
     start is now found without a restart (the engine looks about twice a second while no tablet
     is connected, which costs one enumeration each time).
-- [ ] **P3.4** `ntd-output`
+- [x] **P3.4** `ntd-output` (branch `chore/v3-phase-3`)
   - Depends on: P3.1
   - Done when: `OutputSink` trait with `capabilities()`; Windows and Linux implementations;
     `macos` returns `Unsupported`.
-- [ ] **P3.5** `ntd-interop`
+  - Notes: `crates/ntd-output` has `windows.rs`, `linux.rs`, `macos.rs` and `unsupported.rs`; the
+    first two are the old `engine/injector/{windows,linux}.rs` moved with `git mv` (`mod.rs` became
+    `lib.rs`), the other two say `OutputError::Unsupported` and cannot be created. The trait stays
+    in `ntd-core` (see P3.1) and is renamed `OutputSink` (it was `InputSink`) with
+    `capabilities() -> OutputCapabilities { absolute_pointer, relative_pointer, pressure, tilt }`:
+    Windows offers the pointer only (the pen's pressure and tilt are not passed to `SendInput`),
+    Linux offers all four (the virtual tablet reports them), `RecordingSink` offers everything
+    unless a test narrows it. The creation error is typed: `OutputError::PermissionDenied`
+    (with the udev steps) when `/dev/uinput` refuses, `Other`, `Unsupported`. `display-info`
+    moved with the Linux injector, the root `desktop` feature is now `dep:ntd-output`, and
+    `evdev` left the root crate. The Linux files were checked for `x86_64-unknown-linux-gnu` only
+    (clippy), not run. Nothing reads `capabilities()` yet: the engine and the interface will.
+- [x] **P3.5** `ntd-interop` (branch `chore/v3-phase-3`)
   - Depends on: P3.1
   - Done when: pure protocol separated from transport; shared memory names ≤ 31 characters;
     protocol fuzz target.
-- [ ] **P3.6** `ntd-settings`
+  - Notes: `crates/ntd-interop` separates the **protocol** from the **transports**.
+    `protocol.rs` is pure: `SdkPublicState` (the shared snapshot), `Request` and `Response` with
+    their fixed-size encoding, `CommandHandler`, the sizes and the names; `shm.rs` (seqlock over a
+    mapping that `windows.rs` / `linux.rs` create; `macos.rs` and `unsupported.rs` map nothing),
+    `command/` (local socket) and `lock.rs` (the owner lock, now a wrapper over `ntd-platform`)
+    are the transports. The shared memory names are constants of the protocol and a test checks
+    that both fit in 31 characters (`Local\NextTabletDriver_State_v1` is exactly 31, the POSIX
+    name `/ntd_state_v1` is 13). Two fuzz targets, `interop_request` and `interop_response`, are in
+    `qa/fuzz` and in the CI `fuzz` matrix. The first run found that a request carrying a NaN or
+    infinite active area decoded (and was then not equal to itself): `Request::decode` now refuses
+    a non-finite area, with a unit test. The socket tests bind a machine-wide name, so
+    `.config/nextest.toml` runs the whole package one test at a time. The `unsupported.rs` of the
+    crate cannot be built for a target outside Windows, Linux and macOS, because
+    `interprocess` does not support one.
+- [x] **P3.6** `ntd-settings` (branch `chore/v3-phase-3`)
   - Depends on: P3.1
   - Done when: `Paths` injected (no global `get_*_dir()` left); versioned files; atomic writes; a
     corrupted file is backed up and reported (§8).
+  - Notes: `crates/ntd-settings` holds the old `src/settings/*` (`git mv`) and `Paths`, which
+    replaces `get_settings_dir`, `get_profiles_dir`, `get_plugins_dir` and the thread-local test
+    hook: `grep` finds none of them. `Paths::new(root)` is built once at the entry point
+    (`apps/desktop`, and the SDK's `ffi`) from `ntd_platform::default_settings_dir()`, which is
+    the only place that calls `directories` for the settings; the root crate receives it as a
+    parameter (`ConfigService::load`, `SharedStateFactory::create`, `PluginManager::new`,
+    `ThreadSupervisor::spawn_saver`, `logger::init`, the crash report) and the desktop commands
+    get it as managed state. `SharedState::new()` has no plugin and no folder, so the tests need
+    none (`with_plugins` builds the real one). `store.rs` is the one way a file is written and
+    read: a pretty JSON object with `"version": 1`, written through a synced temporary file and
+    renamed; a file without `version` (v2) is read as legacy, one of a newer version is refused
+    and left untouched, and a file that is not valid is moved to `<name>.corrupt.bak` (or
+    `.corrupt.1.bak`: an earlier backup is never overwritten) and reported as
+    `Loaded::Corrupt { backup }` (`load_last_session_outcome` gives it to the caller; the plain
+    `load_*` functions log it and fall back to the defaults). A file the user chose (an imported
+    profile) is never moved. It applies to profiles, `last_session.json`, `session_meta.json` and
+    `app_preferences.json`; themes are copied atomically but stay the user's own format. The
+    v2 -> v3 migration functions stay in phase 6. `Locale` moved to `ntd_core::locale`, as the
+    preferences need it. Not done: the interface does not show the backup notice yet (phase 6),
+    and `trusted_plugins.json` is versioned with the plugin host (P3.7).
 - [ ] **P3.7** `ntd-plugin-host` and ABI v3
   - Depends on: P2.5, P3.6
   - Done when: ABI v3 defined in `ntd-plugin-api` (target triple in the manifest, fixed-width
