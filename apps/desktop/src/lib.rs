@@ -73,7 +73,9 @@ pub fn run() {
         std::thread::sleep(std::time::Duration::from_secs(5));
     }
 
-    let _ = next_tablet_driver::logger::init();
+    // The folders of the application are decided here, once, and handed down.
+    let paths = ntd_settings::Paths::new(ntd_platform::default_settings_dir());
+    let _ = next_tablet_driver::logger::init(paths.logs_dir().to_path_buf());
 
     let specta_builder = specta_builder();
 
@@ -104,17 +106,18 @@ pub fn run() {
             specta_builder.mount_events(app);
 
             // Load Configuration early for Tray
-            let config_service = next_tablet_driver::application::services::ConfigService::load();
+            let config_service =
+                next_tablet_driver::application::services::ConfigService::load(&paths);
             let config = config_service.config.clone();
-            let is_first_run = config_service.corrections.is_empty()
-                && !next_tablet_driver::settings::get_settings_dir().exists();
+            let is_first_run =
+                config_service.corrections.is_empty() && !paths.settings_dir().exists();
 
             // Setup System Tray
             let show_i = MenuItem::with_id(app, "show", "Show Dashboard", true, None::<&str>)?;
 
             let status_i = MenuItem::with_id(app, "status", "Disconnected", false, None::<&str>)?;
 
-            let profiles = next_tablet_driver::settings::list_profiles();
+            let profiles = ntd_settings::list_profiles(&paths);
             let mut profile_items: Vec<Box<dyn tauri::menu::IsMenuItem<tauri::Wry>>> = Vec::new();
             for (name, path) in profiles {
                 let id = format!("profile|{}", path.to_string_lossy());
@@ -276,7 +279,8 @@ pub fn run() {
                         > = app.state();
                         let _ = crate::commands::open_plugins_folder(state);
                     } else if id == "open_themes" {
-                        let _ = crate::commands::open_themes_folder();
+                        let paths: tauri::State<'_, ntd_settings::Paths> = app.state();
+                        let _ = crate::commands::open_themes_folder(paths);
                     } else if id == "check_updates" {
                         if let Some(window) = app.get_webview_window("main") {
                             let _ = window.show();
@@ -325,6 +329,7 @@ pub fn run() {
             let shared = next_tablet_driver::application::services::SharedStateFactory::create(
                 config,
                 is_first_run,
+                &paths,
             );
 
             // Setup channels for threads
@@ -339,7 +344,10 @@ pub fn run() {
             next_tablet_driver::application::services::ThreadSupervisor::spawn_websocket(
                 std::sync::Arc::clone(&shared),
             );
-            next_tablet_driver::application::services::ThreadSupervisor::spawn_saver(save_receiver);
+            next_tablet_driver::application::services::ThreadSupervisor::spawn_saver(
+                save_receiver,
+                paths.clone(),
+            );
 
             // Event Bridge: Pipe HID packets to Tauri Frontend
             let app_handle = app.handle().clone();
@@ -436,6 +444,7 @@ pub fn run() {
 
             // Inject the State into Tauri so commands can access it
             app.manage(shared);
+            app.manage(paths);
             app.manage(save_sender);
 
             log::info!(target: "Tauri", "NextTabletDriver Engine successfully booted in Tauri \

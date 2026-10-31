@@ -9,13 +9,14 @@
 use super::polling::run_polling_loop;
 use super::sdk_bridge::DesktopCommandHandler;
 use crate::drivers::detect_tablet;
-use crate::engine::injector::Injector;
-use crate::engine::interop::command::{CommandHandler, CommandListener};
-use crate::engine::interop::shm::ShmWriter;
 use crate::engine::state::SharedState;
 use crossbeam_channel::Sender;
 use ntd_core::config::models::MappingConfig;
 use ntd_core::sync::{LockRecoveryExt, WriteRecoverExt};
+use ntd_interop::command::CommandListener;
+use ntd_interop::protocol::CommandHandler;
+use ntd_interop::shm::ShmWriter;
+use ntd_output::Injector;
 use ntd_pipeline::FilterPipeline;
 use ntd_pipeline::Pipeline;
 use ntd_tablets::TabletData;
@@ -378,7 +379,6 @@ mod tests {
     #[test]
     fn the_filter_pipeline_starts_empty_without_plugins() {
         // The shared state loads the plugins folder of the current user: use an empty one.
-        let _settings = crate::test_support::empty_settings_dir();
         let shared = shared(false);
         let pipeline = init_filter_pipeline(&shared, &MappingConfig::default());
         assert!(pipeline.entries.is_empty());

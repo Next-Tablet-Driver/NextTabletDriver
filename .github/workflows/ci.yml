@@ -312,6 +312,8 @@ jobs:
           - parser_xencelabs
           - parser_xenx
           - parser_xp_pen
+          - interop_request
+          - interop_response
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -520,7 +522,7 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci --prefix frontend
       - name: Rust coverage
-        run: cargo llvm-cov nextest --locked -p next_tablet_driver -p ntd-core -p ntd-tablets -p ntd-pipeline -p ntd-platform -p ntd-hid --all-features --profile ci --lcov --output-path lcov.info
+        run: cargo llvm-cov nextest --locked -p next_tablet_driver -p ntd-core -p ntd-tablets -p ntd-pipeline -p ntd-platform -p ntd-hid -p ntd-output -p ntd-interop -p ntd-settings --all-features --profile ci --lcov --output-path lcov.info
       - name: Frontend coverage
         run: npm --prefix frontend run test -- --run --coverage
       - name: Test the coverage gate

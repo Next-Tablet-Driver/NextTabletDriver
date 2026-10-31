@@ -12,7 +12,7 @@
 //! [`ntd_tablets::TabletData`] structure, [`ntd_pipeline`] applies optional processing such as
 //! antichatter (smoothing) or telemetry collection, [`ntd_core::math`] maps physical tablet
 //! coordinates into normalized space and projects them onto the target screen pixels, and
-//! [`engine::injector`] injects the final coordinates and button states into the operating
+//! [`ntd_output`] injects the final coordinates and button states into the operating
 //! system (uinput on Linux, `SendInput` on Windows).
 //!
 //! ## Threading Model
@@ -29,7 +29,7 @@
 //! *   **[`ntd_pipeline`]**: The processing stages and the filter chain (own crate).
 //! *   **[`i18n`]**: Internationalization support.
 //! *   **[`logger`]**: Logging utilities.
-//! *   **[`settings`]**: Persistence logic for user configurations.
+//! *   **[`ntd_settings`]**: Persistence logic for user configurations (own crate).
 //! *   **[`startup`]**: Platform-specific autostart registration.
 
 /// Application layer: services, the state the interface reads, and telemetry.
@@ -40,7 +40,6 @@ pub mod i18n;
 /// Logging to a file and to the in-memory buffer behind the console.
 pub mod logger;
 /// Persistence of profiles, sessions, themes and preferences.
-pub mod settings;
 pub mod startup;
 
 #[cfg(test)]

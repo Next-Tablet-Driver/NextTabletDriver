@@ -195,9 +195,7 @@ mod tests {
 
     #[test]
     fn a_manager_without_plugins_gives_an_empty_pipeline() {
-        // `PluginManager::new` reads the plugins folder of the current user: use an empty one.
-        let _settings = crate::test_support::empty_settings_dir();
-        let manager = PluginManager::new();
+        let manager = PluginManager::empty();
         let pipeline = manager.create_pipeline(&MappingConfig::default());
         assert!(pipeline.entries.is_empty());
     }

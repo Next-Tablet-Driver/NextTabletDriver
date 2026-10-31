@@ -5,9 +5,6 @@
 //! to transform raw HID data into screen coordinates, and injects the resulting
 //! virtual events into the operating system.
 
-#[cfg(feature = "desktop")]
-pub mod injector;
-pub mod interop;
 pub mod plugins;
 pub mod state;
 #[cfg(feature = "desktop")]

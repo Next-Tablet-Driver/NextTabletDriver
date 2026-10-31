@@ -140,13 +140,12 @@ pub enum LoggerError {
     clippy::print_stdout,
     reason = "debug builds also echo the log to the terminal from the logger thread"
 )]
-pub fn init() -> Result<(), LoggerError> {
+pub fn init(log_dir: std::path::PathBuf) -> Result<(), LoggerError> {
     let (sender, receiver) = crossbeam_channel::bounded::<LogEntry>(LOG_QUEUE_CAPACITY);
 
     let spawn_result = thread::Builder::new()
         .name("LoggerWorker".to_string())
         .spawn(move || {
-            let log_dir = crate::settings::get_settings_dir();
             let session_log_path = log_dir.join("session.log");
 
             // Keep the previous session's log: after a crash and relaunch it is the one

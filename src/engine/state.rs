@@ -85,7 +85,7 @@ impl ConfigState {
 }
 
 /// Live output of the polling/pipeline loop, published for consumers (UI,
-/// `engine::interop::shm`, SDK FFI) to read without re-deriving it.
+/// `ntd_interop::shm`, SDK FFI) to read without re-deriving it.
 pub struct PipelineState {
     /// The most recent normalized packet from the tablet (X, Y, Pressure, Pen Buttons).
     pub tablet_data: RwLock<TabletData>,
@@ -160,15 +160,21 @@ impl Default for SharedState {
 }
 
 impl SharedState {
-    /// Creates the shared state with default values.
+    /// Creates the shared state with default values and no plugin.
     #[must_use]
     pub fn new() -> Self {
+        Self::with_plugins(Arc::new(crate::engine::plugins::PluginManager::empty()))
+    }
+
+    /// Creates the shared state with default values and these plugins.
+    #[must_use]
+    pub fn with_plugins(plugins: Arc<crate::engine::plugins::PluginManager>) -> Self {
         Self {
             config: ConfigState::new(),
             pipeline: PipelineState::new(),
             device: RwLock::new(DeviceState::default()),
             lifecycle: LifecycleState::new(),
-            plugins: Arc::new(crate::engine::plugins::PluginManager::new()),
+            plugins,
         }
     }
 

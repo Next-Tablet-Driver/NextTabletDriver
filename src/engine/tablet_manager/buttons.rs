@@ -219,6 +219,9 @@ mod tests {
     }
 
     impl OutputSink for Recorder {
+        fn capabilities(&self) -> ntd_core::output::OutputCapabilities {
+            ntd_core::output::OutputCapabilities::NONE
+        }
         fn set_proximity(&mut self, _in_proximity: bool) {}
         fn move_absolute(
             &mut self,

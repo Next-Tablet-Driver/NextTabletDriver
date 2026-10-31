@@ -11,6 +11,8 @@ pub mod config;
 /// The port to HID devices: what the engine needs, implemented by the crates that do the I/O.
 pub mod hid;
 pub mod input;
+/// The languages of the interface.
+pub mod locale;
 /// Maths of the pipeline: geometry and coordinate transforms.
 pub mod math;
 /// The port to the operating system's input injection.

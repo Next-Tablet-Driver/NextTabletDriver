@@ -106,6 +106,10 @@ struct NullSink {
 }
 
 impl OutputSink for NullSink {
+    fn capabilities(&self) -> ntd_core::output::OutputCapabilities {
+        ntd_core::output::OutputCapabilities::NONE
+    }
+
     fn set_proximity(&mut self, in_proximity: bool) {
         self.calls += u64::from(in_proximity);
     }

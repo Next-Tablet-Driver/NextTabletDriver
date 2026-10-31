@@ -13,6 +13,7 @@ use ntd_core::config::models::MappingConfig;
 use ntd_core::sync::LockRecoveryExt;
 use ntd_pipeline::FilterPipeline;
 use ntd_plugin_api::PluginManifest;
+use ntd_settings::Paths;
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
@@ -35,30 +36,26 @@ pub struct PluginManager {
 
 impl Default for PluginManager {
     fn default() -> Self {
-        Self::new()
+        Self::empty()
     }
 }
 
 impl PluginManager {
-    /// Creates a new `PluginManager` initialized with the standard user plugins path and discovers
-    /// plugins.
+    /// Creates a new `PluginManager` that looks for plugins in the plugins folder of `paths` and
+    /// keeps its trust store in the settings folder, and discovers the plugins.
     #[must_use]
-    pub fn new() -> Self {
-        let search_paths = vec![crate::settings::get_plugins_dir()];
-
+    pub fn new(paths: &Paths) -> Self {
         Self::with_paths_and_store(
-            search_paths,
-            TrustStore::load(crate::settings::get_settings_dir().join("trusted_plugins.json")),
+            vec![paths.plugins_dir()],
+            TrustStore::load(paths.settings_dir().join("trusted_plugins.json")),
         )
     }
 
-    /// Creates a new `PluginManager` with custom search paths, using the default trust store.
+    /// A `PluginManager` with no plugin folder and a trust store that is not kept anywhere: for
+    /// a shared state that does not load plugins (the tests, before the application chooses).
     #[must_use]
-    pub fn with_paths(search_paths: Vec<PathBuf>) -> Self {
-        Self::with_paths_and_store(
-            search_paths,
-            TrustStore::load(crate::settings::get_settings_dir().join("trusted_plugins.json")),
-        )
+    pub fn empty() -> Self {
+        Self::with_paths_and_store(Vec::new(), TrustStore::load(PathBuf::new()))
     }
 
     /// Creates a new `PluginManager` with custom search paths and an explicit trust store.
@@ -77,10 +74,7 @@ impl PluginManager {
     /// Returns the primary plugins directory where user-installed plugins should be placed.
     #[must_use]
     pub fn primary_plugins_dir(&self) -> PathBuf {
-        self.search_paths
-            .first()
-            .cloned()
-            .unwrap_or_else(crate::settings::get_plugins_dir)
+        self.search_paths.first().cloned().unwrap_or_default()
     }
 
     /// Scans all configured search paths and loads any discoverable plugins.
@@ -426,9 +420,9 @@ mod tests {
             "libradial_follow.so"
         });
         let manager = if radial.exists() {
-            PluginManager::with_paths(vec![dev_dir])
+            PluginManager::with_paths_and_store(vec![dev_dir], TrustStore::load(PathBuf::new()))
         } else {
-            PluginManager::new()
+            PluginManager::empty()
         };
         let mut config = MappingConfig::default();
 

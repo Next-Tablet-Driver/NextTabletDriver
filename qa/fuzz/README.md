@@ -14,6 +14,8 @@ Each fuzzer is a file in [`fuzz_targets/`](fuzz_targets). Besides "it must not c
 | `physical_to_normalized` | `physical_to_normalized` | The result is finite. Without rotation, the center of the active area maps to (0.5, 0.5). |
 | `normalized_to_screen` | `normalized_to_screen` | The result is finite. A value below 0 is clamped to the start of the target area, and a value above 1 to its far edge. |
 | `apply_relative_delta` | `apply_relative_delta` | The result is finite. No movement gives no delta. Without rotation, the sensitivity scales the movement exactly. |
+| `interop_request` | `ntd_interop::protocol::Request::decode` | No panic on any 24 bytes; a request that decodes encodes back to bytes that decode to the same request. An active area that is not finite is refused. |
+| `interop_response` | `ntd_interop::protocol::Response::decode` | No panic on any byte; a response that decodes round-trips. |
 | `parser_acepen` | `ntd_tablets::parsers::acepen` | No panic on any bytes; the same bytes give the same result. |
 | `parser_bosto` | `ntd_tablets::parsers::bosto` | No panic on any bytes; the same bytes give the same result. |
 | `parser_fallback` | `ntd_tablets::parsers::fallback` | No panic on any bytes; the same bytes give the same result. |

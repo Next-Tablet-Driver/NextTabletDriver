@@ -20,8 +20,11 @@ members = [
     "apps/sdk/examples/rust_plugin",
     "crates/ntd-core",
     "crates/ntd-hid",
+    "crates/ntd-interop",
     "crates/ntd-pipeline",
+    "crates/ntd-settings",
     "crates/ntd-platform",
+    "crates/ntd-output",
     "crates/ntd-plugin-api",
     "crates/ntd-test-support",
     "crates/ntd-tablets",
@@ -51,8 +54,11 @@ categories = ["hardware-support"]
 next_tablet_driver = { path = ".", default-features = false }
 ntd-core = { path = "crates/ntd-core" }
 ntd-hid = { path = "crates/ntd-hid" }
+ntd-interop = { path = "crates/ntd-interop" }
+ntd-output = { path = "crates/ntd-output" }
 ntd-pipeline = { path = "crates/ntd-pipeline" }
 ntd-platform = { path = "crates/ntd-platform" }
+ntd-settings = { path = "crates/ntd-settings" }
 ntd_plugin_api = { path = "crates/ntd-plugin-api" }
 ntd-tablets = { path = "crates/ntd-tablets" }
 ntd-test-support = { path = "crates/ntd-test-support" }
@@ -164,15 +170,16 @@ redundant_pub_crate = "allow"
 default = ["desktop"]
 # Everything that talks to the OS: HID polling thread and input injection.
 # Disabled by the SDK, which embeds the pure processing pipeline only.
-desktop = ["dep:display-info"]
+desktop = ["dep:ntd-output"]
 # Derives `specta::Type` on the types the desktop shell exchanges with the frontend, so their
 # TypeScript definitions are generated from Rust (roadmap P0.9).
-specta = ["dep:specta", "ntd-core/specta", "ntd_plugin_api/specta"]
+specta = ["dep:specta", "ntd-core/specta", "ntd-settings/specta", "ntd_plugin_api/specta"]
 
 [dependencies]
 # Windows & Linux
 ntd-hid = { workspace = true }
-display-info = { workspace = true, optional = true }
+ntd-interop = { workspace = true }
+ntd-output = { workspace = true, optional = true }
 specta = { workspace = true, optional = true, features = ["serde_json"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
@@ -186,7 +193,6 @@ include_dir = { workspace = true }
 tungstenite = { workspace = true }
 ureq = { workspace = true, features = ["json"] }
 uuid = { workspace = true, features = ["v4", "serde"] }
-interprocess = { workspace = true }
 regex = { workspace = true }
 sha2 = { workspace = true }
 minisign-verify = { workspace = true }
@@ -195,6 +201,7 @@ ntd-core = { workspace = true }
 ntd_plugin_api = { workspace = true }
 ntd-pipeline = { workspace = true }
 ntd-platform = { workspace = true }
+ntd-settings = { workspace = true }
 ntd-tablets = { workspace = true }
 
 # Windows
@@ -203,7 +210,6 @@ windows-sys = { workspace = true, features = ["Win32_Foundation", "Win32_System_
 
 # Linux
 [target.'cfg(target_os = "linux")'.dependencies]
-evdev = { workspace = true }
 nix = { workspace = true, features = ["sched", "fs", "mman"] }
 libc = { workspace = true }
 

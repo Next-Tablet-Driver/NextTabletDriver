@@ -1,5 +1,5 @@
 use ntd_core::input::{Key, MouseButton};
-use ntd_core::output::OutputSink;
+use ntd_core::output::{OutputCapabilities, OutputSink};
 
 /// One call of the engine to an [`OutputSink`].
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -39,17 +39,33 @@ pub enum OutputEvent {
 }
 
 /// An [`OutputSink`] that injects nothing and remembers every call, in order.
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Clone)]
 pub struct RecordingSink {
     /// What the engine asked for, oldest first.
     pub events: Vec<OutputEvent>,
+    /// What this sink says it can do; everything unless the test narrows it.
+    pub capabilities: OutputCapabilities,
+}
+
+impl Default for RecordingSink {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl RecordingSink {
     /// An empty recording.
     #[must_use]
     pub const fn new() -> Self {
-        Self { events: Vec::new() }
+        Self {
+            events: Vec::new(),
+            capabilities: OutputCapabilities {
+                absolute_pointer: true,
+                relative_pointer: true,
+                pressure: true,
+                tilt: true,
+            },
+        }
     }
 
     /// How many calls moved the pointer, in either mode.
@@ -74,6 +90,10 @@ impl RecordingSink {
 }
 
 impl OutputSink for RecordingSink {
+    fn capabilities(&self) -> OutputCapabilities {
+        self.capabilities
+    }
+
     fn set_proximity(&mut self, in_proximity: bool) {
         self.events.push(OutputEvent::Proximity(in_proximity));
     }
@@ -119,6 +139,15 @@ impl OutputSink for RecordingSink {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_recording_sink_offers_everything_unless_the_test_narrows_it() {
+        let mut sink = RecordingSink::new();
+        assert!(sink.capabilities().pressure && sink.capabilities().tilt);
+        sink.capabilities = OutputCapabilities::NONE;
+        let port: &dyn OutputSink = &sink;
+        assert_eq!(port.capabilities(), OutputCapabilities::NONE);
+    }
 
     #[test]
     fn every_call_is_recorded_in_order() {

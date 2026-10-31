@@ -141,7 +141,7 @@ pub(crate) fn normalize_binding(text: String) -> Result<String, String> {
 #[tauri::command]
 #[specta::specta]
 pub(crate) fn load_profile(state: State<'_, Arc<SharedState>>, path: String) -> Result<(), String> {
-    match next_tablet_driver::settings::load_settings_from_file(std::path::Path::new(&path)) {
+    match ntd_settings::load_settings_from_file(std::path::Path::new(&path)) {
         Ok((cfg, _)) => {
             let _ = next_tablet_driver::startup::set_run_at_startup(cfg.run_at_startup);
             next_tablet_driver::startup::set_fast_timer(cfg.force_high_resolution_timer);
@@ -167,8 +167,7 @@ pub(crate) fn import_otd_profile(
     state: State<'_, Arc<SharedState>>,
     path: String,
 ) -> Result<(), String> {
-    match next_tablet_driver::settings::otd_import::import_otd_profile(std::path::Path::new(&path))
-    {
+    match ntd_settings::otd_import::import_otd_profile(std::path::Path::new(&path)) {
         Ok(cfg) => {
             let _ = next_tablet_driver::startup::set_run_at_startup(cfg.run_at_startup);
             next_tablet_driver::startup::set_fast_timer(cfg.force_high_resolution_timer);
@@ -200,8 +199,7 @@ pub(crate) fn export_profile(
         .read()
         .unwrap_or_log("config_read_tauri")
         .clone();
-    next_tablet_driver::settings::save_to_path(std::path::Path::new(&path), &current)
-        .map_err(|e| e.to_string())
+    ntd_settings::save_to_path(std::path::Path::new(&path), &current).map_err(|e| e.to_string())
 }
 
 #[derive(serde::Serialize, specta::Type)]
@@ -212,8 +210,8 @@ pub(crate) struct PresetInfo {
 
 #[tauri::command]
 #[specta::specta]
-pub(crate) fn get_presets() -> Vec<PresetInfo> {
-    next_tablet_driver::settings::list_profiles()
+pub(crate) fn get_presets(paths: State<'_, ntd_settings::Paths>) -> Vec<PresetInfo> {
+    ntd_settings::list_profiles(&paths)
         .into_iter()
         .map(|(name, path)| PresetInfo {
             name,
@@ -224,8 +222,8 @@ pub(crate) fn get_presets() -> Vec<PresetInfo> {
 
 #[tauri::command]
 #[specta::specta]
-pub(crate) fn get_current_profile_name() -> String {
-    next_tablet_driver::settings::load_session_meta()
+pub(crate) fn get_current_profile_name(paths: State<'_, ntd_settings::Paths>) -> String {
+    ntd_settings::load_session_meta(&paths)
         .map_or_else(|| "Default Profile".to_string(), |meta| meta.profile_name)
 }
 
@@ -441,8 +439,10 @@ pub(crate) fn delete_plugin(state: State<'_, Arc<SharedState>>, id: String) -> R
 /// Theme files found in the themes folder; the frontend parses and validates them.
 #[tauri::command]
 #[specta::specta]
-pub(crate) fn list_themes() -> Vec<next_tablet_driver::settings::themes::ThemeFile> {
-    next_tablet_driver::settings::themes::list_theme_files()
+pub(crate) fn list_themes(
+    paths: State<'_, ntd_settings::Paths>,
+) -> Vec<ntd_settings::themes::ThemeFile> {
+    ntd_settings::themes::list_theme_files(&paths)
 }
 
 /// Lets the user pick a theme file with a native dialog and copies it into the themes folder.
@@ -451,7 +451,8 @@ pub(crate) fn list_themes() -> Vec<next_tablet_driver::settings::themes::ThemeFi
 #[specta::specta]
 pub(crate) async fn import_theme(
     app: tauri::AppHandle,
-) -> Result<Option<next_tablet_driver::settings::themes::ThemeFile>, String> {
+    paths: State<'_, ntd_settings::Paths>,
+) -> Result<Option<ntd_settings::themes::ThemeFile>, String> {
     use tauri_plugin_dialog::DialogExt;
 
     let Some(picked) = app
@@ -463,21 +464,24 @@ pub(crate) async fn import_theme(
         return Ok(None);
     };
     let path = picked.into_path().map_err(|e| e.to_string())?;
-    next_tablet_driver::settings::themes::import_theme_file(&path)
+    ntd_settings::themes::import_theme_file(&paths, &path)
         .map(Some)
         .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 #[specta::specta]
-pub(crate) fn delete_theme(id: String) -> Result<(), String> {
-    next_tablet_driver::settings::themes::delete_theme_file(&id).map_err(|e| e.to_string())
+pub(crate) fn delete_theme(
+    paths: State<'_, ntd_settings::Paths>,
+    id: String,
+) -> Result<(), String> {
+    ntd_settings::themes::delete_theme_file(&paths, &id).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 #[specta::specta]
-pub(crate) fn open_themes_folder() -> Result<(), String> {
-    let dir = next_tablet_driver::settings::themes::themes_dir();
+pub(crate) fn open_themes_folder(paths: State<'_, ntd_settings::Paths>) -> Result<(), String> {
+    let dir = paths.themes_dir();
 
     #[cfg(target_os = "windows")]
     {

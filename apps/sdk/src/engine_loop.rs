@@ -9,20 +9,19 @@
 //! losing it through an OS input event), no telemetry, no UI channel.
 //!
 //! Coexistence with the desktop app (or other SDK-embedded games) is handled
-//! by `engine::interop`, exactly as documented there: this loop becomes
+//! by `ntd-interop`, exactly as documented there: this loop becomes
 //! either the HID owner or a reader of whichever process already is one.
 
 use next_tablet_driver::drivers::detect_tablet;
 
-use next_tablet_driver::engine::interop::command::{CommandHandler, CommandListener};
-use next_tablet_driver::engine::interop::lock::try_acquire_hid_owner;
-use next_tablet_driver::engine::interop::shm::{
-    DEVICE_NAME_CAPACITY, SdkPublicState, ShmReader, ShmWriter,
-};
 use next_tablet_driver::engine::state::SharedState;
 use ntd_core::config::models::{ActiveArea, DriverMode, MappingConfig};
 use ntd_core::hid::HidDevice;
 use ntd_core::sync::{LockRecoveryExt, WriteRecoverExt};
+use ntd_interop::command::CommandListener;
+use ntd_interop::lock::try_acquire_hid_owner;
+use ntd_interop::protocol::{CommandHandler, DEVICE_NAME_CAPACITY, SdkPublicState};
+use ntd_interop::shm::{ShmReader, ShmWriter};
 use ntd_pipeline::FilterPipeline;
 use ntd_pipeline::{Pipeline, ProcessedFrame};
 use ntd_tablets::{TabletData, TabletStatus};

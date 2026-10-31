@@ -15,6 +15,24 @@
 
 use std::path::PathBuf;
 
+/// The folder where the settings of the current user live.
+///
+/// It is `Settings` inside the per-user configuration folder of the application, or a relative
+/// `Settings` when the system has none. The entry point of a program calls it once and hands
+/// the result down (the settings crate never looks for it).
+#[must_use]
+pub fn default_settings_dir() -> PathBuf {
+    settings_dir_in(
+        directories::ProjectDirs::from("com", "NextTabletDriver", "NextTabletReader")
+            .map(|dirs| dirs.config_dir().to_path_buf()),
+    )
+}
+
+/// `<config_dir>/Settings`; a relative `Settings` when there is no configuration folder.
+fn settings_dir_in(config_dir: Option<PathBuf>) -> PathBuf {
+    config_dir.map_or_else(|| PathBuf::from("Settings"), |dir| dir.join("Settings"))
+}
+
 /// The name the application goes by in the registry, the autostart entry and the lock names.
 #[cfg(any(windows, target_os = "linux"))]
 const APP_NAME: &str = "NextTabletDriver";
@@ -128,6 +146,16 @@ pub fn set_high_resolution_timer(enable: bool) -> Result<(), PlatformError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_settings_live_in_a_settings_folder_of_the_config_folder() {
+        assert_eq!(
+            settings_dir_in(Some(PathBuf::from("cfg"))),
+            PathBuf::from("cfg").join("Settings")
+        );
+        assert_eq!(settings_dir_in(None), PathBuf::from("Settings"));
+        assert!(default_settings_dir().ends_with("Settings"));
+    }
 
     #[test]
     fn errors_read_as_sentences() {

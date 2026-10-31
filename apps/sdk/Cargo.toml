@@ -22,6 +22,9 @@ ntd-core = { workspace = true }
 ntd-pipeline = { workspace = true }
 ntd-tablets = { workspace = true }
 ntd-hid = { workspace = true }
+ntd-interop = { workspace = true }
+ntd-platform = { workspace = true }
+ntd-settings = { workspace = true }
 log = { workspace = true }
 
 [build-dependencies]

@@ -16,7 +16,7 @@
 /**
  * Bumped whenever this FFI surface changes in a backward-incompatible way.
  *
- * Independent from [`next_tablet_driver::engine::interop::shm::SDK_ABI_VERSION`],
+ * Independent from [`ntd_interop::protocol::SDK_ABI_VERSION`],
  * which versions the separate inter-process shared-memory layout.
  */
 #define NTD_SDK_ABI_VERSION 1
@@ -62,7 +62,7 @@
  * Fixed capacity of [`NtdState::device_name`], in bytes.
  *
  * Kept as a local literal (rather than referencing
- * [`next_tablet_driver::engine::interop::shm::DEVICE_NAME_CAPACITY`]
+ * [`ntd_interop::protocol::DEVICE_NAME_CAPACITY`]
  * directly) so it can be emitted as a `#define` in the generated C header.
  * [`NtdState::device_name`] itself uses the literal `64` rather than this
  * constant, since `csbindgen`, unlike `cbindgen`, can't resolve a named
@@ -75,7 +75,7 @@
 /**
  * Live tablet + config snapshot returned by [`ntd_poll_state`].
  *
- * Field-for-field mirror of [`next_tablet_driver::engine::interop::shm::SdkPublicState`].
+ * Field-for-field mirror of [`ntd_interop::protocol::SdkPublicState`].
  * The two layouts are asserted equal in size below, since both cross an
  * FFI/ABI boundary (this one to the host process, that one to other
  * processes).

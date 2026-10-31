@@ -3,14 +3,14 @@
 
 use super::buttons::ButtonRouter;
 use super::sdk_bridge::publish_shm_state;
-use crate::engine::injector::Injector;
-use crate::engine::interop::shm::ShmWriter;
 use crate::engine::state::SharedState;
 use crossbeam_channel::Sender;
 use ntd_core::config::models::{DriverMode, MappingConfig};
 use ntd_core::hid::HidDevice;
 use ntd_core::output::OutputSink;
 use ntd_core::sync::{LockRecoveryExt, WriteRecoverExt};
+use ntd_interop::shm::ShmWriter;
+use ntd_output::Injector;
 use ntd_pipeline::FilterPipeline;
 use ntd_pipeline::{Pipeline, ProcessedFrame};
 use ntd_tablets::{TabletData, TabletStatus};
@@ -405,7 +405,7 @@ fn maybe_reload_config(
         *local_config_version = cv;
         filters.update_config(local_config);
         log::info!(target: "Config", "Configuration reloaded to version {cv}");
-        crate::settings::log_mapping_config(local_config, &format!("Reload v{cv}"));
+        ntd_settings::log_mapping_config(local_config, &format!("Reload v{cv}"));
     }
 }
 

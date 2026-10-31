@@ -82,6 +82,8 @@ dependencies = [
  "log",
  "next_tablet_driver",
  "ntd-core",
+ "ntd-platform",
+ "ntd-settings",
  "ntd_plugin_api",
  "serde",
  "serde_json",
@@ -2547,10 +2549,7 @@ dependencies = [
  "criterion",
  "crossbeam-channel",
  "directories",
- "display-info",
- "evdev",
  "include_dir",
- "interprocess",
  "libc",
  "libloading 0.9.0",
  "log",
@@ -2559,8 +2558,11 @@ dependencies = [
  "nix 0.31.3",
  "ntd-core",
  "ntd-hid",
+ "ntd-interop",
+ "ntd-output",
  "ntd-pipeline",
  "ntd-platform",
+ "ntd-settings",
  "ntd-tablets",
  "ntd-test-support",
  "ntd_plugin_api",
@@ -2633,6 +2635,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "ntd-interop"
+version = "0.1.0"
+dependencies = [
+ "interprocess",
+ "nix 0.31.3",
+ "ntd-core",
+ "ntd-platform",
+ "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "ntd-output"
+version = "0.1.0"
+dependencies = [
+ "display-info",
+ "evdev",
+ "log",
+ "ntd-core",
+ "thiserror 2.0.21",
+ "windows-sys 0.61.2",
+]
+
+[[package]]
 name = "ntd-pipeline"
 version = "0.1.0"
 dependencies = [
@@ -2649,6 +2674,7 @@ dependencies = [
 name = "ntd-platform"
 version = "0.1.0"
 dependencies = [
+ "directories",
  "libc",
  "log",
  "nix 0.31.3",
@@ -2663,6 +2689,19 @@ dependencies = [
  "ntd-hid",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "ntd-settings"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "ntd-core",
+ "serde",
+ "serde_json",
+ "specta",
+ "thiserror 2.0.21",
+ "uuid",
 ]
 
 [[package]]
@@ -2701,7 +2740,10 @@ dependencies = [
  "next_tablet_driver",
  "ntd-core",
  "ntd-hid",
+ "ntd-interop",
  "ntd-pipeline",
+ "ntd-platform",
+ "ntd-settings",
  "ntd-tablets",
 ]
 

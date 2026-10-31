@@ -20,6 +20,9 @@ path = "../../crates/ntd-core"
 [dependencies.ntd-tablets]
 path = "../../crates/ntd-tablets"
 
+[dependencies.ntd-interop]
+path = "../../crates/ntd-interop"
+
 [[bin]]
 name = "rotate_point"
 path = "fuzz_targets/rotate_point.rs"
@@ -162,6 +165,20 @@ bench = false
 [[bin]]
 name = "parser_xp_pen"
 path = "fuzz_targets/parser_xp_pen.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "interop_request"
+path = "fuzz_targets/interop_request.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "interop_response"
+path = "fuzz_targets/interop_response.rs"
 test = false
 doc = false
 bench = false
