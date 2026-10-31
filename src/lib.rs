@@ -46,4 +46,4 @@ pub mod startup;
 mod test_support;
 
 /// Version.
-pub const VERSION: &str = "2.0.0";
+pub const VERSION: &str = "3.0.0";
