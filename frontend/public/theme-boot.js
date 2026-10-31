@@ -18,7 +18,8 @@
     var saved = JSON.parse(raw);
     var root = document.documentElement;
 
-    if (typeof saved.themeClass !== "string" || !/^theme-[a-z0-9-]{1,40}$/.test(saved.themeClass)) return;
+    if (typeof saved.themeClass !== "string" || !/^theme-[a-z0-9-]{1,40}$/.test(saved.themeClass))
+      return;
     root.classList.add(saved.themeClass);
 
     var tokens = saved.tokens;
@@ -31,7 +32,8 @@
       var name = names[i];
       var value = tokens[name];
       if (!/^--[a-z0-9-]{1,60}$/.test(name)) continue;
-      if (typeof value !== "string" || !allowedValue.test(value) || /url\s*\(/i.test(value)) continue;
+      if (typeof value !== "string" || !allowedValue.test(value) || /url\s*\(/i.test(value))
+        continue;
       root.style.setProperty(name, value);
       applied.push(name);
     }

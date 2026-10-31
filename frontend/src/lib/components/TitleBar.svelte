@@ -7,7 +7,10 @@
   import iconUrl from "../../assets/icon.png";
   import Button from "./ui/Button.svelte";
 
-  const { title = "NextTabletDriver", systemTrayOnMinimize = false } = $props<{ title?: string, systemTrayOnMinimize?: boolean }>();
+  const { title = "NextTabletDriver", systemTrayOnMinimize = false } = $props<{
+    title?: string;
+    systemTrayOnMinimize?: boolean;
+  }>();
 
   function minimize(): void {
     if (systemTrayOnMinimize) {
@@ -53,16 +56,16 @@
 
       await updateObj.downloadAndInstall((event) => {
         switch (event.event) {
-          case 'Started':
+          case "Started":
             contentLength = event.data.contentLength ?? 0;
             break;
-          case 'Progress':
+          case "Progress":
             downloaded += event.data.chunkLength;
             if (contentLength > 0) {
               updateProgress = Math.round((downloaded / contentLength) * 100);
             }
             break;
-          case 'Finished':
+          case "Finished":
             updateProgress = 100;
             break;
         }
@@ -87,7 +90,7 @@
   {#if updateAvailable}
     <Button class="update-btn" disabled={isUpdating} onclick={installUpdate} variant="primary">
       <RefreshCcw class={isUpdating ? "spinning" : ""} size={13} strokeWidth={2.5} />
-      <span>{isUpdating ? `Updating (${String(updateProgress)}%)` : 'Update'}</span>
+      <span>{isUpdating ? `Updating (${String(updateProgress)}%)` : "Update"}</span>
     </Button>
   {/if}
 

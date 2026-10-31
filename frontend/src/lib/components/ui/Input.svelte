@@ -24,7 +24,7 @@
     width = "50px",
     precision = undefined,
     oninput = undefined,
-    onchange = undefined
+    onchange = undefined,
   }: Props = $props();
 
   let inputRef = $state<HTMLInputElement>();
@@ -64,14 +64,24 @@
   }
 
   function handleBlur(): void {
-    if (type === 'number' && precision !== undefined && inputRef !== undefined && value !== undefined) {
+    if (
+      type === "number" &&
+      precision !== undefined &&
+      inputRef !== undefined &&
+      value !== undefined
+    ) {
       inputRef.value = Number(value).toFixed(precision);
     }
   }
 
   // Format initial value if needed
   $effect(() => {
-    if (type === 'number' && precision !== undefined && inputRef !== undefined && document.activeElement !== inputRef) {
+    if (
+      type === "number" &&
+      precision !== undefined &&
+      inputRef !== undefined &&
+      document.activeElement !== inputRef
+    ) {
       inputRef.value = Number(value).toFixed(precision);
     }
   });
@@ -94,7 +104,9 @@
     if (el === undefined) return;
     // non-passif, sinon preventDefault est ignoré
     el.addEventListener("wheel", handleWheel, { passive: false });
-    return () => { el.removeEventListener("wheel", handleWheel); };
+    return () => {
+      el.removeEventListener("wheel", handleWheel);
+    };
   });
 
   // ── Swipe / drag (pointer events natifs) ──────────────────────────
@@ -185,11 +197,7 @@
 
 <div class="measure-input-group">
   {#if label}
-    <span
-      bind:this={labelRef}
-      class="label"
-      class:draggable={type === 'number'}
-    >
+    <span bind:this={labelRef} class="label" class:draggable={type === "number"}>
       {label}
     </span>
   {/if}
@@ -197,7 +205,7 @@
     <input
       bind:this={inputRef}
       style:width
-      class:is-number={type === 'number'}
+      class:is-number={type === "number"}
       {max}
       {min}
       onblur={handleBlur}
@@ -306,8 +314,8 @@
     appearance: textfield;
   }
 
-  .input-wrapper input[type=number]::-webkit-inner-spin-button,
-  .input-wrapper input[type=number]::-webkit-outer-spin-button {
+  .input-wrapper input[type="number"]::-webkit-inner-spin-button,
+  .input-wrapper input[type="number"]::-webkit-outer-spin-button {
     -webkit-appearance: none;
     margin: 0;
   }

@@ -1,15 +1,15 @@
 <script lang="ts">
-  import { ChevronRight } from '@lucide/svelte';
-  import type { Snippet } from 'svelte';
-  
-  const { 
-    children, 
+  import { ChevronRight } from "@lucide/svelte";
+  import type { Snippet } from "svelte";
+
+  const {
+    children,
     rightContent, // Snippet for right side (e.g. arrow, shortcut)
     disabled = false,
     hasSubmenu = false,
     onclick,
     onmouseenter,
-    onmouseleave
+    onmouseleave,
   } = $props<{
     children?: Snippet;
     rightContent?: Snippet;
@@ -22,23 +22,24 @@
 
   function handleClick(e: MouseEvent): void {
     if (disabled) {
-        e.stopPropagation();
-        return;
+      e.stopPropagation();
+      return;
     }
     if (onclick !== undefined) onclick(e);
   }
 
   function handleKeyDown(e: KeyboardEvent): void {
-      if (e.key === 'Enter' || e.key === ' ') {
-          if (disabled) return;
-          e.preventDefault();
-          if (onclick !== undefined) onclick(e as unknown as MouseEvent);
-      }
+    if (e.key === "Enter" || e.key === " ") {
+      if (disabled) return;
+      e.preventDefault();
+      if (onclick !== undefined) onclick(e as unknown as MouseEvent);
+    }
   }
 </script>
-<div 
-  class="dropdown-item" 
-  class:disabled 
+
+<div
+  class="dropdown-item"
+  class:disabled
   class:has-submenu={hasSubmenu}
   onclick={handleClick}
   onkeydown={handleKeyDown}
@@ -47,11 +48,13 @@
   role="menuitem"
   tabindex={disabled ? -1 : 0}
 >
-  <span class="content">{#if children}{@render children()}{/if}</span>
+  <span class="content"
+    >{#if children}{@render children()}{/if}</span
+  >
   {#if rightContent}
-      <span class="right">{@render rightContent()}</span>
+    <span class="right">{@render rightContent()}</span>
   {:else if hasSubmenu}
-      <span class="arrow"><ChevronRight size={16} /></span>
+    <span class="arrow"><ChevronRight size={16} /></span>
   {/if}
 </div>
 
@@ -89,7 +92,7 @@
     color: var(--item-text-muted);
     cursor: default;
   }
-  
+
   .dropdown-item.disabled:hover {
     background-color: transparent;
     color: var(--item-text-muted);
