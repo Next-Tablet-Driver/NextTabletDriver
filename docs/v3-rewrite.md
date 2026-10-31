@@ -1545,8 +1545,8 @@ just the application.
 | | |
 |---|---|
 | **Current phase** | Phase 1: Workspace, quality, CI, contribution rules |
-| **Last completed task** | GATE 1 |
-| **Next task** | P2.1 |
+| **Last completed task** | P2.1 |
+| **Next task** | P2.2 |
 | **v1 bridge release** | not started (P7.5a) |
 | **Last updated** | 2026-10-31 |
 
@@ -1864,10 +1864,17 @@ phase 1; §12, §13, §14).
 
 Goal: `ntd-core`, `ntd-tablets`, `ntd-pipeline` without any I/O (§7, phase 2).
 
-- [ ] **P2.1** Extract `ntd-core`
+- [x] **P2.1** Extract `ntd-core` (branch `chore/v3-phase-2`)
   - Depends on: GATE 1
   - Done when: `core/input`, `core/math` and the really shared types are in `crates/ntd-core`;
     `cargo tree -p ntd-core` shows no I/O dependency.
+  - Notes: `git mv` of `src/core/` (`input`, `math`, `config/models`) to `crates/ntd-core`; the
+    paths became `ntd_core::...` (no re-export left behind). `cargo tree -p ntd-core` lists only
+    `serde`, `serde_json` and `thiserror` (`specta` is optional). `config/models.rs` moved whole:
+    `ThemePreference`, `WebSocketConfig`, `DynamicPluginSettings` and the other settings-only types
+    are not "really shared" and leave it when `ntd-settings` is created. The `qa/fuzz` targets only
+    use `ntd_core::math`, so that crate no longer depends on `next_tablet_driver`. The doctests of
+    `ntd-core` run next to the root crate's in the CI and in `AGENTS.md`.
 - [ ] **P2.2** Remove the `drivers` → `engine::state` dependency
   - Depends on: P2.1
   - Done when: `parsers/wacom/intuos_v1.rs` and `pl.rs` no longer import `engine::state`
