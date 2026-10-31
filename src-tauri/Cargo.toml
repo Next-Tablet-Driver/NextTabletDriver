@@ -1,6 +1,6 @@
 [package]
 name = "app"
-version = "2.0.0"
+version = "3.0.0"
 publish = false
 description = "Desktop shell of NextTabletDriver (Tauri)"
 authors = ["iSweat <https://github.com/iSweat-exe>"]
