@@ -8,6 +8,9 @@ publish = false
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
 
 [lib]
 name = "ntd_sdk"

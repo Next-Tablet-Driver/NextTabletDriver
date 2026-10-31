@@ -7,9 +7,9 @@ version = "3.0.0"
 publish = false
 edition.workspace = true
 license.workspace = true
-readme = "README.md"
-keywords = ["tablet", "driver", "rust", "osu"]
-categories = ["hardware-support"]
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
 rust-version.workspace = true
 
 [workspace]
@@ -32,6 +32,9 @@ license = "MIT"
 repository = "https://github.com/Next-Tablet-Driver/NextTabletDriver"
 # The oldest Rust that builds the project (not the version the CI uses).
 rust-version = "1.99.0"
+readme = "README.md"
+keywords = ["tablet", "driver", "rust", "osu"]
+categories = ["hardware-support"]
 
 [workspace.dependencies]
 # Every dependency version of the repository is declared here, once. A crate uses it with

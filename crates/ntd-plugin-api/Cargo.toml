@@ -6,6 +6,10 @@ description = "Plugin ABI and SDK for NextTabletDriver dynamic filters"
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
+repository.workspace = true
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
 
 [features]
 # Derives `specta::Type` on the manifest types so the desktop shell can export TypeScript
