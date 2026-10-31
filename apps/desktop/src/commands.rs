@@ -66,8 +66,8 @@ pub(crate) fn get_metrics(state: State<'_, Arc<SharedState>>) -> EngineMetrics {
     }
 }
 
-use next_tablet_driver::core::config::models::MappingConfig;
 use next_tablet_driver::engine::state::WriteRecoverExt;
+use ntd_core::config::models::MappingConfig;
 
 #[tauri::command]
 #[specta::specta]
@@ -131,7 +131,7 @@ pub(crate) fn reset_config(state: State<'_, Arc<SharedState>>) {
 #[tauri::command]
 #[specta::specta]
 pub(crate) fn normalize_binding(text: String) -> Result<String, String> {
-    text.parse::<next_tablet_driver::core::input::Binding>()
+    text.parse::<ntd_core::input::Binding>()
         .map(|binding| binding.to_string())
         .map_err(|e| e.to_string())
 }

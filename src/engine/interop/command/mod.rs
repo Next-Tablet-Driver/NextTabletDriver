@@ -54,7 +54,7 @@ fn runtime_socket_path() -> std::path::PathBuf {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::config::models::{ActiveArea, DriverMode};
+    use ntd_core::config::models::{ActiveArea, DriverMode};
     use std::sync::{Arc, Mutex};
 
     #[derive(Default)]

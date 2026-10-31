@@ -81,6 +81,7 @@ dependencies = [
  "crossbeam-channel",
  "log",
  "next_tablet_driver",
+ "ntd-core",
  "ntd_plugin_api",
  "serde",
  "serde_json",
@@ -2557,6 +2558,7 @@ dependencies = [
  "minisign",
  "minisign-verify 0.2.5",
  "nix 0.31.3",
+ "ntd-core",
  "ntd_plugin_api",
  "proptest",
  "regex",
@@ -2596,6 +2598,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "ntd-core"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "specta",
+ "thiserror 2.0.21",
+]
+
+[[package]]
 name = "ntd-recorder"
 version = "0.1.0"
 dependencies = [
@@ -2622,6 +2634,7 @@ dependencies = [
  "hidapi",
  "log",
  "next_tablet_driver",
+ "ntd-core",
 ]
 
 [[package]]

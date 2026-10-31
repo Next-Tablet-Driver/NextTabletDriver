@@ -12,8 +12,8 @@ pub use normalizer::Normalizer;
 pub use projector::Projector;
 pub use transformer::Transformer;
 
-use crate::core::config::models::{DriverMode, MappingConfig};
 use crate::drivers::TabletData;
+use ntd_core::config::models::{DriverMode, MappingConfig};
 use std::sync::Arc;
 
 /// The core processing pipeline for tablet input events.
@@ -105,7 +105,7 @@ impl Pipeline {
             0.0
         };
         let pressure_ratio =
-            crate::core::math::curve::evaluate(raw_pressure_ratio, &config.pressure_curve);
+            ntd_core::math::curve::evaluate(raw_pressure_ratio, &config.pressure_curve);
 
         let mut packet = ntd_plugin_api::PluginPacket {
             u,
@@ -187,10 +187,10 @@ impl Pipeline {
 )]
 mod tests {
     use super::*;
-    use crate::core::config::models::MappingConfig;
     use crate::drivers::TabletData;
     use crate::engine::state::SharedState;
     use crate::filters::FilterPipeline;
+    use ntd_core::config::models::MappingConfig;
 
     struct MockDriver;
     impl crate::drivers::NextTabletDriver for MockDriver {
@@ -257,8 +257,7 @@ mod tests {
             tip_threshold: 10,
             ..Default::default()
         };
-        config.pressure_curve.curve_type =
-            crate::core::config::models::PressureCurveType::Exponential;
+        config.pressure_curve.curve_type = ntd_core::config::models::PressureCurveType::Exponential;
         config.pressure_curve.exponent = 2.0;
 
         let shared = Arc::new(SharedState::test_default());

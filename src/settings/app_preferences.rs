@@ -1,5 +1,5 @@
-use crate::core::config::models::ThemePreference;
 use crate::i18n::Locale;
+use ntd_core::config::models::ThemePreference;
 use serde::{Deserialize, Serialize};
 use std::fs;
 

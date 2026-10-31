@@ -1,4 +1,4 @@
-use crate::core::config::models::ActiveArea;
+use crate::config::models::ActiveArea;
 
 /// Pure geometric calculation logic for the tablet active area visualization.
 /// This structure is free of any UI dependency and can be unit tested.
@@ -123,7 +123,7 @@ impl ActiveAreaGeometry {
 )]
 mod tests {
     use super::*;
-    use crate::core::config::models::ActiveArea;
+    use crate::config::models::ActiveArea;
 
     #[test]
     fn test_active_area_geometry() {

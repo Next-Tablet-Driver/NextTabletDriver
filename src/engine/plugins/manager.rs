@@ -8,9 +8,9 @@ use super::error::{DeletePluginError, TrustError};
 use super::instance::PluginInstance;
 use super::loader::{LoadedLibrary, PluginLoader};
 use super::trust::{self, PinnedLibrary, TrustStore, UntrustedPlugin};
-use crate::core::config::models::MappingConfig;
 use crate::engine::state::LockRecoveryExt;
 use crate::filters::FilterPipeline;
+use ntd_core::config::models::MappingConfig;
 use ntd_plugin_api::PluginManifest;
 use std::collections::HashMap;
 use std::fs;
@@ -427,7 +427,7 @@ mod tests {
                 .unwrap();
             assert!(!entry.enabled);
 
-            let mut settings = crate::core::config::models::DynamicPluginSettings {
+            let mut settings = ntd_core::config::models::DynamicPluginSettings {
                 enabled: true,
                 properties: HashMap::new(),
             };

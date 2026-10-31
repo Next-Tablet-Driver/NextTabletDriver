@@ -1,0 +1,26 @@
+[package]
+name = "ntd-core"
+version = "0.1.0"
+authors.workspace = true
+description = "Pure types and maths shared by the NextTabletDriver crates"
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[features]
+# Derives `specta::Type` on the types the desktop shell exchanges with the frontend, so their
+# TypeScript definitions are generated from Rust.
+specta = ["dep:specta"]
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+specta = { workspace = true, optional = true, features = ["serde_json"] }
+
+[lints]
+workspace = true

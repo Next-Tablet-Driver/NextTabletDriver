@@ -2,8 +2,8 @@
 //!
 //! Converts UV or MM coordinates into final OS-ready output (pixels or deltas).
 
-use crate::core::config::models::MappingConfig;
 use crate::engine::state::SharedState;
+use ntd_core::config::models::MappingConfig;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -54,7 +54,7 @@ impl Projector {
         config: &MappingConfig,
         _shared: &Arc<SharedState>,
     ) -> (f32, f32) {
-        let (sx, sy) = crate::core::math::transform::normalized_to_screen(
+        let (sx, sy) = ntd_core::math::transform::normalized_to_screen(
             u,
             v,
             config.target_area.x,
@@ -89,7 +89,7 @@ impl Projector {
         self.packet_time = now;
 
         let delta = if let Some((lx, ly)) = self.rel_mm {
-            crate::core::math::transform::apply_relative_delta(
+            ntd_core::math::transform::apply_relative_delta(
                 x_mm,
                 y_mm,
                 lx,
@@ -114,8 +114,8 @@ impl Projector {
 )]
 mod tests {
     use super::*;
-    use crate::core::config::models::MappingConfig;
     use crate::engine::state::SharedState;
+    use ntd_core::config::models::MappingConfig;
     use std::sync::Arc;
     use std::time::{Duration, Instant};
 

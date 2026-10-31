@@ -10,7 +10,7 @@
 //! bus for supported devices using `hidapi` and runs a high-frequency polling loop,
 //! [`drivers::parsers`] decodes the vendor-specific byte arrays into a standardized
 //! [`drivers::TabletData`] structure, [`filters`] applies optional processing such as
-//! antichatter (smoothing) or telemetry collection, [`core::math`] maps physical tablet
+//! antichatter (smoothing) or telemetry collection, [`ntd_core::math`] maps physical tablet
 //! coordinates into normalized space and projects them onto the target screen pixels, and
 //! [`engine::injector`] injects the final coordinates and button states into the operating
 //! system (uinput on Linux, `SendInput` on Windows).
@@ -23,7 +23,7 @@
 //! *   **WebSocket Thread**: Provides real-time data to external integrations.
 //!
 //! ## Key Modules
-//! *   **[`core`]**: Core configuration models and mathematical transforms.
+//! *   **[`ntd_core`]**: Core configuration models and mathematical transforms (own crate).
 //! *   **[`drivers`]**: Protocol definitions and hardware-specific parsers.
 //! *   **[`engine`]**: The execution core that links the UI, drivers, and OS.
 //! *   **[`filters`]**: Digital signal processing for pen data.
@@ -34,8 +34,6 @@
 
 /// Application layer: services, the state the interface reads, and telemetry.
 pub mod application;
-/// Core types and maths: configuration models, input bindings and coordinate maths.
-pub mod core;
 pub mod drivers;
 pub mod engine;
 pub mod filters;

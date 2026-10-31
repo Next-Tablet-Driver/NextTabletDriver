@@ -5,7 +5,7 @@ mod common;
 use arbitrary::{Arbitrary, Unstructured};
 use common::{COORDINATE_LIMIT, ROTATION_LIMIT_DEGREES, bounded_f32};
 use libfuzzer_sys::fuzz_target;
-use next_tablet_driver::core::math::transform::physical_to_normalized;
+use ntd_core::math::transform::physical_to_normalized;
 
 #[derive(Debug)]
 struct PhysicalInput {

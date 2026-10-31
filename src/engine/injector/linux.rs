@@ -1,10 +1,10 @@
 //! Linux injection through virtual `/dev/uinput` devices (an absolute pen and a relative mouse).
 
-use crate::core::input::{Key, MouseButton};
 use evdev::{
     AbsInfo, AbsoluteAxisCode, AttributeSet, BusType, InputEvent, InputId, KeyCode,
     RelativeAxisCode, UinputAbsSetup, uinput::VirtualDevice,
 };
+use ntd_core::input::{Key, MouseButton};
 
 /// Maximum value for absolute axes (standard high-resolution range).
 /// The compositor/X server will map this to the actual screen dimensions.

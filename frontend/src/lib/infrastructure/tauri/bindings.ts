@@ -205,7 +205,7 @@ export type MappingConfig_Deserialize = {
 	pen_button_bindings?: string[],
 	/**
 	 *  Bindings for the keys on the tablet itself (`ExpressKeys`), first key first. A key with no
-	 *  entry does nothing. See [`crate::core::input::Binding`] for the text format.
+	 *  entry does nothing. See [`crate::input::Binding`] for the text format.
 	 */
 	aux_button_bindings?: string[],
 	/**  Whether the application starts automatically when the system boots. */
@@ -267,7 +267,7 @@ export type MappingConfig_Serialize = {
 	pen_button_bindings: string[],
 	/**
 	 *  Bindings for the keys on the tablet itself (`ExpressKeys`), first key first. A key with no
-	 *  entry does nothing. See [`crate::core::input::Binding`] for the text format.
+	 *  entry does nothing. See [`crate::input::Binding`] for the text format.
 	 */
 	aux_button_bindings: string[],
 	/**  Whether the application starts automatically when the system boots. */

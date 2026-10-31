@@ -2,7 +2,7 @@
 
 use arbitrary::{Arbitrary, Unstructured};
 use libfuzzer_sys::fuzz_target;
-use next_tablet_driver::core::math::transform::rotate_point;
+use ntd_core::math::transform::rotate_point;
 
 const COORDINATE_LIMIT: f32 = 1_000.0;
 const ROTATION_LIMIT_DEGREES: f32 = 360.0;

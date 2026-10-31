@@ -50,7 +50,7 @@ The CI runs the same checks on your pull request, so run them first. [Developmen
 cargo fmt --all -- --check
 cargo clippy --locked --workspace --all-targets --all-features -- -D warnings
 cargo nextest run --locked --workspace --all-features
-cargo test --locked --all-features --doc -p next_tablet_driver
+cargo test --locked --all-features --doc -p next_tablet_driver -p ntd-core
 cargo xtask lint-style
 cargo machete
 typos

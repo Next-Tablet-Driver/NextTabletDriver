@@ -440,7 +440,7 @@ pub struct MappingConfig {
     #[serde(default = "default_button_bindings")]
     pub pen_button_bindings: Vec<String>,
     /// Bindings for the keys on the tablet itself (`ExpressKeys`), first key first. A key with no
-    /// entry does nothing. See [`crate::core::input::Binding`] for the text format.
+    /// entry does nothing. See [`crate::input::Binding`] for the text format.
     #[serde(default)]
     pub aux_button_bindings: Vec<String>,
     /// Whether the application starts automatically when the system boots.

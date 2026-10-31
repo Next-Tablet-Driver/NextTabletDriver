@@ -4,7 +4,7 @@
 //! OS/game. Purely a function of the already-normalized ratio; never touches
 //! raw pressure used for tip-down/up threshold detection.
 
-use crate::core::config::models::{PressureCurveConfig, PressureCurveType};
+use crate::config::models::{PressureCurveConfig, PressureCurveType};
 
 /// Identity curve: output equals input.
 #[must_use]

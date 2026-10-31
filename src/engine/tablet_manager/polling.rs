@@ -3,7 +3,6 @@
 
 use super::buttons::ButtonRouter;
 use super::sdk_bridge::publish_shm_state;
-use crate::core::config::models::{DriverMode, MappingConfig};
 use crate::drivers::{TabletData, TabletStatus};
 use crate::engine::injector::{Injector, InputSink};
 use crate::engine::interop::shm::ShmWriter;
@@ -11,6 +10,7 @@ use crate::engine::pipeline::{Pipeline, ProcessedFrame};
 use crate::engine::state::{LockRecoveryExt, SharedState, WriteRecoverExt};
 use crate::filters::FilterPipeline;
 use crossbeam_channel::Sender;
+use ntd_core::config::models::{DriverMode, MappingConfig};
 use std::panic;
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
@@ -409,9 +409,9 @@ fn maybe_reload_config(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::input::{Key, MouseButton};
     use crate::drivers::parsers::ReportParser;
     use crate::drivers::parsers::fallback::FallbackParser;
+    use ntd_core::input::{Key, MouseButton};
 
     /// Records calls instead of injecting real input, so running the tests never moves the
     /// developer's cursor.

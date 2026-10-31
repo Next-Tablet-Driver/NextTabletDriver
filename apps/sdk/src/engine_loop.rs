@@ -12,7 +12,6 @@
 //! by `engine::interop`, exactly as documented there: this loop becomes
 //! either the HID owner or a reader of whichever process already is one.
 
-use next_tablet_driver::core::config::models::{ActiveArea, DriverMode, MappingConfig};
 use next_tablet_driver::drivers::{TabletData, TabletStatus, detect_tablet};
 use next_tablet_driver::engine::interop::command::{CommandHandler, CommandListener};
 use next_tablet_driver::engine::interop::lock::try_acquire_hid_owner;
@@ -22,6 +21,7 @@ use next_tablet_driver::engine::interop::shm::{
 use next_tablet_driver::engine::pipeline::{Pipeline, ProcessedFrame};
 use next_tablet_driver::engine::state::{LockRecoveryExt, SharedState, WriteRecoverExt};
 use next_tablet_driver::filters::FilterPipeline;
+use ntd_core::config::models::{ActiveArea, DriverMode, MappingConfig};
 use std::panic;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};

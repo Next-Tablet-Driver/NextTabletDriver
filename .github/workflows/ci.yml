@@ -224,7 +224,7 @@ jobs:
       # others when it is built with them, so only the root crate is checked.
       - name: Run the doctests
         if: contains(fromJson(needs.plan.outputs.crates), 'next_tablet_driver')
-        run: cargo test --locked --all-features --doc -p next_tablet_driver
+        run: cargo test --locked --all-features --doc -p next_tablet_driver -p ntd-core
       - name: Upload the test report
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

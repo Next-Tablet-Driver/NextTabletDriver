@@ -1,6 +1,6 @@
 //! Diagnostic logging of the active mapping configuration.
 
-use crate::core::config::models::MappingConfig;
+use ntd_core::config::models::MappingConfig;
 
 /// Logs the current driver mapping configuration settings to the tracking log target.
 pub fn log_mapping_config(config: &MappingConfig, prefix: &str) {

@@ -1,5 +1,5 @@
-use crate::core::config::models::MappingConfig;
 use crate::t;
+use ntd_core::config::models::MappingConfig;
 use std::path::PathBuf;
 use std::time::Instant;
 

@@ -2,8 +2,8 @@
 //!
 //! Converts physical millimeters into normalized UV coordinates (0..1).
 
-use crate::core::config::models::MappingConfig;
 use crate::engine::state::SharedState;
+use ntd_core::config::models::MappingConfig;
 use std::sync::Arc;
 
 /// Handles the second stage: converting physical millimeters into normalized
@@ -34,7 +34,7 @@ impl Normalizer {
         config: &MappingConfig,
         _shared: &Arc<SharedState>,
     ) -> (f32, f32) {
-        crate::core::math::transform::physical_to_normalized(
+        ntd_core::math::transform::physical_to_normalized(
             x_mm,
             y_mm,
             config.active_area.x,

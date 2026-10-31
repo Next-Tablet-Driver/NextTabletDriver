@@ -8,7 +8,6 @@
 
 use super::polling::run_polling_loop;
 use super::sdk_bridge::DesktopCommandHandler;
-use crate::core::config::models::MappingConfig;
 use crate::drivers::{TabletData, detect_tablet};
 use crate::engine::injector::Injector;
 use crate::engine::interop::command::{CommandHandler, CommandListener};
@@ -17,6 +16,7 @@ use crate::engine::pipeline::Pipeline;
 use crate::engine::state::{LockRecoveryExt, SharedState, WriteRecoverExt};
 use crate::filters::FilterPipeline;
 use crossbeam_channel::Sender;
+use ntd_core::config::models::MappingConfig;
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
 use std::thread;

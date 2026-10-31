@@ -27,6 +27,7 @@ serde = { workspace = true }
 log = { workspace = true }
 tauri = { workspace = true, features = ["tray-icon"] }
 next_tablet_driver = { workspace = true, features = ["desktop", "specta"] }
+ntd-core = { workspace = true, features = ["specta"] }
 ntd_plugin_api = { workspace = true }
 crossbeam-channel = { workspace = true }
 tauri-plugin-dialog = { workspace = true }

@@ -35,6 +35,7 @@ The desktop app is a thin shell around this engine. It adds a window (the user i
 | `apps/desktop/` | The desktop app. A [Tauri](https://tauri.app) program that starts the engine and shows the interface. |
 | `frontend/` | The interface. [Svelte](https://svelte.dev) 5, TypeScript and Vite. See [`frontend/README.md`](../frontend/README.md). |
 | `apps/sdk/` | `ntd_sdk`, a library that lets other programs (games, tools) run the engine inside their own process. See [Integrations](integrations.md) and [`apps/sdk/README.md`](../apps/sdk/README.md). |
+| `crates/ntd-core/` | `ntd-core`, the pure types and maths (button bindings, coordinate transforms, `MappingConfig`). It does no input or output. |
 | `crates/ntd-plugin-api/` | `ntd_plugin_api`, the interface that plugins implement. See [Plugin development](plugin-development.md). |
 | `plugins/` | Source code of the five plugins we maintain. |
 | `tablets/OpenTabletDriver/` | A git submodule with tablet definitions from [OpenTabletDriver](https://github.com/OpenTabletDriver/OpenTabletDriver). |
@@ -61,7 +62,7 @@ This is what happens for every packet, in order. The names are the Rust modules 
 5. **Inject** (`engine::injector`). The frame goes to the operating system. See [what each system receives](#what-each-system-receives).
 6. **Publish**. The engine saves the latest state for the interface and the WebSocket server, updates statistics, and publishes a snapshot to shared memory for other processes (see [One owner per tablet](#one-owner-per-tablet)).
 
-The math for steps 4.1, 4.2 and 4.5 lives in `core::math`. These functions are small and pure, so they are covered by property tests (`qa/tests`), benchmarks (`qa/benches`) and fuzzers (`qa/fuzz`).
+The math for steps 4.1, 4.2 and 4.5 lives in `ntd_core::math`. These functions are small and pure, so they are covered by property tests (`qa/tests`), benchmarks (`qa/benches`) and fuzzers (`qa/fuzz`).
 
 ### What each system receives
 
@@ -114,7 +115,7 @@ This is what lets a game that embeds the [SDK](integrations.md#sdk) run next to 
 
 ## Settings and files
 
-Settings are a `MappingConfig` (`core::config::models`), saved as JSON. Reading is forgiving: missing fields get defaults, and `validate_and_repair` fixes impossible values and reports what it changed. The folder layout is described in [Getting started](getting-started.md#where-your-files-are).
+Settings are a `MappingConfig` (`ntd_core::config::models`), saved as JSON. Reading is forgiving: missing fields get defaults, and `validate_and_repair` fixes impossible values and reports what it changed. The folder layout is described in [Getting started](getting-started.md#where-your-files-are).
 
 ## Plugins
 

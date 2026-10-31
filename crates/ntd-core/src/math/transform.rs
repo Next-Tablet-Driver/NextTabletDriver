@@ -13,7 +13,7 @@
 /// # Examples
 ///
 /// ```
-/// use next_tablet_driver::core::math::transform::rotate_point;
+/// use ntd_core::math::transform::rotate_point;
 ///
 /// // No rotation should return the same point
 /// let (x, y) = rotate_point(0.7, 0.2, 0.5, 0.5, 0.0);
@@ -64,7 +64,7 @@ pub fn rotate_point(
 /// # Examples
 ///
 /// ```
-/// use next_tablet_driver::core::math::transform::physical_to_normalized;
+/// use ntd_core::math::transform::physical_to_normalized;
 ///
 /// // Map a point exactly in the middle of a 100x100 area centered at (50, 50)
 /// let (u, v) = physical_to_normalized(50.0, 50.0, 50.0, 50.0, 100.0, 100.0, 0.0);
@@ -106,7 +106,7 @@ pub fn physical_to_normalized(
 /// # Examples
 ///
 /// ```
-/// use next_tablet_driver::core::math::transform::normalized_to_screen;
+/// use ntd_core::math::transform::normalized_to_screen;
 ///
 /// // Map the center of UV space to a 1920x1080 monitor starting at (0, 0)
 /// let (x, y) = normalized_to_screen(0.5, 0.5, 0.0, 0.0, 1920.0, 1080.0);

@@ -4,8 +4,8 @@
 //! during the high-frequency polling loop. Zero heap allocations are made
 //! on the `process` hot path.
 
-use crate::core::config::models::MappingConfig;
 use crate::engine::plugins::{PluginInstance, PluginManager};
+use ntd_core::config::models::MappingConfig;
 use ntd_plugin_api::{PluginContext, PluginPacket};
 
 /// An active plugin registered in the pipeline with its current enable state.
@@ -146,8 +146,8 @@ impl FilterPipeline {
 )]
 mod tests {
     use super::*;
-    use crate::core::config::models::{DynamicPluginSettings, MappingConfig};
     use crate::engine::plugins::loader::{LoadedLibrary, PluginVTable};
+    use ntd_core::config::models::{DynamicPluginSettings, MappingConfig};
     use ntd_plugin_api::{PluginContext, PluginManifest, PluginPacket, PluginStatus};
     use std::collections::HashMap;
     use std::ffi::{CStr, c_char, c_void};

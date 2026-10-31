@@ -3,9 +3,9 @@
 //! This module defines the `SharedState` structure, which provides a bridge
 //! between the high-frequency background `engine` threads and the 60Hz GUI threads.
 
-use crate::core::config::models::MappingConfig;
 use crate::drivers::TabletData;
 use crate::engine::pipeline::ProcessedFrame;
+use ntd_core::config::models::MappingConfig;
 use std::sync::atomic::{AtomicBool, AtomicU32};
 use std::sync::{Arc, LockResult, RwLock};
 

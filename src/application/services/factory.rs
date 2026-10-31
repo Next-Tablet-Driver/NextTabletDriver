@@ -1,5 +1,5 @@
-use crate::core::config::models::MappingConfig;
 use crate::engine::state::{ConfigState, LifecycleState, PipelineState, SharedState};
+use ntd_core::config::models::MappingConfig;
 use std::sync::Arc;
 use std::sync::RwLock;
 
