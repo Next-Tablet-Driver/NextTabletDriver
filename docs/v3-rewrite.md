@@ -1541,9 +1541,9 @@ just the application.
 
 | | |
 |---|---|
-| **Current phase** | Phase 0: Safety nets |
-| **Last completed task** | P0.10 |
-| **Next task** | GATE 0 |
+| **Current phase** | Phase 1: Workspace, quality, CI, contribution rules |
+| **Last completed task** | GATE 0 |
+| **Next task** | P1.1 |
 | **v1 bridge release** | not started (P7.5a) |
 | **Last updated** | 2026-10-31 |
 
@@ -1585,7 +1585,7 @@ This table is updated by **every** PR that ticks a task.
 
 Goal: be able to detect any regression **before** touching the architecture (§7, phase 0).
 
-- [x] **P0.1** Fix the updater public key (§11.1) (PR: to be linked)
+- [x] **P0.1** Fix the updater public key (§11.1) ([#178](https://github.com/Next-Tablet-Driver/NextTabletDriver/pull/178))
   - Depends on: —
   - Done when: `tauri.conf.json` contains the real public key matching
     `TAURI_SIGNING_PRIVATE_KEY`; a signed test update is accepted by the application and an
@@ -1593,47 +1593,50 @@ Goal: be able to detect any regression **before** touching the architecture (§7
 - [-] **P0.2** ~~Transition 2.x release, then freeze~~
   - Dropped: no 2.x was ever released and the v1 updater has no signature check. Replaced by the
     v1 bridge release, P7.5a (§2).
-- [x] **P0.3** Check the licence of `tablets/OpenTabletDriver` (§11.2) (PR: to be linked)
+- [x] **P0.3** Check the licence of `tablets/OpenTabletDriver` (§11.2) ([#178](https://github.com/Next-Tablet-Driver/NextTabletDriver/pull/178))
   - Depends on: —
   - Done when: the upstream licence is identified, the required attribution is added (or
     incompatible files are replaced), and the decision is written in the PR.
-- [x] **P0.4** Remove the duplicate icon library (§11.3) (PR: to be linked)
+- [x] **P0.4** Remove the duplicate icon library (§11.3) ([#178](https://github.com/Next-Tablet-Driver/NextTabletDriver/pull/178))
   - Depends on: —
   - Done when: a single Lucide library in `frontend/package.json`; `npm run check`, `npm test` and
     `npm run e2e` green.
-- [x] **P0.5** Write `ntd-recorder` v1 (§15.3) (PR: to be linked)
+- [x] **P0.5** Write `ntd-recorder` v1 (§15.3) ([#178](https://github.com/Next-Tablet-Driver/NextTabletDriver/pull/178))
   - Depends on: —
   - Note: it lives in `tools/ntd-recorder` with its own `Cargo.lock` **temporarily**; it joins the
     workspace in P1.2. This is the only exception to rule 21.
   - Done when: the tool lists devices, captures descriptor + guided reports, writes a versioned
     `.ntdcap` without personal data; `docs/adding-a-tablet.md` and
     `.github/ISSUE_TEMPLATE/tablet_support.yml` ask for this file.
-- [x] **P0.6** Golden file harness (`qa/golden`) (PR: to be linked)
+- [x] **P0.6** Golden file harness (`qa/golden`) ([#178](https://github.com/Next-Tablet-Driver/NextTabletDriver/pull/178))
   - Depends on: P0.5
   - Done when: `cargo test` replays every capture through the v2 parser and compares it with a
     committed snapshot; changing one byte in a parser fails the test.
-- [x] **P0.7** Golden files for the supported tablets (several PRs) (PR: to be linked)
+- [x] **P0.7** Golden files for the supported tablets (several PRs) ([#178](https://github.com/Next-Tablet-Driver/NextTabletDriver/pull/178))
   - Depends on: P0.6
   - Done when: every tablet with a real capture (or real reports in the existing tests) has golden
     files; tablets without a capture are listed in `qa/golden/MISSING.md` (rule 103: captures are
     never invented).
-- [x] **P0.8** Latency baseline (PR: to be linked)
+- [x] **P0.8** Latency baseline ([#178](https://github.com/Next-Tablet-Driver/NextTabletDriver/pull/178))
   - Depends on: —
   - Done when: a criterion benchmark covers the parse → pipeline → (fake) output path; the results
     and the measuring machine are recorded in `docs/perf-baseline.md`; the 5 % tolerance is
     written next to them.
-- [x] **P0.9** Generate the v2 contract with `tauri-specta` (§5.2, step 1) (PR: to be linked)
+- [x] **P0.9** Generate the v2 contract with `tauri-specta` (§5.2, step 1) ([#178](https://github.com/Next-Tablet-Driver/NextTabletDriver/pull/178))
   - Depends on: —
   - Done when: the 26 current commands and 5 events have types and typed functions generated from
     Rust in `frontend/src/lib/infrastructure/tauri/bindings.ts`, **with no behaviour change**; a CI
     job regenerates and fails on any diff.
-- [x] **P0.10** The frontend uses the generated bindings (PR: to be linked)
+- [x] **P0.10** The frontend uses the generated bindings ([#178](https://github.com/Next-Tablet-Driver/NextTabletDriver/pull/178))
   - Depends on: P0.9
   - Done when: `commands.ts` and `events.ts` have no hand-written DTO interface left;
     `npm run check`, `npm test`, `npm run e2e` green.
-- [ ] **GATE 0**
+- [x] **GATE 0** ([#178](https://github.com/Next-Tablet-Driver/NextTabletDriver/pull/178))
   - Done when: P0.1 and P0.3 to P0.10 are `[x]` (P0.2 is dropped), CI is green and
     `docs/perf-baseline.md` exists.
+  - Note: the `Security advisories (cargo-deny)` check was already red on `main` before this phase
+    (unmaintained `fxhash` through `display-info`, `quick-xml`, root certificates). It is not part
+    of this gate; the dependency updates are a separate task.
 
 ---
 
