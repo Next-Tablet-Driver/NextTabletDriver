@@ -1545,8 +1545,8 @@ just the application.
 | | |
 |---|---|
 | **Current phase** | Phase 1: Workspace, quality, CI, contribution rules |
-| **Last completed task** | P2.2 |
-| **Next task** | P2.3 |
+| **Last completed task** | P2.3 |
+| **Next task** | P2.4 |
 | **v1 bridge release** | not started (P7.5a) |
 | **Last updated** | 2026-10-31 |
 
@@ -1883,10 +1883,20 @@ Goal: `ntd-core`, `ntd-tablets`, `ntd-pipeline` without any I/O (§7, phase 2).
     `LockRecoveryExt` and `WriteRecoverExt`. They moved to `ntd_core::sync` (`ntd-core` gained
     `log`, a facade that does no I/O), and every caller now imports them from there. `drivers`
     no longer imports `engine` at all. The golden test passes and `qa/golden/` did not change.
-- [ ] **P2.3** Extract `ntd-tablets`
+- [x] **P2.3** Extract `ntd-tablets` (branch `chore/v3-phase-2`)
   - Depends on: P2.2
   - Done when: parsers, models and descriptor loading are in `crates/ntd-tablets`; no I/O; golden
     files run against it.
+  - Notes: `git mv` of `drivers/{parsers,config,models,generic}` and the `NextTabletDriver` trait.
+    `config_loader` was split: the embedded catalogue (`include_dir`, parsing, the VID:PID index,
+    `EMBEDDED_INDEX`) is in the crate, and the read of the local `tablets` folder
+    (`load_configurations`, `INDEXED_CONFIGS`) stays in the root crate until `ntd-hid` exists. The
+    golden test now builds its parsers from `ntd_tablets::config_loader::EMBEDDED_INDEX`, and
+    `qa/golden/` did not change. `detection` and `hid_caps` stay in `drivers` (they talk to
+    `hidapi` and the OS). The crate depends on `ntd-core` (the poisoned-lock helpers of P2.2),
+    `include_dir`, `log`, `serde` and `serde_json`. Its licence field is `MIT AND LGPL-3.0-only`
+    because of the parsers. The matching of a device to a definition (VID/PID) is still in
+    `detection`, with the enumeration: it moves with `ntd-hid`.
 - [ ] **P2.4** `ntd-codegen` (§15.1)
   - Depends on: P2.3
   - Done when: `tablets/*.json` is validated and generates `crates/ntd-tablets/src/generated/`;
