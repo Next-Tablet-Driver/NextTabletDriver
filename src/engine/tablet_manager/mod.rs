@@ -2,7 +2,7 @@
 //!
 //! This module is the execution environment for the background USB polling thread.
 //! It handles detecting devices, reading raw USB packets, checking for configuration
-//! updates, and feeding data to the UI thread and [`Pipeline`](crate::engine::pipeline::Pipeline).
+//! updates, and feeding data to the UI thread and [`Pipeline`](ntd_pipeline::Pipeline).
 //!
 //! # Architecture
 //!
@@ -45,10 +45,10 @@ pub mod bench_support {
     pub use super::polling::{PacketLoopState, process_packet_for_bench};
 }
 
-use crate::drivers::TabletData;
 use crate::engine::interop::lock::try_acquire_hid_owner;
 use crate::engine::state::SharedState;
 use crossbeam_channel::Sender;
+use ntd_tablets::TabletData;
 use std::any::Any;
 use std::panic;
 use std::sync::Arc;

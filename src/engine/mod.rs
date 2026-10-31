@@ -8,7 +8,6 @@
 #[cfg(feature = "desktop")]
 pub mod injector;
 pub mod interop;
-pub mod pipeline;
 pub mod plugins;
 pub mod state;
 #[cfg(feature = "desktop")]

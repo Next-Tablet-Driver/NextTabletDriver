@@ -5,7 +5,7 @@ mod common;
 use arbitrary::{Arbitrary, Unstructured};
 use common::{SCREEN_SIZE_LIMIT, bounded_f32};
 use libfuzzer_sys::fuzz_target;
-use next_tablet_driver::core::math::transform::normalized_to_screen;
+use ntd_core::math::transform::normalized_to_screen;
 
 #[derive(Debug)]
 struct ScreenInput {

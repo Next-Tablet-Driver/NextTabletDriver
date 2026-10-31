@@ -63,6 +63,31 @@ class CoverageGate(unittest.TestCase):
         self.assertEqual(code, 0, output)
         self.assertIn("(1/2 lines)", output)
 
+    def test_the_crates_of_the_workspace_count_but_generated_code_does_not(self) -> None:
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            for name in ("crates/ntd-core/src/lib.rs", "crates/ntd-tablets/src/generated/t.rs"):
+                (root / name).parent.mkdir(parents=True)
+                (root / name).write_text("fn a() {}\nfn b() {}\n", encoding="utf-8")
+            core = root / "crates/ntd-core/src/lib.rs"
+            generated = root / "crates/ntd-tablets/src/generated/t.rs"
+            (root / "lcov.info").write_text(
+                f"SF:{core}\nDA:1,1\nDA:2,0\nend_of_record\n"
+                f"SF:{generated}\nDA:1,0\nDA:2,0\nend_of_record\n",
+                encoding="utf-8",
+            )
+            (root / "summary.json").write_text(
+                json.dumps({"total": {"lines": {"covered": 1, "total": 1}}}), encoding="utf-8"
+            )
+            (root / "floors.json").write_text(json.dumps({"rust": 0, "frontend": 0, "total": 0}), encoding="utf-8")
+            result = subprocess.run(
+                [sys.executable, str(SCRIPT), "--lcov", str(root / "lcov.info"), "--frontend",
+                 str(root / "summary.json"), "--thresholds", str(root / "floors.json"), "--root", str(root)],
+                capture_output=True, text=True, check=False,
+            )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("(1/2 lines)", result.stdout)
+
     def test_suggests_raising_a_floor_that_is_far_below(self) -> None:
         code, output = run_gate({1: 1, 2: 1}, (90, 100), {"rust": 50, "frontend": 50, "total": 50})
         self.assertEqual(code, 0, output)

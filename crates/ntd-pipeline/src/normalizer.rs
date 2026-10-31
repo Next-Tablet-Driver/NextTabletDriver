@@ -1,0 +1,39 @@
+//! # Stage 2: Normalization
+//!
+//! Converts physical millimeters into normalized UV coordinates (0..1).
+
+use ntd_core::config::models::MappingConfig;
+
+/// Handles the second stage: converting physical millimeters into normalized
+/// UV coordinates (0..1) based on the active area configuration.
+#[derive(Default)]
+pub struct Normalizer;
+
+impl Normalizer {
+    /// Converts physical coordinates `(x_mm, y_mm)` to normalized UV coordinates `[0.0, 1.0]`
+    /// relative to the configured active area offsets, rotation, and dimensions.
+    ///
+    /// # Arguments
+    /// * `x_mm` - Physical X coordinate in millimeters.
+    /// * `y_mm` - Physical Y coordinate in millimeters.
+    /// * `config` - The current global application configuration defining the active area.
+    ///
+    /// # Returns
+    /// A tuple `(u, v)` representing normalized UV coordinates.
+    #[must_use]
+    #[allow(
+        clippy::unused_self,
+        reason = "a method like the other pipeline stages, which do use their state"
+    )]
+    pub fn execute(&self, x_mm: f32, y_mm: f32, config: &MappingConfig) -> (f32, f32) {
+        ntd_core::math::transform::physical_to_normalized(
+            x_mm,
+            y_mm,
+            config.active_area.x,
+            config.active_area.y,
+            config.active_area.w,
+            config.active_area.h,
+            config.active_area.rotation,
+        )
+    }
+}

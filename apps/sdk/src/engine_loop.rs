@@ -12,16 +12,19 @@
 //! by `engine::interop`, exactly as documented there: this loop becomes
 //! either the HID owner or a reader of whichever process already is one.
 
-use next_tablet_driver::core::config::models::{ActiveArea, DriverMode, MappingConfig};
-use next_tablet_driver::drivers::{TabletData, TabletStatus, detect_tablet};
+use next_tablet_driver::drivers::detect_tablet;
+
 use next_tablet_driver::engine::interop::command::{CommandHandler, CommandListener};
 use next_tablet_driver::engine::interop::lock::try_acquire_hid_owner;
 use next_tablet_driver::engine::interop::shm::{
     DEVICE_NAME_CAPACITY, SdkPublicState, ShmReader, ShmWriter,
 };
-use next_tablet_driver::engine::pipeline::{Pipeline, ProcessedFrame};
-use next_tablet_driver::engine::state::{LockRecoveryExt, SharedState, WriteRecoverExt};
-use next_tablet_driver::filters::FilterPipeline;
+use next_tablet_driver::engine::state::SharedState;
+use ntd_core::config::models::{ActiveArea, DriverMode, MappingConfig};
+use ntd_core::sync::{LockRecoveryExt, WriteRecoverExt};
+use ntd_pipeline::FilterPipeline;
+use ntd_pipeline::{Pipeline, ProcessedFrame};
+use ntd_tablets::{TabletData, TabletStatus};
 use std::panic;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -428,7 +431,7 @@ fn init_filter_pipeline(shared: &Arc<SharedState>, config: &MappingConfig) -> Fi
 
 fn on_device_connected(
     shared: &Arc<SharedState>,
-    driver: &dyn next_tablet_driver::drivers::NextTabletDriver,
+    driver: &dyn ntd_tablets::NextTabletDriver,
     vid: u16,
     pid: u16,
     local_config: &mut MappingConfig,
@@ -478,7 +481,7 @@ fn on_disconnected(shared: &Arc<SharedState>) {
         .pipeline
         .tablet_data
         .write()
-        .unwrap_or_reset("tablet_data") = next_tablet_driver::drivers::TabletData::default();
+        .unwrap_or_reset("tablet_data") = ntd_tablets::TabletData::default();
 }
 
 /// The main packet reading loop, driving the real HID device. Adapted from
@@ -492,7 +495,7 @@ fn on_disconnected(shared: &Arc<SharedState>) {
 )]
 fn run_polling_loop(
     device: &hidapi::HidDevice,
-    driver: &dyn next_tablet_driver::drivers::NextTabletDriver,
+    driver: &dyn ntd_tablets::NextTabletDriver,
     shared: &Arc<SharedState>,
     pipeline: &mut Pipeline,
     filters: &mut FilterPipeline,
@@ -540,7 +543,7 @@ fn run_polling_loop(
                     status: TabletStatus::OutOfRange,
                     ..Default::default()
                 };
-                let frame = pipeline.process(&out, driver, local_config, filters, shared);
+                let frame = pipeline.process(&out, driver, local_config, filters);
                 *shared
                     .pipeline
                     .processed_frame
@@ -573,7 +576,7 @@ fn run_polling_loop(
 
 fn process_packet(
     raw: &[u8],
-    driver: &dyn next_tablet_driver::drivers::NextTabletDriver,
+    driver: &dyn ntd_tablets::NextTabletDriver,
     shared: &Arc<SharedState>,
     pipeline: &mut Pipeline,
     filters: &mut FilterPipeline,
@@ -581,7 +584,7 @@ fn process_packet(
     shm_writer: Option<&ShmWriter>,
 ) {
     if let Some(data) = driver.parse(raw) {
-        let frame = pipeline.process(&data, driver, local_config, filters, shared);
+        let frame = pipeline.process(&data, driver, local_config, filters);
         *shared
             .pipeline
             .processed_frame

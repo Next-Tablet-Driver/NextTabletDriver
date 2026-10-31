@@ -1,6 +1,6 @@
 //! Wire format: fixed-size request/response encoding and the handler trait.
 
-use crate::core::config::models::{ActiveArea, DriverMode};
+use ntd_core::config::models::{ActiveArea, DriverMode};
 
 use super::{REQUEST_SIZE, RESPONSE_SIZE};
 

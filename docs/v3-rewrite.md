@@ -1544,9 +1544,9 @@ just the application.
 
 | | |
 |---|---|
-| **Current phase** | Phase 1: Workspace, quality, CI, contribution rules |
-| **Last completed task** | GATE 1 |
-| **Next task** | P2.1 |
+| **Current phase** | Phase 3: Extract the I/O adapters |
+| **Last completed task** | GATE 2 |
+| **Next task** | P3.1 |
 | **v1 bridge release** | not started (P7.5a) |
 | **Last updated** | 2026-10-31 |
 
@@ -1864,37 +1864,116 @@ phase 1; §12, §13, §14).
 
 Goal: `ntd-core`, `ntd-tablets`, `ntd-pipeline` without any I/O (§7, phase 2).
 
-- [ ] **P2.1** Extract `ntd-core`
+- [x] **P2.1** Extract `ntd-core` (branch `chore/v3-phase-2`)
   - Depends on: GATE 1
   - Done when: `core/input`, `core/math` and the really shared types are in `crates/ntd-core`;
     `cargo tree -p ntd-core` shows no I/O dependency.
-- [ ] **P2.2** Remove the `drivers` → `engine::state` dependency
+  - Notes: `git mv` of `src/core/` (`input`, `math`, `config/models`) to `crates/ntd-core`; the
+    paths became `ntd_core::...` (no re-export left behind). `cargo tree -p ntd-core` lists only
+    `serde`, `serde_json` and `thiserror` (`specta` is optional). `config/models.rs` moved whole:
+    `ThemePreference`, `WebSocketConfig`, `DynamicPluginSettings` and the other settings-only types
+    are not "really shared" and leave it when `ntd-settings` is created. The `qa/fuzz` targets only
+    use `ntd_core::math`, so that crate no longer depends on `next_tablet_driver`. The doctests of
+    `ntd-core` run next to the root crate's in the CI and in `AGENTS.md`.
+- [x] **P2.2** Remove the `drivers` → `engine::state` dependency (branch `chore/v3-phase-2`)
   - Depends on: P2.1
   - Done when: `parsers/wacom/intuos_v1.rs` and `pl.rs` no longer import `engine::state`
     (parser-local state, or helper moved to `ntd-core`); golden files identical.
-- [ ] **P2.3** Extract `ntd-tablets`
+  - Notes: the only thing the two parsers took from `engine::state` was the poisoned-lock helpers
+    `LockRecoveryExt` and `WriteRecoverExt`. They moved to `ntd_core::sync` (`ntd-core` gained
+    `log`, a facade that does no I/O), and every caller now imports them from there. `drivers`
+    no longer imports `engine` at all. The golden test passes and `qa/golden/` did not change.
+- [x] **P2.3** Extract `ntd-tablets` (branch `chore/v3-phase-2`)
   - Depends on: P2.2
   - Done when: parsers, models and descriptor loading are in `crates/ntd-tablets`; no I/O; golden
     files run against it.
-- [ ] **P2.4** `ntd-codegen` (§15.1)
+  - Notes: `git mv` of `drivers/{parsers,config,models,generic}` and the `NextTabletDriver` trait.
+    `config_loader` was split: the embedded catalogue (`include_dir`, parsing, the VID:PID index,
+    `EMBEDDED_INDEX`) is in the crate, and the read of the local `tablets` folder
+    (`load_configurations`, `INDEXED_CONFIGS`) stays in the root crate until `ntd-hid` exists. The
+    golden test now builds its parsers from `ntd_tablets::config_loader::EMBEDDED_INDEX`, and
+    `qa/golden/` did not change. `detection` and `hid_caps` stay in `drivers` (they talk to
+    `hidapi` and the OS). The crate depends on `ntd-core` (the poisoned-lock helpers of P2.2),
+    `include_dir`, `log`, `serde` and `serde_json`. Its licence field is `MIT AND LGPL-3.0-only`
+    because of the parsers. The matching of a device to a definition (VID/PID) is still in
+    `detection`, with the enumeration: it moves with `ntd-hid`.
+- [x] **P2.4** `ntd-codegen` (§15.1) (branch `chore/v3-phase-2`)
   - Depends on: P2.3
   - Done when: `tablets/*.json` is validated and generates `crates/ntd-tablets/src/generated/`;
     `include_dir` and JSON parsing at startup are gone; CI `codegen` job;
     `tools/ntd-codegen/AGENTS.md` and `crates/ntd-tablets/AGENTS.md` written.
-- [ ] **P2.5** Extract `ntd-pipeline` with `trait Filter` (§4.4)
+  - Notes: `tools/ntd-codegen` reads `tablets/OpenTabletDriver/.../Configurations/**/*.json` (the
+    definitions are not at the top of `tablets/`: it is the submodule), refuses unknown keys, and
+    checks: unique names, positive dimensions and pressure, valid base64 init reports, a parser
+    class that exists upstream, and no two tablets with the same VID:PID, report lengths and
+    device strings. It writes `generated/tablets.rs` (352 `TabletDescriptor`s plus a `BY_ID`
+    table sorted by VID:PID) and `generated/mod.rs`; both are committed. The per-OS fields of
+    §16.3 do not exist yet, so nothing validates them. `ntd-tablets` lost `include_dir`: the
+    embedded catalogue is `descriptor::all()`, `EMBEDDED_INDEX` is built from it without parsing,
+    and `descriptor::find(vid, pid)` is the static lookup. `serde_json` stays in `ntd-tablets`
+    for the `Deserialize` types that the root crate still uses for the local `tablets` folder
+    (until `ntd-hid`). `include_dir` stays in the root crate for the translations (`i18n`).
+    CI job `codegen` regenerates and fails on any diff. Golden files did not change.
+- [x] **P2.5** Extract `ntd-pipeline` with `trait Filter` (§4.4) (branch `chore/v3-phase-2`)
   - Depends on: P2.1
   - Done when: `engine/pipeline` and the filter chain are in `crates/ntd-pipeline`; the
     `filters` ↔ `engine::plugins` cycle no longer exists; latency within +5 %.
-- [ ] **P2.6** Clock injected into the pipeline
+  - Notes: `git mv` of `engine/pipeline/*` (stages, `ProcessedFrame`) and `filters/mod.rs` (the
+    chain) to `crates/ntd-pipeline`. The chain now holds `Box<dyn Filter>`; `Filter` has `process`,
+    `set_property` and `reset`. The plugin side is `engine::plugins::PluginFilter` (wraps a
+    `PluginInstance`), and `PluginManager::create_pipeline` builds the chain, so `ntd-pipeline`
+    does not know plugins exist and the `filters` ↔ `plugins` cycle is gone. The `shared:
+    &Arc<SharedState>` parameter of `Pipeline::process`, `Normalizer` and `Projector` was never
+    read and is removed, which cuts the dependency on `engine::state`. The crate depends on
+    `ntd-core`, `ntd-tablets`, `ntd-plugin-api`, `log`, `serde_json` and `thiserror`: no I/O. The
+    plugin-ABI tests stayed with the plugins; the chain is tested with a plain Rust filter.
+    Latency (criterion, before/after on the same machine): `pipeline_*` benches +0.6 % to +3.9 %,
+    `hot_path/process_packet` between -0.3 % and +8 % with a run-to-run noise of about 5 % on the
+    same binary. `Projector` still reads `Instant::now()`: P2.6.
+- [x] **P2.6** Clock injected into the pipeline (branch `chore/v3-phase-2`)
   - Depends on: P2.5
   - Done when: no `Instant::now()` or `sleep` in `ntd-pipeline` (rule 37).
-- [ ] **P2.7** Parser fuzzing (§15.4)
+  - Notes: `ntd_core::clock` holds `trait Clock` (`now() -> Duration` since the origin of the
+    clock), `SystemClock` and `ManualClock` (a test double that moves with `advance`). `Pipeline`
+    owns an `Arc<dyn Clock>` (`Pipeline::new()` uses the system clock, `with_clock` takes
+    another), reads it in relative mode only, and passes the time to
+    `Projector::project_relative`, which no longer touches the OS. `cargo xtask lint-style`
+    gained rule 6: `Instant::now(`, `SystemTime::now(` or `sleep(` in `crates/ntd-pipeline/` fails
+    the build. A pipeline test moves a `ManualClock` past `reset_time_ms` and checks that the
+    relative tracking restarts.
+- [x] **P2.7** Parser fuzzing (§15.4) (branch `chore/v3-phase-2`)
   - Depends on: P2.3
   - Done when: one target per parser family, corpus seeded with captures, CI `fuzz` job of 60 s
     per target.
-- [ ] **GATE 2**
+  - Notes: 17 targets in `qa/fuzz/fuzz_targets/parser_<family>.rs`, one per module of
+    `ntd_tablets::parsers` (`acepen` to `xp_pen`, `fallback` included). They share
+    `parser_common.rs`, which collects the parser classes the definitions name, keeps those that
+    `create_parser` maps into the family (`tenmoon` needs an explicit class: no definition uses
+    it yet), and checks that no input panics and that a fresh parser answers the same twice. The
+    positions are not compared with the bounds of the definition: a pen out of range legally
+    reports beyond them. The corpus is seeded with the reports of the only real capture
+    (`qa/golden/28bd-0914`, family `xp_pen`); other families start empty until a golden capture
+    exists (`qa/golden/MISSING.md`), because a seed is never invented. A 40 s local run of every
+    family found no panic. The fuzz crate got its own `[workspace]` table: it could not be built
+    since the workspace was created. CI job `fuzz` runs each target 60 s on nightly and uploads a
+    crashing input.
+- [x] **GATE 2** (branch `chore/v3-phase-2`)
   - Done when: P2.1 to P2.7 are `[x]`; `cargo tree` confirms no I/O in the three crates; golden
     files identical; latency within +5 %.
+  - Notes: `cargo tree -p <crate> -e normal` lists only `log`, `serde`, `serde_json` and
+    `thiserror` (plus the three crates themselves, `ntd_plugin_api` for the pipeline) for
+    `ntd-core`, `ntd-tablets` and `ntd-pipeline`: no `hidapi`, `include_dir`, `directories`,
+    network or OS crate. `qa/golden/` did not change in phase 2 and the golden test passes.
+    Latency was measured against the commit before phase 2 (`2bb6178`) with criterion, in two
+    worktrees with their own target folders. Interleaved three times, the medians of
+    `hot_path/process_packet` are +1.0 % (`tray_hidden`), -3.9 % (`ui_60hz`) and -0.1 %
+    (`ui_stress`); one-sided baseline runs gave -2 % to +9 % for the same code, and even
+    `ui_snapshot_capture`, which phase 2 did not touch, moved by +2 % to +26 %. That is the noise
+    of this machine, so the gate rests on the interleaved runs. The `pipeline/*` benches of
+    `qa/benches/pipeline.rs` timed the drop of an unused `SharedState` (about 100-200 us per
+    iteration); the bench no longer builds one, so their old numbers are not comparable, and the
+    baseline was re-measured with that state leaked: the packet costs the same (about 230-300
+    ns). A rerun on the reference runner of §13.5 remains the final word.
 
 ---
 

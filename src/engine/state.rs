@@ -3,72 +3,11 @@
 //! This module defines the `SharedState` structure, which provides a bridge
 //! between the high-frequency background `engine` threads and the 60Hz GUI threads.
 
-use crate::core::config::models::MappingConfig;
-use crate::drivers::TabletData;
-use crate::engine::pipeline::ProcessedFrame;
+use ntd_core::config::models::MappingConfig;
+use ntd_pipeline::ProcessedFrame;
+use ntd_tablets::TabletData;
 use std::sync::atomic::{AtomicBool, AtomicU32};
-use std::sync::{Arc, LockResult, RwLock};
-
-/// Extension trait for safe lock recovery.
-pub trait LockRecoveryExt<T> {
-    /// Extracts the guard but logs heavily that the state might be corrupted.
-    /// Used for critical state where a reset would be destructive.
-    fn unwrap_or_log(self, lock_name: &str) -> T;
-}
-
-impl<T> LockRecoveryExt<T> for LockResult<T> {
-    fn unwrap_or_log(self, lock_name: &str) -> T {
-        match self {
-            Ok(guard) => guard,
-            Err(poisoned) => {
-                log::error!(target: "State", "CRITICAL: Lock '{lock_name}' poisoned! Using \
-                    potentially corrupted guard.");
-                poisoned.into_inner()
-            }
-        }
-    }
-}
-
-/// Extension trait for self-healing transient write locks.
-pub trait WriteRecoverExt {
-    /// The lock guard that [`WriteRecoverExt::unwrap_or_reset`] hands back.
-    type Guard;
-    /// Extracts the guard and explicitly overwrites the corrupted data with `Default::default()`.
-    /// Used for transient state like tablet coordinates, stats, or device metadata.
-    fn unwrap_or_reset(self, lock_name: &str) -> Self::Guard;
-}
-
-impl<'a, T: Default> WriteRecoverExt for LockResult<std::sync::RwLockWriteGuard<'a, T>> {
-    type Guard = std::sync::RwLockWriteGuard<'a, T>;
-    fn unwrap_or_reset(self, lock_name: &str) -> Self::Guard {
-        match self {
-            Ok(guard) => guard,
-            Err(poisoned) => {
-                log::warn!(target: "State", "Write lock '{lock_name}' poisoned! Repairing by \
-                    resetting to default state.");
-                let mut guard = poisoned.into_inner();
-                *guard = T::default();
-                guard
-            }
-        }
-    }
-}
-
-impl<'a, T: Default> WriteRecoverExt for LockResult<std::sync::MutexGuard<'a, T>> {
-    type Guard = std::sync::MutexGuard<'a, T>;
-    fn unwrap_or_reset(self, lock_name: &str) -> Self::Guard {
-        match self {
-            Ok(guard) => guard,
-            Err(poisoned) => {
-                log::warn!(target: "State", "Mutex '{lock_name}' poisoned! Repairing by resetting \
-                    to default state.");
-                let mut guard = poisoned.into_inner();
-                *guard = T::default();
-                guard
-            }
-        }
-    }
-}
+use std::sync::{Arc, RwLock};
 
 /// State of the input engine.
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
@@ -158,7 +97,7 @@ pub struct PipelineState {
     /// real-time Hz.
     pub packet_count: AtomicU32,
     /// Tracking statistics for developer debugging (e.g., dropped packets, parse errors).
-    pub stats: RwLock<crate::drivers::DriverStats>,
+    pub stats: RwLock<ntd_tablets::DriverStats>,
 }
 
 impl Default for PipelineState {
@@ -175,7 +114,7 @@ impl PipelineState {
             tablet_data: RwLock::new(TabletData::default()),
             processed_frame: RwLock::new(ProcessedFrame::default()),
             packet_count: AtomicU32::new(0),
-            stats: RwLock::new(crate::drivers::DriverStats::default()),
+            stats: RwLock::new(ntd_tablets::DriverStats::default()),
         }
     }
 }
@@ -270,6 +209,7 @@ pub struct SharedState {
 )]
 mod tests {
     use super::*;
+    use ntd_core::sync::{LockRecoveryExt, WriteRecoverExt};
     use std::sync::{Arc, Mutex, RwLock};
     use std::thread;
 

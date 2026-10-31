@@ -5,7 +5,7 @@ mod common;
 use arbitrary::{Arbitrary, Unstructured};
 use common::{COORDINATE_LIMIT, ROTATION_LIMIT_DEGREES, SENSITIVITY_LIMIT, bounded_f32};
 use libfuzzer_sys::fuzz_target;
-use next_tablet_driver::core::math::transform::apply_relative_delta;
+use ntd_core::math::transform::apply_relative_delta;
 
 #[derive(Debug)]
 struct RelativeInput {

@@ -1,5 +1,5 @@
-use crate::core::config::models::MappingConfig;
 use crate::settings::load_last_session;
+use ntd_core::config::models::MappingConfig;
 
 /// Loads the configuration the application starts with.
 pub struct ConfigService {

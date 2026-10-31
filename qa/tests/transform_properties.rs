@@ -12,7 +12,7 @@
     reason = "a test that panics is a failing test"
 )]
 
-use next_tablet_driver::core::math::transform::{
+use ntd_core::math::transform::{
     apply_relative_delta, normalized_to_screen, physical_to_normalized, rotate_point,
 };
 use proptest::prelude::*;

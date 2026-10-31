@@ -12,10 +12,10 @@
 //! button is counted, and the operating system only sees the first press and the last
 //! release.
 
-use crate::core::config::models::MappingConfig;
-use crate::core::input::{Binding, Key, MouseButton};
-use crate::drivers::{TabletData, TabletStatus};
 use crate::engine::injector::InputSink;
+use ntd_core::config::models::MappingConfig;
+use ntd_core::input::{Binding, Key, MouseButton};
+use ntd_tablets::{TabletData, TabletStatus};
 
 /// How many buttons of one kind the router follows: `TabletData::buttons` is a byte.
 const BUTTONS_PER_GROUP: usize = 8;

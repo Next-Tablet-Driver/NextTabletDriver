@@ -8,15 +8,17 @@
 
 use super::polling::run_polling_loop;
 use super::sdk_bridge::DesktopCommandHandler;
-use crate::core::config::models::MappingConfig;
-use crate::drivers::{TabletData, detect_tablet};
+use crate::drivers::detect_tablet;
 use crate::engine::injector::Injector;
 use crate::engine::interop::command::{CommandHandler, CommandListener};
 use crate::engine::interop::shm::ShmWriter;
-use crate::engine::pipeline::Pipeline;
-use crate::engine::state::{LockRecoveryExt, SharedState, WriteRecoverExt};
-use crate::filters::FilterPipeline;
+use crate::engine::state::SharedState;
 use crossbeam_channel::Sender;
+use ntd_core::config::models::MappingConfig;
+use ntd_core::sync::{LockRecoveryExt, WriteRecoverExt};
+use ntd_pipeline::FilterPipeline;
+use ntd_pipeline::Pipeline;
+use ntd_tablets::TabletData;
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
 use std::thread;
@@ -235,7 +237,7 @@ fn init_filter_pipeline(shared: &Arc<SharedState>, config: &MappingConfig) -> Fi
 /// settings.
 fn on_device_connected(
     shared: &Arc<SharedState>,
-    driver: &dyn crate::drivers::NextTabletDriver,
+    driver: &dyn ntd_tablets::NextTabletDriver,
     vid: u16,
     pid: u16,
     local_config: &mut MappingConfig,
@@ -302,7 +304,7 @@ fn on_disconnected(shared: &Arc<SharedState>) {
         .pipeline
         .tablet_data
         .write()
-        .unwrap_or_reset("tablet_data") = crate::drivers::TabletData::default();
+        .unwrap_or_reset("tablet_data") = ntd_tablets::TabletData::default();
 }
 
 #[cfg(test)]
@@ -312,9 +314,9 @@ fn on_disconnected(shared: &Arc<SharedState>) {
 )]
 mod tests {
     use super::*;
-    use crate::drivers::NextTabletDriver;
     use crate::engine::state::EngineStatus;
     use crossbeam_channel::bounded;
+    use ntd_tablets::NextTabletDriver;
 
     struct StubDriver;
 

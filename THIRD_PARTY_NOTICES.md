@@ -5,7 +5,7 @@
 NextTabletDriver embeds, at compile time, the tablet configuration files of
 [OpenTabletDriver](https://github.com/OpenTabletDriver/OpenTabletDriver)
 (`tablets/OpenTabletDriver/OpenTabletDriver.Configurations/Configurations`, loaded in
-`src/drivers/config_loader.rs`).
+`crates/ntd-tablets/src/config_loader.rs`).
 
 - Copyright (C) OpenTabletDriver contributors.
 - Licence: GNU Lesser General Public License v3.0, full text in
@@ -17,7 +17,7 @@ NextTabletDriver embeds, at compile time, the tablet configuration files of
 
 ## Report parsers ported from OpenTabletDriver (LGPL-3.0)
 
-The report parsers in `src/drivers/parsers/` are Rust ports of the C# parsers of
+The report parsers in `crates/ntd-tablets/src/parsers/` are Rust ports of the C# parsers of
 OpenTabletDriver (`OpenTabletDriver.Configurations/Parsers`). They are derivative works and are
 therefore licensed under the **LGPL-3.0**, not the MIT licence. Copyright (C) OpenTabletDriver
 contributors and NextTabletDriver contributors.

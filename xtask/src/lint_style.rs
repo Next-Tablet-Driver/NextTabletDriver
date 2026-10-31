@@ -8,13 +8,21 @@
 //! 2. decorative comments: banners (4 or more `=`, `-`, `*` or `#` in a row) and emojis;
 //! 3. a to-do marker without an issue number, `TODO(#123)` being the only accepted form;
 //! 4. `allow(unsafe_code)` in a crate that is not allowed to use `unsafe`;
-//! 5. `#[rustfmt::skip]` without a comment right above it that says why.
+//! 5. `#[rustfmt::skip]` without a comment right above it that says why;
+//! 6. a direct read of the clock or a sleep in a crate that gets its time injected (rule 37 of
+//!    the plan).
 
 use std::path::Path;
 use std::process::ExitCode;
 
 /// Longest allowed line, in characters.
 const MAX_LINE: usize = 100;
+
+/// Crates that never read the time themselves: they take a `Clock` (rule 37).
+const CLOCK_INJECTED: &[&str] = &["crates/ntd-pipeline/"];
+
+/// Calls that read the time or wait, which a crate of [`CLOCK_INJECTED`] must not make.
+const DIRECT_TIME_CALLS: &[&str] = &["Instant::now(", "SystemTime::now(", "sleep("];
 
 /// Folders that hold no code of ours: build output, dependencies, the submodule and generated
 /// files.
@@ -97,7 +105,7 @@ fn collect(root: &Path, dir: &Path, out: &mut Vec<String>) {
     }
 }
 
-/// Applies the five rules to one file. `path` is relative to the repository root.
+/// Applies the six rules to one file. `path` is relative to the repository root.
 fn check_source(path: &str, source: &str) -> Vec<Violation> {
     if is_generated(source) {
         return Vec::new();
@@ -129,6 +137,7 @@ fn check_source(path: &str, source: &str) -> Vec<Violation> {
 
     check_unsafe(path, &lines, &mut found);
     check_rustfmt_skip(&lines, &mut found);
+    check_clock(path, &lines, &mut found);
     found.sort_by_key(|v| v.line);
     found.dedup();
     found
@@ -291,6 +300,24 @@ fn check_rustfmt_skip(lines: &[&str], found: &mut Vec<Violation>) {
     }
 }
 
+/// Rule 6: no direct read of the clock and no sleep in a crate that gets its time injected.
+fn check_clock(path: &str, lines: &[&str], found: &mut Vec<Violation>) {
+    if !CLOCK_INJECTED.iter().any(|prefix| path.starts_with(prefix)) {
+        return;
+    }
+    for (index, line) in lines.iter().enumerate() {
+        if line.trim_start().starts_with("//") {
+            continue;
+        }
+        if let Some(call) = DIRECT_TIME_CALLS.iter().find(|call| line.contains(**call)) {
+            found.push(Violation::new(
+                index + 1,
+                format!("`{call}` in a crate that takes a Clock (rule 37)"),
+            ));
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -417,6 +444,45 @@ mod tests {
     fn an_allow_that_only_mentions_unsafe_in_its_reason_is_accepted() {
         let source = "#![allow(clippy::panic, reason = \"unsafe_code is not used\")]\n";
         assert!(messages("tools/t/src/main.rs", source).is_empty());
+    }
+
+    #[test]
+    fn the_pipeline_may_not_read_the_clock_or_sleep() {
+        let path = "crates/ntd-pipeline/src/projector.rs";
+        assert_eq!(
+            messages(
+                path,
+                "let t = Instant::now();
+"
+            )
+            .len(),
+            1
+        );
+        assert_eq!(
+            messages(
+                path,
+                "std::thread::sleep(d);
+"
+            )
+            .len(),
+            1
+        );
+        assert!(
+            messages(
+                path,
+                "// Instant::now() is read by the clock
+"
+            )
+            .is_empty()
+        );
+        assert!(
+            messages(
+                "src/engine/x.rs",
+                "let t = Instant::now();
+"
+            )
+            .is_empty()
+        );
     }
 
     #[test]

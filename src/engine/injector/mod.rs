@@ -33,7 +33,7 @@
 //!   user reports, linking actual stutters to slow injection calls, not as a
 //!   speculative optimization.
 
-use crate::core::input::{Key, MouseButton};
+use ntd_core::input::{Key, MouseButton};
 
 /// What the polling loop needs from an OS input injector.
 ///

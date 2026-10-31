@@ -1,6 +1,4 @@
-use crate::core::config::models::{
-    ActiveArea, DriverMode, MappingConfig, RelativeConfig, TargetArea,
-};
+use ntd_core::config::models::{ActiveArea, DriverMode, MappingConfig, RelativeConfig, TargetArea};
 use serde::Deserialize;
 use std::fs;
 use std::path::Path;

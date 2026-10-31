@@ -23,7 +23,7 @@ pub use paths::set_test_settings_dir;
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::config::models::MappingConfig;
+    use ntd_core::config::models::MappingConfig;
     use std::fs;
     use std::path::PathBuf;
 

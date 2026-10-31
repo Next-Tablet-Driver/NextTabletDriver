@@ -7,12 +7,18 @@ edition = "2024"
 [package.metadata]
 cargo-fuzz = true
 
+# Its own workspace: the fuzz crate is built by cargo-fuzz with nightly, apart from the main one.
+[workspace]
+
 [dependencies]
 libfuzzer-sys = "0.4"
 arbitrary = { version = "1", features = ["derive"] }
 
-[dependencies.next_tablet_driver]
-path = "../.."
+[dependencies.ntd-core]
+path = "../../crates/ntd-core"
+
+[dependencies.ntd-tablets]
+path = "../../crates/ntd-tablets"
 
 [[bin]]
 name = "rotate_point"
@@ -38,6 +44,124 @@ bench = false
 [[bin]]
 name = "apply_relative_delta"
 path = "fuzz_targets/apply_relative_delta.rs"
+test = false
+doc = false
+bench = false
+[[bin]]
+name = "parser_acepen"
+path = "fuzz_targets/parser_acepen.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "parser_bosto"
+path = "fuzz_targets/parser_bosto.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "parser_fallback"
+path = "fuzz_targets/parser_fallback.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "parser_floogoo"
+path = "fuzz_targets/parser_floogoo.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "parser_genius"
+path = "fuzz_targets/parser_genius.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "parser_huion"
+path = "fuzz_targets/parser_huion.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "parser_lifetec"
+path = "fuzz_targets/parser_lifetec.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "parser_robotpen"
+path = "fuzz_targets/parser_robotpen.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "parser_skip_byte"
+path = "fuzz_targets/parser_skip_byte.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "parser_tenmoon"
+path = "fuzz_targets/parser_tenmoon.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "parser_uclogic"
+path = "fuzz_targets/parser_uclogic.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "parser_veikk"
+path = "fuzz_targets/parser_veikk.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "parser_viewsonic"
+path = "fuzz_targets/parser_viewsonic.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "parser_wacom"
+path = "fuzz_targets/parser_wacom.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "parser_xencelabs"
+path = "fuzz_targets/parser_xencelabs.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "parser_xenx"
+path = "fuzz_targets/parser_xenx.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "parser_xp_pen"
+path = "fuzz_targets/parser_xp_pen.rs"
 test = false
 doc = false
 bench = false

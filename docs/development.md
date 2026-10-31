@@ -85,7 +85,7 @@ typos                                           # cargo install --locked typos-c
 cargo machete                                   # cargo install --locked cargo-machete
 cargo clippy -p next_tablet_driver --all-targets --all-features -- -D warnings
 cargo nextest run -p next_tablet_driver --all-features     # cargo install --locked cargo-nextest
-cargo test -p next_tablet_driver --all-features --doc
+cargo test -p next_tablet_driver --all-features --doc -p ntd-core -p ntd-tablets -p ntd-pipeline
 ```
 
 We use [nextest](https://nexte.st) because a few tests touch things that belong to the whole process: the panic hook, the log level, and machine-wide names (a named pipe, a mutex and a shared-memory segment). `cargo nextest` runs each test in its own process, so they cannot disturb each other. **Close NextTabletDriver before you run the tests**, because the tests use the same machine-wide names.
@@ -176,9 +176,9 @@ If `cargo-nextest` is missing, the pre-push hook tells you how to install it.
 - Document public items. A function that can fail needs an `# Errors` section, and one that can panic needs `# Panics`.
 - Comments explain *why*, not *what*. Say what the code does only when it is not obvious.
 - Put unit tests next to the code in a `#[cfg(test)] mod tests`. Name a test after the behavior it checks. Tests that only check that a call does not panic start with `smoke_`. Prefer tests that return `Result` and use `?`.
-- Keep the engine's hot path free of allocations and locks that can block. If you change code in `engine::pipeline`, `core::math` or `filters`, run the benchmarks (see below).
+- Keep the engine's hot path free of allocations and locks that can block. If you change code in `engine::pipeline`, `ntd_core::math` or `filters`, run the benchmarks (see below).
 - Frontend: TypeScript with Svelte 5 runes. `npm run lint` and `npm run check` must pass. See [`frontend/README.md`](../frontend/README.md).
-- If you add or change a setting, update `core::config::models` (with a default and a repair rule in `validate_and_repair`), the generated TypeScript bindings (see below), and the fake backend in `frontend/src/dev/tauri-mock.ts`. Old settings files must keep loading, so give every new field a default.
+- If you add or change a setting, update `ntd_core::config::models` (with a default and a repair rule in `validate_and_repair`), the generated TypeScript bindings (see below), and the fake backend in `frontend/src/dev/tauri-mock.ts`. Old settings files must keep loading, so give every new field a default.
 
 ## The TypeScript bindings
 

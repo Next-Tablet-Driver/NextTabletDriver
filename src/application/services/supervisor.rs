@@ -1,6 +1,6 @@
-use crate::core::config::models::MappingConfig;
 use crate::engine::state::SharedState;
 use crossbeam_channel::{Receiver, Sender};
+use ntd_core::config::models::MappingConfig;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -13,7 +13,7 @@ pub struct ThreadSupervisor;
 impl ThreadSupervisor {
     /// Starts the input engine thread, which reads the tablet and sends each processed frame on
     /// `sender`.
-    pub fn spawn_engine(shared: Arc<SharedState>, sender: Sender<crate::drivers::TabletData>) {
+    pub fn spawn_engine(shared: Arc<SharedState>, sender: Sender<ntd_tablets::TabletData>) {
         log::info!(target: "App", "Spawning Input Engine thread");
         std::thread::spawn(move || {
             crate::engine::tablet_manager::run_manager(&shared, &sender);

@@ -20,13 +20,11 @@
 //! See `benches/README.md` for the benchmark policy and interpretation rules.
 
 use criterion::{BatchSize, BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
-use next_tablet_driver::core::config::models::{DriverMode, MappingConfig, PressureCurveType};
-use next_tablet_driver::drivers::{NextTabletDriver, TabletData, TabletStatus};
-use next_tablet_driver::engine::pipeline::Pipeline;
-use next_tablet_driver::engine::state::SharedState;
-use next_tablet_driver::filters::FilterPipeline;
+use ntd_core::config::models::{DriverMode, MappingConfig, PressureCurveType};
+use ntd_pipeline::FilterPipeline;
+use ntd_pipeline::Pipeline;
+use ntd_tablets::{NextTabletDriver, TabletData, TabletStatus};
 use std::hint::black_box;
-use std::sync::Arc;
 
 const MAX_X: f32 = 32_767.0;
 const MAX_Y: f32 = 32_767.0;
@@ -174,7 +172,6 @@ struct BenchmarkState {
     data: TabletData,
     driver: BenchmarkDriver,
     config: MappingConfig,
-    shared: Arc<SharedState>,
 }
 
 /// Creates one complete benchmark state.
@@ -196,7 +193,6 @@ fn benchmark_state(
         data: benchmark_packet(16_384, 12_288, 4_096),
         driver: BenchmarkDriver,
         config,
-        shared: Arc::new(SharedState::new()),
     }
 }
 
@@ -229,7 +225,6 @@ fn bench_absolute_warm(
                     &state.driver,
                     &state.config,
                     &mut state.filters,
-                    &state.shared,
                 );
 
                 state
@@ -240,7 +235,6 @@ fn bench_absolute_warm(
                     &state.driver,
                     &state.config,
                     &mut state.filters,
-                    &state.shared,
                 ))
             },
             BatchSize::SmallInput,
@@ -269,7 +263,6 @@ fn bench_absolute_cold(c: &mut Criterion) {
                     &state.driver,
                     &state.config,
                     &mut state.filters,
-                    &state.shared,
                 ))
             },
             BatchSize::SmallInput,
@@ -280,8 +273,8 @@ fn bench_absolute_cold(c: &mut Criterion) {
 /// Measures relative-mode steady-state processing.
 ///
 /// Why: relative projection has different state and timing behavior from
-/// absolute projection. `Projector::project_relative()` also calls
-/// `Instant::now()`, so it must be benchmarked as production code rather than
+/// absolute projection. `Projector::project_relative()` also reads the clock of the pipeline,
+/// so it must be benchmarked as production code rather than
 /// replaced by a pure mathematical approximation.
 fn bench_relative_warm(c: &mut Criterion) {
     c.bench_function("pipeline/relative/warm/no_filters/linear", |b| {
@@ -301,7 +294,6 @@ fn bench_relative_warm(c: &mut Criterion) {
                     &state.driver,
                     &state.config,
                     &mut state.filters,
-                    &state.shared,
                 );
 
                 state.data.x = 16_500;
@@ -315,7 +307,6 @@ fn bench_relative_warm(c: &mut Criterion) {
                     &state.driver,
                     &state.config,
                     &mut state.filters,
-                    &state.shared,
                 ))
             },
             BatchSize::SmallInput,
@@ -351,7 +342,6 @@ fn bench_pressure_curves(c: &mut Criterion) {
                             &state.driver,
                             &state.config,
                             &mut state.filters,
-                            &state.shared,
                         ))
                     },
                     BatchSize::SmallInput,

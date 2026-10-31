@@ -1,7 +1,8 @@
 //! Public event-capture API used throughout the app to record anonymous usage events.
 
 use super::{TelemetryMessage, TelemetryService, send_message};
-use crate::engine::state::{EngineStatus, LockRecoveryExt, SharedState};
+use crate::engine::state::{EngineStatus, SharedState};
+use ntd_core::sync::LockRecoveryExt;
 use serde_json::{Value, json};
 use std::sync::atomic::Ordering;
 use std::time::Duration;

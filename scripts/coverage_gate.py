@@ -12,8 +12,10 @@ Outputs
 
 Rust figures count production code only. The inline `#[cfg(test)] mod tests` of a file is
 dropped (every line from the first `#[cfg(test)]` on), because covering the tests themselves
-would flatter the number. Files outside the root crate's `src/` (the QA crate, the SDK, the
-plugins) are not measured here.
+would flatter the number. The measured code is the root crate's `src/` and the `src/` of every
+crate of `crates/` (the code that left the root crate during phase 2 still counts), except the
+files written by a code generator (`generated/`). The QA crate, the SDK, the tools and the
+plugins are not measured here.
 
 The floors are a ratchet: when the measured value is at least RATCHET_MARGIN points above its
 floor, the report says so, and the floor is raised in coverage-thresholds.json in a normal pull
@@ -36,9 +38,30 @@ def percent(covered: int, total: int) -> float:
     return 100.0 * covered / total if total else 100.0
 
 
+def measured_name(source: Path, root: Path) -> str | None:
+    """The name to report for `source`, or None when it is not production code that we measure.
+
+    Files of the root crate keep their path under `src/`; those of a crate of `crates/` keep their
+    path under `root`, so two crates cannot be confused.
+    """
+    resolved = source.resolve()
+    if "generated" in resolved.parts:
+        return None
+    try:
+        return resolved.relative_to((root / "src").resolve()).as_posix()
+    except ValueError:
+        pass
+    try:
+        relative = resolved.relative_to((root / "crates").resolve())
+    except ValueError:
+        return None
+    if len(relative.parts) > 2 and relative.parts[1] == "src":
+        return (Path("crates") / relative).as_posix()
+    return None
+
+
 def rust_production_coverage(lcov_path: Path, root: Path) -> tuple[int, int, list[tuple[float, int, str]]]:
-    """Returns (covered, total, files) for the production lines of `<root>/src`."""
-    src_root = (root / "src").resolve()
+    """Returns (covered, total, files) for the production lines of `<root>/src` and `<root>/crates`."""
     covered = total = 0
     files: list[tuple[float, int, str]] = []
     for record in lcov_path.read_text(encoding="utf-8").split("end_of_record"):
@@ -48,9 +71,8 @@ def rust_production_coverage(lcov_path: Path, root: Path) -> tuple[int, int, lis
         source = Path(match.group(1).strip())
         if not source.is_absolute():
             source = root / source
-        try:
-            relative = source.resolve().relative_to(src_root)
-        except ValueError:
+        relative = measured_name(source, root)
+        if relative is None:
             continue
         try:
             lines = source.read_text(encoding="utf-8", errors="replace").split("\n")
@@ -66,7 +88,7 @@ def rust_production_coverage(lcov_path: Path, root: Path) -> tuple[int, int, lis
         covered += file_covered
         total += file_total
         if file_total:
-            files.append((percent(file_covered, file_total), file_total - file_covered, relative.as_posix()))
+            files.append((percent(file_covered, file_total), file_total - file_covered, relative))
     return covered, total, files
 
 

@@ -16,7 +16,7 @@
     reason = "Win32 cursor and input injection calls through windows-sys"
 )]
 
-use crate::core::input::{Key, MouseButton};
+use ntd_core::input::{Key, MouseButton};
 use std::time::{Duration, Instant};
 use windows_sys::Win32::Foundation::POINT;
 use windows_sys::Win32::UI::Input::KeyboardAndMouse::{

@@ -1,7 +1,7 @@
 //! Profile file I/O: save/load presets and the last-session snapshot.
 
 use super::paths::{get_profiles_dir, get_settings_dir};
-use crate::core::config::models::MappingConfig;
+use ntd_core::config::models::MappingConfig;
 use std::fs;
 use std::path::{Path, PathBuf};
 

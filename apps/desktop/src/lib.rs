@@ -2,7 +2,7 @@
 //! interface,
 //! and bridges the interface to the engine through commands and events.
 
-use next_tablet_driver::engine::state::LockRecoveryExt;
+use ntd_core::sync::LockRecoveryExt;
 use tauri::Manager;
 use tauri::menu::{CheckMenuItem, Menu, MenuItem, Submenu};
 use tauri::tray::TrayIconBuilder;
@@ -138,7 +138,7 @@ pub fn run() {
                 "mode_absolute",
                 "Absolute",
                 true,
-                config.mode == next_tablet_driver::core::config::models::DriverMode::Absolute,
+                config.mode == ntd_core::config::models::DriverMode::Absolute,
                 None::<&str>,
             )?;
             let mode_relative_i = CheckMenuItem::with_id(
@@ -146,7 +146,7 @@ pub fn run() {
                 "mode_relative",
                 "Relative",
                 true,
-                config.mode == next_tablet_driver::core::config::models::DriverMode::Relative,
+                config.mode == ntd_core::config::models::DriverMode::Relative,
                 None::<&str>,
             )?;
             let mode_menu = Submenu::with_id_and_items(
@@ -248,9 +248,9 @@ pub fn run() {
                             .write()
                             .unwrap_or_log("config_write_tauri");
                         let new_mode = if id == "mode_absolute" {
-                            next_tablet_driver::core::config::models::DriverMode::Absolute
+                            ntd_core::config::models::DriverMode::Absolute
                         } else {
-                            next_tablet_driver::core::config::models::DriverMode::Relative
+                            ntd_core::config::models::DriverMode::Relative
                         };
 
                         if mapping_config.mode != new_mode {
@@ -264,9 +264,7 @@ pub fn run() {
 
                             let save_sender: tauri::State<
                                 '_,
-                                crossbeam_channel::Sender<
-                                    next_tablet_driver::core::config::models::MappingConfig,
-                                >,
+                                crossbeam_channel::Sender<ntd_core::config::models::MappingConfig>,
                             > = app.state();
                             let _ = save_sender.try_send(config_clone);
                             let _ = events::ProfileLoaded.emit(app);
@@ -409,10 +407,13 @@ pub fn run() {
             let shared_mode = std::sync::Arc::clone(&shared);
 
             std::thread::spawn(move || {
-                let mut last_mode = shared_mode.config.mapping.read().map_or(
-                    next_tablet_driver::core::config::models::DriverMode::Absolute,
-                    |guard| guard.mode,
-                );
+                let mut last_mode = shared_mode
+                    .config
+                    .mapping
+                    .read()
+                    .map_or(ntd_core::config::models::DriverMode::Absolute, |guard| {
+                        guard.mode
+                    });
 
                 loop {
                     let current_mode = match shared_mode.config.mapping.read() {
@@ -422,12 +423,10 @@ pub fn run() {
 
                     if current_mode != last_mode {
                         let _ = mode_absolute_i_clone.set_checked(
-                            current_mode
-                                == next_tablet_driver::core::config::models::DriverMode::Absolute,
+                            current_mode == ntd_core::config::models::DriverMode::Absolute,
                         );
                         let _ = mode_relative_i_clone.set_checked(
-                            current_mode
-                                == next_tablet_driver::core::config::models::DriverMode::Relative,
+                            current_mode == ntd_core::config::models::DriverMode::Relative,
                         );
                         last_mode = current_mode;
                     }

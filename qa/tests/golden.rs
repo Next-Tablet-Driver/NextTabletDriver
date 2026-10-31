@@ -16,9 +16,9 @@
     reason = "a test that panics is a failing test"
 )]
 
-use next_tablet_driver::drivers::TabletData;
-use next_tablet_driver::drivers::config_loader::INDEXED_CONFIGS;
-use next_tablet_driver::drivers::parsers::{ReportParser, create_parser};
+use ntd_tablets::TabletData;
+use ntd_tablets::config_loader::EMBEDDED_INDEX;
+use ntd_tablets::parsers::{ReportParser, create_parser};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::fmt::Write as _;
@@ -82,7 +82,7 @@ fn load(dir: &Path) -> Capture {
 
 /// The parser class the tablet's configuration names for this device and report length.
 fn parser_name(capture: &Capture) -> String {
-    let candidates = INDEXED_CONFIGS
+    let candidates = EMBEDDED_INDEX
         .get(&(capture.device.vendor_id, capture.device.product_id))
         .unwrap_or_else(|| {
             panic!(

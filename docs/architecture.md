@@ -13,11 +13,11 @@ A tablet sends small data packets over USB many times per second. NextTabletDriv
  drivers      find the tablet, read packets, decode them        → TabletData
    │
    ▼
- engine::pipeline   map the pen to the screen
+ ntd-pipeline      map the pen to the screen
    │   Transformer   raw sensor units → millimeters
    │   Normalizer    millimeters → position inside the active area (0 to 1)
    │   pressure curve
-   │   filters       plugins can change the position (smoothing, ...)
+   │   ntd-pipeline   plugins can change the position (smoothing, ...)
    │   Projector     position → screen pixels (absolute) or movement (relative)
    ▼
  engine::injector   tell the operating system
@@ -35,6 +35,8 @@ The desktop app is a thin shell around this engine. It adds a window (the user i
 | `apps/desktop/` | The desktop app. A [Tauri](https://tauri.app) program that starts the engine and shows the interface. |
 | `frontend/` | The interface. [Svelte](https://svelte.dev) 5, TypeScript and Vite. See [`frontend/README.md`](../frontend/README.md). |
 | `apps/sdk/` | `ntd_sdk`, a library that lets other programs (games, tools) run the engine inside their own process. See [Integrations](integrations.md) and [`apps/sdk/README.md`](../apps/sdk/README.md). |
+| `crates/ntd-core/` | `ntd-core`, the pure types and maths (button bindings, coordinate transforms, `MappingConfig`). It does no input or output. |
+| `crates/ntd-tablets/` | `ntd-tablets`, the tablet definitions, the report parsers and the packet types. It does no input or output. |
 | `crates/ntd-plugin-api/` | `ntd_plugin_api`, the interface that plugins implement. See [Plugin development](plugin-development.md). |
 | `plugins/` | Source code of the five plugins we maintain. |
 | `tablets/OpenTabletDriver/` | A git submodule with tablet definitions from [OpenTabletDriver](https://github.com/OpenTabletDriver/OpenTabletDriver). |
@@ -42,7 +44,7 @@ The desktop app is a thin shell around this engine. It adds a window (the user i
 | `packaging/`, `nix/`, `scripts/` | Packaging recipes, Nix modules, helper scripts, udev rules. |
 | `.github/` | CI workflows, issue and pull request templates, repository rules. |
 
-The repository is one Cargo workspace with a single `Cargo.lock`. The root crate, `apps/desktop`, `apps/sdk`, `crates/ntd-plugin-api`, each plugin and the example plugin are its members, so `cargo build --workspace` builds all of them into one `target/` folder (the checks of the root crate use `-p next_tablet_driver`). `tools/ntd-recorder` is a member too.
+The repository is one Cargo workspace with a single `Cargo.lock`. The root crate, `apps/desktop`, `apps/sdk`, `crates/ntd-pipeline`, `crates/ntd-plugin-api`, each plugin and the example plugin are its members, so `cargo build --workspace` builds all of them into one `target/` folder (the checks of the root crate use `-p next_tablet_driver`). `tools/ntd-recorder` and `tools/ntd-codegen` are members too.
 
 ## Life of a pen packet
 
@@ -50,18 +52,18 @@ This is what happens for every packet, in order. The names are the Rust modules 
 
 1. **Find the tablet** (`drivers::detection`). The engine lists USB HID devices with the `hidapi` library. It compares each device's vendor ID and product ID (VID:PID) with the tablet definitions. When one matches, it opens the device and sends the start-up reports that some tablets need.
 2. **Read a packet** (`engine::tablet_manager::polling`). A loop reads raw bytes from the tablet. This loop runs on a thread with raised priority (`TIME_CRITICAL` on Windows, `nice -11` on Linux).
-3. **Decode it** (`drivers::generic`, `drivers::parsers`). Each tablet family sends bytes in its own layout. A *parser* knows one layout and returns a common `TabletData`: position, pressure, tilt, buttons and status. The definition file says which parser to use.
-4. **Run the pipeline** (`engine::pipeline`). `Pipeline::process` turns `TabletData` into a `ProcessedFrame`:
+3. **Decode it** (`ntd_tablets::generic`, `ntd_tablets::parsers`). Each tablet family sends bytes in its own layout. A *parser* knows one layout and returns a common `TabletData`: position, pressure, tilt, buttons and status. The definition file says which parser to use.
+4. **Run the pipeline** (`crates/ntd-pipeline`). `Pipeline::process` turns `TabletData` into a `ProcessedFrame`:
     1. `Transformer` converts raw sensor units into millimeters on the tablet surface.
     2. `Normalizer` applies the active area (size, position, rotation) and returns `u` and `v`, a position from 0 to 1 inside that area.
     3. The pressure curve reshapes the pressure.
-    4. `FilterPipeline` (`filters`) runs the enabled plugins on `u`, `v`, pressure and tilt.
+    4. `FilterPipeline` (`ntd_pipeline::filter`, a chain of `Filter`s) runs the enabled plugins on `u`, `v`, pressure and tilt.
     5. `Projector` converts the result. In absolute mode it maps `u` and `v` into the target area on screen, in pixels. In relative mode it turns the movement into pixel deltas, using the sensitivity setting.
     6. The tip threshold decides if the pen counts as touching.
 5. **Inject** (`engine::injector`). The frame goes to the operating system. See [what each system receives](#what-each-system-receives).
 6. **Publish**. The engine saves the latest state for the interface and the WebSocket server, updates statistics, and publishes a snapshot to shared memory for other processes (see [One owner per tablet](#one-owner-per-tablet)).
 
-The math for steps 4.1, 4.2 and 4.5 lives in `core::math`. These functions are small and pure, so they are covered by property tests (`qa/tests`), benchmarks (`qa/benches`) and fuzzers (`qa/fuzz`).
+The math for steps 4.1, 4.2 and 4.5 lives in `ntd_core::math`. These functions are small and pure, so they are covered by property tests (`qa/tests`), benchmarks (`qa/benches`) and fuzzers (`qa/fuzz`).
 
 ### What each system receives
 
@@ -114,13 +116,13 @@ This is what lets a game that embeds the [SDK](integrations.md#sdk) run next to 
 
 ## Settings and files
 
-Settings are a `MappingConfig` (`core::config::models`), saved as JSON. Reading is forgiving: missing fields get defaults, and `validate_and_repair` fixes impossible values and reports what it changed. The folder layout is described in [Getting started](getting-started.md#where-your-files-are).
+Settings are a `MappingConfig` (`ntd_core::config::models`), saved as JSON. Reading is forgiving: missing fields get defaults, and `validate_and_repair` fixes impossible values and reports what it changed. The folder layout is described in [Getting started](getting-started.md#where-your-files-are).
 
 ## Plugins
 
 A plugin is a native library (`.dll` or `.so`) that exports a small C interface. The engine loads it, checks a handshake, reads its manifest, and calls `process` on every packet. A plugin only loads after the user approves its SHA-256 hash.
 
-The engine builds its list of plugin instances **once, when it starts** (`filters::FilterPipeline::from_manager`). After that, only the enabled switch and the saved settings of those instances change (`FilterPipeline::update_config`). A plugin added later is listed in the interface, but it is only used after the engine restarts. The filters run on the pen position in absolute mode only: relative mode moves the cursor from the unfiltered movement.
+The engine builds its list of plugin instances **once, when it starts** (`PluginManager::create_pipeline`, which wraps each plugin in a `PluginFilter`). After that, only the enabled switch and the saved settings of those instances change (`FilterPipeline::update_config`). A plugin added later is listed in the interface, but it is only used after the engine restarts. The filters run on the pen position in absolute mode only: relative mode moves the cursor from the unfiltered movement.
 
 See [Plugins](plugins.md) for users and [Plugin development](plugin-development.md) for authors.
 

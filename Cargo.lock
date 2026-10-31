@@ -81,6 +81,7 @@ dependencies = [
  "crossbeam-channel",
  "log",
  "next_tablet_driver",
+ "ntd-core",
  "ntd_plugin_api",
  "serde",
  "serde_json",
@@ -2557,6 +2558,9 @@ dependencies = [
  "minisign",
  "minisign-verify 0.2.5",
  "nix 0.31.3",
+ "ntd-core",
+ "ntd-pipeline",
+ "ntd-tablets",
  "ntd_plugin_api",
  "proptest",
  "regex",
@@ -2596,10 +2600,53 @@ dependencies = [
 ]
 
 [[package]]
+name = "ntd-codegen"
+version = "0.1.0"
+dependencies = [
+ "base64 0.23.1",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "ntd-core"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "serde",
+ "serde_json",
+ "specta",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "ntd-pipeline"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "ntd-core",
+ "ntd-tablets",
+ "ntd_plugin_api",
+ "serde_json",
+ "thiserror 2.0.21",
+]
+
+[[package]]
 name = "ntd-recorder"
 version = "0.1.0"
 dependencies = [
  "hidapi",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "ntd-tablets"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "ntd-core",
  "serde",
  "serde_json",
 ]
@@ -2622,6 +2669,9 @@ dependencies = [
  "hidapi",
  "log",
  "next_tablet_driver",
+ "ntd-core",
+ "ntd-pipeline",
+ "ntd-tablets",
 ]
 
 [[package]]
