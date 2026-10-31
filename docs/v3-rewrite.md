@@ -1544,9 +1544,9 @@ just the application.
 
 | | |
 |---|---|
-| **Current phase** | Phase 1: Workspace, quality, CI, contribution rules |
-| **Last completed task** | P2.5 |
-| **Next task** | P2.6 |
+| **Current phase** | Phase 3: Extract the I/O adapters |
+| **Last completed task** | GATE 2 |
+| **Next task** | P3.1 |
 | **v1 bridge release** | not started (P7.5a) |
 | **Last updated** | 2026-10-31 |
 
@@ -1930,16 +1930,50 @@ Goal: `ntd-core`, `ntd-tablets`, `ntd-pipeline` without any I/O (§7, phase 2).
     Latency (criterion, before/after on the same machine): `pipeline_*` benches +0.6 % to +3.9 %,
     `hot_path/process_packet` between -0.3 % and +8 % with a run-to-run noise of about 5 % on the
     same binary. `Projector` still reads `Instant::now()`: P2.6.
-- [ ] **P2.6** Clock injected into the pipeline
+- [x] **P2.6** Clock injected into the pipeline (branch `chore/v3-phase-2`)
   - Depends on: P2.5
   - Done when: no `Instant::now()` or `sleep` in `ntd-pipeline` (rule 37).
-- [ ] **P2.7** Parser fuzzing (§15.4)
+  - Notes: `ntd_core::clock` holds `trait Clock` (`now() -> Duration` since the origin of the
+    clock), `SystemClock` and `ManualClock` (a test double that moves with `advance`). `Pipeline`
+    owns an `Arc<dyn Clock>` (`Pipeline::new()` uses the system clock, `with_clock` takes
+    another), reads it in relative mode only, and passes the time to
+    `Projector::project_relative`, which no longer touches the OS. `cargo xtask lint-style`
+    gained rule 6: `Instant::now(`, `SystemTime::now(` or `sleep(` in `crates/ntd-pipeline/` fails
+    the build. A pipeline test moves a `ManualClock` past `reset_time_ms` and checks that the
+    relative tracking restarts.
+- [x] **P2.7** Parser fuzzing (§15.4) (branch `chore/v3-phase-2`)
   - Depends on: P2.3
   - Done when: one target per parser family, corpus seeded with captures, CI `fuzz` job of 60 s
     per target.
-- [ ] **GATE 2**
+  - Notes: 17 targets in `qa/fuzz/fuzz_targets/parser_<family>.rs`, one per module of
+    `ntd_tablets::parsers` (`acepen` to `xp_pen`, `fallback` included). They share
+    `parser_common.rs`, which collects the parser classes the definitions name, keeps those that
+    `create_parser` maps into the family (`tenmoon` needs an explicit class: no definition uses
+    it yet), and checks that no input panics and that a fresh parser answers the same twice. The
+    positions are not compared with the bounds of the definition: a pen out of range legally
+    reports beyond them. The corpus is seeded with the reports of the only real capture
+    (`qa/golden/28bd-0914`, family `xp_pen`); other families start empty until a golden capture
+    exists (`qa/golden/MISSING.md`), because a seed is never invented. A 40 s local run of every
+    family found no panic. The fuzz crate got its own `[workspace]` table: it could not be built
+    since the workspace was created. CI job `fuzz` runs each target 60 s on nightly and uploads a
+    crashing input.
+- [x] **GATE 2** (branch `chore/v3-phase-2`)
   - Done when: P2.1 to P2.7 are `[x]`; `cargo tree` confirms no I/O in the three crates; golden
     files identical; latency within +5 %.
+  - Notes: `cargo tree -p <crate> -e normal` lists only `log`, `serde`, `serde_json` and
+    `thiserror` (plus the three crates themselves, `ntd_plugin_api` for the pipeline) for
+    `ntd-core`, `ntd-tablets` and `ntd-pipeline`: no `hidapi`, `include_dir`, `directories`,
+    network or OS crate. `qa/golden/` did not change in phase 2 and the golden test passes.
+    Latency was measured against the commit before phase 2 (`2bb6178`) with criterion, in two
+    worktrees with their own target folders. Interleaved three times, the medians of
+    `hot_path/process_packet` are +1.0 % (`tray_hidden`), -3.9 % (`ui_60hz`) and -0.1 %
+    (`ui_stress`); one-sided baseline runs gave -2 % to +9 % for the same code, and even
+    `ui_snapshot_capture`, which phase 2 did not touch, moved by +2 % to +26 %. That is the noise
+    of this machine, so the gate rests on the interleaved runs. The `pipeline/*` benches of
+    `qa/benches/pipeline.rs` timed the drop of an unused `SharedState` (about 100-200 us per
+    iteration); the bench no longer builds one, so their old numbers are not comparable, and the
+    baseline was re-measured with that state leaked: the packet costs the same (about 230-300
+    ns). A rerun on the reference runner of §13.5 remains the final word.
 
 ---
 
