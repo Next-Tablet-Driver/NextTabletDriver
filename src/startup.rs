@@ -457,8 +457,6 @@ pub fn log_system_hardware() {
         std::env::var("PROCESSOR_IDENTIFIER").unwrap_or_else(|_| "Unknown".to_string());
     let num_processors =
         std::env::var("NUMBER_OF_PROCESSORS").unwrap_or_else(|_| "Unknown".to_string());
-    let username = std::env::var(if os == "windows" { "USERNAME" } else { "USER" })
-        .unwrap_or_else(|_| "Unknown".to_string());
     let hostname = std::env::var(if os == "windows" {
         "COMPUTERNAME"
     } else {
@@ -485,7 +483,7 @@ pub fn log_system_hardware() {
         log::info!(target: "Tracking", "Distribution: {distro}");
     }
 
-    log::info!(target: "Tracking", "Hostname: {hostname} | User: {username}");
+    log::info!(target: "Tracking", "Hostname: {hostname}");
     log::info!(target: "Tracking", "CPU Model: {cpu_identifier} | Cores: {num_processors}");
     if let Some(ram) = total_ram {
         log::info!(target: "Tracking", "Total Physical RAM: {:.2} \
