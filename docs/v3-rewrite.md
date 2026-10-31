@@ -7,6 +7,9 @@
 > dépôt : la section [« Ce qu'il ne faut PAS faire »](#9-ce-quil-ne-faut-pas-faire) est **normative**.
 > Une règle qui commence par « NE PAS » est une interdiction, pas une suggestion. En cas de doute,
 > arrête-toi et demande, plutôt que de « faire au mieux ».
+>
+> **Avancement et prochaine tâche** : voir la [roadmap (§17)](#17-roadmap). Elle est la source de
+> vérité sur ce qui est fait et sur ce qu'il faut faire ensuite.
 
 ---
 
@@ -29,6 +32,7 @@
 14. [Contributions, IA et AGENTS.md](#14-contributions-ia-et-agentsmd)
 15. [Outils internes](#15-outils-internes)
 16. [Plateformes cibles](#16-plateformes-cibles)
+17. [Roadmap](#17-roadmap)
 
 ---
 
@@ -1439,4 +1443,416 @@ difficiles.
 
 **Windows ARM64** : vérifier que chaque plugin officiel et le SDK sont bien publiés pour ARM64,
 et pas seulement l'application.
+
+---
+
+## 17. Roadmap
+
+### 17.1 État actuel
+
+| | |
+|---|---|
+| **Phase en cours** | Phase 0 — Filets de sécurité |
+| **Dernière tâche terminée** | aucune |
+| **Prochaine tâche** | P0.1 |
+| **Dernière mise à jour** | 2026-10-31 |
+
+Ce tableau est mis à jour par **chaque** PR qui coche une tâche.
+
+### 17.2 Comment utiliser la roadmap
+
+**Légende** :
+- `[ ]` à faire
+- `[~]` en cours : ajouter la branche ou la PR et l'auteur, par exemple `[~] (branche refactor/p2-2-tablets, @pseudo)`
+- `[x]` terminée : ajouter le lien de la PR qui l'a terminée
+- `[-]` abandonnée : ajouter la raison et le lien de la décision
+
+**Règles** (pour les humains et les LLMs) :
+1. **Ce fichier, sur `main`, fait foi.** Ni une issue, ni une conversation, ni la mémoire d'un
+   agent ne remplace la case cochée ici.
+2. **Quelle tâche prendre** : la **première** tâche `[ ]` de la phase en cours dont toutes les
+   dépendances (« Dépend de ») sont `[x]`. Deux tâches d'une même phase sans dépendance entre elles
+   peuvent avancer en parallèle, par des personnes différentes.
+3. **Pas de saut de phase.** Une phase commence quand la **porte** de la phase précédente est
+   cochée. Une porte se coche seulement quand tous ses critères sont vérifiés, commande à l'appui.
+4. **Avant de commencer** : vérifier qu'aucune PR ou branche ouverte ne traite déjà la tâche, puis
+   passer la tâche à `[~]` (petite PR de roadmap, ou premier commit de la branche).
+5. **Une tâche = une PR**, sauf mention « (plusieurs PR) ». La PR qui termine la tâche la coche
+   **dans le même commit** et met à jour §17.1.
+6. **« Terminé quand » est un contrat.** On ne coche pas si un seul critère n'est pas vérifié.
+   Une tâche à moitié faite reste `[~]`.
+7. **Une tâche mal découpée** (trop grosse, dépendance oubliée) se corrige d'abord dans une PR qui
+   modifie seulement la roadmap, puis on reprend.
+8. **Pour un LLM** : ne travailler que sur **une** tâche à la fois, celle que la règle 2 désigne
+   ou celle qu'un mainteneur a nommée ; relire la section de référence (§…) et les règles
+   « NE PAS » (§9) avant de commencer ; ne jamais cocher une case sans avoir lancé les commandes
+   de la règle 84 ; ne pas ouvrir de PR (règle 88).
+9. **Chaque PR** passe aussi la checklist de PR (§10).
+
+---
+
+### Phase 0 — Filets de sécurité
+
+Objectif : pouvoir détecter toute régression **avant** de toucher l'architecture (§7, phase 0).
+
+- [ ] **P0.1** Corriger la clé publique de l'updater (§11.1)
+  - Dépend de : —
+  - Terminé quand : `tauri.conf.json` contient la vraie clé publique associée à
+    `TAURI_SIGNING_PRIVATE_KEY` ; une mise à jour de test signée est acceptée par l'application
+    et une mise à jour signée avec une autre clé est refusée.
+- [ ] **P0.2** Vérifier la licence de `tablets/OpenTabletDriver` (§11.2)
+  - Dépend de : —
+  - Terminé quand : la licence d'origine est identifiée, l'attribution requise est ajoutée (ou les
+    fichiers incompatibles sont remplacés), et la décision est écrite dans la PR.
+- [ ] **P0.3** Supprimer la double dépendance d'icônes (§11.3)
+  - Dépend de : —
+  - Terminé quand : une seule bibliothèque Lucide dans `frontend/package.json`, `npm run check`,
+    `npm test` et `npm run e2e` verts.
+- [ ] **P0.4** Écrire `ntd-recorder` v1 (§15.3)
+  - Dépend de : —
+  - Note : il vit dans `tools/ntd-recorder` avec son propre `Cargo.lock` **temporairement** ; il
+    rejoint le workspace en P1.2. C'est la seule exception à la règle 21.
+  - Terminé quand : l'outil liste les périphériques, capture descripteur + rapports guidés, écrit
+    un `.ntdcap` versionné sans données personnelles ; `docs/adding-a-tablet.md` et
+    `.github/ISSUE_TEMPLATE/tablet_support.yml` demandent ce fichier.
+- [ ] **P0.5** Harness de golden files (`qa/golden`)
+  - Dépend de : P0.4
+  - Terminé quand : `cargo test` rejoue chaque capture dans le parser v2 et compare à un snapshot
+    commité ; un octet modifié dans un parser fait échouer le test.
+- [ ] **P0.6** Golden files pour les tablettes supportées (plusieurs PR)
+  - Dépend de : P0.5
+  - Terminé quand : chaque tablette dont on a une capture réelle (ou des rapports réels dans les
+    tests existants) a ses golden files ; les tablettes sans capture sont listées dans
+    `qa/golden/MISSING.md` (règle 103 : on n'invente pas de capture).
+- [ ] **P0.7** Référence de latence
+  - Dépend de : —
+  - Terminé quand : un benchmark criterion couvre le chemin parsing → pipeline → sortie (fake) ;
+    les résultats et la machine de mesure sont notés dans `docs/perf-baseline.md`.
+- [ ] **P0.8** Générer les types TS du contrat v2 (§5.2, étape 1)
+  - Dépend de : —
+  - Terminé quand : les 26 commandes et 5 événements actuels ont des types générés depuis Rust
+    dans `frontend/src/lib/infrastructure/tauri/bindings.ts`, **sans changement de comportement** ;
+    un job CI régénère et échoue s'il y a une différence.
+- [ ] **P0.9** Le frontend utilise les types générés
+  - Dépend de : P0.8
+  - Terminé quand : `commands.ts` et `events.ts` n'ont plus d'interface DTO écrite à la main ;
+    `npm run check`, `npm test`, `npm run e2e` verts.
+- [ ] **PORTE 0**
+  - Terminé quand : P0.1 à P0.9 sont `[x]`, la CI est verte, et `docs/perf-baseline.md` existe.
+
+---
+
+### Phase 1 — Workspace, qualité, CI, règles de contribution
+
+Objectif : un seul workspace et toute la politique de qualité en place, **sans changer le
+comportement** (§7, phase 1 ; §12, §13, §14).
+
+- [ ] **P1.1** Créer le workspace et déplacer les applications
+  - Dépend de : PORTE 0
+  - Terminé quand : `[workspace]` à la racine ; `src-tauri` → `apps/desktop`, `sdk` → `apps/sdk`,
+    `sdk/plugin_api` → `crates/ntd-plugin-api`, plugins officiels membres ; **un seul**
+    `Cargo.lock` ; `cargo build --workspace` et `cargo test --workspace` verts ; diff de
+    déplacement pur (`git diff -M`).
+- [ ] **P1.2** Intégrer `tools/ntd-recorder` au workspace
+  - Dépend de : P1.1
+  - Terminé quand : son `Cargo.lock` séparé est supprimé.
+- [ ] **P1.3** `[workspace.dependencies]` et `[workspace.package]`
+  - Dépend de : P1.1
+  - Terminé quand : aucun crate membre ne déclare de version de dépendance (règle 22) ;
+    métadonnées héritées.
+- [ ] **P1.4** Toolchain `stable` (§12.6)
+  - Dépend de : P1.1
+  - Terminé quand : `rust-toolchain.toml` sur `channel = "stable"`, aucune version de Rust dans les
+    workflows, `rust-version` déclaré une fois dans `[workspace.package]`.
+- [ ] **P1.5** Formatage et éditeur (§12.1)
+  - Dépend de : P1.1
+  - Terminé quand : `rustfmt.toml` et `.editorconfig` conformes à §12.1 ; `cargo fmt --all
+    --check` vert.
+- [ ] **P1.6** Introduire `[workspace.lints]` en `warn` (§12.3)
+  - Dépend de : P1.3
+  - Terminé quand : le bloc de §12.3 est en place avec les groupes en `warn` **temporairement** ;
+    le nombre d'avertissements par crate est noté dans la PR.
+- [ ] **P1.7** Corriger les avertissements de lints (plusieurs PR, un domaine par PR)
+  - Dépend de : P1.6
+  - Terminé quand : zéro avertissement sur le workspace ; chaque PR ne corrige que des lints,
+    sans changement de comportement (golden files et E2E identiques).
+- [ ] **P1.8** Passer les lints en `deny`
+  - Dépend de : P1.7
+  - Terminé quand : `[workspace.lints]` est exactement celui de §12.3.
+- [ ] **P1.9** `xtask` et `cargo xtask lint-style` (§12.5)
+  - Dépend de : P1.1
+  - Terminé quand : la commande vérifie les 5 points de §12.5, a ses tests, et passe sur le dépôt.
+- [ ] **P1.10** `typos` et `cargo-machete`
+  - Dépend de : P1.1
+  - Terminé quand : `typos.toml` existe, les deux outils passent sur le dépôt.
+- [ ] **P1.11** `cargo xtask ci-plan` (§15.6)
+  - Dépend de : P1.9
+  - Terminé quand : la commande produit la liste des crates touchés + dépendants et la matrice, a
+    ses tests sur un graphe factice.
+- [ ] **P1.12** Refondre `ci.yml` (§13.1, §13.2)
+  - Dépend de : P1.8, P1.9, P1.10, P1.11
+  - Terminé quand : les jobs de §13.2 qui ont déjà un objet existent (fmt, style, typos, machete,
+    clippy, clippy-release, doc, test, golden, bindings, coverage, frontend, e2e, build) ;
+    actions épinglées par SHA ; `ci-success` agrège tout.
+- [ ] **P1.13** Refondre `security.yml` (§13.3)
+  - Dépend de : P1.1
+  - Terminé quand : un seul `cargo deny check`, `npm audit`, dependency review sur les PR ; secret
+    scanning et push protection activés.
+- [ ] **P1.14** `toolchain-beta.yml` (§12.6)
+  - Dépend de : P1.12
+  - Terminé quand : job hebdomadaire non bloquant qui ouvre une issue en cas d'échec.
+- [ ] **P1.15** Protection de `main`
+  - Dépend de : P1.12
+  - Terminé quand : `ci-success` est la seule check requise ; push direct sur `main` interdit.
+- [ ] **P1.16** `AGENTS.md` racine et `CLAUDE.md` (§14.1)
+  - Dépend de : P1.1
+  - Terminé quand : `AGENTS.md` décrit le projet, la disposition, les commandes, renvoie à §9 et
+    §17 ; `CLAUDE.md` est un lien vers lui.
+- [ ] **P1.17** Contribution : politique IA, critères de fermeture, modèle de PR (§14.2 à §14.5)
+  - Dépend de : —
+  - Terminé quand : `.github/CONTRIBUTING.md` et `.github/pull_request_template.md` sont à jour.
+- [ ] **P1.18** Branche `release/2.x`
+  - Dépend de : P1.1
+  - Terminé quand : la branche existe à partir du dernier tag 2.x, et `docs/releasing.md` explique
+    comment y livrer un correctif.
+- [ ] **PORTE 1**
+  - Terminé quand : P1.1 à P1.18 sont `[x]` ; CI verte ; golden files, latence et E2E identiques
+    à la phase 0.
+
+---
+
+### Phase 2 — Extraire les crates purs
+
+Objectif : `ntd-core`, `ntd-tablets`, `ntd-pipeline` sans aucune I/O (§7, phase 2).
+
+- [ ] **P2.1** Extraire `ntd-core`
+  - Dépend de : PORTE 1
+  - Terminé quand : `core/input`, `core/math` et les types réellement partagés sont dans
+    `crates/ntd-core` ; `cargo tree -p ntd-core` ne montre aucune dépendance d'I/O.
+- [ ] **P2.2** Supprimer la dépendance `drivers` → `engine::state`
+  - Dépend de : P2.1
+  - Terminé quand : `parsers/wacom/intuos_v1.rs` et `pl.rs` n'importent plus `engine::state` (état
+    local au parser, ou utilitaire déplacé dans `ntd-core`) ; golden files identiques.
+- [ ] **P2.3** Extraire `ntd-tablets`
+  - Dépend de : P2.2
+  - Terminé quand : parsers, modèles et chargement des descripteurs dans `crates/ntd-tablets` ;
+    aucune I/O ; golden files branchés dessus.
+- [ ] **P2.4** `ntd-codegen` (§15.1)
+  - Dépend de : P2.3
+  - Terminé quand : `tablets/*.json` est validé et génère `crates/ntd-tablets/src/generated/` ;
+    `include_dir` et le parsing JSON au démarrage sont supprimés ; job CI `codegen` ;
+    `tools/ntd-codegen/AGENTS.md` et `crates/ntd-tablets/AGENTS.md` écrits.
+- [ ] **P2.5** Extraire `ntd-pipeline` avec `trait Filter` (§4.4)
+  - Dépend de : P2.1
+  - Terminé quand : `engine/pipeline` et la chaîne de filtres sont dans `crates/ntd-pipeline` ; le
+    cycle `filters` ↔ `engine::plugins` n'existe plus ; latence ≤ référence.
+- [ ] **P2.6** Horloge injectée dans le pipeline
+  - Dépend de : P2.5
+  - Terminé quand : aucun `Instant::now()` ni `sleep` dans `ntd-pipeline` (règle 37).
+- [ ] **P2.7** Fuzzing des parsers (§15.4)
+  - Dépend de : P2.3
+  - Terminé quand : une cible par famille de parser, corpus initialisé avec les captures, job CI
+    `fuzz` de 60 s par cible.
+- [ ] **PORTE 2**
+  - Terminé quand : P2.1 à P2.7 sont `[x]` ; `cargo tree` confirme l'absence d'I/O dans les trois
+    crates ; golden files identiques ; latence ≤ référence.
+
+---
+
+### Phase 3 — Extraire les adaptateurs I/O
+
+Objectif : chaque accès à l'OS derrière un trait, avec un fake et la place pour chaque plateforme
+(§7, phase 3 ; §16.3).
+
+- [ ] **P3.1** `ntd-test-support`
+  - Dépend de : PORTE 2
+  - Terminé quand : fakes de `HidBackend`, `OutputSink`, `Clock` utilisables par tous les crates
+    en dev-dependency.
+- [ ] **P3.2** `ntd-platform` (§16.4)
+  - Dépend de : P3.1
+  - Terminé quand : démarrage auto, instance unique, priorité de thread et timer haute résolution
+    sont dans ce crate, avec la structure `windows` / `linux` / `macos` / `unsupported`.
+- [ ] **P3.3** `ntd-hid`
+  - Dépend de : P3.1
+  - Terminé quand : trait `HidBackend` avec option « exclusif » et erreur `PermissionDenied` ;
+    seul crate qui dépend de `hidapi` ; structure §16.3.
+- [ ] **P3.4** `ntd-output`
+  - Dépend de : P3.1
+  - Terminé quand : trait `OutputSink` avec `capabilities()` ; implémentations Windows et Linux ;
+    `macos` renvoie `Unsupported`.
+- [ ] **P3.5** `ntd-interop`
+  - Dépend de : P3.1
+  - Terminé quand : protocole pur séparé du transport ; noms de mémoire partagée ≤ 31
+    caractères ; cible fuzz du protocole.
+- [ ] **P3.6** `ntd-settings`
+  - Dépend de : P3.1
+  - Terminé quand : `Paths` injecté (plus aucun `get_*_dir()` global) ; fichiers versionnés ;
+    écriture atomique ; un fichier corrompu est sauvegardé et signalé (§8).
+- [ ] **P3.7** `ntd-plugin-host`
+  - Dépend de : P2.5, P3.6
+  - Terminé quand : signature vérifiée avant chargement ; target triple dans le manifeste et
+    refus des autres cibles ; un plugin qui panique est désactivé sans arrêter le pipeline ;
+    `crates/ntd-plugin-api/AGENTS.md` écrit.
+- [ ] **P3.8** Supprimer la feature `desktop`
+  - Dépend de : P3.3, P3.4, P3.5
+  - Terminé quand : la feature n'existe plus ; `apps/sdk` ne dépend que de `ntd-core`,
+    `ntd-tablets`, `ntd-hid`, `ntd-pipeline`.
+- [ ] **P3.9** Job CI `check-targets` (§16.2)
+  - Dépend de : P3.2, P3.3, P3.4, P3.5
+  - Terminé quand : `cargo clippy` passe sur toutes les cibles de niveau 3, et le job est bloquant.
+- [ ] **PORTE 3**
+  - Terminé quand : P3.1 à P3.9 sont `[x]` ; aucun code spécifique à un OS hors des crates
+    autorisés (règle 108) ; golden files, latence et E2E identiques.
+
+---
+
+### Phase 4 — Le moteur
+
+Objectif : `ntd-engine` piloté uniquement par `EngineHandle` et `EngineEvent` (§4.5 ; §7, phase 4).
+
+- [ ] **P4.1** Squelette `ntd-engine`
+  - Dépend de : PORTE 3
+  - Terminé quand : `Engine::start`, `EngineHandle`, `EngineEvent`, `EngineDeps` existent comme
+    en §4.5 ; plus aucun `Arc<Mutex<…>>` exposé hors du crate.
+- [ ] **P4.2** Découper `polling.rs` et `owner.rs` (plusieurs PR)
+  - Dépend de : P4.1
+  - Terminé quand : lecture, parsing, pipeline, sortie et boutons sont des modules séparés, aucun
+    fichier de plus d'environ 400 lignes (règle 29).
+- [ ] **P4.3** Configuration sans verrou dans le chemin chaud
+  - Dépend de : P4.1
+  - Terminé quand : la configuration arrive par canal ou swap atomique (règle 35) ; aucune
+    allocation dans la boucle (règle 33), vérifié par un test ou un compteur d'allocations.
+- [ ] **P4.4** Télémétrie sortie du moteur
+  - Dépend de : P4.1
+  - Terminé quand : `ntd-engine` ne référence plus la télémétrie ; il publie des `EngineEvent`.
+- [ ] **P4.5** `ntd-tester` (§15.2)
+  - Dépend de : P4.1, P3.1
+  - Terminé quand : chaque capture a au moins un scénario dans `qa/scenarios/` ; job CI `tester` ;
+    `crates/ntd-engine/AGENTS.md` écrit.
+- [ ] **PORTE 4**
+  - Terminé quand : P4.1 à P4.5 sont `[x]` ; `ntd-tester` vert sur toutes les captures ;
+    latence ≤ référence.
+
+---
+
+### Phase 5 — Services et application
+
+Objectif : `apps/desktop` ne fait plus que du câblage (§7, phase 5).
+
+- [ ] **P5.1** `ntd-services`
+  - Dépend de : PORTE 4
+  - Terminé quand : websocket (lié à `127.0.0.1` par défaut), autoupdate, télémétrie (opt-in) et
+    supervisor sont dans ce crate et consomment des `EngineEvent`.
+- [ ] **P5.2** `ntd-ipc`
+  - Dépend de : PORTE 4
+  - Terminé quand : les types générés en P0.8 viennent de ce crate ; `crates/ntd-ipc/AGENTS.md`
+    écrit.
+- [ ] **P5.3** `apps/desktop` en câblage seul
+  - Dépend de : P5.1, P5.2
+  - Terminé quand : aucune logique métier dans `apps/desktop` ; chaque commande fait au plus
+    10 lignes.
+- [ ] **P5.4** Manifeste racine virtuel
+  - Dépend de : P5.3
+  - Terminé quand : le `Cargo.toml` racine n'a plus de `[package]` ; le dossier `src/` racine
+    n'existe plus.
+- [ ] **P5.5** `ntd-stress` (§15.5)
+  - Dépend de : P5.1
+  - Terminé quand : l'outil couvre les modes de §15.5 et ne fait pas tomber un NTD lancé.
+- [ ] **PORTE 5**
+  - Terminé quand : P5.1 à P5.5 sont `[x]` ; le graphe `cargo tree` correspond à §4.3 ; E2E,
+    `ntd-tester` et golden files verts.
+
+---
+
+### Phase 6 — Contrat v3 et frontend
+
+Objectif : le contrat découpé et typé, et la couche de données du frontend corrigée (§5, §6.3).
+
+- [ ] **P6.1** Découper `Config` par domaine côté backend
+  - Dépend de : PORTE 5
+  - Terminé quand : `Mapping`, `PenSettings`, `Bindings`, `FilterChain`, `AppPreferences`,
+    `WebSocketSettings` ont chacun leurs commandes `get_*` / `update_*` ; `set_config(tout)`
+    n'existe plus.
+- [ ] **P6.2** Types forts dans le contrat
+  - Dépend de : P6.1
+  - Terminé quand : bindings, modes et types de courbe sont des `enum` ; les commandes renvoient
+    `Result<T, IpcError>` typé.
+- [ ] **P6.3** Flux temps réel par `Channel`
+  - Dépend de : P6.1
+  - Terminé quand : `tablet-event` passe par `tauri::ipc::Channel`, décimé côté backend à environ
+    60 Hz.
+- [ ] **P6.4** Une seule porte vers Tauri dans le frontend
+  - Dépend de : P6.1
+  - Terminé quand : règle ESLint `no-restricted-imports` active ; plus d'`invoke` dans
+    `MenuBar.svelte` ni de `listen` dans `TabletVisualizer.svelte`.
+- [ ] **P6.5** Stores par domaine
+  - Dépend de : P6.2, P6.4
+  - Terminé quand : un store par domaine ; plus de `JSON.stringify` pour comparer ni de
+    `setTimeout` de synchronisation ; le frontend affiche l'état renvoyé par le backend.
+- [ ] **P6.6** Capacités et plateforme dans l'interface
+  - Dépend de : P6.5
+  - Terminé quand : `os.ts` expose OS, architecture et capacités ; une option non disponible est
+    masquée ou désactivée ; `TitleBar.svelte` et les raccourcis ne testent plus l'OS eux-mêmes.
+- [ ] **P6.7** Migration des profils v2 → v3
+  - Dépend de : P6.1
+  - Terminé quand : de vrais fichiers v2 en fixtures sont importés sans perte ; l'original est
+    sauvegardé ; cible fuzz de chargement des profils.
+- [ ] **PORTE 6**
+  - Terminé quand : P6.1 à P6.7 sont `[x]` ; E2E verts ; profils v2 réels importés sans perte.
+
+---
+
+### Phase 7 — Release 3.0
+
+Objectif : publier la v3 sans laisser un seul utilisateur v2 derrière (§2, §13).
+
+- [ ] **P7.1** Canaux d'update `beta` et `nightly`
+  - Dépend de : PORTE 6
+  - Terminé quand : chaque canal a son endpoint stable ; l'option « recevoir les bêtas » existe dans
+    les paramètres ; le générateur de manifeste prend la liste des cibles en entrée (§16.3).
+- [ ] **P7.2** `prerelease.yml` (§13.4)
+  - Dépend de : P7.1
+  - Terminé quand : le workflow vérifie le tag, la version et la signature avec la clé embarquée,
+    puis publie une pre-release avec les SHA-256.
+- [ ] **P7.3** `nightly.yml` (§13.5)
+  - Dépend de : P7.1
+  - Terminé quand : build de nuit seulement s'il y a eu des commits, tag `nightly` écrasé, fuzzing
+    long et `ntd-stress` exécutés.
+- [ ] **P7.4** `release.yml` (§13.6)
+  - Dépend de : P7.2
+  - Terminé quand : publication en `latest`, `latest.json` multi-cibles, notes générées avec
+    `rustc -Vv`, winget.
+- [ ] **P7.5** Dernière 2.x de transition
+  - Dépend de : P7.4
+  - Terminé quand : une 2.x publiée sait recevoir la 3.0 par l'auto-update (et pointe vers un
+    nouvel endpoint si l'endpoint change).
+- [ ] **P7.6** `3.0.0-beta.1` et période de bêta
+  - Dépend de : P7.2, P7.5
+  - Terminé quand : la bêta est publiée ; aucun bug bloquant ouvert sur les plateformes de niveau 1
+    pendant la durée de bêta annoncée.
+- [ ] **P7.7** `3.0.0`
+  - Dépend de : P7.6
+  - Terminé quand : la release est publiée ; README et `docs/` à jour, avec les niveaux de support
+    de §16.2 (règle 112).
+- [ ] **P7.8** Annonce de maintenance de la 2.x
+  - Dépend de : P7.7
+  - Terminé quand : la durée de maintenance de `release/2.x` est annoncée dans les notes de
+    version.
+- [ ] **PORTE 7 — v3.0 terminée**
+
+---
+
+### Après la 3.0 — Plateformes (§16)
+
+Ces tâches n'ont pas d'ordre imposé entre elles. Chacune fait passer une plateforme au niveau
+supérieur selon les critères de §16.2.
+
+- [ ] **P8.1** Windows ARM64 et Linux ARM64 : niveau 2 → 1
+- [ ] **P8.2** macOS Apple Silicon : niveau 3 → 2 (permissions, ouverture exclusive, injection,
+  signature et notarisation, décision sur les plugins tiers, §16.5)
+- [ ] **P8.3** macOS Intel : niveau 3 → 2 (binaire universel avec P8.2)
+- [ ] **P8.4** Windows x86 32 bits : niveau 3 → 2
+- [ ] **P8.5** Linux x86 32 bits : niveau 3 → 2
+- [ ] **P8.6** Linux ARM 32 bits : niveau 3 → 2
+- [ ] **P8.7** macOS : niveau 2 → 1
 
