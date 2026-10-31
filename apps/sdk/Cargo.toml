@@ -25,6 +25,7 @@ ntd-hid = { workspace = true }
 ntd-interop = { workspace = true }
 ntd-platform = { workspace = true }
 ntd-settings = { workspace = true }
+ntd-plugin-host = { workspace = true }
 log = { workspace = true }
 
 [build-dependencies]

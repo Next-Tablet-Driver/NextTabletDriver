@@ -24,12 +24,27 @@ pub enum PluginError {
         found: u32,
     },
     /// The plugin binary targets an incompatible ABI version.
-    #[error("Incompatible plugin ABI version: expected {expected}, found {found}")]
+    #[error(
+        "Incompatible plugin ABI version: this app loads ABI v{expected} plugins, this one was \
+        built for ABI v{found}; ask its author for a v{expected} build \
+        (see docs/plugin-migration-v3.md)"
+    )]
     IncompatibleAbiVersion {
         /// The expected host ABI version.
         expected: u32,
         /// The ABI version requested by the plugin.
         found: u32,
+    },
+    /// The plugin was built for another operating system or processor.
+    #[error(
+        "Plugin built for another target: it was built for '{found}', this app runs on \
+        '{expected}'"
+    )]
+    WrongTarget {
+        /// The target of this app.
+        expected: &'static str,
+        /// The target written in the plugin manifest (empty when it has none).
+        found: String,
     },
     /// A required FFI symbol was not exported by the plugin library.
     #[error("Missing required plugin FFI symbol: '{0}'")]
@@ -107,7 +122,9 @@ mod tests {
                     expected: 3,
                     found: 2,
                 },
-                "Incompatible plugin ABI version: expected 3, found 2",
+                "Incompatible plugin ABI version: this app loads ABI v3 plugins, this one was \
+                built for ABI v2; ask its author for a v3 build \
+                (see docs/plugin-migration-v3.md)",
             ),
             (
                 PluginError::MissingSymbol("ntd_plugin_create"),

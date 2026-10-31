@@ -36,8 +36,14 @@ pub struct UntrustedPlugin {
     pub sha256: String,
 }
 
+/// Version written in `trusted_plugins.json`. A file without `version` is a v2 file and is read
+/// as version 1 (same content); a file of a newer version is refused and left untouched.
+const TRUST_FILE_VERSION: u32 = 1;
+
 #[derive(Default, Serialize, Deserialize)]
 struct TrustFile {
+    #[serde(default)]
+    version: u32,
     /// SHA-256 (lowercase hex) -> file name it was approved under (informational).
     trusted: BTreeMap<String, String>,
 }
@@ -46,6 +52,9 @@ struct TrustFile {
 pub struct TrustStore {
     path: PathBuf,
     entries: BTreeMap<String, String>,
+    /// The file on disk was written by a newer app: nothing is trusted from it and it is never
+    /// overwritten.
+    newer_than_supported: bool,
 }
 
 impl TrustStore {
@@ -53,12 +62,29 @@ impl TrustStore {
     /// is the safe default: nothing is trusted until the user approves it.
     #[must_use]
     pub fn load(path: PathBuf) -> Self {
-        let entries = fs::read_to_string(&path)
+        let file = fs::read_to_string(&path)
             .ok()
-            .and_then(|text| serde_json::from_str::<TrustFile>(&text).ok())
-            .map(|file| file.trusted)
-            .unwrap_or_default();
-        Self { path, entries }
+            .and_then(|text| serde_json::from_str::<TrustFile>(&text).ok());
+        let newer_than_supported = file
+            .as_ref()
+            .is_some_and(|f| f.version > TRUST_FILE_VERSION);
+        if newer_than_supported {
+            log::warn!(
+                target: "Plugins",
+                "{} was written by a newer version of the app; no plugin is trusted from it",
+                path.display()
+            );
+        }
+        let entries = if newer_than_supported {
+            BTreeMap::new()
+        } else {
+            file.map(|file| file.trusted).unwrap_or_default()
+        };
+        Self {
+            path,
+            entries,
+            newer_than_supported,
+        }
     }
 
     /// Returns `true` if a library with this SHA-256 has been approved.
@@ -96,7 +122,15 @@ impl TrustStore {
     }
 
     fn save(&self) -> Result<(), TrustError> {
-        let json = format!("{:#}", serde_json::json!({ "trusted": &self.entries }));
+        if self.newer_than_supported {
+            return Err(TrustError::Io(std::io::Error::other(
+                "the trust store was written by a newer version of the app",
+            )));
+        }
+        let json = format!(
+            "{:#}",
+            serde_json::json!({ "version": TRUST_FILE_VERSION, "trusted": &self.entries })
+        );
         if let Some(parent) = self.path.parent() {
             fs::create_dir_all(parent)?;
         }
@@ -301,6 +335,34 @@ mod tests {
     }
 
     #[test]
+    fn the_store_is_written_with_a_version_and_a_v2_file_is_read() {
+        let dir = temp_dir("version");
+        let path = dir.join("trusted_plugins.json");
+        // A v2 file has no version.
+        fs::write(&path, r#"{ "trusted": { "aa11": "old.dll" } }"#).unwrap();
+        let mut store = TrustStore::load(path.clone());
+        assert!(store.is_trusted("aa11"));
+        store.trust("bb22", "new.dll").unwrap();
+        let text = fs::read_to_string(&path).unwrap();
+        assert!(text.contains("\"version\": 1"), "{text}");
+        assert!(TrustStore::load(path).is_trusted("bb22"));
+        let _ = fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn a_store_from_a_newer_app_trusts_nothing_and_is_not_overwritten() {
+        let dir = temp_dir("newer");
+        let path = dir.join("trusted_plugins.json");
+        let original = r#"{ "version": 9, "trusted": { "aa11": "x.dll" } }"#;
+        fs::write(&path, original).unwrap();
+        let mut store = TrustStore::load(path.clone());
+        assert!(!store.is_trusted("aa11"));
+        assert!(store.trust("bb22", "y.dll").is_err());
+        assert_eq!(fs::read_to_string(&path).unwrap(), original);
+        let _ = fs::remove_dir_all(dir);
+    }
+
+    #[test]
     fn corrupt_store_trusts_nothing() {
         let dir = temp_dir("corrupt");
         let path = dir.join("trusted_plugins.json");
@@ -390,6 +452,7 @@ mod tests {
         let mut store = TrustStore {
             path: blocker.join("trusted_plugins.json"),
             entries: BTreeMap::from([(HASH.to_string(), "old.dll".to_string())]),
+            newer_than_supported: false,
         };
         assert!(store.trust(HASH, "new.dll").is_err());
         assert_eq!(store.entries.get(HASH).map(String::as_str), Some("old.dll"));
@@ -496,6 +559,7 @@ mod tests {
         let mut store = TrustStore {
             path: PathBuf::new(),
             entries: BTreeMap::new(),
+            newer_than_supported: false,
         };
         assert!(store.trust(HASH, "filter.dll").is_err());
         assert!(!store.is_trusted(HASH));
@@ -516,6 +580,7 @@ mod tests {
         let mut store = TrustStore {
             path: blocker.join("trusted_plugins.json"),
             entries: BTreeMap::from([(HASH.to_string(), "filter.dll".to_string())]),
+            newer_than_supported: false,
         };
         assert!(store.revoke(HASH).is_err());
     }

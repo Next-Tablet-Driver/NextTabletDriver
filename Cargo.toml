@@ -26,6 +26,7 @@ members = [
     "crates/ntd-platform",
     "crates/ntd-output",
     "crates/ntd-plugin-api",
+    "crates/ntd-plugin-host",
     "crates/ntd-test-support",
     "crates/ntd-tablets",
     "plugins/*",
@@ -60,6 +61,7 @@ ntd-pipeline = { path = "crates/ntd-pipeline" }
 ntd-platform = { path = "crates/ntd-platform" }
 ntd-settings = { path = "crates/ntd-settings" }
 ntd_plugin_api = { path = "crates/ntd-plugin-api" }
+ntd-plugin-host = { path = "crates/ntd-plugin-host" }
 ntd-tablets = { path = "crates/ntd-tablets" }
 ntd-test-support = { path = "crates/ntd-test-support" }
 # Third party
@@ -173,7 +175,7 @@ default = ["desktop"]
 desktop = ["dep:ntd-output"]
 # Derives `specta::Type` on the types the desktop shell exchanges with the frontend, so their
 # TypeScript definitions are generated from Rust (roadmap P0.9).
-specta = ["dep:specta", "ntd-core/specta", "ntd-settings/specta", "ntd_plugin_api/specta"]
+specta = ["dep:specta", "ntd-core/specta", "ntd-settings/specta", "ntd-plugin-host/specta"]
 
 [dependencies]
 # Windows & Linux
@@ -194,11 +196,8 @@ tungstenite = { workspace = true }
 ureq = { workspace = true, features = ["json"] }
 uuid = { workspace = true, features = ["v4", "serde"] }
 regex = { workspace = true }
-sha2 = { workspace = true }
-minisign-verify = { workspace = true }
-libloading = { workspace = true }
 ntd-core = { workspace = true }
-ntd_plugin_api = { workspace = true }
+ntd-plugin-host = { workspace = true }
 ntd-pipeline = { workspace = true }
 ntd-platform = { workspace = true }
 ntd-settings = { workspace = true }

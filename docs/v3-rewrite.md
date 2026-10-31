@@ -1545,8 +1545,8 @@ just the application.
 | | |
 |---|---|
 | **Current phase** | Phase 3: Extract the I/O adapters |
-| **Last completed task** | P3.6 |
-| **Next task** | P3.7 |
+| **Last completed task** | P3.7 |
+| **Next task** | P3.8 |
 | **v1 bridge release** | not started (P7.5a) |
 | **Last updated** | 2026-10-31 |
 
@@ -2105,13 +2105,28 @@ Goal: every OS access behind a trait, with a fake and room for each platform (§
     v2 -> v3 migration functions stay in phase 6. `Locale` moved to `ntd_core::locale`, as the
     preferences need it. Not done: the interface does not show the backup notice yet (phase 6),
     and `trusted_plugins.json` is versioned with the plugin host (P3.7).
-- [ ] **P3.7** `ntd-plugin-host` and ABI v3
+- [x] **P3.7** `ntd-plugin-host` and ABI v3
   - Depends on: P2.5, P3.6
   - Done when: ABI v3 defined in `ntd-plugin-api` (target triple in the manifest, fixed-width
     types); signature verified before loading; other targets and v2 plugins refused with a clear
     message; a panicking plugin is disabled without stopping the pipeline; official plugins
     rebuilt for ABI v3; `docs/plugin-migration-v3.md` and `crates/ntd-plugin-api/AGENTS.md`
     written.
+  - Notes: `crates/ntd-plugin-host` holds the old `src/engine/plugins/*` (`git mv`);
+    `ntd_plugin_host::` replaces `engine::plugins::` in the root crate, the desktop app and the
+    SDK. ABI v3 (`NTD_PLUGIN_ABI_VERSION = 3`, handshake `0x4E540003`): `PluginManifest.target`
+    (filled by `export_ntd_plugin!` from `TARGET_TRIPLE`), `PluginPacket.is_down` is a `u8`, the
+    exported functions return an `i32` status (`PluginStatus` is only the Rust view of it), and
+    `ntd_plugin_manifest` is guarded by `catch_unwind`. The order in `PluginManager::load_all` is
+    unchanged and now documented: pinned file, SHA-256 or minisign check, then `dlopen`, then the
+    handshake (a v1/v2 library is refused with a message naming its version), then the manifest
+    target (`PluginError::WrongTarget`). A plugin that returns an error from `process` is
+    disabled for good (`PluginInstance::is_disabled`) and the filter chain goes on.
+    `trusted_plugins.json` now has `"version": 1`; a file without it is read as v2, a newer one
+    trusts nothing and is never overwritten. The five official plugins, the Rust example and the C
+    example are rebuilt for v3; `bindings.ts` gained `target`. Not done: no third-party signing
+    key is embedded in local builds (`NTD_PLUGIN_PUBKEY`, release pipeline), and publishing
+    `ntd-plugin-api` to crates.io waits for the release phase.
 - [ ] **P3.8** Remove the `desktop` feature
   - Depends on: P3.3, P3.4, P3.5
   - Done when: the feature no longer exists; `apps/sdk` depends only on `ntd-core`,

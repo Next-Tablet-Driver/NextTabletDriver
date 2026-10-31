@@ -130,6 +130,7 @@ impl NextTabletPlugin for HandSpeedPlugin {
             id: "hand_speed".to_string(),
             name: "Hand Speed & Stats".to_string(),
             version: "1.0.0".to_string(),
+            target: String::new(),
             author: "nzbasic".to_string(),
             description: "Calculates real-time pen speed and cumulative travel distance with an \
                 embedded WebSocket server for stream overlays."

@@ -46,11 +46,11 @@ impl Filter for PluginFilter {
 )]
 mod tests {
     use super::*;
-    use crate::engine::plugins::PluginManager;
-    use crate::engine::plugins::loader::{LoadedLibrary, PluginVTable};
+    use crate::PluginManager;
+    use crate::loader::{LoadedLibrary, PluginVTable};
     use ntd_core::config::models::{DynamicPluginSettings, MappingConfig};
     use ntd_pipeline::FilterPipeline;
-    use ntd_plugin_api::{PluginManifest, PluginStatus};
+    use ntd_plugin_api::{NTD_STATUS_ERROR, NTD_STATUS_OK, PluginManifest};
     use std::collections::HashMap;
     use std::ffi::{CStr, c_char, c_void};
 
@@ -73,25 +73,25 @@ mod tests {
         ptr: *mut c_void,
         packet: *mut PluginPacket,
         _context: *const PluginContext,
-    ) -> PluginStatus {
+    ) -> i32 {
         if ptr.is_null() || packet.is_null() {
-            return PluginStatus::Error;
+            return NTD_STATUS_ERROR;
         }
         let state = unsafe { &mut *ptr.cast::<MockState>() };
         state.process_count += 1;
         unsafe {
             (*packet).u += state.add_u;
         }
-        PluginStatus::Ok
+        NTD_STATUS_OK
     }
 
     unsafe extern "C" fn mock_set_property(
         ptr: *mut c_void,
         key: *const c_char,
         val: *const c_char,
-    ) -> PluginStatus {
+    ) -> i32 {
         if ptr.is_null() || key.is_null() || val.is_null() {
-            return PluginStatus::Error;
+            return NTD_STATUS_ERROR;
         }
         let state = unsafe { &mut *ptr.cast::<MockState>() };
         let key_str = unsafe { CStr::from_ptr(key).to_string_lossy() };
@@ -101,27 +101,47 @@ mod tests {
             && let Ok(v) = val_str.trim_matches('"').parse::<f32>()
         {
             state.add_u = v;
-            return PluginStatus::Ok;
+            return NTD_STATUS_OK;
         }
-        PluginStatus::Ok
+        NTD_STATUS_OK
     }
 
-    unsafe extern "C" fn mock_reset(ptr: *mut c_void) -> PluginStatus {
+    unsafe extern "C" fn mock_reset(ptr: *mut c_void) -> i32 {
         if ptr.is_null() {
-            return PluginStatus::Error;
+            return NTD_STATUS_ERROR;
         }
         let state = unsafe { &mut *ptr.cast::<MockState>() };
         state.reset_count += 1;
-        PluginStatus::Ok
+        NTD_STATUS_OK
     }
 
-    unsafe extern "C" fn mock_destroy(ptr: *mut c_void) -> PluginStatus {
+    unsafe extern "C" fn mock_destroy(ptr: *mut c_void) -> i32 {
         if !ptr.is_null() {
             unsafe {
                 drop(Box::from_raw(ptr.cast::<MockState>()));
             }
         }
-        PluginStatus::Ok
+        NTD_STATUS_OK
+    }
+
+    /// A plugin whose `process` reports an error, as the `export_ntd_plugin!` macro does when the
+    /// plugin panics.
+    unsafe extern "C" fn failing_process(
+        _ptr: *mut c_void,
+        _packet: *mut PluginPacket,
+        _context: *const PluginContext,
+    ) -> i32 {
+        NTD_STATUS_ERROR
+    }
+
+    fn create_mock_instance_vtable() -> PluginVTable {
+        PluginVTable {
+            create: mock_create,
+            process: mock_process,
+            set_property: mock_set_property,
+            reset: mock_reset,
+            destroy: mock_destroy,
+        }
     }
 
     fn create_mock_instance(id: &str, initial_add: f32) -> PluginInstance {
@@ -129,19 +149,13 @@ mod tests {
             id: id.to_string(),
             name: format!("Mock {id}"),
             version: "1.0.0".to_string(),
+            target: ntd_plugin_api::TARGET_TRIPLE.to_string(),
             author: "Tester".to_string(),
             description: "Mock for testing".to_string(),
             icon: None,
             properties: vec![],
         };
-        let vtable = PluginVTable {
-            create: mock_create,
-            process: mock_process,
-            set_property: mock_set_property,
-            reset: mock_reset,
-            destroy: mock_destroy,
-        };
-        let lib = LoadedLibrary::mock(manifest, vtable);
+        let lib = LoadedLibrary::mock(manifest, create_mock_instance_vtable());
         let mut inst = PluginInstance::new(lib).expect("mock creation should succeed");
         // Set initial add_u via property
         let _ = inst.set_property("add_u", &serde_json::json!(initial_add));
@@ -177,7 +191,7 @@ mod tests {
             pressure: 0.0,
             tilt_x: 0,
             tilt_y: 0,
-            is_down: false,
+            is_down: 0,
             timestamp_ns: 0,
         };
         let context = PluginContext {
@@ -191,6 +205,62 @@ mod tests {
 
         assert!((packet.u - 0.75).abs() < 1e-6);
         assert_eq!(chain.entries.len(), 2);
+    }
+
+    #[test]
+    fn a_failing_plugin_is_disabled_and_the_chain_goes_on() {
+        let mut broken = create_mock_instance("broken", 0.1);
+        let manifest = broken.manifest().clone();
+        let vtable = PluginVTable {
+            process: failing_process,
+            ..create_mock_instance_vtable()
+        };
+        let lib = LoadedLibrary::mock(manifest, vtable);
+        broken = PluginInstance::new(lib).unwrap();
+
+        let mut chain = FilterPipeline::new();
+        chain.add(
+            "broken".to_string(),
+            Box::new(PluginFilter::new(broken)),
+            true,
+        );
+        chain.add(
+            "healthy".to_string(),
+            Box::new(PluginFilter::new(create_mock_instance("healthy", 0.25))),
+            true,
+        );
+        let mut packet = PluginPacket::default();
+        let context = PluginContext::default();
+
+        chain.process(&mut packet, &context);
+        chain.process(&mut packet, &context);
+
+        // The healthy plugin ran both times; the broken one did not stop it.
+        assert!((packet.u - 0.5).abs() < 1e-6);
+    }
+
+    #[test]
+    fn an_instance_stays_disabled_after_its_first_error() {
+        let vtable = PluginVTable {
+            process: failing_process,
+            ..create_mock_instance_vtable()
+        };
+        let manifest = create_mock_instance("x", 0.0).manifest().clone();
+        let mut instance = PluginInstance::new(LoadedLibrary::mock(manifest, vtable)).unwrap();
+        let mut packet = PluginPacket::default();
+        let context = PluginContext::default();
+
+        assert!(!instance.is_disabled());
+        assert_eq!(
+            instance.process(&mut packet, &context),
+            ntd_plugin_api::PluginStatus::Error
+        );
+        assert!(instance.is_disabled());
+        assert!(
+            instance
+                .set_property("add_u", &serde_json::json!(1.0))
+                .is_err()
+        );
     }
 
     #[test]

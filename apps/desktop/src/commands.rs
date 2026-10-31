@@ -376,7 +376,7 @@ Install \"{}\"?",
 #[specta::specta]
 pub(crate) fn get_untrusted_plugins(
     state: State<'_, Arc<SharedState>>,
-) -> Vec<next_tablet_driver::engine::plugins::UntrustedPlugin> {
+) -> Vec<ntd_plugin_host::UntrustedPlugin> {
     state.plugins.untrusted_plugins()
 }
 

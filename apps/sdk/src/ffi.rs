@@ -255,7 +255,7 @@ pub extern "C" fn ntd_init() -> i32 {
         // installed there.
         let paths = ntd_settings::Paths::new(ntd_platform::default_settings_dir());
         let shared = Arc::new(SharedState::with_plugins(Arc::new(
-            next_tablet_driver::engine::plugins::PluginManager::new(&paths),
+            ntd_plugin_host::PluginManager::new(&paths),
         )));
         let is_owner = Arc::new(AtomicBool::new(false));
         let thread = engine_loop::spawn(Arc::clone(&shared), Arc::clone(&is_owner));

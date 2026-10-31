@@ -160,7 +160,7 @@ mod tests {
             pressure: 0.5,
             tilt_x: 0,
             tilt_y: 0,
-            is_down: false,
+            is_down: 0,
             timestamp_ns: 0,
         }
     }

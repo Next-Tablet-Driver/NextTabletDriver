@@ -163,12 +163,12 @@ impl SharedState {
     /// Creates the shared state with default values and no plugin.
     #[must_use]
     pub fn new() -> Self {
-        Self::with_plugins(Arc::new(crate::engine::plugins::PluginManager::empty()))
+        Self::with_plugins(Arc::new(ntd_plugin_host::PluginManager::empty()))
     }
 
     /// Creates the shared state with default values and these plugins.
     #[must_use]
-    pub fn with_plugins(plugins: Arc<crate::engine::plugins::PluginManager>) -> Self {
+    pub fn with_plugins(plugins: Arc<ntd_plugin_host::PluginManager>) -> Self {
         Self {
             config: ConfigState::new(),
             pipeline: PipelineState::new(),
@@ -205,7 +205,7 @@ pub struct SharedState {
     /// Application/engine lifecycle flags.
     pub lifecycle: LifecycleState,
     /// Dynamic plugins manager and registry.
-    pub plugins: Arc<crate::engine::plugins::PluginManager>,
+    pub plugins: Arc<ntd_plugin_host::PluginManager>,
 }
 
 #[cfg(test)]

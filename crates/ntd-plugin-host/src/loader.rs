@@ -11,7 +11,7 @@ use super::error::PluginError;
 use super::trust::PinnedLibrary;
 use ntd_plugin_api::{
     NTD_PLUGIN_ABI_VERSION, NTD_PLUGIN_MAGIC, PluginContext, PluginManifest, PluginPacket,
-    PluginStatus,
+    TARGET_TRIPLE,
 };
 use std::ffi::CStr;
 use std::os::raw::c_char;
@@ -21,15 +21,12 @@ use std::sync::Arc;
 pub(crate) type HandshakeFn = extern "C" fn() -> u32;
 pub(crate) type ManifestFn = extern "C" fn() -> *const c_char;
 pub(crate) type CreateFn = extern "C" fn() -> *mut std::ffi::c_void;
-pub(crate) type ProcessFn = unsafe extern "C" fn(
-    *mut std::ffi::c_void,
-    *mut PluginPacket,
-    *const PluginContext,
-) -> PluginStatus;
+pub(crate) type ProcessFn =
+    unsafe extern "C" fn(*mut std::ffi::c_void, *mut PluginPacket, *const PluginContext) -> i32;
 pub(crate) type SetPropertyFn =
-    unsafe extern "C" fn(*mut std::ffi::c_void, *const c_char, *const c_char) -> PluginStatus;
-pub(crate) type ResetFn = unsafe extern "C" fn(*mut std::ffi::c_void) -> PluginStatus;
-pub(crate) type DestroyFn = unsafe extern "C" fn(*mut std::ffi::c_void) -> PluginStatus;
+    unsafe extern "C" fn(*mut std::ffi::c_void, *const c_char, *const c_char) -> i32;
+pub(crate) type ResetFn = unsafe extern "C" fn(*mut std::ffi::c_void) -> i32;
+pub(crate) type DestroyFn = unsafe extern "C" fn(*mut std::ffi::c_void) -> i32;
 
 /// Function pointers table extracted from a loaded plugin library.
 #[derive(Clone, Copy)]
@@ -62,6 +59,18 @@ impl LoadedLibrary {
             manifest,
             vtable,
             path: PathBuf::from("mock_plugin"),
+        })
+    }
+}
+
+/// Refuses a plugin built for another operating system or processor.
+fn check_target(manifest: &PluginManifest) -> Result<(), PluginError> {
+    if manifest.target == TARGET_TRIPLE {
+        Ok(())
+    } else {
+        Err(PluginError::WrongTarget {
+            expected: TARGET_TRIPLE,
+            found: manifest.target.clone(),
         })
     }
 }
@@ -142,6 +151,8 @@ impl PluginLoader {
         let manifest: PluginManifest = serde_json::from_str(manifest_json)
             .map_err(|e| PluginError::ManifestError(format!("Manifest JSON parse error: {e}")))?;
 
+        check_target(&manifest)?;
+
         // SAFETY: Symbol lookup for ntd_plugin_create matching CreateFn signature.
         let create: libloading::Symbol<CreateFn> = unsafe { lib.get(b"ntd_plugin_create\0") }
             .map_err(|_| PluginError::MissingSymbol("ntd_plugin_create"))?;
@@ -188,19 +199,64 @@ impl PluginLoader {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::engine::plugins::instance::PluginInstance;
+    use crate::instance::PluginInstance;
+    use ntd_plugin_api::PluginStatus;
+
+    fn manifest_for(target: &str) -> PluginManifest {
+        PluginManifest {
+            id: "t".to_string(),
+            name: "T".to_string(),
+            version: "1.0.0".to_string(),
+            target: target.to_string(),
+            author: "A".to_string(),
+            description: String::new(),
+            icon: None,
+            properties: vec![],
+        }
+    }
+
+    #[test]
+    fn a_plugin_built_for_this_target_is_accepted() {
+        assert!(check_target(&manifest_for(TARGET_TRIPLE)).is_ok());
+    }
+
+    #[test]
+    fn a_plugin_built_for_another_target_is_refused_with_both_targets_named() {
+        let error = check_target(&manifest_for("riscv64-unknown-linux-gnu")).unwrap_err();
+        let message = error.to_string();
+        assert!(message.contains("riscv64-unknown-linux-gnu"), "{message}");
+        assert!(message.contains(TARGET_TRIPLE), "{message}");
+    }
+
+    #[test]
+    fn a_manifest_without_a_target_is_refused() {
+        // A v2 manifest has no `target`: it deserialises to an empty string and is refused.
+        assert!(matches!(
+            check_target(&manifest_for("")),
+            Err(PluginError::WrongTarget { .. })
+        ));
+    }
 
     #[test]
     fn test_load_radial_follow_plugin_if_present() {
         #[cfg(target_os = "windows")]
-        let dev_path = PathBuf::from("target/debug/radial_follow.dll");
+        let dev_path = PathBuf::from(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../target/debug/radial_follow.dll"
+        ));
         #[cfg(not(target_os = "windows"))]
-        let dev_path = PathBuf::from("target/debug/libradial_follow.so");
+        let dev_path = PathBuf::from(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../target/debug/libradial_follow.so"
+        ));
 
         let dll_path = if dev_path.exists() {
             dev_path
         } else {
-            PathBuf::from("plugins/radial_follow.dll")
+            PathBuf::from(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/../../plugins/radial_follow.dll"
+            ))
         };
         if !dll_path.exists() {
             return;
@@ -219,7 +275,7 @@ mod tests {
             pressure: 0.8,
             tilt_x: 0,
             tilt_y: 0,
-            is_down: true,
+            is_down: 1,
             timestamp_ns: 1000,
         };
         let context = PluginContext::default();

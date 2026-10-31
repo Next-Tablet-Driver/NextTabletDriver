@@ -23,7 +23,7 @@ impl SharedStateFactory {
                 is_first_run: RwLock::new(is_first_run),
                 ..LifecycleState::new()
             },
-            plugins: Arc::new(crate::engine::plugins::PluginManager::new(paths)),
+            plugins: Arc::new(ntd_plugin_host::PluginManager::new(paths)),
         })
     }
 }

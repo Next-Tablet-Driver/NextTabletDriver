@@ -37,14 +37,15 @@ The desktop app is a thin shell around this engine. It adds a window (the user i
 | `apps/sdk/` | `ntd_sdk`, a library that lets other programs (games, tools) run the engine inside their own process. See [Integrations](integrations.md) and [`apps/sdk/README.md`](../apps/sdk/README.md). |
 | `crates/ntd-core/` | `ntd-core`, the pure types and maths (button bindings, coordinate transforms, `MappingConfig`). It does no input or output. |
 | `crates/ntd-tablets/` | `ntd-tablets`, the tablet definitions, the report parsers and the packet types. It does no input or output. |
-| `crates/ntd-plugin-api/` | `ntd_plugin_api`, the interface that plugins implement. See [Plugin development](plugin-development.md). |
+| `crates/ntd-plugin-api/` | `ntd_plugin_api`, the interface that plugins implement (ABI v3). See [Plugin development](plugin-development.md). |
+| `crates/ntd-plugin-host/` | `ntd-plugin-host`, which loads the plugins: trust and signature checks before the library is opened, ABI and target checks, instances, and the filters that run them. A plugin that fails is disabled. |
 | `plugins/` | Source code of the five plugins we maintain. |
 | `tablets/OpenTabletDriver/` | A git submodule with tablet definitions from [OpenTabletDriver](https://github.com/OpenTabletDriver/OpenTabletDriver). |
 | `qa/` | Benchmarks, fuzzers and property tests. |
 | `packaging/`, `nix/`, `scripts/` | Packaging recipes, Nix modules, helper scripts, udev rules. |
 | `.github/` | CI workflows, issue and pull request templates, repository rules. |
 
-The repository is one Cargo workspace with a single `Cargo.lock`. The root crate, `apps/desktop`, `apps/sdk`, `crates/ntd-pipeline`, `crates/ntd-test-support`, `crates/ntd-platform`, `crates/ntd-hid`, `crates/ntd-output`, `crates/ntd-interop`, `crates/ntd-settings`, `crates/ntd-plugin-api`, each plugin and the example plugin are its members, so `cargo build --workspace` builds all of them into one `target/` folder (the checks of the root crate use `-p next_tablet_driver`). `tools/ntd-recorder` and `tools/ntd-codegen` are members too.
+The repository is one Cargo workspace with a single `Cargo.lock`. The root crate, `apps/desktop`, `apps/sdk`, `crates/ntd-pipeline`, `crates/ntd-test-support`, `crates/ntd-platform`, `crates/ntd-hid`, `crates/ntd-output`, `crates/ntd-interop`, `crates/ntd-settings`, `crates/ntd-plugin-api`, `crates/ntd-plugin-host`, each plugin and the example plugin are its members, so `cargo build --workspace` builds all of them into one `target/` folder (the checks of the root crate use `-p next_tablet_driver`). `tools/ntd-recorder` and `tools/ntd-codegen` are members too.
 
 ## Life of a pen packet
 

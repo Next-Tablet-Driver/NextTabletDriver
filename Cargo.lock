@@ -83,6 +83,7 @@ dependencies = [
  "next_tablet_driver",
  "ntd-core",
  "ntd-platform",
+ "ntd-plugin-host",
  "ntd-settings",
  "ntd_plugin_api",
  "serde",
@@ -2551,10 +2552,8 @@ dependencies = [
  "directories",
  "include_dir",
  "libc",
- "libloading 0.9.0",
  "log",
  "minisign",
- "minisign-verify 0.2.5",
  "nix 0.31.3",
  "ntd-core",
  "ntd-hid",
@@ -2562,15 +2561,14 @@ dependencies = [
  "ntd-output",
  "ntd-pipeline",
  "ntd-platform",
+ "ntd-plugin-host",
  "ntd-settings",
  "ntd-tablets",
  "ntd-test-support",
- "ntd_plugin_api",
  "proptest",
  "regex",
  "serde",
  "serde_json",
- "sha2",
  "specta",
  "thiserror 2.0.21",
  "tungstenite",
@@ -2683,6 +2681,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "ntd-plugin-host"
+version = "0.1.0"
+dependencies = [
+ "libloading 0.9.0",
+ "log",
+ "minisign",
+ "minisign-verify 0.2.5",
+ "ntd-core",
+ "ntd-pipeline",
+ "ntd-settings",
+ "ntd_plugin_api",
+ "serde",
+ "serde_json",
+ "sha2",
+ "specta",
+ "thiserror 2.0.21",
+ "windows-sys 0.61.2",
+]
+
+[[package]]
 name = "ntd-recorder"
 version = "0.1.0"
 dependencies = [
@@ -2743,6 +2761,7 @@ dependencies = [
  "ntd-interop",
  "ntd-pipeline",
  "ntd-platform",
+ "ntd-plugin-host",
  "ntd-settings",
  "ntd-tablets",
 ]

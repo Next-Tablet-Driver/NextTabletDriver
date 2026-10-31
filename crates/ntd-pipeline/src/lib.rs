@@ -129,7 +129,9 @@ impl Pipeline {
             pressure: pressure_ratio,
             tilt_x: i32::from(data.tilt_x),
             tilt_y: i32::from(data.tilt_y),
-            is_down: data.pressure > 0 || data.status == ntd_tablets::TabletStatus::Contact,
+            is_down: u8::from(
+                data.pressure > 0 || data.status == ntd_tablets::TabletStatus::Contact,
+            ),
             timestamp_ns: 0,
         };
         let context = PluginContext {

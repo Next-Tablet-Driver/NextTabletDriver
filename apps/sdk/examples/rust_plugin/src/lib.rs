@@ -39,6 +39,7 @@ impl NextTabletPlugin for SimpleSmoothing {
             id: "simple_smoothing".to_string(),
             name: "Simple Smoothing".to_string(),
             version: "1.0.0".to_string(),
+            target: String::new(),
             author: "You".to_string(),
             description: "Blends each position with the previous one.".to_string(),
             icon: None,

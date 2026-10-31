@@ -332,11 +332,13 @@ mod tests {
     /// an approved library loads through the pinned handle.
     #[test]
     fn an_approved_real_library_loads_through_the_pinned_handle() {
-        let built = PathBuf::from("target/debug").join(if cfg!(windows) {
-            "radial_follow.dll"
-        } else {
-            "libradial_follow.so"
-        });
+        let built = PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/../../target/debug")).join(
+            if cfg!(windows) {
+                "radial_follow.dll"
+            } else {
+                "libradial_follow.so"
+            },
+        );
         if !built.exists() {
             return;
         }
@@ -413,7 +415,7 @@ mod tests {
     fn test_manager_pipeline_creation() {
         // The plugins are built into the workspace target directory, next to many other files:
         // only scan it when the plugin this test is about is there.
-        let dev_dir = PathBuf::from("target/debug");
+        let dev_dir = PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/../../target/debug"));
         let radial = dev_dir.join(if cfg!(windows) {
             "radial_follow.dll"
         } else {
@@ -459,7 +461,7 @@ mod tests {
                 pressure: 0.5,
                 tilt_x: 0,
                 tilt_y: 0,
-                is_down: true,
+                is_down: 1,
                 timestamp_ns: 0,
             };
             let context = PluginContext::default();
