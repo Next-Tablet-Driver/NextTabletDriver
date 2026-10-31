@@ -89,6 +89,7 @@ pub enum PluginStatus {
 
 /// Complete declarative metadata for a plugin, serialized to JSON across the ABI.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 pub struct PluginManifest {
     /// Unique identifier for the plugin (e.g., `"radial_follow"`).
     pub id: String,
@@ -108,6 +109,7 @@ pub struct PluginManifest {
 
 /// A single user-facing configurable property.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 pub struct PropertyDescriptor {
     /// Unique key for this property (e.g., `"outer_radius"`).
     pub id: String,
@@ -122,6 +124,7 @@ pub struct PropertyDescriptor {
 /// The concrete type and range constraints for a property.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type", content = "config")]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 pub enum PropertyKind {
     /// Floating-point slider or drag input.
     Float {
@@ -159,6 +162,7 @@ pub enum PropertyKind {
         /// List of options.
         options: Vec<String>,
         /// Default selected index.
+        #[cfg_attr(feature = "specta", specta(type = u32))]
         default_index: usize,
     },
     /// Plain single-line string text input.

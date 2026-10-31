@@ -23,12 +23,15 @@ serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 log = "0.4"
 tauri = { version = "2.12.0", features = ["tray-icon"] }
-next_tablet_driver = { path = "../" }
+next_tablet_driver = { path = "../", features = ["specta"] }
 ntd_plugin_api = { path = "../sdk/plugin_api" }
 crossbeam-channel = "0.5"
 tauri-plugin-dialog = "2.2.0"
 tauri-plugin-process = "2"
 tauri-plugin-shell = "2.4.0"
+specta = "=2.0.0-rc.26"
+specta-typescript = "=0.0.13"
+tauri-specta = { version = "=2.0.0-rc.26", features = ["derive", "typescript"] }
 
 # Debug builds reattach to the parent console (see src/main.rs).
 [target.'cfg(windows)'.dependencies]

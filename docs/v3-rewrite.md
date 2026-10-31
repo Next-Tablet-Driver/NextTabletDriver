@@ -1542,8 +1542,8 @@ just the application.
 | | |
 |---|---|
 | **Current phase** | Phase 0: Safety nets |
-| **Last completed task** | P0.8 |
-| **Next task** | P0.9 |
+| **Last completed task** | P0.9 |
+| **Next task** | P0.10 |
 | **v1 bridge release** | not started (P7.5a) |
 | **Last updated** | 2026-10-31 |
 
@@ -1622,7 +1622,7 @@ Goal: be able to detect any regression **before** touching the architecture (§7
   - Done when: a criterion benchmark covers the parse → pipeline → (fake) output path; the results
     and the measuring machine are recorded in `docs/perf-baseline.md`; the 5 % tolerance is
     written next to them.
-- [ ] **P0.9** Generate the v2 contract with `tauri-specta` (§5.2, step 1)
+- [x] **P0.9** Generate the v2 contract with `tauri-specta` (§5.2, step 1) (PR: to be linked)
   - Depends on: —
   - Done when: the 26 current commands and 5 events have types and typed functions generated from
     Rust in `frontend/src/lib/infrastructure/tauri/bindings.ts`, **with no behaviour change**; a CI

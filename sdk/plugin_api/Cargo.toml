@@ -7,9 +7,15 @@ edition = "2024"
 license = "MIT"
 rust-version = "1.99.0"
 
+[features]
+# Derives `specta::Type` on the manifest types so the desktop shell can export TypeScript
+# definitions of them. Off by default: plugin authors do not need it.
+specta = ["dep:specta"]
+
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+specta = { version = "=2.0.0-rc.26", optional = true, features = ["derive"] }
 
 [lints.rust]
 dead_code = "deny"

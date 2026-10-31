@@ -174,7 +174,19 @@ If `cargo-nextest` is missing, the pre-push hook tells you how to install it.
 - Put unit tests next to the code in a `#[cfg(test)] mod tests`. Name a test after the behavior it checks. Tests that only check that a call does not panic start with `smoke_`. Prefer tests that return `Result` and use `?`.
 - Keep the engine's hot path free of allocations and locks that can block. If you change code in `engine::pipeline`, `core::math` or `filters`, run the benchmarks (see below).
 - Frontend: TypeScript with Svelte 5 runes. `npm run lint` and `npm run check` must pass. See [`frontend/README.md`](../frontend/README.md).
-- If you add or change a setting, update `core::config::models` (with a default and a repair rule in `validate_and_repair`), the TypeScript type in `frontend/src/lib/infrastructure/tauri/commands.ts`, and the fake backend in `frontend/src/dev/tauri-mock.ts`. Old settings files must keep loading, so give every new field a default.
+- If you add or change a setting, update `core::config::models` (with a default and a repair rule in `validate_and_repair`), the generated TypeScript bindings (see below), and the fake backend in `frontend/src/dev/tauri-mock.ts`. Old settings files must keep loading, so give every new field a default.
+
+## The TypeScript bindings
+
+The commands, events and types the interface exchanges with the backend are described once, in Rust. `frontend/src/lib/infrastructure/tauri/bindings.ts` is generated from them with [tauri-specta](https://github.com/specta-rs/tauri-specta). Never edit it by hand.
+
+When you add or change a command (`src-tauri/src/commands.rs`, registered in `specta_builder()` in `src-tauri/src/lib.rs`), an event (`src-tauri/src/events.rs`) or a type they use (derive `specta::Type`, behind the `specta` feature for the core crate), regenerate the file:
+
+```bash
+UPDATE_BINDINGS=1 cargo test --manifest-path src-tauri/Cargo.toml --test bindings
+```
+
+The CI runs the same test without the variable and fails when the committed file is out of date.
 
 ## Benchmarks and fuzzing
 

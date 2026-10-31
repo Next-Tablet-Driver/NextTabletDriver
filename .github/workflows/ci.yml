@@ -408,6 +408,13 @@ jobs:
         if: startsWith(matrix.os, 'ubuntu')
         run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
 
+      # The TypeScript bindings are generated from the Rust commands, events and types. Fails when
+      # the committed file differs from what the code generates; regenerate it with
+      # `UPDATE_BINDINGS=1 cargo test --manifest-path src-tauri/Cargo.toml --test bindings`.
+      - name: Bindings are up to date
+        if: startsWith(matrix.os, 'ubuntu')
+        run: cargo test --manifest-path src-tauri/Cargo.toml --test bindings
+
       - name: Build app (no bundle)
         # The updater artifacts need the signing key, which is only available on releases.
         # `tauri/custom-protocol` embeds the frontend like a shipped build does; without it a

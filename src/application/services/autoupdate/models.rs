@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 
 /// Represents a GitHub Release object returned from the API.
 #[derive(Deserialize, Serialize, Clone)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 pub struct Release {
     pub tag_name: String,
     #[serde(default)]
@@ -15,6 +16,7 @@ pub struct Release {
 
 /// Represents an individual file (asset) attached to a GitHub Release.
 #[derive(Deserialize, Serialize, Clone)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 pub struct Asset {
     pub name: String,
     pub browser_download_url: String,

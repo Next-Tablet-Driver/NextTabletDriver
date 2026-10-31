@@ -10,6 +10,7 @@ use std::thread;
 /// Log entries are processed by the background logger thread, written to the local log file,
 /// and stored in a circular buffer used to feed the in-app UI console.
 #[derive(Debug, Clone, serde::Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 pub struct LogEntry {
     /// Formatted timestamp of when the log was recorded.
     pub time: String,
