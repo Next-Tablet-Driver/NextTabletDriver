@@ -1542,8 +1542,8 @@ just the application.
 | | |
 |---|---|
 | **Current phase** | Phase 1: Workspace, quality, CI, contribution rules |
-| **Last completed task** | P1.2 |
-| **Next task** | P1.3 |
+| **Last completed task** | P1.3 |
+| **Next task** | P1.4 |
 | **v1 bridge release** | not started (P7.5a) |
 | **Last updated** | 2026-10-31 |
 
@@ -1664,9 +1664,12 @@ phase 1; §12, §13, §14).
   - Depends on: P1.1
   - Done when: its separate `Cargo.lock` is deleted.
   - Notes: it now also runs in the CI job that checks the SDK, the plugins and the examples.
-- [ ] **P1.3** `[workspace.dependencies]` and `[workspace.package]`
+- [x] **P1.3** `[workspace.dependencies]` and `[workspace.package]` (branch `chore/v3-phase-1`)
   - Depends on: P1.1
   - Done when: no member crate declares a dependency version (rule 22); metadata is inherited.
+  - Notes: `Cargo.lock` is unchanged, so no dependency version moved. Four plugins written by other
+    people keep their own `authors` (credit) and declare no licence; the first-party crates inherit
+    all the metadata.
 - [ ] **P1.4** `stable` toolchain (§12.6)
   - Depends on: P1.1
   - Done when: `rust-toolchain.toml` on `channel = "stable"`, no Rust version in workflows,

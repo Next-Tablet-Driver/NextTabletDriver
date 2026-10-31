@@ -2,7 +2,9 @@
 name = "devocub_antichatter"
 version = "1.0.0"
 publish = false
-edition = "2024"
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
 authors = ["X9VoiD <https://github.com/X9VoiD>"]
 description = "Devocub Antichatter and Prediction filter"
 
@@ -10,9 +12,9 @@ description = "Devocub Antichatter and Prediction filter"
 crate-type = ["cdylib"]
 
 [dependencies]
-ntd_plugin_api = { path = "../../crates/ntd-plugin-api" }
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
+ntd_plugin_api = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
 
 # Same policy as the root crate and `crates/ntd-plugin-api` (copied until the shared
 # `[workspace.lints]` table exists, roadmap P1.6).

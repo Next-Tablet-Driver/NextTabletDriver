@@ -1,16 +1,16 @@
 [package]
 name = "next_tablet_driver"
-authors = ["iSweat <https://github.com/iSweat-exe>"]
+authors.workspace = true
 description = "Tablet Driver for Osu! and Drawing"
-repository = "https://github.com/Next-Tablet-Driver/NextTabletDriver"
+repository.workspace = true
 version = "3.0.0"
 publish = false
-edition = "2024"
-license = "MIT"
+edition.workspace = true
+license.workspace = true
 readme = "README.md"
 keywords = ["tablet", "driver", "rust", "osu"]
 categories = ["hardware-support"]
-rust-version = "1.99.0"
+rust-version.workspace = true
 
 [workspace]
 members = [
@@ -23,6 +23,62 @@ members = [
     "tools/ntd-recorder",
 ]
 
+[workspace.package]
+# Metadata shared by every crate (`name.workspace = true`). `version` and `description` stay per
+# crate. Plugins written by someone else keep their own `authors` and declare no licence.
+authors = ["iSweat <https://github.com/iSweat-exe>"]
+edition = "2024"
+license = "MIT"
+repository = "https://github.com/Next-Tablet-Driver/NextTabletDriver"
+# The oldest Rust that builds the project (not the version the CI uses).
+rust-version = "1.99.0"
+
+[workspace.dependencies]
+# Every dependency version of the repository is declared here, once. A crate uses it with
+# `name = { workspace = true }` and may add features or `optional = true`, never a version.
+# In this repository
+next_tablet_driver = { path = ".", default-features = false }
+ntd_plugin_api = { path = "crates/ntd-plugin-api" }
+# Third party
+base64 = "0.23.1"
+cargo-husky = { version = "1.5.0", default-features = false }
+cbindgen = { version = "0.29", default-features = false }
+chrono = "0.4"
+criterion = "0.8"
+crossbeam-channel = "0.5.15"
+csbindgen = "1.9.8"
+directories = "6.0.0"
+display-info = "0.5.9"
+evdev = "0.13"
+hidapi = "2.6.3"
+include_dir = "0.7"
+interprocess = "2.2.3"
+libc = "0.2"
+libloading = "0.9"
+log = { version = "0.4", features = ["std"] }
+minisign = "0.10.0"
+minisign-verify = "0.2"
+nix = "0.31.3"
+proptest = "1"
+regex = "1.13.1"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+sha2 = "0.10"
+specta = { version = "=2.0.0-rc.26", features = ["derive"] }
+specta-typescript = "=0.0.13"
+tauri = "2.12.0"
+tauri-build = "2.7.0"
+tauri-plugin-dialog = "2.2.0"
+tauri-plugin-process = "2"
+tauri-plugin-shell = "2.4.0"
+tauri-plugin-updater = "2"
+tauri-specta = "=2.0.0-rc.26"
+thiserror = "2"
+tungstenite = { version = "0.29.0", default-features = false, features = ["handshake"] }
+ureq = "2.12.1"
+uuid = "1.23.3"
+windows-sys = "0.61.2"
+
 [features]
 default = ["desktop"]
 # Everything that talks to the OS: HID polling thread and input injection.
@@ -34,43 +90,43 @@ specta = ["dep:specta", "ntd_plugin_api/specta"]
 
 [dependencies]
 # Windows & Linux
-hidapi = "2.6.3"
-display-info = { version = "0.5.9", optional = true }
-specta = { version = "=2.0.0-rc.26", optional = true, features = ["derive", "serde_json"] }
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-base64 = "0.23.1"
-directories = "6.0.0"
-log = { version = "0.4", features = ["std"] }
-thiserror = "2"
-chrono = "0.4"
-crossbeam-channel = "0.5.15"
-include_dir = "0.7"
-tungstenite = { version = "0.29.0", default-features = false, features = ["handshake"] }
-ureq = { version = "2.12.1", features = ["json"] }
-uuid = { version = "1.23.3", features = ["v4", "serde"] }
-interprocess = "2.2.3"
-regex = "1.13.1"
-sha2 = "0.10"
-minisign-verify = "0.2"
-libloading = "0.9"
-ntd_plugin_api = { path = "crates/ntd-plugin-api" }
+hidapi = { workspace = true }
+display-info = { workspace = true, optional = true }
+specta = { workspace = true, optional = true, features = ["serde_json"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+base64 = { workspace = true }
+directories = { workspace = true }
+log = { workspace = true }
+thiserror = { workspace = true }
+chrono = { workspace = true }
+crossbeam-channel = { workspace = true }
+include_dir = { workspace = true }
+tungstenite = { workspace = true }
+ureq = { workspace = true, features = ["json"] }
+uuid = { workspace = true, features = ["v4", "serde"] }
+interprocess = { workspace = true }
+regex = { workspace = true }
+sha2 = { workspace = true }
+minisign-verify = { workspace = true }
+libloading = { workspace = true }
+ntd_plugin_api = { workspace = true }
 
 # Windows
 [target.'cfg(windows)'.dependencies]
-windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_System_Threading", "Win32_System_Memory", "Win32_Security", "Win32_UI_WindowsAndMessaging", "Win32_UI_Input_KeyboardAndMouse", "Win32_Media", "Win32_System_LibraryLoader", "Win32_System_SystemInformation", "Win32_Storage_FileSystem", "Win32_Devices_HumanInterfaceDevice", "Win32_System_Registry"] }
+windows-sys = { workspace = true, features = ["Win32_Foundation", "Win32_System_Threading", "Win32_System_Memory", "Win32_Security", "Win32_UI_WindowsAndMessaging", "Win32_UI_Input_KeyboardAndMouse", "Win32_Media", "Win32_System_LibraryLoader", "Win32_System_SystemInformation", "Win32_Storage_FileSystem", "Win32_Devices_HumanInterfaceDevice", "Win32_System_Registry"] }
 
 # Linux
 [target.'cfg(target_os = "linux")'.dependencies]
-evdev = "0.13"
-nix = { version = "0.31.3", features = ["sched", "fs", "mman"] }
-libc = "0.2"
+evdev = { workspace = true }
+nix = { workspace = true, features = ["sched", "fs", "mman"] }
+libc = { workspace = true }
 
 [dev-dependencies]
-cargo-husky = { version = "1.5.0", default-features = false, features = ["user-hooks"] }
-criterion = "0.8"
-minisign = "0.10.0"
-proptest = "1"
+cargo-husky = { workspace = true, features = ["user-hooks"] }
+criterion = { workspace = true }
+minisign = { workspace = true }
+proptest = { workspace = true }
 
 [[test]]
 name = "transform_properties"
