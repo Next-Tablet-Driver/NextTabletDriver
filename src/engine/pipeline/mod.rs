@@ -12,8 +12,8 @@ pub use normalizer::Normalizer;
 pub use projector::Projector;
 pub use transformer::Transformer;
 
-use crate::drivers::TabletData;
 use ntd_core::config::models::{DriverMode, MappingConfig};
+use ntd_tablets::TabletData;
 use std::sync::Arc;
 
 /// The core processing pipeline for tablet input events.
@@ -70,7 +70,7 @@ impl Pipeline {
     pub fn process(
         &mut self,
         data: &TabletData,
-        driver: &dyn crate::drivers::NextTabletDriver,
+        driver: &dyn ntd_tablets::NextTabletDriver,
         config: &MappingConfig,
         filters: &mut crate::filters::FilterPipeline,
         shared: &Arc<crate::engine::state::SharedState>,
@@ -83,9 +83,9 @@ impl Pipeline {
         // Skip non-positional reports (aux, tool ID, out-of-range)
         if !matches!(
             data.status,
-            crate::drivers::TabletStatus::Contact
-                | crate::drivers::TabletStatus::Hover
-                | crate::drivers::TabletStatus::Active
+            ntd_tablets::TabletStatus::Contact
+                | ntd_tablets::TabletStatus::Hover
+                | ntd_tablets::TabletStatus::Active
         ) {
             return ProcessedFrame::default();
         }
@@ -113,7 +113,7 @@ impl Pipeline {
             pressure: pressure_ratio,
             tilt_x: i32::from(data.tilt_x),
             tilt_y: i32::from(data.tilt_y),
-            is_down: data.pressure > 0 || data.status == crate::drivers::TabletStatus::Contact,
+            is_down: data.pressure > 0 || data.status == ntd_tablets::TabletStatus::Contact,
             timestamp_ns: 0,
         };
         let context = ntd_plugin_api::PluginContext {
@@ -187,13 +187,13 @@ impl Pipeline {
 )]
 mod tests {
     use super::*;
-    use crate::drivers::TabletData;
     use crate::engine::state::SharedState;
     use crate::filters::FilterPipeline;
     use ntd_core::config::models::MappingConfig;
+    use ntd_tablets::TabletData;
 
     struct MockDriver;
-    impl crate::drivers::NextTabletDriver for MockDriver {
+    impl ntd_tablets::NextTabletDriver for MockDriver {
         fn get_name(&self) -> &'static str {
             "Mock Driver"
         }
@@ -226,7 +226,7 @@ mod tests {
 
         let data = TabletData {
             is_connected: true,
-            status: crate::drivers::TabletStatus::Contact,
+            status: ntd_tablets::TabletStatus::Contact,
             x: 500, // Center (50mm)
             y: 500, // Center (50mm)
             ..Default::default()
@@ -267,7 +267,7 @@ mod tests {
         // max_p = 1000.0, so raw 500 -> ratio 0.5 -> curved to 0.25 -> ~2047/8191
         let data = TabletData {
             is_connected: true,
-            status: crate::drivers::TabletStatus::Contact,
+            status: ntd_tablets::TabletStatus::Contact,
             pressure: 500,
             ..Default::default()
         };
@@ -304,7 +304,7 @@ mod tests {
 
         let disconnected_data = TabletData {
             is_connected: false,
-            status: crate::drivers::TabletStatus::Contact,
+            status: ntd_tablets::TabletStatus::Contact,
             x: 500,
             y: 500,
             pressure: 500,
@@ -325,7 +325,7 @@ mod tests {
 
         let out_of_range_data = TabletData {
             is_connected: true,
-            status: crate::drivers::TabletStatus::OutOfRange,
+            status: ntd_tablets::TabletStatus::OutOfRange,
             x: 500,
             y: 500,
             ..Default::default()
@@ -336,7 +336,7 @@ mod tests {
 
         let aux_data = TabletData {
             is_connected: true,
-            status: crate::drivers::TabletStatus::Aux,
+            status: ntd_tablets::TabletStatus::Aux,
             x: 500,
             y: 500,
             ..Default::default()
@@ -365,7 +365,7 @@ mod tests {
         // MockDriver specs: 1000x1000 max, 100x100mm -> 1 unit = 0.1mm
         let d1 = TabletData {
             is_connected: true,
-            status: crate::drivers::TabletStatus::Hover,
+            status: ntd_tablets::TabletStatus::Hover,
             x: 500, // 50mm
             y: 500, // 50mm
             ..Default::default()
@@ -377,7 +377,7 @@ mod tests {
         // Second packet moved +20 units in x (+2.0mm) and +30 units in y (+3.0mm)
         let d2 = TabletData {
             is_connected: true,
-            status: crate::drivers::TabletStatus::Hover,
+            status: ntd_tablets::TabletStatus::Hover,
             x: 520, // 52mm
             y: 530, // 53mm
             ..Default::default()
@@ -388,7 +388,7 @@ mod tests {
     }
 
     struct MockDegenerateDriver;
-    impl crate::drivers::NextTabletDriver for MockDegenerateDriver {
+    impl ntd_tablets::NextTabletDriver for MockDegenerateDriver {
         fn get_name(&self) -> &'static str {
             "Mock Degenerate"
         }
@@ -416,7 +416,7 @@ mod tests {
 
         let data = TabletData {
             is_connected: true,
-            status: crate::drivers::TabletStatus::Contact,
+            status: ntd_tablets::TabletStatus::Contact,
             x: 500,
             y: 500,
             pressure: 100,
@@ -431,7 +431,7 @@ mod tests {
         assert_eq!(frame.pressure, 0);
     }
 
-    use crate::drivers::NextTabletDriver;
+    use ntd_tablets::NextTabletDriver;
 
     #[test]
     fn a_default_pipeline_starts_clean() {

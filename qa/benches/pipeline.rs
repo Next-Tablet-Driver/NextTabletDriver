@@ -20,11 +20,11 @@
 //! See `benches/README.md` for the benchmark policy and interpretation rules.
 
 use criterion::{BatchSize, BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
-use next_tablet_driver::drivers::{NextTabletDriver, TabletData, TabletStatus};
 use next_tablet_driver::engine::pipeline::Pipeline;
 use next_tablet_driver::engine::state::SharedState;
 use next_tablet_driver::filters::FilterPipeline;
 use ntd_core::config::models::{DriverMode, MappingConfig, PressureCurveType};
+use ntd_tablets::{NextTabletDriver, TabletData, TabletStatus};
 use std::hint::black_box;
 use std::sync::Arc;
 

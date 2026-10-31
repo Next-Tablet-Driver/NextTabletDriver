@@ -1,0 +1,139 @@
+use crate::TabletData;
+use crate::parsers::ReportParser;
+
+/// Parser for Xencelabs tablets, a port of the `XenceLabsReportParser` of `OpenTabletDriver`.
+pub struct XenceLabsParser;
+
+impl ReportParser for XenceLabsParser {
+    fn parse(&self, data: &[u8]) -> Option<TabletData> {
+        match data {
+            // Aux Report
+            [_, report_byte, b2, ..] if (*report_byte & 0xF0) == 0xF0 => {
+                let mut tablet_data = TabletData {
+                    status: crate::TabletStatus::Aux,
+                    buttons: *b2,
+                    is_connected: true,
+                    ..Default::default()
+                };
+                tablet_data.set_raw(data);
+                Some(tablet_data)
+            }
+            // Tablet Report
+            [
+                _,
+                report_byte,
+                x_lo,
+                x_hi,
+                y_lo,
+                y_hi,
+                p_lo,
+                p_hi,
+                t_x,
+                t_y,
+                ..,
+            ] if (*report_byte & 0x20) != 0 => {
+                let x = u32::from(u16::from_le_bytes([*x_lo, *x_hi]));
+                let y = u32::from(u16::from_le_bytes([*y_lo, *y_hi]));
+                let pressure = u16::from_le_bytes([*p_lo, *p_hi]);
+
+                let mut buttons: u8 = 0;
+                if (*report_byte & 0x02) != 0 {
+                    buttons |= 1 << 0;
+                }
+                if (*report_byte & 0x04) != 0 {
+                    buttons |= 1 << 1;
+                }
+                if (*report_byte & 0x08) != 0 {
+                    buttons |= 1 << 2;
+                }
+
+                let eraser = (*report_byte & 0x40) != 0;
+
+                let status = if pressure > 0 {
+                    crate::TabletStatus::Contact
+                } else {
+                    crate::TabletStatus::Hover
+                };
+
+                let mut tablet_data = TabletData {
+                    status,
+                    x,
+                    y,
+                    pressure,
+                    tilt_x: t_x.cast_signed(),
+                    tilt_y: t_y.cast_signed(),
+                    buttons,
+                    eraser,
+                    is_connected: true,
+                    ..Default::default()
+                };
+                tablet_data.set_raw(data);
+                Some(tablet_data)
+            }
+            _ => None,
+        }
+    }
+}
+
+#[cfg(test)]
+#[allow(
+    clippy::float_cmp,
+    reason = "the tests compare floats that are exact by construction or copied unchanged"
+)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_xencelabs_tablet() -> Result<(), Box<dyn std::error::Error>> {
+        let parser = XenceLabsParser;
+        let data: [u8; 10] = [0, 0x2E, 0x02, 0x01, 0x04, 0x03, 0x01, 0x00, 10, 20];
+        let report = parser
+            .parse(&data)
+            .ok_or("XenceLabs parser failed to parse tablet packet")?;
+        assert_eq!(report.status, crate::TabletStatus::Contact);
+        assert_eq!(report.x, 258);
+        assert_eq!(report.pressure, 1);
+        assert_eq!(report.buttons, 7);
+        assert_eq!(report.tilt_x, 10);
+        Ok(())
+    }
+
+    #[test]
+    fn express_keys_are_reported_as_an_aux_report() {
+        let parsed = XenceLabsParser.parse(&[0, 0xF1, 0x07, 0, 0]).unwrap();
+        assert_eq!(parsed.status, crate::TabletStatus::Aux);
+        assert_eq!(parsed.buttons, 7);
+    }
+
+    #[test]
+    fn a_pen_without_pressure_hovers_and_the_eraser_end_is_flagged() {
+        let parsed = XenceLabsParser
+            .parse(&[
+                0,
+                0x20 | 0x40,
+                0x02,
+                0x01,
+                0x04,
+                0x03,
+                0x00,
+                0x00,
+                0xFE,
+                0x05,
+            ])
+            .unwrap();
+        assert_eq!(parsed.status, crate::TabletStatus::Hover);
+        assert!(parsed.eraser);
+        assert_eq!((parsed.tilt_x, parsed.tilt_y), (-2, 5));
+    }
+
+    #[test]
+    fn reports_that_are_neither_pen_nor_keys_are_ignored() {
+        assert!(
+            XenceLabsParser
+                .parse(&[0, 0x01, 0, 0, 0, 0, 0, 0, 0, 0])
+                .is_none()
+        );
+        assert!(XenceLabsParser.parse(&[0, 0x20, 0x02]).is_none());
+        assert!(XenceLabsParser.parse(&[]).is_none());
+    }
+}

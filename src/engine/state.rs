@@ -3,9 +3,9 @@
 //! This module defines the `SharedState` structure, which provides a bridge
 //! between the high-frequency background `engine` threads and the 60Hz GUI threads.
 
-use crate::drivers::TabletData;
 use crate::engine::pipeline::ProcessedFrame;
 use ntd_core::config::models::MappingConfig;
+use ntd_tablets::TabletData;
 use std::sync::atomic::{AtomicBool, AtomicU32};
 use std::sync::{Arc, RwLock};
 
@@ -97,7 +97,7 @@ pub struct PipelineState {
     /// real-time Hz.
     pub packet_count: AtomicU32,
     /// Tracking statistics for developer debugging (e.g., dropped packets, parse errors).
-    pub stats: RwLock<crate::drivers::DriverStats>,
+    pub stats: RwLock<ntd_tablets::DriverStats>,
 }
 
 impl Default for PipelineState {
@@ -114,7 +114,7 @@ impl PipelineState {
             tablet_data: RwLock::new(TabletData::default()),
             processed_frame: RwLock::new(ProcessedFrame::default()),
             packet_count: AtomicU32::new(0),
-            stats: RwLock::new(crate::drivers::DriverStats::default()),
+            stats: RwLock::new(ntd_tablets::DriverStats::default()),
         }
     }
 }

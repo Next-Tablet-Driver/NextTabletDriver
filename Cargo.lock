@@ -2559,6 +2559,7 @@ dependencies = [
  "minisign-verify 0.2.5",
  "nix 0.31.3",
  "ntd-core",
+ "ntd-tablets",
  "ntd_plugin_api",
  "proptest",
  "regex",
@@ -2601,6 +2602,7 @@ dependencies = [
 name = "ntd-core"
 version = "0.1.0"
 dependencies = [
+ "log",
  "serde",
  "serde_json",
  "specta",
@@ -2612,6 +2614,17 @@ name = "ntd-recorder"
 version = "0.1.0"
 dependencies = [
  "hidapi",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "ntd-tablets"
+version = "0.1.0"
+dependencies = [
+ "include_dir",
+ "log",
+ "ntd-core",
  "serde",
  "serde_json",
 ]
@@ -2635,6 +2648,7 @@ dependencies = [
  "log",
  "next_tablet_driver",
  "ntd-core",
+ "ntd-tablets",
 ]
 
 [[package]]

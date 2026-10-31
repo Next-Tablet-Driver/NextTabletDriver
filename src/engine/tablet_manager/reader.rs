@@ -4,10 +4,10 @@
 use super::owner::owner_iteration;
 use super::sdk_bridge::apply_shm_snapshot;
 use super::try_acquire_boxed;
-use crate::drivers::TabletData;
 use crate::engine::interop::shm::ShmReader;
 use crate::engine::state::SharedState;
 use crossbeam_channel::Sender;
+use ntd_tablets::TabletData;
 use std::any::Any;
 use std::sync::Arc;
 use std::sync::atomic::Ordering;

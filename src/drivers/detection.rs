@@ -1,8 +1,8 @@
-use crate::drivers::NextTabletDriver;
-use crate::drivers::config::{DigitizerIdentifier, TabletConfiguration};
 use crate::drivers::config_loader::INDEXED_CONFIGS;
-use crate::drivers::generic::GenericNextTabletDriver;
 use hidapi::{HidApi, HidDevice};
+use ntd_tablets::NextTabletDriver;
+use ntd_tablets::config::{DigitizerIdentifier, TabletConfiguration};
+use ntd_tablets::generic::GenericNextTabletDriver;
 use std::collections::HashMap;
 use std::ffi::CStr;
 use std::time::{Duration, Instant};
@@ -475,7 +475,7 @@ pub fn detect_tablet(api: &HidApi) -> Option<(HidDevice, Box<dyn NextTabletDrive
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::drivers::config::{
+    use ntd_tablets::config::{
         Attributes, DigitizerIdentifier, DigitizerSpecs, PenSpecs, Specifications,
         TabletConfiguration,
     };

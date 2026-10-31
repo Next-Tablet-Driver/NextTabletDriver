@@ -124,7 +124,7 @@ If you cannot, [open a tablet support request](https://github.com/Next-Tablet-Dr
 
 ## Step 4: write a parser
 
-You need a new parser only when no existing one decodes your tablet. You do need to read Rust and to know the report layout. The existing parsers in `src/drivers/parsers/` are good examples. Start with `fallback.rs`, which is the simplest.
+You need a new parser only when no existing one decodes your tablet. You do need to read Rust and to know the report layout. The existing parsers in `crates/ntd-tablets/src/parsers/` are good examples. Start with `fallback.rs`, which is the simplest.
 
 ### What a parser does
 
@@ -137,8 +137,8 @@ A parser implements the `ReportParser` trait. It gets the raw bytes of one repor
 This parser reads a made-up layout: byte 1 is a flag byte, then X, Y and pressure as 16-bit little-endian numbers.
 
 ```rust
-use crate::drivers::parsers::ReportParser;
-use crate::drivers::{TabletData, TabletStatus};
+use crate::parsers::ReportParser;
+use crate::{TabletData, TabletStatus};
 
 /// Layout (little endian):
 /// byte 0 report ID, byte 1 flags (0 = pen out of range, bit 0 = tip touching),
@@ -205,7 +205,7 @@ Also test the cases that go wrong: a packet that is too short, an empty packet, 
 
 ### Register it
 
-1. Add `pub mod your_parser;` to `src/drivers/parsers/mod.rs` (or inside your brand's module).
+1. Add `pub mod your_parser;` to `crates/ntd-tablets/src/parsers/mod.rs` (or inside your brand's module).
 2. Add a line to `create_parser` in the same file. It matches a **part of the name** that the definition gives in `ReportParser`:
 
    ```rust

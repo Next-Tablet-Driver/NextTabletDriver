@@ -1,6 +1,7 @@
 [package]
 name = "ntd-core"
 version = "0.1.0"
+publish = false
 authors.workspace = true
 description = "Pure types and maths shared by the NextTabletDriver crates"
 edition.workspace = true

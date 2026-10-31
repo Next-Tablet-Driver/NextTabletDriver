@@ -50,7 +50,7 @@ The CI runs the same checks on your pull request, so run them first. [Developmen
 cargo fmt --all -- --check
 cargo clippy --locked --workspace --all-targets --all-features -- -D warnings
 cargo nextest run --locked --workspace --all-features
-cargo test --locked --all-features --doc -p next_tablet_driver -p ntd-core
+cargo test --locked --all-features --doc -p next_tablet_driver -p ntd-core -p ntd-tablets
 cargo xtask lint-style
 cargo machete
 typos
@@ -134,4 +134,4 @@ Releases follow [Semantic Versioning](https://semver.org). The details, and the 
 
 ## License
 
-When you contribute, you license your work under the project's [MIT License](../LICENSE), except for the report parsers in `src/drivers/parsers/`: they are ports of OpenTabletDriver's parsers and stay under the LGPL-3.0 (see [`THIRD_PARTY_NOTICES.md`](../THIRD_PARTY_NOTICES.md)). Tablet definitions belong in [OpenTabletDriver](https://github.com/OpenTabletDriver/OpenTabletDriver), which uses the LGPLv3. See [Adding a tablet](../docs/adding-a-tablet.md#share-the-definition).
+When you contribute, you license your work under the project's [MIT License](../LICENSE), except for the report parsers in `crates/ntd-tablets/src/parsers/`: they are ports of OpenTabletDriver's parsers and stay under the LGPL-3.0 (see [`THIRD_PARTY_NOTICES.md`](../THIRD_PARTY_NOTICES.md)). Tablet definitions belong in [OpenTabletDriver](https://github.com/OpenTabletDriver/OpenTabletDriver), which uses the LGPLv3. See [Adding a tablet](../docs/adding-a-tablet.md#share-the-definition).

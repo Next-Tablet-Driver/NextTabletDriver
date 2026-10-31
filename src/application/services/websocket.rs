@@ -40,7 +40,7 @@ struct WsPayload {
 
 impl WsPayload {
     fn from_tablet_data(
-        data: &crate::drivers::TabletData,
+        data: &ntd_tablets::TabletData,
         send_coords: bool,
         send_pressure: bool,
         send_status: bool,
@@ -343,7 +343,7 @@ pub fn websocket_loop(shared: &Arc<SharedState>) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::drivers::{TabletData, TabletStatus};
+    use ntd_tablets::{TabletData, TabletStatus};
 
     #[test]
     fn test_origin_policy() {

@@ -12,7 +12,8 @@
 //! by `engine::interop`, exactly as documented there: this loop becomes
 //! either the HID owner or a reader of whichever process already is one.
 
-use next_tablet_driver::drivers::{TabletData, TabletStatus, detect_tablet};
+use next_tablet_driver::drivers::detect_tablet;
+
 use next_tablet_driver::engine::interop::command::{CommandHandler, CommandListener};
 use next_tablet_driver::engine::interop::lock::try_acquire_hid_owner;
 use next_tablet_driver::engine::interop::shm::{
@@ -23,6 +24,7 @@ use next_tablet_driver::engine::state::SharedState;
 use next_tablet_driver::filters::FilterPipeline;
 use ntd_core::config::models::{ActiveArea, DriverMode, MappingConfig};
 use ntd_core::sync::{LockRecoveryExt, WriteRecoverExt};
+use ntd_tablets::{TabletData, TabletStatus};
 use std::panic;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -429,7 +431,7 @@ fn init_filter_pipeline(shared: &Arc<SharedState>, config: &MappingConfig) -> Fi
 
 fn on_device_connected(
     shared: &Arc<SharedState>,
-    driver: &dyn next_tablet_driver::drivers::NextTabletDriver,
+    driver: &dyn ntd_tablets::NextTabletDriver,
     vid: u16,
     pid: u16,
     local_config: &mut MappingConfig,
@@ -479,7 +481,7 @@ fn on_disconnected(shared: &Arc<SharedState>) {
         .pipeline
         .tablet_data
         .write()
-        .unwrap_or_reset("tablet_data") = next_tablet_driver::drivers::TabletData::default();
+        .unwrap_or_reset("tablet_data") = ntd_tablets::TabletData::default();
 }
 
 /// The main packet reading loop, driving the real HID device. Adapted from
@@ -493,7 +495,7 @@ fn on_disconnected(shared: &Arc<SharedState>) {
 )]
 fn run_polling_loop(
     device: &hidapi::HidDevice,
-    driver: &dyn next_tablet_driver::drivers::NextTabletDriver,
+    driver: &dyn ntd_tablets::NextTabletDriver,
     shared: &Arc<SharedState>,
     pipeline: &mut Pipeline,
     filters: &mut FilterPipeline,
@@ -574,7 +576,7 @@ fn run_polling_loop(
 
 fn process_packet(
     raw: &[u8],
-    driver: &dyn next_tablet_driver::drivers::NextTabletDriver,
+    driver: &dyn ntd_tablets::NextTabletDriver,
     shared: &Arc<SharedState>,
     pipeline: &mut Pipeline,
     filters: &mut FilterPipeline,

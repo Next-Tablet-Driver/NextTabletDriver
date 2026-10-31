@@ -85,7 +85,7 @@ typos                                           # cargo install --locked typos-c
 cargo machete                                   # cargo install --locked cargo-machete
 cargo clippy -p next_tablet_driver --all-targets --all-features -- -D warnings
 cargo nextest run -p next_tablet_driver --all-features     # cargo install --locked cargo-nextest
-cargo test -p next_tablet_driver --all-features --doc -p ntd-core
+cargo test -p next_tablet_driver --all-features --doc -p ntd-core -p ntd-tablets
 ```
 
 We use [nextest](https://nexte.st) because a few tests touch things that belong to the whole process: the panic hook, the log level, and machine-wide names (a named pipe, a mutex and a shared-memory segment). `cargo nextest` runs each test in its own process, so they cannot disturb each other. **Close NextTabletDriver before you run the tests**, because the tests use the same machine-wide names.

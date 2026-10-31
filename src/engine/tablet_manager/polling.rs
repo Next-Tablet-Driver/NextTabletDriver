@@ -3,7 +3,6 @@
 
 use super::buttons::ButtonRouter;
 use super::sdk_bridge::publish_shm_state;
-use crate::drivers::{TabletData, TabletStatus};
 use crate::engine::injector::{Injector, InputSink};
 use crate::engine::interop::shm::ShmWriter;
 use crate::engine::pipeline::{Pipeline, ProcessedFrame};
@@ -12,6 +11,7 @@ use crate::filters::FilterPipeline;
 use crossbeam_channel::Sender;
 use ntd_core::config::models::{DriverMode, MappingConfig};
 use ntd_core::sync::{LockRecoveryExt, WriteRecoverExt};
+use ntd_tablets::{TabletData, TabletStatus};
 use std::panic;
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
@@ -28,7 +28,7 @@ use std::time::{Duration, Instant};
 )]
 pub(super) fn run_polling_loop(
     device: &hidapi::HidDevice,
-    driver: &dyn crate::drivers::NextTabletDriver,
+    driver: &dyn ntd_tablets::NextTabletDriver,
     shared: &Arc<SharedState>,
     tablet_sender: &Sender<TabletData>,
     pipeline: &mut Pipeline,
@@ -200,7 +200,7 @@ fn process_packet<I: InputSink>(
     raw: &[u8],
     read_start: Instant,
     read_duration: Duration,
-    driver: &dyn crate::drivers::NextTabletDriver,
+    driver: &dyn ntd_tablets::NextTabletDriver,
     shared: &Arc<SharedState>,
     tablet_sender: &Sender<TabletData>,
     pipeline: &mut Pipeline,
@@ -357,7 +357,7 @@ impl Default for PacketLoopState {
 )]
 pub fn process_packet_for_bench<I: InputSink>(
     raw: &[u8],
-    driver: &dyn crate::drivers::NextTabletDriver,
+    driver: &dyn ntd_tablets::NextTabletDriver,
     shared: &Arc<SharedState>,
     tablet_sender: &Sender<TabletData>,
     pipeline: &mut Pipeline,
@@ -410,9 +410,9 @@ fn maybe_reload_config(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::drivers::parsers::ReportParser;
-    use crate::drivers::parsers::fallback::FallbackParser;
     use ntd_core::input::{Key, MouseButton};
+    use ntd_tablets::parsers::ReportParser;
+    use ntd_tablets::parsers::fallback::FallbackParser;
 
     /// Records calls instead of injecting real input, so running the tests never moves the
     /// developer's cursor.
@@ -443,7 +443,7 @@ mod tests {
     }
 
     struct MockDriver;
-    impl crate::drivers::NextTabletDriver for MockDriver {
+    impl ntd_tablets::NextTabletDriver for MockDriver {
         fn get_name(&self) -> &'static str {
             "Mock"
         }

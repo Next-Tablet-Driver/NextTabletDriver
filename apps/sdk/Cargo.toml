@@ -19,6 +19,7 @@ crate-type = ["cdylib", "staticlib"]
 [dependencies]
 next_tablet_driver = { workspace = true }
 ntd-core = { workspace = true }
+ntd-tablets = { workspace = true }
 hidapi = { workspace = true }
 log = { workspace = true }
 

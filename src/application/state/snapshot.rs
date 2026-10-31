@@ -1,7 +1,7 @@
-use crate::drivers::TabletData;
 use crate::engine::state::SharedState;
 use ntd_core::config::models::MappingConfig;
 use ntd_core::sync::LockRecoveryExt;
+use ntd_tablets::TabletData;
 
 /// An immutable, lock-free snapshot of the application state for a single UI frame.
 #[derive(Clone, Debug)]
@@ -23,7 +23,7 @@ pub struct UiSnapshot {
     /// Largest raw pressure the tablet reports.
     pub max_pressure: f32,
     /// Packet and timing statistics of the driver.
-    pub stats: crate::drivers::DriverStats,
+    pub stats: ntd_tablets::DriverStats,
     /// Number of packets processed since the engine started.
     pub packet_count: u32,
     /// Whether this is the first run of the application.

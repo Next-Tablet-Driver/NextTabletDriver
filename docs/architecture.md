@@ -36,6 +36,7 @@ The desktop app is a thin shell around this engine. It adds a window (the user i
 | `frontend/` | The interface. [Svelte](https://svelte.dev) 5, TypeScript and Vite. See [`frontend/README.md`](../frontend/README.md). |
 | `apps/sdk/` | `ntd_sdk`, a library that lets other programs (games, tools) run the engine inside their own process. See [Integrations](integrations.md) and [`apps/sdk/README.md`](../apps/sdk/README.md). |
 | `crates/ntd-core/` | `ntd-core`, the pure types and maths (button bindings, coordinate transforms, `MappingConfig`). It does no input or output. |
+| `crates/ntd-tablets/` | `ntd-tablets`, the tablet definitions, the report parsers and the packet types. It does no input or output. |
 | `crates/ntd-plugin-api/` | `ntd_plugin_api`, the interface that plugins implement. See [Plugin development](plugin-development.md). |
 | `plugins/` | Source code of the five plugins we maintain. |
 | `tablets/OpenTabletDriver/` | A git submodule with tablet definitions from [OpenTabletDriver](https://github.com/OpenTabletDriver/OpenTabletDriver). |
@@ -51,7 +52,7 @@ This is what happens for every packet, in order. The names are the Rust modules 
 
 1. **Find the tablet** (`drivers::detection`). The engine lists USB HID devices with the `hidapi` library. It compares each device's vendor ID and product ID (VID:PID) with the tablet definitions. When one matches, it opens the device and sends the start-up reports that some tablets need.
 2. **Read a packet** (`engine::tablet_manager::polling`). A loop reads raw bytes from the tablet. This loop runs on a thread with raised priority (`TIME_CRITICAL` on Windows, `nice -11` on Linux).
-3. **Decode it** (`drivers::generic`, `drivers::parsers`). Each tablet family sends bytes in its own layout. A *parser* knows one layout and returns a common `TabletData`: position, pressure, tilt, buttons and status. The definition file says which parser to use.
+3. **Decode it** (`ntd_tablets::generic`, `ntd_tablets::parsers`). Each tablet family sends bytes in its own layout. A *parser* knows one layout and returns a common `TabletData`: position, pressure, tilt, buttons and status. The definition file says which parser to use.
 4. **Run the pipeline** (`engine::pipeline`). `Pipeline::process` turns `TabletData` into a `ProcessedFrame`:
     1. `Transformer` converts raw sensor units into millimeters on the tablet surface.
     2. `Normalizer` applies the active area (size, position, rotation) and returns `u` and `v`, a position from 0 to 1 inside that area.

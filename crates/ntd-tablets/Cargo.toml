@@ -1,0 +1,23 @@
+[package]
+name = "ntd-tablets"
+version = "0.1.0"
+publish = false
+authors.workspace = true
+description = "Tablet definitions, report parsers and packet types of NextTabletDriver"
+edition.workspace = true
+license = "MIT AND LGPL-3.0-only"
+rust-version.workspace = true
+repository.workspace = true
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+ntd-core = { workspace = true }
+include_dir = { workspace = true }
+log = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+[lints]
+workspace = true
