@@ -1542,8 +1542,8 @@ just the application.
 | | |
 |---|---|
 | **Current phase** | Phase 1: Workspace, quality, CI, contribution rules |
-| **Last completed task** | P1.4 |
-| **Next task** | P1.5 |
+| **Last completed task** | P1.5 |
+| **Next task** | P1.6 |
 | **v1 bridge release** | not started (P7.5a) |
 | **Last updated** | 2026-10-31 |
 
@@ -1676,9 +1676,11 @@ phase 1; §12, §13, §14).
     `rust-version` declared once in `[workspace.package]`.
   - Notes: the jobs use `dtolnay/rust-toolchain@stable` without a version; `flake.nix` follows
     `rust-bin.stable.latest` of its pinned overlay. `rust-version` (1.99.0) is only the MSRV.
-- [ ] **P1.5** Formatting and editor (§12.1)
+- [x] **P1.5** Formatting and editor (§12.1) (branch `chore/v3-phase-1`)
   - Depends on: P1.1
   - Done when: `rustfmt.toml` and `.editorconfig` match §12.1; `cargo fmt --all --check` green.
+  - Notes: the two new rustfmt options (`use_field_init_shorthand`, `use_try_shorthand`) changed no
+    line of code. `.gitattributes` already forces LF on `*.rs`, which `newline_style = "Unix"` needs.
 - [ ] **P1.6** Introduce `[workspace.lints]` as `warn` (§12.3)
   - Depends on: P1.3
   - Done when: the §12.3 block is in place with the groups as `warn` **temporarily**; the number
