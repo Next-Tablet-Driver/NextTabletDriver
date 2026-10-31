@@ -19,7 +19,7 @@ rustPlatform.buildRustPackage {
     src = ../frontend;
     # Update this hash whenever frontend/package-lock.json changes: `nix build .#default`
     # fails with the expected hash, paste it here.
-    hash = "sha256-Env3czQvCMnxpzkdAdpa1ch/eB3Ca26U16H9hO+g/KE=";
+    hash = "sha256-FwJM9a+FiLehiIDAai2+wStP+K8ljx3GGLsU3EDvQvY=";
   };
 
   nativeBuildInputs = with pkgs; [
