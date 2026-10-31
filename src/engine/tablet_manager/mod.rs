@@ -2,7 +2,7 @@
 //!
 //! This module is the execution environment for the background USB polling thread.
 //! It handles detecting devices, reading raw USB packets, checking for configuration
-//! updates, and feeding data to the UI thread and [`Pipeline`](crate::engine::pipeline::Pipeline).
+//! updates, and feeding data to the UI thread and [`Pipeline`](ntd_pipeline::Pipeline).
 //!
 //! # Architecture
 //!

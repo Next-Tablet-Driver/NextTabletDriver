@@ -2,9 +2,7 @@
 //!
 //! Converts UV or MM coordinates into final OS-ready output (pixels or deltas).
 
-use crate::engine::state::SharedState;
 use ntd_core::config::models::MappingConfig;
-use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 /// Handles the third stage: converting normalized or physical coordinates into
@@ -43,17 +41,10 @@ impl Projector {
     /// * `u` - Normalized X coordinate in `[0.0, 1.0]`.
     /// * `v` - Normalized Y coordinate in `[0.0, 1.0]`.
     /// * `config` - The current global configuration containing target screen area dimensions.
-    /// * `_shared` - A reference to the thread-safe shared application state.
     ///
     /// # Returns
     /// A tuple `(screen_x, screen_y)` representing the absolute target pixel position.
-    pub const fn project_absolute(
-        &mut self,
-        u: f32,
-        v: f32,
-        config: &MappingConfig,
-        _shared: &Arc<SharedState>,
-    ) -> (f32, f32) {
+    pub const fn project_absolute(&mut self, u: f32, v: f32, config: &MappingConfig) -> (f32, f32) {
         let (sx, sy) = ntd_core::math::transform::normalized_to_screen(
             u,
             v,
@@ -114,18 +105,15 @@ impl Projector {
 )]
 mod tests {
     use super::*;
-    use crate::engine::state::SharedState;
     use ntd_core::config::models::MappingConfig;
-    use std::sync::Arc;
     use std::time::{Duration, Instant};
 
     #[test]
     fn test_project_absolute_center() {
         let mut p = Projector::default();
         let cfg = MappingConfig::default();
-        let shared = Arc::new(SharedState::new());
 
-        let (sx, sy) = p.project_absolute(0.5, 0.5, &cfg, &shared);
+        let (sx, sy) = p.project_absolute(0.5, 0.5, &cfg);
         assert!((cfg.target_area.w.mul_add(-0.5, sx)).abs() < f32::EPSILON);
         assert!(cfg.target_area.h.mul_add(-0.5, sy).abs() < f32::EPSILON);
         assert_eq!(p.abs_screen, Some((sx, sy)));

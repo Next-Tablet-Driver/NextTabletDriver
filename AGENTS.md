@@ -25,6 +25,7 @@ Cargo.toml        one Cargo workspace, one Cargo.lock; the root crate (src/) is 
 apps/desktop/     Tauri wiring (commands, events, tray); crate `app`
 apps/sdk/         `ntd_sdk`, the C ABI for integrators
 crates/           `ntd-core` (pure types and maths), `ntd-tablets` (definitions and parsers),
+                  `ntd-pipeline` (processing stages and the `Filter` trait),
                   `ntd-plugin-api` (the plugin ABI); the tablet tables of
                   `ntd-tablets` are generated, never edited (`cargo run --locked -p ntd-codegen`)
 plugins/          the official plugins (workspace members)
@@ -44,7 +45,7 @@ The root crate is split into the crates of the plan (§4) in phase 2 onward.
 cargo fmt --all --check
 cargo clippy --locked --workspace --all-targets --all-features -- -D warnings
 cargo nextest run --locked --workspace --all-features     # not `cargo test`: tests share state
-cargo test --locked --all-features --doc -p next_tablet_driver -p ntd-core -p ntd-tablets
+cargo test --locked --all-features --doc -p next_tablet_driver -p ntd-core -p ntd-tablets -p ntd-pipeline
 cargo xtask lint-style
 cargo machete
 typos

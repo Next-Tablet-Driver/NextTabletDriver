@@ -5,12 +5,13 @@
 //! pipeline.
 
 use super::error::{DeletePluginError, TrustError};
+use super::filter::PluginFilter;
 use super::instance::PluginInstance;
 use super::loader::{LoadedLibrary, PluginLoader};
 use super::trust::{self, PinnedLibrary, TrustStore, UntrustedPlugin};
-use crate::filters::FilterPipeline;
 use ntd_core::config::models::MappingConfig;
 use ntd_core::sync::LockRecoveryExt;
+use ntd_pipeline::FilterPipeline;
 use ntd_plugin_api::PluginManifest;
 use std::collections::HashMap;
 use std::fs;
@@ -310,7 +311,21 @@ impl PluginManager {
     /// configured with preferences from `config.plugins`.
     #[must_use]
     pub fn create_pipeline(&self, config: &MappingConfig) -> FilterPipeline {
-        FilterPipeline::from_manager(self, config)
+        let mut pipeline = FilterPipeline::new();
+        for manifest in self.loaded_manifests() {
+            if let Some(instance) = self.create_instance(&manifest.id) {
+                log::info!(
+                    target: "Pipeline",
+                    "Registered plugin '{}' in filter pipeline",
+                    manifest.id
+                );
+                pipeline.add(manifest.id, Box::new(PluginFilter::new(instance)), false);
+            }
+        }
+        // A plugin without settings stays disabled; the others get their saved state and
+        // properties.
+        pipeline.update_config(config);
+        pipeline
     }
 }
 

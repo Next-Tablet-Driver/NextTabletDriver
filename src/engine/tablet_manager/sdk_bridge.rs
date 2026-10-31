@@ -4,10 +4,10 @@
 
 use crate::engine::interop::command::CommandHandler;
 use crate::engine::interop::shm::{DEVICE_NAME_CAPACITY, SdkPublicState, ShmWriter};
-use crate::engine::pipeline::ProcessedFrame;
 use crate::engine::state::SharedState;
 use ntd_core::config::models::{ActiveArea, DriverMode, MappingConfig};
 use ntd_core::sync::{LockRecoveryExt, WriteRecoverExt};
+use ntd_pipeline::ProcessedFrame;
 use ntd_tablets::{TabletData, TabletStatus};
 use std::sync::Arc;
 use std::sync::atomic::Ordering;

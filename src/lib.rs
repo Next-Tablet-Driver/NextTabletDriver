@@ -8,8 +8,8 @@
 //!
 //! The driver operates as a pipeline with the following stages: [`drivers`] scans the USB
 //! bus for supported devices using `hidapi` and runs a high-frequency polling loop,
-//! [`drivers::parsers`] decodes the vendor-specific byte arrays into a standardized
-//! [`drivers::TabletData`] structure, [`filters`] applies optional processing such as
+//! [`ntd_tablets::parsers`] decodes the vendor-specific byte arrays into a standardized
+//! [`ntd_tablets::TabletData`] structure, [`ntd_pipeline`] applies optional processing such as
 //! antichatter (smoothing) or telemetry collection, [`ntd_core::math`] maps physical tablet
 //! coordinates into normalized space and projects them onto the target screen pixels, and
 //! [`engine::injector`] injects the final coordinates and button states into the operating
@@ -26,7 +26,7 @@
 //! *   **[`ntd_core`]**: Core configuration models and mathematical transforms (own crate).
 //! *   **[`drivers`]**: Protocol definitions and hardware-specific parsers.
 //! *   **[`engine`]**: The execution core that links the UI, drivers, and OS.
-//! *   **[`filters`]**: Digital signal processing for pen data.
+//! *   **[`ntd_pipeline`]**: The processing stages and the filter chain (own crate).
 //! *   **[`i18n`]**: Internationalization support.
 //! *   **[`logger`]**: Logging utilities.
 //! *   **[`settings`]**: Persistence logic for user configurations.
@@ -36,7 +36,6 @@
 pub mod application;
 pub mod drivers;
 pub mod engine;
-pub mod filters;
 pub mod i18n;
 /// Logging to a file and to the in-memory buffer behind the console.
 pub mod logger;

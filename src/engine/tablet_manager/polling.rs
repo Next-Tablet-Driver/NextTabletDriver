@@ -5,12 +5,12 @@ use super::buttons::ButtonRouter;
 use super::sdk_bridge::publish_shm_state;
 use crate::engine::injector::{Injector, InputSink};
 use crate::engine::interop::shm::ShmWriter;
-use crate::engine::pipeline::{Pipeline, ProcessedFrame};
 use crate::engine::state::SharedState;
-use crate::filters::FilterPipeline;
 use crossbeam_channel::Sender;
 use ntd_core::config::models::{DriverMode, MappingConfig};
 use ntd_core::sync::{LockRecoveryExt, WriteRecoverExt};
+use ntd_pipeline::FilterPipeline;
+use ntd_pipeline::{Pipeline, ProcessedFrame};
 use ntd_tablets::{TabletData, TabletStatus};
 use std::panic;
 use std::sync::Arc;
@@ -92,7 +92,7 @@ pub(super) fn run_polling_loop(
                     status: TabletStatus::OutOfRange,
                     ..Default::default()
                 };
-                let frame = pipeline.process(&out, driver, local_config, filters, shared);
+                let frame = pipeline.process(&out, driver, local_config, filters);
                 inject_frame(injector, &out, local_config, &frame);
                 // No report for a while: the pen is away, so none of its buttons can be held.
                 state.buttons.release_pen(injector);
@@ -225,7 +225,7 @@ fn process_packet<I: InputSink>(
         data.receive_time = Some(read_start);
         data.parser_time = parse_duration.unwrap_or_default();
 
-        let frame = pipeline.process(&data, driver, local_config, filters, shared);
+        let frame = pipeline.process(&data, driver, local_config, filters);
 
         let inject_start = detailed.then(Instant::now);
         inject_frame(injector, &data, local_config, &frame);

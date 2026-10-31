@@ -2559,6 +2559,7 @@ dependencies = [
  "minisign-verify 0.2.5",
  "nix 0.31.3",
  "ntd-core",
+ "ntd-pipeline",
  "ntd-tablets",
  "ntd_plugin_api",
  "proptest",
@@ -2620,6 +2621,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "ntd-pipeline"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "ntd-core",
+ "ntd-tablets",
+ "ntd_plugin_api",
+ "serde_json",
+ "thiserror 2.0.21",
+]
+
+[[package]]
 name = "ntd-recorder"
 version = "0.1.0"
 dependencies = [
@@ -2657,6 +2670,7 @@ dependencies = [
  "log",
  "next_tablet_driver",
  "ntd-core",
+ "ntd-pipeline",
  "ntd-tablets",
 ]
 

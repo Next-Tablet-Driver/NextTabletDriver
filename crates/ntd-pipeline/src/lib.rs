@@ -1,20 +1,24 @@
-//! # Input Processing Pipeline
+//! # `ntd-pipeline`
 //!
-//! Orchestrates the flow of raw data through various stages to produce OS-ready input.
+//! Turns a parsed tablet report into an OS-ready frame: transform, normalise, filter, project.
+//! The filters are anything that implements [`Filter`]; this crate does not know where they come
+//! from (the plugin host provides the dynamic ones). No I/O.
 
+pub mod filter;
 pub mod models;
 pub mod normalizer;
 pub mod projector;
 pub mod transformer;
 
+pub use filter::{Filter, FilterEntry, FilterError, FilterPipeline};
 pub use models::ProcessedFrame;
 pub use normalizer::Normalizer;
 pub use projector::Projector;
 pub use transformer::Transformer;
 
 use ntd_core::config::models::{DriverMode, MappingConfig};
+use ntd_plugin_api::{PluginContext, PluginPacket};
 use ntd_tablets::TabletData;
-use std::sync::Arc;
 
 /// The core processing pipeline for tablet input events.
 ///
@@ -72,8 +76,7 @@ impl Pipeline {
         data: &TabletData,
         driver: &dyn ntd_tablets::NextTabletDriver,
         config: &MappingConfig,
-        filters: &mut crate::filters::FilterPipeline,
-        shared: &Arc<crate::engine::state::SharedState>,
+        filters: &mut FilterPipeline,
     ) -> ProcessedFrame {
         if !data.is_connected {
             filters.reset();
@@ -97,7 +100,7 @@ impl Pipeline {
             .transformer
             .execute(data.x, data.y, max_w, max_h, phys_w, phys_h);
 
-        let (u, v) = self.normalizer.execute(x_mm, y_mm, config, shared);
+        let (u, v) = self.normalizer.execute(x_mm, y_mm, config);
 
         let raw_pressure_ratio = if max_p > 0.0 {
             f32::from(data.pressure) / max_p
@@ -107,7 +110,7 @@ impl Pipeline {
         let pressure_ratio =
             ntd_core::math::curve::evaluate(raw_pressure_ratio, &config.pressure_curve);
 
-        let mut packet = ntd_plugin_api::PluginPacket {
+        let mut packet = PluginPacket {
             u,
             v,
             pressure: pressure_ratio,
@@ -116,7 +119,7 @@ impl Pipeline {
             is_down: data.pressure > 0 || data.status == ntd_tablets::TabletStatus::Contact,
             timestamp_ns: 0,
         };
-        let context = ntd_plugin_api::PluginContext {
+        let context = PluginContext {
             active_area_width_mm: config.active_area.w,
             active_area_height_mm: config.active_area.h,
             target_area_width_px: config.target_area.w,
@@ -140,7 +143,7 @@ impl Pipeline {
 
         match config.mode {
             DriverMode::Absolute => {
-                let (sx, sy) = self.projector.project_absolute(u, v, config, shared);
+                let (sx, sy) = self.projector.project_absolute(u, v, config);
                 frame.screen_x = sx;
                 frame.screen_y = sy;
             }
@@ -187,8 +190,6 @@ impl Pipeline {
 )]
 mod tests {
     use super::*;
-    use crate::engine::state::SharedState;
-    use crate::filters::FilterPipeline;
     use ntd_core::config::models::MappingConfig;
     use ntd_tablets::TabletData;
 
@@ -220,7 +221,6 @@ mod tests {
         config.active_area.w = 100.0;
         config.active_area.h = 100.0;
 
-        let shared = Arc::new(SharedState::test_default());
         let mut filters = FilterPipeline::new();
         let driver = MockDriver;
 
@@ -232,7 +232,7 @@ mod tests {
             ..Default::default()
         };
 
-        let frame = pipeline.process(&data, &driver, &config, &mut filters, &shared);
+        let frame = pipeline.process(&data, &driver, &config, &mut filters);
         assert!((frame.u - 0.5).abs() < f32::EPSILON);
         assert!((frame.v - 0.5).abs() < f32::EPSILON);
     }
@@ -260,7 +260,6 @@ mod tests {
         config.pressure_curve.curve_type = ntd_core::config::models::PressureCurveType::Exponential;
         config.pressure_curve.exponent = 2.0;
 
-        let shared = Arc::new(SharedState::test_default());
         let mut filters = FilterPipeline::new();
         let driver = MockDriver;
 
@@ -272,7 +271,7 @@ mod tests {
             ..Default::default()
         };
 
-        let frame = pipeline.process(&data, &driver, &config, &mut filters, &shared);
+        let frame = pipeline.process(&data, &driver, &config, &mut filters);
         assert!(
             frame.pressure < 4095,
             "curved pressure should be reshaped below the linear midpoint"
@@ -298,7 +297,6 @@ mod tests {
     fn test_pipeline_disconnected_resets_filters_and_returns_default() {
         let mut pipeline = Pipeline::new();
         let config = MappingConfig::default();
-        let shared = Arc::new(SharedState::test_default());
         let mut filters = FilterPipeline::new();
         let driver = MockDriver;
 
@@ -311,7 +309,7 @@ mod tests {
             ..Default::default()
         };
 
-        let frame = pipeline.process(&disconnected_data, &driver, &config, &mut filters, &shared);
+        let frame = pipeline.process(&disconnected_data, &driver, &config, &mut filters);
         assert_eq!(frame, ProcessedFrame::default());
     }
 
@@ -319,7 +317,6 @@ mod tests {
     fn test_pipeline_non_positional_status_returns_default() {
         let mut pipeline = Pipeline::new();
         let config = MappingConfig::default();
-        let shared = Arc::new(SharedState::test_default());
         let mut filters = FilterPipeline::new();
         let driver = MockDriver;
 
@@ -331,7 +328,7 @@ mod tests {
             ..Default::default()
         };
 
-        let frame = pipeline.process(&out_of_range_data, &driver, &config, &mut filters, &shared);
+        let frame = pipeline.process(&out_of_range_data, &driver, &config, &mut filters);
         assert_eq!(frame, ProcessedFrame::default());
 
         let aux_data = TabletData {
@@ -342,7 +339,7 @@ mod tests {
             ..Default::default()
         };
 
-        let frame_aux = pipeline.process(&aux_data, &driver, &config, &mut filters, &shared);
+        let frame_aux = pipeline.process(&aux_data, &driver, &config, &mut filters);
         assert_eq!(frame_aux, ProcessedFrame::default());
     }
 
@@ -357,7 +354,6 @@ mod tests {
         config.relative_config.y_sensitivity = 1.0;
         config.relative_config.rotation = 0.0;
 
-        let shared = Arc::new(SharedState::test_default());
         let mut filters = FilterPipeline::new();
         let driver = MockDriver;
 
@@ -370,7 +366,7 @@ mod tests {
             y: 500, // 50mm
             ..Default::default()
         };
-        let f1 = pipeline.process(&d1, &driver, &config, &mut filters, &shared);
+        let f1 = pipeline.process(&d1, &driver, &config, &mut filters);
         assert_eq!(f1.screen_x, 0.0);
         assert_eq!(f1.screen_y, 0.0);
 
@@ -382,7 +378,7 @@ mod tests {
             y: 530, // 53mm
             ..Default::default()
         };
-        let f2 = pipeline.process(&d2, &driver, &config, &mut filters, &shared);
+        let f2 = pipeline.process(&d2, &driver, &config, &mut filters);
         assert!((f2.screen_x - 2.0).abs() < 1e-4);
         assert!((f2.screen_y - 3.0).abs() < 1e-4);
     }
@@ -410,7 +406,6 @@ mod tests {
     fn test_pipeline_degenerate_specs_no_nan_or_panic() {
         let mut pipeline = Pipeline::new();
         let config = MappingConfig::default();
-        let shared = Arc::new(SharedState::test_default());
         let mut filters = FilterPipeline::new();
         let driver = MockDegenerateDriver;
 
@@ -423,7 +418,7 @@ mod tests {
             ..Default::default()
         };
 
-        let frame = pipeline.process(&data, &driver, &config, &mut filters, &shared);
+        let frame = pipeline.process(&data, &driver, &config, &mut filters);
         assert!(!frame.u.is_nan());
         assert!(!frame.v.is_nan());
         assert!(!frame.screen_x.is_nan());

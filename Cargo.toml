@@ -19,6 +19,7 @@ members = [
     "apps/sdk",
     "apps/sdk/examples/rust_plugin",
     "crates/ntd-core",
+    "crates/ntd-pipeline",
     "crates/ntd-plugin-api",
     "crates/ntd-tablets",
     "plugins/*",
@@ -46,6 +47,7 @@ categories = ["hardware-support"]
 # In this repository
 next_tablet_driver = { path = ".", default-features = false }
 ntd-core = { path = "crates/ntd-core" }
+ntd-pipeline = { path = "crates/ntd-pipeline" }
 ntd_plugin_api = { path = "crates/ntd-plugin-api" }
 ntd-tablets = { path = "crates/ntd-tablets" }
 # Third party
@@ -185,6 +187,7 @@ minisign-verify = { workspace = true }
 libloading = { workspace = true }
 ntd-core = { workspace = true }
 ntd_plugin_api = { workspace = true }
+ntd-pipeline = { workspace = true }
 ntd-tablets = { workspace = true }
 
 # Windows

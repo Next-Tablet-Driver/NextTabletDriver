@@ -19,11 +19,11 @@ use next_tablet_driver::engine::interop::lock::try_acquire_hid_owner;
 use next_tablet_driver::engine::interop::shm::{
     DEVICE_NAME_CAPACITY, SdkPublicState, ShmReader, ShmWriter,
 };
-use next_tablet_driver::engine::pipeline::{Pipeline, ProcessedFrame};
 use next_tablet_driver::engine::state::SharedState;
-use next_tablet_driver::filters::FilterPipeline;
 use ntd_core::config::models::{ActiveArea, DriverMode, MappingConfig};
 use ntd_core::sync::{LockRecoveryExt, WriteRecoverExt};
+use ntd_pipeline::FilterPipeline;
+use ntd_pipeline::{Pipeline, ProcessedFrame};
 use ntd_tablets::{TabletData, TabletStatus};
 use std::panic;
 use std::sync::Arc;
@@ -543,7 +543,7 @@ fn run_polling_loop(
                     status: TabletStatus::OutOfRange,
                     ..Default::default()
                 };
-                let frame = pipeline.process(&out, driver, local_config, filters, shared);
+                let frame = pipeline.process(&out, driver, local_config, filters);
                 *shared
                     .pipeline
                     .processed_frame
@@ -584,7 +584,7 @@ fn process_packet(
     shm_writer: Option<&ShmWriter>,
 ) {
     if let Some(data) = driver.parse(raw) {
-        let frame = pipeline.process(&data, driver, local_config, filters, shared);
+        let frame = pipeline.process(&data, driver, local_config, filters);
         *shared
             .pipeline
             .processed_frame

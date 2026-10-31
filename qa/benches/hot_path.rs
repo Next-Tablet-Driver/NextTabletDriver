@@ -40,14 +40,14 @@ use criterion::{Criterion, Throughput, criterion_group};
 use crossbeam_channel::bounded;
 use next_tablet_driver::application::state::UiSnapshot;
 use next_tablet_driver::engine::injector::InputSink;
-use next_tablet_driver::engine::pipeline::Pipeline;
 use next_tablet_driver::engine::state::SharedState;
 use next_tablet_driver::engine::tablet_manager::bench_support::{
     PacketLoopState, process_packet_for_bench,
 };
-use next_tablet_driver::filters::FilterPipeline;
 use ntd_core::config::models::{DriverMode, MappingConfig};
 use ntd_core::input::{Key, MouseButton};
+use ntd_pipeline::FilterPipeline;
+use ntd_pipeline::Pipeline;
 use ntd_tablets::{NextTabletDriver, TabletData, TabletStatus};
 use std::hint::black_box;
 use std::sync::Arc;
