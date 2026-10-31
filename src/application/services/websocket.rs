@@ -95,7 +95,10 @@ fn is_origin_allowed(origin: &str) -> bool {
     host.eq_ignore_ascii_case("localhost") || host == "127.0.0.1" || host == "::1"
 }
 
-#[allow(clippy::result_large_err)]
+#[allow(
+    clippy::result_large_err,
+    reason = "the handshake callback signature is fixed by tungstenite"
+)]
 fn check_origin(request: &Request, response: Response) -> Result<Response, ErrorResponse> {
     let allowed = request
         .headers()

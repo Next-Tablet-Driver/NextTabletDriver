@@ -5,7 +5,12 @@
 //! the active area always maps to the centre of the screen area, the screen projection never
 //! leaves its target, and relative movement is linear and antisymmetric.
 
-#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+#![allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic,
+    reason = "a test that panics is a failing test"
+)]
 
 use next_tablet_driver::core::math::transform::{
     apply_relative_delta, normalized_to_screen, physical_to_normalized, rotate_point,

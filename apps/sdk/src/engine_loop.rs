@@ -482,7 +482,10 @@ fn on_disconnected(shared: &Arc<SharedState>) {
 /// the desktop app's `run_polling_loop`: no OS input injection, no UI
 /// channel. Every processed frame lands in `shared.pipeline.processed_frame` and the
 /// shared segment for `ntd_poll_state`/readers to pick up.
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "each argument is a distinct piece of per-device state the loop borrows; a parameter struct would only move the list"
+)]
 fn run_polling_loop(
     device: &hidapi::HidDevice,
     driver: &dyn next_tablet_driver::drivers::NextTabletDriver,

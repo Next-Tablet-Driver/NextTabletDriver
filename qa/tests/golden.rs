@@ -12,7 +12,8 @@
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::panic,
-    clippy::indexing_slicing
+    clippy::indexing_slicing,
+    reason = "a test that panics is a failing test"
 )]
 
 use next_tablet_driver::drivers::TabletData;

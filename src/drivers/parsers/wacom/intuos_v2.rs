@@ -176,7 +176,10 @@ impl ReportParser for WacomDriverIntuosV2Parser {
 }
 
 #[cfg(test)]
-#[allow(clippy::float_cmp)]
+#[allow(
+    clippy::float_cmp,
+    reason = "the tests compare floats that are exact by construction or copied unchanged"
+)]
 mod tests {
     use super::*;
 
@@ -274,7 +277,10 @@ mod tests {
     }
 
     #[test]
-    #[allow(clippy::default_constructed_unit_structs)]
+    #[allow(
+        clippy::default_constructed_unit_structs,
+        reason = "the test checks that `Default` and `new` agree"
+    )]
     fn the_default_parsers_behave_like_the_new_ones() {
         let plain = IntuosV2Parser::default();
         assert!(plain.parse(&[0x11, 0x01]).is_some());

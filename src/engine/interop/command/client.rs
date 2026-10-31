@@ -24,7 +24,10 @@ pub fn send_command(request: Request) -> io::Result<Response> {
 }
 
 #[cfg(test)]
-#[allow(clippy::float_cmp)]
+#[allow(
+    clippy::float_cmp,
+    reason = "the tests compare floats that are exact by construction or copied unchanged"
+)]
 mod tests {
     use super::super::REQUEST_SIZE;
     use super::*;

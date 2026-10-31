@@ -20,7 +20,10 @@ use std::time::{Duration, Instant};
 ///
 /// Polls the raw HID device for byte reports and coordinates configuration reloading and packet
 /// processing.
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "each argument is a distinct piece of per-device state the loop borrows; a parameter struct would only move the list"
+)]
 pub(super) fn run_polling_loop(
     device: &hidapi::HidDevice,
     driver: &dyn crate::drivers::NextTabletDriver,
@@ -186,7 +189,10 @@ const STATS_INTERVAL: Duration = Duration::from_millis(16);
 /// consecutive active reports exceeds 25.0ms.
 ///
 /// Emits statistics updates and forwards output frames to the GUI thread.
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "each argument is a distinct piece of per-device state the loop borrows; a parameter struct would only move the list"
+)]
 fn process_packet<I: InputSink>(
     raw: &[u8],
     read_start: Instant,
@@ -338,7 +344,10 @@ impl Default for PacketLoopState {
 /// the shared-memory publication. Not part of the public API: it exists so benchmarks measure
 /// production code rather than a copy of it.
 #[doc(hidden)]
-#[allow(clippy::too_many_arguments)]
+#[allow(
+    clippy::too_many_arguments,
+    reason = "each argument is a distinct piece of per-device state the loop borrows; a parameter struct would only move the list"
+)]
 pub fn process_packet_for_bench<I: InputSink>(
     raw: &[u8],
     driver: &dyn crate::drivers::NextTabletDriver,

@@ -259,7 +259,10 @@ const fn default_ws_hz() -> u32 {
 
 /// Configuration for the embedded WebSocket server.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[allow(clippy::struct_excessive_bools)]
+#[allow(
+    clippy::struct_excessive_bools,
+    reason = "each bool is an independent user setting, stored and serialized as such"
+)]
 #[cfg_attr(feature = "specta", derive(specta::Type))]
 pub struct WebSocketConfig {
     /// Whether the WebSocket server is enabled.
@@ -307,7 +310,10 @@ impl Default for WebSocketConfig {
 #[cfg(feature = "specta")]
 #[derive(Serialize, specta::Type)]
 #[serde(untagged)]
-#[allow(dead_code)]
+#[allow(
+    dead_code,
+    reason = "only describes the TypeScript type of a plugin property; never constructed"
+)]
 pub enum PluginPropertyValue {
     Number(f64),
     Bool(bool),
@@ -384,7 +390,10 @@ impl Default for PressureCurveConfig {
 /// primary object serialized to disk. Default struct fields are provided by individual functions
 /// to facilitate serde compatibility for adding new fields to older config files.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[allow(clippy::struct_excessive_bools)]
+#[allow(
+    clippy::struct_excessive_bools,
+    reason = "each bool is an independent user setting, stored and serialized as such"
+)]
 #[cfg_attr(feature = "specta", derive(specta::Type))]
 pub struct MappingConfig {
     /// The active tracking mode (Absolute or Relative).
@@ -652,7 +661,10 @@ impl MappingConfig {
 }
 
 #[cfg(test)]
-#[allow(clippy::float_cmp)]
+#[allow(
+    clippy::float_cmp,
+    reason = "the tests compare floats that are exact by construction or copied unchanged"
+)]
 mod tests {
     use super::*;
 

@@ -5,7 +5,7 @@
 //! After changing a command, an event or a type the frontend sees, regenerate the file with
 //! `UPDATE_BINDINGS=1 cargo test -p app --test bindings`.
 
-#![allow(clippy::expect_used)]
+#![allow(clippy::expect_used, reason = "a test that panics is a failing test")]
 
 /// Where the generated bindings are committed.
 const BINDINGS: &str = "../../frontend/src/lib/infrastructure/tauri/bindings.ts";

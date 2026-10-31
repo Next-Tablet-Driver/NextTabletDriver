@@ -118,7 +118,10 @@ impl Injector {
     /// * `_u` / `_v` - Normalized UV coordinates (unused on Windows).
     /// * `_pressure` - Pressure (unused on Windows).
     /// * `_tilt_x` / `_tilt_y` - Tilt (unused on Windows).
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "implements the `InputSink` method of the same signature"
+    )]
     pub fn move_absolute(
         &mut self,
         target_x: f32,
@@ -442,7 +445,10 @@ fn send_mouse_input_with_data(dx: i32, dy: i32, mouse_data: u32, flags: u32) {
 }
 
 #[cfg(test)]
-#[allow(clippy::float_cmp)]
+#[allow(
+    clippy::float_cmp,
+    reason = "the tests compare floats that are exact by construction or copied unchanged"
+)]
 mod tests {
     use super::*;
 

@@ -44,7 +44,10 @@ pub trait InputSink {
     /// Updates stylus proximity.
     fn set_proximity(&mut self, in_proximity: bool);
     /// Moves to an absolute position (`Absolute` mode).
-    #[allow(clippy::too_many_arguments)]
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "the position, pressure and tilt fields of one pen sample, as every sink receives them"
+    )]
     fn move_absolute(
         &mut self,
         target_x: f32,
@@ -111,7 +114,10 @@ pub mod linux;
 pub use linux::{Injector, InjectorError};
 
 #[cfg(test)]
-#[allow(clippy::float_cmp)]
+#[allow(
+    clippy::float_cmp,
+    reason = "the tests compare floats that are exact by construction or copied unchanged"
+)]
 mod tests {
     use super::*;
 

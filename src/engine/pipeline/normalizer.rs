@@ -23,7 +23,10 @@ impl Normalizer {
     ///
     /// # Returns
     /// A tuple `(u, v)` representing normalized UV coordinates.
-    #[allow(clippy::unused_self)]
+    #[allow(
+        clippy::unused_self,
+        reason = "a method like the other pipeline stages, which do use their state"
+    )]
     pub fn execute(
         &self,
         x_mm: f32,
