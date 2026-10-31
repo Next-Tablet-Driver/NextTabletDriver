@@ -1545,8 +1545,8 @@ just the application.
 | | |
 |---|---|
 | **Current phase** | Phase 3: Extract the I/O adapters |
-| **Last completed task** | P3.2 |
-| **Next task** | P3.3 |
+| **Last completed task** | P3.3 |
+| **Next task** | P3.4 |
 | **v1 bridge release** | not started (P7.5a) |
 | **Last updated** | 2026-10-31 |
 
@@ -2023,10 +2023,30 @@ Goal: every OS access behind a trait, with a fake and room for each platform (§
     request, so the old code logged a spurious warning every time). `startup.rs` keeps the
     hardware report (`log_system_hardware`), which is not in the list of this task. The
     `lint-style` list of crates that may use `unsafe` gained `crates/ntd-platform/`.
-- [ ] **P3.3** `ntd-hid`
+- [x] **P3.3** `ntd-hid` (branch `chore/v3-phase-3`)
   - Depends on: P3.1
   - Done when: `HidBackend` trait with an "exclusive" option and a `PermissionDenied` error; the
     only crate depending on `hidapi`; §16.3 structure.
+  - Notes: `crates/ntd-hid` has `windows.rs`, `linux.rs`, `macos.rs` and `unsupported.rs`; the
+    first two share `hidapi_backend.rs`, Windows adds the static input report length from
+    `HidP_GetCaps` (`src/drivers/hid_caps.rs` moved there with `git mv`), and the other two say
+    `Unsupported` (the crate was checked for `x86_64-unknown-uefi`; the Linux files could not be
+    compiled here, since `hidapi` needs the Linux system libraries: the CI does it). The traits
+    stay in `ntd-core` (see P3.1) and `ntd-hid` re-exports them. The port grew with what the
+    real callers need: `serial_number` and `release_number` in `HidDeviceInfo`,
+    `HidDevice::report_descriptor`, and `HidBackend::input_report_length` (the static query,
+    `None` by default). `exclusive` is accepted by every backend and only used by a macOS one,
+    which does not exist yet. A refusal of the system is `HidError::PermissionDenied`, decided in
+    one place (it used to be a string search in `detect_tablet`). `detect_tablet` now takes
+    `&mut dyn HidBackend` and returns `Box<dyn HidDevice>`; the polling loop takes
+    `&dyn HidDevice`; the desktop engine, the SDK engine, the SDK `ffi` probe and
+    `ntd-recorder` all go through `ntd_hid::Backend`, so `cargo tree -i hidapi` shows
+    `ntd-hid` alone. `detect_tablet` is tested for the first time without a tablet, with
+    `FakeHidBackend`: choice by static report length, fallback, unknown device never opened,
+    refused open. One behaviour change: `enumerate()` scans the bus again each time, where the
+    old code listed the devices seen when `HidApi` was created, so a tablet plugged after the
+    start is now found without a restart (the engine looks about twice a second while no tablet
+    is connected, which costs one enumeration each time).
 - [ ] **P3.4** `ntd-output`
   - Depends on: P3.1
   - Done when: `OutputSink` trait with `capabilities()`; Windows and Linux implementations;
