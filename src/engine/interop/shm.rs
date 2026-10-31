@@ -14,7 +14,7 @@
     reason = "the shared segment is read and written through raw pointers (seqlock)"
 )]
 
-use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::atomic::{AtomicU32, Ordering, fence};
 
 #[cfg(windows)]
 mod windows;
@@ -184,13 +184,18 @@ impl ShmWriter {
         // SAFETY: see `ShmSegment`'s doc comment; this writer is the sole
         // publisher for the lifetime of the mapping.
         let segment = unsafe { &*self.mapping.as_ptr().cast::<ShmSegment>() };
-        segment.seq.fetch_add(1, Ordering::AcqRel);
+        let seq = segment.seq.load(Ordering::Relaxed);
+        segment.seq.store(seq.wrapping_add(1), Ordering::Relaxed);
+        // Keeps the payload stores below from becoming visible before the odd counter: a
+        // release store alone only orders the operations that come before it (weakly ordered
+        // CPUs such as ARM64 reorder the rest).
+        fence(Ordering::Release);
         // SAFETY: exclusive-writer invariant above; readers never dereference
         // this pointer, they only ever copy through it after checking `seq`.
         unsafe {
             *segment.payload.get() = *payload;
         }
-        segment.seq.fetch_add(1, Ordering::Release);
+        segment.seq.store(seq.wrapping_add(2), Ordering::Release);
     }
 }
 
@@ -236,7 +241,9 @@ impl ShmReader {
             // whose consistency is validated by the matching `seq` check
             // below, per the seqlock protocol.
             let snapshot = unsafe { *segment.payload.get() };
-            let after = segment.seq.load(Ordering::Acquire);
+            // Keeps the payload loads above from being delayed past the second counter load.
+            fence(Ordering::Acquire);
+            let after = segment.seq.load(Ordering::Relaxed);
             if before == after {
                 return Some(snapshot);
             }
