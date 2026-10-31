@@ -1545,8 +1545,8 @@ just the application.
 | | |
 |---|---|
 | **Current phase** | Phase 3: Extract the I/O adapters |
-| **Last completed task** | GATE 2 |
-| **Next task** | P3.1 |
+| **Last completed task** | P3.1 |
+| **Next task** | P3.2 |
 | **v1 bridge release** | not started (P7.5a) |
 | **Last updated** | 2026-10-31 |
 
@@ -1981,10 +1981,25 @@ Goal: `ntd-core`, `ntd-tablets`, `ntd-pipeline` without any I/O (§7, phase 2).
 
 Goal: every OS access behind a trait, with a fake and room for each platform (§7, phase 3; §16.3).
 
-- [ ] **P3.1** `ntd-test-support`
+- [x] **P3.1** `ntd-test-support` (branch `chore/v3-phase-3`)
   - Depends on: GATE 2
   - Done when: fakes of `HidBackend`, `OutputSink`, `Clock` usable by every crate as a
     dev-dependency.
+  - Notes: the three ports exist before the crates that implement them (P3.3, P3.4), and
+    `ntd-hid` and `ntd-output` will dev-depend on `ntd-test-support`, so the traits cannot live in
+    those crates (a crate cannot dev-depend on a crate that depends on it without testing against
+    two copies of itself). They live in `ntd-core`, which has no I/O: `ntd_core::hid`
+    (`HidBackend`, `HidDevice`, `HidDeviceInfo`, `OpenOptions { exclusive }`, `HidError` with
+    `PermissionDenied`), `ntd_core::output::OutputSink` (the former `InputSink` of the injector,
+    moved to `ntd-core` and renamed, no re-export left) and `ntd_core::clock::Clock`. P3.3 and P3.4
+    implement them with `hidapi` and the OS injectors and may re-export them. `capabilities()`
+    is not on `OutputSink` yet: P3.4 adds it with the real values. The crate holds
+    `FakeHidBackend` (plug, unplug, replug, reports queued from a `FakeHidHandle`, refused
+    permission, a log of every `open` with its options), `RecordingSink` and `ManualClock` (moved
+    here from `ntd-core`). None of them sleeps or spawns a thread. `ntd-pipeline` and the root
+    crate use it as a dev-dependency (the polling tests dropped their private recorder), and the
+    coverage gate does not count it. `HidDevice` takes `&self`, as `hidapi` does, so the polling
+    loop can borrow it.
 - [ ] **P3.2** `ntd-platform` (§16.4)
   - Depends on: P3.1
   - Done when: autostart, single instance, thread priority and high-resolution timer live in this
