@@ -1796,7 +1796,7 @@ phase 1; §12, §13, §14).
     `actionlint` here; YAML parses and every `needs` and plan output is checked); the ARM64 runner
     labels (`ubuntu-24.04-arm`, `windows-11-arm`) are new, so those two test jobs are allowed to fail
     until they have run green.
-- [~] **P1.16** Rework `security.yml` (§13.3) (branch `chore/v3-phase-1`; waiting for the repository settings)
+- [x] **P1.16** Rework `security.yml` (§13.3) (branch `chore/v3-phase-1`)
   - Depends on: P1.1
   - Done when: a single `cargo deny check`, `npm audit`, dependency review on PRs; secret scanning
     and push protection enabled.
@@ -1805,18 +1805,25 @@ phase 1; §12, §13, §14).
     that made `cargo deny` fail on `main` are fixed (`rustls-webpki` 0.103.16, `webpki-roots` 1.0.11);
     `fxhash` (unmaintained, no replacement release, pulled in by `display-info`) is listed in
     `deny.toml` with its reason. `npm audit` reports 0 vulnerabilities.
-  - **Still to do, in the GitHub settings** (secret scanning and push protection are disabled
-    today): not changed without the maintainer's go-ahead.
+  - Repository settings: secret scanning and push protection were disabled; the maintainer agreed
+    and both are now enabled (checked with the API).
 - [x] **P1.17** `toolchain-beta.yml` (§12.6) (branch `chore/v3-phase-1`)
   - Depends on: P1.15
   - Done when: weekly non-blocking job that opens an issue on failure.
   - Notes: every Monday at 04:00 UTC, clippy and the tests on beta (`RUSTUP_TOOLCHAIN=beta` overrides
     `rust-toolchain.toml`); on failure it opens one issue (not a second while one is open). It cannot
     be tried before it is on `main`; trigger it with `workflow_dispatch` once merged.
-- [ ] **P1.18** Protect `main` (§14.4)
+- [x] **P1.18** Protect `main` (§14.4) (branch `chore/v3-phase-1`)
   - Depends on: P1.15
   - Done when: `ci-success` is the only required check; direct pushes to `main` are forbidden;
     the maintainer can merge their own PRs after green CI.
+  - Notes: the ruleset **Protect main** already existed and already does the rest: it requires a pull
+    request (0 approvals, so the maintainer merges their own PRs after green CI, squash only, linear
+    history), forbids deleting `main` and forcing a push, and has one bypass actor that can only
+    bypass through a pull request. **Deviation, agreed with the maintainer**: it requires two checks,
+    `CI success` and `Conventional PR title`, not only `CI success`. The title must be checked again
+    when it is edited, which a CI run does not do without running everything again, so the title
+    check stays its own workflow (`pr-title.yml`). Nothing was changed in the ruleset.
 - [ ] **P1.19** Root `AGENTS.md` and `CLAUDE.md` (§14.1)
   - Depends on: P1.1
   - Done when: `AGENTS.md` describes the project, layout and commands, and points to §9 and §17;
