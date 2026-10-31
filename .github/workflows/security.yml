@@ -1,22 +1,17 @@
 name: Security
 
-# Advisories are checked here and not in ci.yml: a newly published advisory must not fail
-# unrelated pull requests. Runs weekly, on demand and when a lockfile or the policy changes.
+# Runs on every pull request and every push to main, and daily: an advisory can be published
+# against code that did not change. It is not part of `ci-success`, so a new advisory does not
+# block unrelated pull requests, but it is visible on each of them.
+
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 6 * * 1"
+    - cron: "0 6 * * *"
   push:
     branches: [main]
-    paths:
-      - "**/Cargo.lock"
-      - "deny.toml"
   pull_request:
     branches: [main]
-    paths:
-      - "**/Cargo.lock"
-      - "**/Cargo.toml"
-      - "deny.toml"
 
 permissions:
   contents: read
@@ -26,9 +21,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  advisories:
-    name: Security advisories (cargo-deny)
+  deny:
+    name: Dependency policy (cargo-deny)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -38,6 +34,37 @@ jobs:
         with:
           tool: cargo-deny
 
-      # One workspace, one lockfile: a single run audits every crate.
-      - name: Check every crate
-        run: cargo deny check advisories
+      # One workspace, one lockfile: a single run checks the advisories, the licences, the bans
+      # (duplicate versions) and the sources of every crate.
+      - name: cargo deny check
+        run: cargo deny check
+
+  npm-audit:
+    name: npm audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+
+      # Only what ships: the development tools are not part of the application.
+      - name: Audit the frontend dependencies
+        run: npm --prefix frontend audit --omit=dev
+
+  dependency-review:
+    name: Dependency review
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      # Fails a pull request that adds a dependency with a known vulnerability.
+      - name: Review the dependency changes
+        uses: actions/dependency-review-action@2031cfc080254a8a887f58cffee85186f0e49e48 # v4

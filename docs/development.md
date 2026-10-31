@@ -237,7 +237,7 @@ The CI runs on every pull request and every push to `main`. A first job, **Plan*
 
 All the actions are pinned by commit SHA, and the Rust jobs install the `stable` toolchain from `rust-toolchain.toml` and fail on any warning (`RUSTFLAGS=-D warnings`). The system libraries that Linux needs are installed by `.github/actions/linux-deps`.
 
-Other workflows: **CodeQL** (code scanning), **Security** (known security problems in dependencies), **Nix** (the Nix package), **Release** (installers on a tag), and two small ones that check the title of a pull request and label it.
+Other workflows: **CodeQL** (code scanning), **Security** (`cargo deny check`, `npm audit` and, on a pull request, a dependency review; also daily, and not part of `ci-success`), **Nix** (the Nix package), **Release** (installers on a tag), and two small ones that check the title of a pull request and label it.
 
 ## Common build problems
 

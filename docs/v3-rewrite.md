@@ -1796,10 +1796,17 @@ phase 1; §12, §13, §14).
     `actionlint` here; YAML parses and every `needs` and plan output is checked); the ARM64 runner
     labels (`ubuntu-24.04-arm`, `windows-11-arm`) are new, so those two test jobs are allowed to fail
     until they have run green.
-- [ ] **P1.16** Rework `security.yml` (§13.3)
+- [~] **P1.16** Rework `security.yml` (§13.3) (branch `chore/v3-phase-1`; waiting for the repository settings)
   - Depends on: P1.1
   - Done when: a single `cargo deny check`, `npm audit`, dependency review on PRs; secret scanning
     and push protection enabled.
+  - Done in the repository: `security.yml` runs one `cargo deny check`, `npm audit --omit=dev` and the
+    dependency review (pull requests), on every PR and push to `main` and daily. The two advisories
+    that made `cargo deny` fail on `main` are fixed (`rustls-webpki` 0.103.16, `webpki-roots` 1.0.11);
+    `fxhash` (unmaintained, no replacement release, pulled in by `display-info`) is listed in
+    `deny.toml` with its reason. `npm audit` reports 0 vulnerabilities.
+  - **Still to do, in the GitHub settings** (secret scanning and push protection are disabled
+    today): not changed without the maintainer's go-ahead.
 - [ ] **P1.17** `toolchain-beta.yml` (§12.6)
   - Depends on: P1.15
   - Done when: weekly non-blocking job that opens an issue on failure.
