@@ -30,6 +30,22 @@ The definition files write IDs as **decimal** numbers. Convert hexadecimal to de
 printf '%d\n' 0x28BD    # 10429
 ```
 
+## Record your tablet with `ntd-recorder`
+
+Whether you add the support yourself or ask for it, a **capture** of your tablet is the most useful thing you can provide. `ntd-recorder` records the tablet's HID report descriptor and the raw reports it sends while you follow ten short on-screen instructions (hover, press lightly then hard, tilt, click the pen buttons, press the tablet buttons, touch the corners). It takes about a minute.
+
+```bash
+cargo run --release --manifest-path tools/ntd-recorder/Cargo.toml -- list
+cargo run --release --manifest-path tools/ntd-recorder/Cargo.toml -- record 28bd:0914
+```
+
+1. **Close NextTabletDriver** and any other tablet driver. They keep the tablet open, and it cannot be read twice.
+2. `list` shows the connected devices as `VID:PID`. Pass yours to `record`, or run `record` alone to pick it from a list.
+3. Follow the instructions. Press Enter to start each step.
+4. The tool writes `<vid>-<pid>.ntdcap`. `ntd-recorder check <file>` prints a summary.
+
+The file contains the device IDs and names, the descriptor, and the timestamped reports. It contains **no** personal data: no file path, no machine or user name, and only the last four characters of the serial number. Attach it to your issue.
+
 ## Step 2: check if a definition exists
 
 Search the definitions for your product ID. They are in `tablets/OpenTabletDriver/OpenTabletDriver.Configurations/Configurations/`, in one folder per brand.

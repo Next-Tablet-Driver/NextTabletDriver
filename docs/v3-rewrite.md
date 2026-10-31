@@ -1542,8 +1542,8 @@ just the application.
 | | |
 |---|---|
 | **Current phase** | Phase 0: Safety nets |
-| **Last completed task** | P0.4 |
-| **Next task** | P0.5 |
+| **Last completed task** | P0.5 |
+| **Next task** | P0.6 |
 | **v1 bridge release** | not started (P7.5a) |
 | **Last updated** | 2026-10-31 |
 
@@ -1601,7 +1601,7 @@ Goal: be able to detect any regression **before** touching the architecture (§7
   - Depends on: —
   - Done when: a single Lucide library in `frontend/package.json`; `npm run check`, `npm test` and
     `npm run e2e` green.
-- [ ] **P0.5** Write `ntd-recorder` v1 (§15.3)
+- [x] **P0.5** Write `ntd-recorder` v1 (§15.3) (PR: to be linked)
   - Depends on: —
   - Note: it lives in `tools/ntd-recorder` with its own `Cargo.lock` **temporarily**; it joins the
     workspace in P1.2. This is the only exception to rule 21.
