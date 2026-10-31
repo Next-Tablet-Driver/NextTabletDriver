@@ -170,6 +170,12 @@ impl ShmWriter {
         segment
             .abi_version
             .store(SDK_ABI_VERSION, Ordering::Release);
+        // The segment outlives its owner. A previous owner killed between the two increments of
+        // `publish` leaves an odd counter, which every reader would take for a write in progress.
+        let seq = segment.seq.load(Ordering::Acquire);
+        if seq % 2 != 0 {
+            segment.seq.store(seq.wrapping_add(1), Ordering::Release);
+        }
         Some(Self { mapping })
     }
 
