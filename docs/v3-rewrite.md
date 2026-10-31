@@ -1545,8 +1545,8 @@ just the application.
 | | |
 |---|---|
 | **Current phase** | Phase 1: Workspace, quality, CI, contribution rules |
-| **Last completed task** | P1.17 |
-| **Next task** | P1.18 |
+| **Last completed task** | P1.19 |
+| **Next task** | P1.20 |
 | **v1 bridge release** | not started (P7.5a) |
 | **Last updated** | 2026-10-31 |
 
@@ -1824,10 +1824,13 @@ phase 1; §12, §13, §14).
     `CI success` and `Conventional PR title`, not only `CI success`. The title must be checked again
     when it is edited, which a CI run does not do without running everything again, so the title
     check stays its own workflow (`pr-title.yml`). Nothing was changed in the ruleset.
-- [ ] **P1.19** Root `AGENTS.md` and `CLAUDE.md` (§14.1)
+- [x] **P1.19** Root `AGENTS.md` and `CLAUDE.md` (§14.1) (branch `chore/v3-phase-1`)
   - Depends on: P1.1
   - Done when: `AGENTS.md` describes the project, layout and commands, and points to §9 and §17;
     `CLAUDE.md` is a symlink to it.
+  - Notes: `CLAUDE.md` is a git symlink (mode 120000) to `AGENTS.md`. On Windows with
+    `core.symlinks=false` git writes it as a one-line text file; Linux and macOS get a real symlink.
+    The per-area `AGENTS.md` files of §14.1 come with the crates they describe (phase 2 onward).
 - [ ] **P1.20** Contribution: language, AI policy, review, closing criteria, PR template
   (§14.2 to §14.6)
   - Depends on: —
