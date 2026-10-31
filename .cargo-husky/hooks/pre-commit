@@ -7,5 +7,7 @@ set -e
 echo '+cargo fmt --all -- --check'
 cargo fmt --all -- --check
 
-echo '+cargo clippy -p next_tablet_driver --all-targets --all-features -- -D warnings'
-cargo clippy -p next_tablet_driver --all-targets --all-features -- -D warnings
+# TEMPORARY (roadmap P1.6 to P1.8): the new lints of [workspace.lints] are `warn` until the code
+# is clean, so warnings are allowed here. `deny` lints still fail. P1.8 restores `-D warnings`.
+echo '+cargo clippy -p next_tablet_driver --all-targets --all-features'
+cargo clippy -p next_tablet_driver --all-targets --all-features

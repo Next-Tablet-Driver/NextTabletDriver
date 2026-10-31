@@ -20,3 +20,6 @@ ntd_plugin_api = { workspace = true }
 
 # `export_ntd_plugin!` uses serde_json, and `set_property` receives JSON text.
 serde_json = { workspace = true }
+
+[lints]
+workspace = true

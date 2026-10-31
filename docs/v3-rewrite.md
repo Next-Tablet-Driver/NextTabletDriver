@@ -1542,8 +1542,8 @@ just the application.
 | | |
 |---|---|
 | **Current phase** | Phase 1: Workspace, quality, CI, contribution rules |
-| **Last completed task** | P1.5 |
-| **Next task** | P1.6 |
+| **Last completed task** | P1.6 |
+| **Next task** | P1.7 |
 | **v1 bridge release** | not started (P7.5a) |
 | **Last updated** | 2026-10-31 |
 
@@ -1681,10 +1681,23 @@ phase 1; §12, §13, §14).
   - Done when: `rustfmt.toml` and `.editorconfig` match §12.1; `cargo fmt --all --check` green.
   - Notes: the two new rustfmt options (`use_field_init_shorthand`, `use_try_shorthand`) changed no
     line of code. `.gitattributes` already forces LF on `*.rs`, which `newline_style = "Unix"` needs.
-- [ ] **P1.6** Introduce `[workspace.lints]` as `warn` (§12.3)
+- [x] **P1.6** Introduce `[workspace.lints]` as `warn` (§12.3) (branch `chore/v3-phase-1`)
   - Depends on: P1.3
   - Done when: the §12.3 block is in place with the groups as `warn` **temporarily**; the number
     of warnings per crate is recorded in the PR.
+  - Notes: the lints v2 already denied (`unwrap_used`, `expect_used`, `panic`, `indexing_slicing`,
+    `todo`, `unimplemented`, `exit`, `lossy_float_literal`, `dead_code`) stay `deny`; the groups and
+    the new lints are `warn`. Every crate has `[lints] workspace = true`, so the example plugin and
+    `tools/ntd-recorder` follow the same policy. The local hooks run clippy without `-D warnings`
+    until P1.8.
+  - **Warnings per crate** (`cargo clippy --workspace --all-targets --all-features`, 699 in
+    total): `next_tablet_driver` 474, `app` 71, `ntd_sdk` 48, `ntd-recorder` 29, `hand_speed` 20,
+    `devocub_antichatter` 16, `radial_follow` 12, `hawku_smoothing` 9, `simple_smoothing` 9,
+    `kalman_smoothing` 8, `ntd_plugin_api` 3.
+  - **By lint**: `missing_docs` 375, `unsafe_code` 92, `allow_attributes_without_reason` 87,
+    `unreachable_pub` 71, `cargo_common_metadata` 33 (3 per crate), `needless_pass_by_value` 17
+    (desktop commands), `print_stdout` 14, `print_stderr` 5, `unreachable` 2, `suboptimal_flops` 2,
+    `doc_markdown` 1.
 - [ ] **P1.7** Fix lint warnings (several PRs, one area per PR)
   - Depends on: P1.6
   - Done when: zero warnings on the workspace; each PR only fixes lints, with no behaviour change

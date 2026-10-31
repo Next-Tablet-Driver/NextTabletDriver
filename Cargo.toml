@@ -79,6 +79,68 @@ ureq = "2.12.1"
 uuid = "1.23.3"
 windows-sys = "0.61.2"
 
+[workspace.lints.rust]
+# Introduced as `warn` (roadmap P1.6) and switched to `deny` once the code is clean (P1.8).
+unsafe_code = "warn"
+missing_docs = "warn"
+unreachable_pub = "warn"
+dead_code = "deny"
+
+[workspace.lints.rustdoc]
+broken_intra_doc_links = "warn"
+
+[workspace.lints.clippy]
+# Groups.
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+nursery = { level = "warn", priority = -1 }
+cargo = { level = "warn", priority = -1 }
+
+# Error handling: no external data may make the driver panic.
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+indexing_slicing = "deny"
+unreachable = "warn"
+todo = "deny"
+unimplemented = "deny"
+exit = "deny"
+lossy_float_literal = "deny"
+
+# Output: everything goes through `log`.
+print_stdout = "warn"
+print_stderr = "warn"
+dbg_macro = "warn"
+
+# unsafe and FFI.
+undocumented_unsafe_blocks = "warn"
+multiple_unsafe_ops_per_block = "warn"
+uninit_assumed_init = "warn"
+uninit_vec = "warn"
+cast_ptr_alignment = "warn"
+ptr_as_ptr = "warn"
+fn_to_numeric_cast_any = "warn"
+
+# Documentation.
+missing_errors_doc = "warn"
+missing_panics_doc = "warn"
+
+# Every #[allow] must carry its justification: #[allow(lint, reason = "...")].
+allow_attributes_without_reason = "warn"
+
+# Exceptions, carried over from v2.
+# HID reports mix u8/u16/i16/f32: the conversions are intended and bounded.
+cast_precision_loss = "allow"
+cast_possible_truncation = "allow"
+cast_sign_loss = "allow"
+# x/y, tilt_x/tilt_y: close names are the domain vocabulary.
+similar_names = "allow"
+# Parsers are long flat `match`es over bytes; splitting them hurts readability.
+too_many_lines = "allow"
+assert_is_empty = "allow"
+# Duplicate versions are handled by cargo-deny (bans) with a reviewed exception list.
+multiple_crate_versions = "allow"
+
 [features]
 default = ["desktop"]
 # Everything that talks to the OS: HID polling thread and input injection.
@@ -162,33 +224,5 @@ strip = true
 # debug = true
 incremental = false
 
-[lints.rust]
-dead_code = "deny"
-# missing_docs = "warn"
-
-[lints.clippy]
-unwrap_used = "deny"
-expect_used = "deny"
-panic = "deny"
-indexing_slicing = "deny"
-exit = "deny"
-todo = "deny"
-unimplemented = "deny"
-lossy_float_literal = "deny"
-
-all = { level = "warn", priority = -1 }
-pedantic = { level = "warn", priority = -1 }
-nursery = { level = "warn", priority = -1 }
-missing_panics_doc = "warn"
-missing_errors_doc = "warn"
-undocumented_unsafe_blocks = "warn"
-multiple_unsafe_ops_per_block = "warn"
-fn_to_numeric_cast_any = "warn"
-
-cast_precision_loss = "allow"
-cast_possible_truncation = "allow"
-cast_sign_loss = "allow"
-too_many_lines = "allow"
-similar_names = "allow"
-# Style-only lint that fires on idiomatic `assert!(x.is_empty())` in tests.
-assert_is_empty = "allow"
+[lints]
+workspace = true
