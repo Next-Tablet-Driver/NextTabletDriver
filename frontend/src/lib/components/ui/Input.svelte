@@ -30,7 +30,7 @@
   let inputRef = $state<HTMLInputElement>();
   let labelRef = $state<HTMLElement>();
 
-  const DRAG_THRESHOLD = 6; // px avant de considérer un swipe sur l'input
+  const DRAG_THRESHOLD = 6; // px before a swipe on the input is recognised
 
   function getStep(): number {
     const s = parseFloat(String(step));
@@ -98,9 +98,9 @@
   });
 
   // ── Swipe / drag (pointer events natifs) ──────────────────────────
-  // Sur le label : drag immédiat (souris, tactile, stylet).
-  // Sur l'input : swipe horizontal tactile uniquement (après un seuil),
-  // pour ne pas gêner la sélection de texte à la souris.
+  // On the label: immediate drag (mouse, touch, pen).
+  // On the input: horizontal touch swipe only (after a threshold),
+  // so that selecting text with the mouse is not disturbed.
   let pending = false;
   let dragging = false;
   let startX = 0;

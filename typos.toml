@@ -1,0 +1,27 @@
+# Spell checker, run by the CI (`typos`) on code, comments and documentation.
+# https://github.com/crate-ci/typos
+
+[files]
+extend-exclude = [
+    # Data we do not write: the OpenTabletDriver definitions, captures and their snapshots,
+    # raw benchmark output, lockfiles.
+    "tablets/",
+    "qa/golden/",
+    "qa/benches/raw/",
+    "*.lock",
+    "frontend/package-lock.json",
+    # The French translation is French, not misspelt English.
+    "resources/locales/fr.json",
+]
+
+[default]
+extend-ignore-re = [
+    # Minisign keys and signatures used as test data.
+    "RW[A-Za-z0-9+/=]{20,}",
+]
+
+[default.extend-words]
+# `ix` and `iy` are the integer parts of a movement on each axis.
+iy = "iy"
+# UGEE UE16, a tablet model.
+UE = "UE"

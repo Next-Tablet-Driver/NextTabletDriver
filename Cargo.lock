@@ -919,7 +919,6 @@ name = "devocub_antichatter"
 version = "1.0.0"
 dependencies = [
  "ntd_plugin_api",
- "serde",
  "serde_json",
 ]
 
@@ -1670,7 +1669,6 @@ version = "1.0.0"
 dependencies = [
  "crossbeam-channel",
  "ntd_plugin_api",
- "serde",
  "serde_json",
  "tungstenite",
 ]
@@ -1692,7 +1690,6 @@ name = "hawku_smoothing"
 version = "1.0.0"
 dependencies = [
  "ntd_plugin_api",
- "serde",
  "serde_json",
 ]
 
@@ -2292,7 +2289,6 @@ name = "kalman_smoothing"
 version = "1.0.0"
 dependencies = [
  "ntd_plugin_api",
- "serde",
  "serde_json",
 ]
 
@@ -3373,7 +3369,6 @@ name = "radial_follow"
 version = "1.0.0"
 dependencies = [
  "ntd_plugin_api",
- "serde",
  "serde_json",
 ]
 

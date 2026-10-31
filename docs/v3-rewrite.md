@@ -1545,8 +1545,8 @@ just the application.
 | | |
 |---|---|
 | **Current phase** | Phase 1: Workspace, quality, CI, contribution rules |
-| **Last completed task** | P1.9 |
-| **Next task** | P1.10 |
+| **Last completed task** | P1.10 |
+| **Next task** | P1.11 |
 | **v1 bridge release** | not started (P7.5a) |
 | **Last updated** | 2026-10-31 |
 
@@ -1729,9 +1729,15 @@ phase 1; §12, §13, §14).
     repository to 100 columns meant re-wrapping 33 comments and splitting about 140 lines, mostly
     long log messages, with `\` continuations (the strings are byte-identical, checked with a
     script).
-- [ ] **P1.10** `typos` and `cargo-machete`
+- [x] **P1.10** `typos` and `cargo-machete` (branch `chore/v3-phase-1`)
   - Depends on: P1.1
   - Done when: `typos.toml` exists and both tools pass on the repository.
+  - Notes: `typos.toml` excludes the data we do not write (the OpenTabletDriver definitions,
+    captures, raw benchmark output, lockfiles, the French translation) and allows `iy` and `UE`.
+    Machete found six unused dependencies: `serde` in the five plugins was removed; `serde_json` in
+    the desktop app is a false positive (the `tauri::generate_context!` macro needs it) and is
+    listed in `[package.metadata.cargo-machete]`. Seven French comments in two Svelte components
+    were translated.
 - [ ] **P1.11** `cargo xtask ci-plan` (§15.6)
   - Depends on: P1.9
   - Done when: the command produces the list of touched crates + dependents and the matrix, with

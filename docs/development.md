@@ -81,6 +81,8 @@ The CI runs these checks on every pull request. Run them before you push.
 ```bash
 cargo fmt --all -- --check
 cargo xtask lint-style                          # lines over 100 characters, banners, TODOs
+typos                                           # cargo install --locked typos-cli
+cargo machete                                   # cargo install --locked cargo-machete
 cargo clippy -p next_tablet_driver --all-targets --all-features -- -D warnings
 cargo nextest run -p next_tablet_driver --all-features     # cargo install --locked cargo-nextest
 cargo test -p next_tablet_driver --all-features --doc

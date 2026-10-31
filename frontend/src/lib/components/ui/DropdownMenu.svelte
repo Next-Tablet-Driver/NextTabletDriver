@@ -18,8 +18,8 @@
     style = ''
   }: Props = $props();
 
-  const MARGIN = 8; // distance minimale avec le bord de la fenêtre
-  const GAP = 8;    // espace entre l'ancre et le menu (axe vertical)
+  const MARGIN = 8; // minimum distance from the window edge
+  const GAP = 8;    // space between the anchor and the menu (vertical axis)
 
   const OPPOSITE: Record<Side, Side> = {
     top: 'bottom',
@@ -139,7 +139,7 @@
   .dropdown-menu[data-side='bottom'][data-align='end'],
   .dropdown-menu[data-side='top'][data-align='end'] { right: 0; }
 
-  /* -5px = padding (4) + bordure (1) : le 1er item s'aligne sur l'item parent */
+  /* -5px = padding (4) + border (1): the first item lines up with the parent item */
   .dropdown-menu[data-side='right'][data-align='start'],
   .dropdown-menu[data-side='left'][data-align='start'] { top: -5px; }
 

@@ -16,7 +16,6 @@ crate-type = ["cdylib"]
 
 [dependencies]
 ntd_plugin_api = { workspace = true }
-serde = { workspace = true }
 serde_json = { workspace = true }
 crossbeam-channel = { workspace = true }
 tungstenite = { workspace = true }
