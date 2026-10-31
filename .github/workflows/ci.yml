@@ -329,7 +329,8 @@ jobs:
       # 60 seconds per parser family, from the committed corpus. A crash fails the job and its
       # input is uploaded: it becomes a unit test and joins the corpus (qa/fuzz/README.md).
       - name: Fuzz
-        run: cargo fuzz run ${{ matrix.target }} --fuzz-dir qa/fuzz -- -max_total_time=60
+        # `+nightly`: rust-toolchain.toml pins stable, which has no sanitizers.
+        run: cargo +nightly fuzz run ${{ matrix.target }} --fuzz-dir qa/fuzz -- -max_total_time=60
       - name: Upload the crashing input
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

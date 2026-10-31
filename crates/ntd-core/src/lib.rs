@@ -5,7 +5,6 @@
 //! input or output (reading a clock is its only contact with the OS), starts no thread and has no
 //! `unsafe` code.
 
-/// A source of time that can be replaced.
 pub mod clock;
 /// Configuration models shared by the engine and the interface.
 pub mod config;
