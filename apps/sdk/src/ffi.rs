@@ -9,7 +9,12 @@
 //! The workspace `Cargo.toml` sets `panic = "unwind"` specifically so a panic can
 //! never cross this boundary into the host process. None of the code in
 //! this module uses `unwrap`/`expect`/`panic!`/slice indexing (denied by
-//! `apps/sdk/Cargo.toml`'s lint table, same as the root crate's).
+//! the workspace lint table).
+
+#![allow(
+    unreachable_pub,
+    reason = "cbindgen and csbindgen only export `pub` items, so the C ABI must stay `pub`"
+)]
 
 use crate::engine_loop;
 use next_tablet_driver::core::config::models::{ActiveArea, DriverMode};

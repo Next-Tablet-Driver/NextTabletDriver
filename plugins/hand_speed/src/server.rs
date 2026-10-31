@@ -8,7 +8,7 @@ use std::thread::{self, JoinHandle};
 use tungstenite::{Message, WebSocket, accept};
 
 /// Embedded WebSocket server broadcasting pen hand speed and distance to connected overlays.
-pub struct StatsServer {
+pub(crate) struct StatsServer {
     shutdown_flag: Arc<AtomicBool>,
     sender: Sender<(f32, f32)>,
     thread_handle: Option<JoinHandle<()>>,
@@ -19,7 +19,7 @@ impl StatsServer {
     ///
     /// # Errors
     /// Returns the I/O error if the address cannot be bound.
-    pub fn start(ip: &str, port: u16) -> std::io::Result<Self> {
+    pub(crate) fn start(ip: &str, port: u16) -> std::io::Result<Self> {
         let listener = TcpListener::bind(format!("{ip}:{port}"))?;
         let _ = listener.set_nonblocking(true);
 
@@ -102,12 +102,12 @@ impl StatsServer {
     }
 
     /// Queues a stats payload to broadcast without blocking the caller.
-    pub fn send_stats(&self, speed: f32, total_dist: f32) {
+    pub(crate) fn send_stats(&self, speed: f32, total_dist: f32) {
         let _ = self.sender.try_send((speed, total_dist));
     }
 
     /// Signals threads to stop and joins the worker handle.
-    pub fn stop(&mut self) {
+    pub(crate) fn stop(&mut self) {
         self.shutdown_flag.store(true, Ordering::Relaxed);
         if let Some(handle) = self.thread_handle.take() {
             let _ = handle.join();

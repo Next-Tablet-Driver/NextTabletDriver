@@ -52,7 +52,7 @@ fn level_from_env() -> LevelFilter {
 /// Installs the SDK's stderr logger, unless a logger is already installed
 /// (e.g. the host application set its own before/after loading the SDK).
 /// Safe to call more than once -- only the first call has any effect.
-pub fn init() {
+pub(crate) fn init() {
     static ONCE: Once = Once::new();
     ONCE.call_once(|| {
         let level = level_from_env();

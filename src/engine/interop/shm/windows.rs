@@ -22,7 +22,7 @@ fn wide_name() -> Vec<u16> {
 /// view and closes the handle, but the segment's last published contents
 /// persist for the next process to map it (page-file-backed, not
 /// process-owned memory).
-pub struct Mapping {
+pub(super) struct Mapping {
     handle: HANDLE,
     view: *mut c_void,
 }
@@ -36,7 +36,7 @@ unsafe impl Send for Mapping {}
 unsafe impl Sync for Mapping {}
 
 impl Mapping {
-    pub const fn as_ptr(&self) -> *mut c_void {
+    pub(super) const fn as_ptr(&self) -> *mut c_void {
         self.view
     }
 }
@@ -77,7 +77,7 @@ fn map_view(handle: HANDLE, size: usize) -> Option<Mapping> {
 /// Creates (or takes over) the well-known named mapping, sized to hold one
 /// `ShmSegment`. Windows reference-counts the underlying pages: if another
 /// process already created this mapping, this call opens the same one.
-pub fn create_mapping(size: usize) -> Option<Mapping> {
+pub(super) fn create_mapping(size: usize) -> Option<Mapping> {
     create_named_mapping(&wide_name(), size)
 }
 
@@ -109,7 +109,7 @@ fn create_named_mapping(name: &[u16], size: usize) -> Option<Mapping> {
 /// Opens the well-known named mapping if it already exists; never creates
 /// it. Used by readers, which should never bring the segment into existence
 /// themselves; only the current HID owner publishes into it.
-pub fn open_mapping(size: usize) -> Option<Mapping> {
+pub(super) fn open_mapping(size: usize) -> Option<Mapping> {
     open_named_mapping(&wide_name(), size)
 }
 

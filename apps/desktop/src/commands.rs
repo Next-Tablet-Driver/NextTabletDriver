@@ -3,7 +3,7 @@ use std::sync::Arc;
 use tauri::State;
 
 #[derive(serde::Serialize, specta::Type)]
-pub struct TabletStatus {
+pub(crate) struct TabletStatus {
     pub connected: bool,
     pub name: String,
     pub width: f32,
@@ -18,7 +18,7 @@ pub struct TabletStatus {
 
 #[tauri::command]
 #[specta::specta]
-pub fn get_tablet_status(state: State<'_, Arc<SharedState>>) -> TabletStatus {
+pub(crate) fn get_tablet_status(state: State<'_, Arc<SharedState>>) -> TabletStatus {
     let device = state.device.read().unwrap_or_log("device_read_tauri");
     TabletStatus {
         connected: device.vid != 0,
@@ -33,14 +33,14 @@ pub fn get_tablet_status(state: State<'_, Arc<SharedState>>) -> TabletStatus {
 }
 
 #[derive(serde::Serialize, specta::Type)]
-pub struct EngineMetrics {
+pub(crate) struct EngineMetrics {
     pub hz: f32,
     pub last_packet_count: u32,
 }
 
 #[tauri::command]
 #[specta::specta]
-pub fn get_metrics(state: State<'_, Arc<SharedState>>) -> EngineMetrics {
+pub(crate) fn get_metrics(state: State<'_, Arc<SharedState>>) -> EngineMetrics {
     let _stats = state
         .pipeline
         .stats
@@ -61,7 +61,7 @@ use next_tablet_driver::engine::state::WriteRecoverExt;
 
 #[tauri::command]
 #[specta::specta]
-pub fn get_config(state: State<'_, Arc<SharedState>>) -> MappingConfig {
+pub(crate) fn get_config(state: State<'_, Arc<SharedState>>) -> MappingConfig {
     state
         .config
         .mapping
@@ -72,7 +72,7 @@ pub fn get_config(state: State<'_, Arc<SharedState>>) -> MappingConfig {
 
 #[tauri::command]
 #[specta::specta]
-pub fn set_config(state: State<'_, Arc<SharedState>>, new_config: MappingConfig) {
+pub(crate) fn set_config(state: State<'_, Arc<SharedState>>, new_config: MappingConfig) {
     let _ = next_tablet_driver::startup::set_run_at_startup(new_config.run_at_startup);
     next_tablet_driver::startup::set_fast_timer(new_config.force_high_resolution_timer);
 
@@ -89,7 +89,7 @@ pub fn set_config(state: State<'_, Arc<SharedState>>, new_config: MappingConfig)
 
 #[tauri::command]
 #[specta::specta]
-pub fn save_config(
+pub(crate) fn save_config(
     state: State<'_, Arc<SharedState>>,
     save_sender: State<'_, crossbeam_channel::Sender<MappingConfig>>,
 ) {
@@ -104,7 +104,7 @@ pub fn save_config(
 
 #[tauri::command]
 #[specta::specta]
-pub fn reset_config(state: State<'_, Arc<SharedState>>) {
+pub(crate) fn reset_config(state: State<'_, Arc<SharedState>>) {
     *state
         .config
         .mapping
@@ -120,7 +120,7 @@ pub fn reset_config(state: State<'_, Arc<SharedState>>) {
 /// format, so `ctrl + z` is stored as `Ctrl+Z`. The grammar lives in the core crate only.
 #[tauri::command]
 #[specta::specta]
-pub fn normalize_binding(text: String) -> Result<String, String> {
+pub(crate) fn normalize_binding(text: String) -> Result<String, String> {
     text.parse::<next_tablet_driver::core::input::Binding>()
         .map(|binding| binding.to_string())
         .map_err(|e| e.to_string())
@@ -128,7 +128,7 @@ pub fn normalize_binding(text: String) -> Result<String, String> {
 
 #[tauri::command]
 #[specta::specta]
-pub fn load_profile(state: State<'_, Arc<SharedState>>, path: String) -> Result<(), String> {
+pub(crate) fn load_profile(state: State<'_, Arc<SharedState>>, path: String) -> Result<(), String> {
     match next_tablet_driver::settings::load_settings_from_file(std::path::Path::new(&path)) {
         Ok((cfg, _)) => {
             let _ = next_tablet_driver::startup::set_run_at_startup(cfg.run_at_startup);
@@ -151,7 +151,10 @@ pub fn load_profile(state: State<'_, Arc<SharedState>>, path: String) -> Result<
 
 #[tauri::command]
 #[specta::specta]
-pub fn import_otd_profile(state: State<'_, Arc<SharedState>>, path: String) -> Result<(), String> {
+pub(crate) fn import_otd_profile(
+    state: State<'_, Arc<SharedState>>,
+    path: String,
+) -> Result<(), String> {
     match next_tablet_driver::settings::otd_import::import_otd_profile(std::path::Path::new(&path))
     {
         Ok(cfg) => {
@@ -175,7 +178,10 @@ pub fn import_otd_profile(state: State<'_, Arc<SharedState>>, path: String) -> R
 
 #[tauri::command]
 #[specta::specta]
-pub fn export_profile(state: State<'_, Arc<SharedState>>, path: String) -> Result<(), String> {
+pub(crate) fn export_profile(
+    state: State<'_, Arc<SharedState>>,
+    path: String,
+) -> Result<(), String> {
     let current = state
         .config
         .mapping
@@ -187,14 +193,14 @@ pub fn export_profile(state: State<'_, Arc<SharedState>>, path: String) -> Resul
 }
 
 #[derive(serde::Serialize, specta::Type)]
-pub struct PresetInfo {
+pub(crate) struct PresetInfo {
     pub name: String,
     pub path: String,
 }
 
 #[tauri::command]
 #[specta::specta]
-pub fn get_presets() -> Vec<PresetInfo> {
+pub(crate) fn get_presets() -> Vec<PresetInfo> {
     next_tablet_driver::settings::list_profiles()
         .into_iter()
         .map(|(name, path)| PresetInfo {
@@ -206,14 +212,14 @@ pub fn get_presets() -> Vec<PresetInfo> {
 
 #[tauri::command]
 #[specta::specta]
-pub fn get_current_profile_name() -> String {
+pub(crate) fn get_current_profile_name() -> String {
     next_tablet_driver::settings::load_session_meta()
         .map_or_else(|| "Default Profile".to_string(), |meta| meta.profile_name)
 }
 
 #[tauri::command]
 #[specta::specta]
-pub fn get_logs() -> Vec<next_tablet_driver::logger::LogEntry> {
+pub(crate) fn get_logs() -> Vec<next_tablet_driver::logger::LogEntry> {
     next_tablet_driver::logger::LOG_BUFFER
         .read()
         .map(|b| b.iter().cloned().collect())
@@ -222,7 +228,7 @@ pub fn get_logs() -> Vec<next_tablet_driver::logger::LogEntry> {
 
 #[tauri::command]
 #[specta::specta]
-pub fn clear_logs() {
+pub(crate) fn clear_logs() {
     if let Ok(mut buffer) = next_tablet_driver::logger::LOG_BUFFER.write() {
         buffer.clear();
         next_tablet_driver::logger::LOG_SEQUENCE.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
@@ -231,7 +237,7 @@ pub fn clear_logs() {
 
 #[tauri::command]
 #[specta::specta]
-pub fn get_releases()
+pub(crate) fn get_releases()
 -> Result<Vec<next_tablet_driver::application::services::autoupdate::models::Release>, String> {
     next_tablet_driver::application::services::autoupdate::github::fetch_releases()
         .map_err(|e| e.to_string())
@@ -239,7 +245,7 @@ pub fn get_releases()
 
 #[tauri::command]
 #[specta::specta]
-pub fn get_available_plugins(
+pub(crate) fn get_available_plugins(
     state: State<'_, Arc<SharedState>>,
 ) -> Vec<ntd_plugin_api::PluginManifest> {
     let manifests = state.plugins.loaded_manifests();
@@ -249,14 +255,16 @@ pub fn get_available_plugins(
 
 #[tauri::command]
 #[specta::specta]
-pub fn reload_plugins(state: State<'_, Arc<SharedState>>) -> Vec<ntd_plugin_api::PluginManifest> {
+pub(crate) fn reload_plugins(
+    state: State<'_, Arc<SharedState>>,
+) -> Vec<ntd_plugin_api::PluginManifest> {
     state.plugins.reload();
     state.plugins.loaded_manifests()
 }
 
 #[tauri::command]
 #[specta::specta]
-pub fn open_plugins_folder(state: State<'_, Arc<SharedState>>) -> Result<(), String> {
+pub(crate) fn open_plugins_folder(state: State<'_, Arc<SharedState>>) -> Result<(), String> {
     let dir = state.plugins.primary_plugins_dir();
     if !dir.exists() {
         let _ = std::fs::create_dir_all(&dir);
@@ -292,7 +300,7 @@ const MAX_PLUGIN_SIZE: u64 = 64 * 1024 * 1024;
 /// plugins directory. Returns `Ok(false)` if the user cancelled.
 #[tauri::command]
 #[specta::specta]
-pub async fn install_plugin(
+pub(crate) async fn install_plugin(
     app: tauri::AppHandle,
     state: State<'_, Arc<SharedState>>,
 ) -> Result<bool, String> {
@@ -355,7 +363,7 @@ Install \"{}\"?",
 /// Plugin libraries found in the plugins folder that are not trusted and were not loaded.
 #[tauri::command]
 #[specta::specta]
-pub fn get_untrusted_plugins(
+pub(crate) fn get_untrusted_plugins(
     state: State<'_, Arc<SharedState>>,
 ) -> Vec<next_tablet_driver::engine::plugins::UntrustedPlugin> {
     state.plugins.untrusted_plugins()
@@ -366,7 +374,7 @@ pub fn get_untrusted_plugins(
 /// user declined.
 #[tauri::command]
 #[specta::specta]
-pub async fn trust_plugin(
+pub(crate) async fn trust_plugin(
     app: tauri::AppHandle,
     state: State<'_, Arc<SharedState>>,
     sha256: String,
@@ -404,7 +412,7 @@ pub async fn trust_plugin(
 
 #[tauri::command]
 #[specta::specta]
-pub fn delete_plugin(state: State<'_, Arc<SharedState>>, id: String) -> Result<(), String> {
+pub(crate) fn delete_plugin(state: State<'_, Arc<SharedState>>, id: String) -> Result<(), String> {
     state
         .plugins
         .delete_plugin(&id)
@@ -415,7 +423,7 @@ pub fn delete_plugin(state: State<'_, Arc<SharedState>>, id: String) -> Result<(
 /// Theme files found in the themes folder; the frontend parses and validates them.
 #[tauri::command]
 #[specta::specta]
-pub fn list_themes() -> Vec<next_tablet_driver::settings::themes::ThemeFile> {
+pub(crate) fn list_themes() -> Vec<next_tablet_driver::settings::themes::ThemeFile> {
     next_tablet_driver::settings::themes::list_theme_files()
 }
 
@@ -423,7 +431,7 @@ pub fn list_themes() -> Vec<next_tablet_driver::settings::themes::ThemeFile> {
 /// The webview never supplies a path. Returns `Ok(None)` if the dialog was cancelled.
 #[tauri::command]
 #[specta::specta]
-pub async fn import_theme(
+pub(crate) async fn import_theme(
     app: tauri::AppHandle,
 ) -> Result<Option<next_tablet_driver::settings::themes::ThemeFile>, String> {
     use tauri_plugin_dialog::DialogExt;
@@ -444,13 +452,13 @@ pub async fn import_theme(
 
 #[tauri::command]
 #[specta::specta]
-pub fn delete_theme(id: String) -> Result<(), String> {
+pub(crate) fn delete_theme(id: String) -> Result<(), String> {
     next_tablet_driver::settings::themes::delete_theme_file(&id).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 #[specta::specta]
-pub fn open_themes_folder() -> Result<(), String> {
+pub(crate) fn open_themes_folder() -> Result<(), String> {
     let dir = next_tablet_driver::settings::themes::themes_dir();
 
     #[cfg(target_os = "windows")]

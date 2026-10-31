@@ -10,7 +10,7 @@ const MUTEX_NAME: &str = "Local\\NextTabletDriver_HidOwner";
 /// Wraps the mutex handle. Dropping it releases and closes the handle, which
 /// hands ownership back to the OS and makes the lock available to the next
 /// process that tries, including automatically if this process crashes.
-pub struct OwnerHandle(HANDLE);
+pub(super) struct OwnerHandle(HANDLE);
 
 // SAFETY: the wrapped HANDLE is a plain Win32 kernel object reference with no
 // thread-affinity requirements; it's fine to move between threads as long as
@@ -34,7 +34,7 @@ impl Drop for OwnerHandle {
 
 /// Tries to become the HID owner by creating (or opening) the named mutex and
 /// attempting to acquire it with a zero-millisecond wait.
-pub fn try_acquire() -> Option<OwnerHandle> {
+pub(super) fn try_acquire() -> Option<OwnerHandle> {
     try_acquire_named(MUTEX_NAME)
 }
 

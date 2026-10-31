@@ -37,7 +37,7 @@ use std::time::{Duration, Instant};
 /// exactly as long as this thread holds the real HID device, so the FFI
 /// layer knows whether `ntd_set_mode`/`ntd_set_active_area` should write
 /// `shared` directly or forward a command to whichever process does.
-pub fn spawn(shared: Arc<SharedState>, is_owner: Arc<AtomicBool>) -> JoinHandle<()> {
+pub(crate) fn spawn(shared: Arc<SharedState>, is_owner: Arc<AtomicBool>) -> JoinHandle<()> {
     thread::spawn(move || run_engine(&shared, &is_owner))
 }
 
@@ -223,7 +223,7 @@ fn reader_iteration(shared: &Arc<SharedState>, is_owner: &Arc<AtomicBool>) {
 /// Writes a new driver mode into `shared` and bumps `config_version`. The
 /// single code path both a local owner-side caller (`ntd_set_mode`) and a
 /// reader's forwarded command ([`SdkCommandHandler::set_mode`]) go through.
-pub fn apply_set_mode(shared: &Arc<SharedState>, mode: DriverMode) {
+pub(crate) fn apply_set_mode(shared: &Arc<SharedState>, mode: DriverMode) {
     let mut config = shared.config.mapping.write().unwrap_or_log("config");
     config.mode = mode;
     drop(config);
@@ -234,7 +234,7 @@ pub fn apply_set_mode(shared: &Arc<SharedState>, mode: DriverMode) {
 /// physical surface) and bumps `config_version`. The single code path both a
 /// local owner-side caller (`ntd_set_active_area`) and a reader's forwarded
 /// command ([`SdkCommandHandler::set_active_area`]) go through.
-pub fn apply_set_active_area(shared: &Arc<SharedState>, area: ActiveArea) {
+pub(crate) fn apply_set_active_area(shared: &Arc<SharedState>, area: ActiveArea) {
     let (phys_w, phys_h) = shared
         .device
         .read()
