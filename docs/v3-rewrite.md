@@ -1542,8 +1542,8 @@ just the application.
 | | |
 |---|---|
 | **Current phase** | Phase 1: Workspace, quality, CI, contribution rules |
-| **Last completed task** | P1.3 |
-| **Next task** | P1.4 |
+| **Last completed task** | P1.4 |
+| **Next task** | P1.5 |
 | **v1 bridge release** | not started (P7.5a) |
 | **Last updated** | 2026-10-31 |
 
@@ -1670,10 +1670,12 @@ phase 1; §12, §13, §14).
   - Notes: `Cargo.lock` is unchanged, so no dependency version moved. Four plugins written by other
     people keep their own `authors` (credit) and declare no licence; the first-party crates inherit
     all the metadata.
-- [ ] **P1.4** `stable` toolchain (§12.6)
+- [x] **P1.4** `stable` toolchain (§12.6) (branch `chore/v3-phase-1`)
   - Depends on: P1.1
   - Done when: `rust-toolchain.toml` on `channel = "stable"`, no Rust version in workflows,
     `rust-version` declared once in `[workspace.package]`.
+  - Notes: the jobs use `dtolnay/rust-toolchain@stable` without a version; `flake.nix` follows
+    `rust-bin.stable.latest` of its pinned overlay. `rust-version` (1.99.0) is only the MSRV.
 - [ ] **P1.5** Formatting and editor (§12.1)
   - Depends on: P1.1
   - Done when: `rustfmt.toml` and `.editorconfig` match §12.1; `cargo fmt --all --check` green.
