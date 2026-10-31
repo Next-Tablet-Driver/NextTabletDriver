@@ -1542,8 +1542,8 @@ just the application.
 | | |
 |---|---|
 | **Current phase** | Phase 0: Safety nets |
-| **Last completed task** | P0.6 |
-| **Next task** | P0.7 |
+| **Last completed task** | P0.7 |
+| **Next task** | P0.8 |
 | **v1 bridge release** | not started (P7.5a) |
 | **Last updated** | 2026-10-31 |
 
@@ -1612,7 +1612,7 @@ Goal: be able to detect any regression **before** touching the architecture (§7
   - Depends on: P0.5
   - Done when: `cargo test` replays every capture through the v2 parser and compares it with a
     committed snapshot; changing one byte in a parser fails the test.
-- [ ] **P0.7** Golden files for the supported tablets (several PRs)
+- [x] **P0.7** Golden files for the supported tablets (several PRs) (PR: to be linked)
   - Depends on: P0.6
   - Done when: every tablet with a real capture (or real reports in the existing tests) has golden
     files; tablets without a capture are listed in `qa/golden/MISSING.md` (rule 103: captures are
