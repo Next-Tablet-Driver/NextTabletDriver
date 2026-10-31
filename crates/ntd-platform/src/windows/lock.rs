@@ -1,24 +1,31 @@
-//! Windows implementation of the HID owner lock via a named mutex
-//! (`Local\NextTabletDriver_HidOwner`), tried non-blockingly.
+//! Windows implementation of the named locks via a named mutex (the HID owner is
+//! `Local\NextTabletDriver_HidOwner`), tried non-blockingly.
 #![allow(unsafe_code, reason = "Win32 named mutex calls through windows-sys")]
 
+use crate::NamedLock;
 use std::ptr;
 use windows_sys::Win32::Foundation::{CloseHandle, HANDLE, WAIT_ABANDONED, WAIT_OBJECT_0};
 use windows_sys::Win32::System::Threading::{CreateMutexW, ReleaseMutex, WaitForSingleObject};
 
-const MUTEX_NAME: &str = "Local\\NextTabletDriver_HidOwner";
+/// The kernel object name of `lock`. These names are shared with the SDK of integrators: never
+/// change them.
+const fn mutex_name(lock: NamedLock) -> &'static str {
+    match lock {
+        NamedLock::HidOwner => "Local\\NextTabletDriver_HidOwner",
+    }
+}
 
 /// Wraps the mutex handle. Dropping it releases and closes the handle, which
 /// hands ownership back to the OS and makes the lock available to the next
 /// process that tries, including automatically if this process crashes.
-pub(super) struct OwnerHandle(HANDLE);
+pub(crate) struct LockHandle(HANDLE);
 
 // SAFETY: the wrapped HANDLE is a plain Win32 kernel object reference with no
 // thread-affinity requirements; it's fine to move between threads as long as
-// access stays exclusive (guaranteed here since `OwnerHandle` isn't `Clone`).
-unsafe impl Send for OwnerHandle {}
+// access stays exclusive (guaranteed here since `LockHandle` isn't `Clone`).
+unsafe impl Send for LockHandle {}
 
-impl Drop for OwnerHandle {
+impl Drop for LockHandle {
     fn drop(&mut self) {
         // SAFETY: `self.0` is a valid mutex handle owned by this guard and not
         // yet closed; this is the only place it is released.
@@ -33,13 +40,13 @@ impl Drop for OwnerHandle {
     }
 }
 
-/// Tries to become the HID owner by creating (or opening) the named mutex and
-/// attempting to acquire it with a zero-millisecond wait.
-pub(super) fn try_acquire() -> Option<OwnerHandle> {
-    try_acquire_named(MUTEX_NAME)
+/// Tries to take `lock` by creating (or opening) its named mutex and attempting to acquire it
+/// with a zero-millisecond wait.
+pub(crate) fn try_acquire_lock(lock: NamedLock) -> Option<LockHandle> {
+    try_acquire_named(mutex_name(lock))
 }
 
-fn try_acquire_named(name: &str) -> Option<OwnerHandle> {
+fn try_acquire_named(name: &str) -> Option<LockHandle> {
     let wide_name: Vec<u16> = name.encode_utf16().chain(std::iter::once(0)).collect();
 
     // SAFETY: `wide_name` is a valid, NUL-terminated UTF-16 buffer kept alive
@@ -58,7 +65,7 @@ fn try_acquire_named(name: &str) -> Option<OwnerHandle> {
     // we still get ownership, which is exactly the self-healing promotion
     // behavior this lock is meant to provide.
     if wait_result == WAIT_OBJECT_0 || wait_result == WAIT_ABANDONED {
-        Some(OwnerHandle(handle))
+        Some(LockHandle(handle))
     } else {
         // SAFETY: `handle` is valid; the wait above did not grant ownership,
         // so closing it here is safe and required to avoid leaking the handle.
@@ -70,12 +77,16 @@ fn try_acquire_named(name: &str) -> Option<OwnerHandle> {
 }
 
 #[cfg(test)]
-#[allow(
-    clippy::float_cmp,
-    reason = "the tests compare floats that are exact by construction or copied unchanged"
-)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_names_of_the_locks_are_the_ones_the_sdk_uses() {
+        assert_eq!(
+            mutex_name(NamedLock::HidOwner),
+            "Local\\NextTabletDriver_HidOwner"
+        );
+    }
 
     #[test]
     fn a_name_the_os_refuses_gives_no_lock() {

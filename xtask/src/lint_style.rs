@@ -36,6 +36,7 @@ const UNSAFE_ALLOWED: &[&str] = &[
     "apps/sdk/",
     "apps/desktop/",
     "crates/ntd-plugin-api/",
+    "crates/ntd-platform/",
 ];
 
 /// One broken rule.

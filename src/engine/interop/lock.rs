@@ -9,29 +9,20 @@
 //! The lock is released automatically by the OS if the owning process dies
 //! (crash, kill, normal exit), so a non-owner retrying [`try_acquire_hid_owner`]
 //! is promoted the moment the previous owner disappears. No stale-lock
-//! cleanup logic is needed on either platform.
+//! cleanup logic is needed on either platform. The OS side lives in `ntd-platform`.
 
-#[cfg(windows)]
-mod windows;
-#[cfg(windows)]
-use windows as os;
-
-#[cfg(target_os = "linux")]
-mod linux;
-#[cfg(target_os = "linux")]
-use linux as os;
+use ntd_platform::{LockGuard, NamedLock, try_acquire_lock};
 
 /// Held by whichever process currently owns the real HID device.
 ///
-/// The wrapped platform handle is never read again after acquisition; it's
-/// kept purely so that dropping this guard (process exit, or an explicit
-/// `drop`) releases the lock via its `Drop` impl.
+/// The wrapped lock is never read again after acquisition; it's kept purely so that dropping this
+/// guard (process exit, or an explicit `drop`) releases the lock.
 pub struct HidOwnerGuard(
     #[allow(
         dead_code,
         reason = "held only so that dropping the guard releases the lock"
     )]
-    os::OwnerHandle,
+    LockGuard,
 );
 
 /// Attempts to become the HID owner.
@@ -42,7 +33,7 @@ pub struct HidOwnerGuard(
 /// periodically to detect promotion when the current owner exits.
 #[must_use]
 pub fn try_acquire_hid_owner() -> Option<HidOwnerGuard> {
-    os::try_acquire().map(HidOwnerGuard)
+    try_acquire_lock(NamedLock::HidOwner).map(HidOwnerGuard)
 }
 
 #[cfg(test)]

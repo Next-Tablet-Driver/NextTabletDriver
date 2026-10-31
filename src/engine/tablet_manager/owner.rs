@@ -194,31 +194,14 @@ pub(super) fn owner_iteration(shared_clone: &Arc<SharedState>, sender_clone: &Se
 /// On Windows, sets the thread priority to `TIME_CRITICAL`.
 /// On Linux, attempts to nice the thread to `-11` (requires `CAP_SYS_NICE` or root permissions).
 fn init_thread_priority() {
-    // SAFETY: These are standard OS-specific calls to increase thread priority
-    // for low-latency USB polling.
-    #[cfg(windows)]
-    {
-        use windows_sys::Win32::System::Threading::{
-            GetCurrentThread, SetThreadPriority, THREAD_PRIORITY_TIME_CRITICAL,
-        };
-        // SAFETY: Retrieving the handle to the current thread.
-        let thread = unsafe { GetCurrentThread() };
-        // SAFETY: Increasing thread priority to TIME_CRITICAL for low-latency USB polling.
-        if unsafe { SetThreadPriority(thread, THREAD_PRIORITY_TIME_CRITICAL) } == 0 {
-            log::warn!(target: "TabletManager", "Failed to set thread priority to TIME_CRITICAL");
-        } else {
-            log::info!(target: "TabletManager", "Thread priority set to TIME_CRITICAL");
-        }
-    }
-    #[cfg(target_os = "linux")]
-    // SAFETY: calling `libc::nice` is safe to change the current thread priority.
-    // The return value of -1 is checked to gracefully handle permission failures.
-    unsafe {
-        if libc::nice(-11) == -1 {
+    match ntd_platform::raise_current_thread_priority() {
+        Ok(()) => log::info!(target: "TabletManager", "Thread priority increased"),
+        Err(ntd_platform::PlatformError::PermissionDenied) => {
             log::info!(target: "TabletManager", "Running at normal priority (CAP_SYS_NICE not \
                 available)");
-        } else {
-            log::info!(target: "TabletManager", "Thread priority increased (nice -11)");
+        }
+        Err(e) => {
+            log::warn!(target: "TabletManager", "Failed to raise the thread priority: {e}");
         }
     }
 }

@@ -20,6 +20,7 @@ members = [
     "apps/sdk/examples/rust_plugin",
     "crates/ntd-core",
     "crates/ntd-pipeline",
+    "crates/ntd-platform",
     "crates/ntd-plugin-api",
     "crates/ntd-test-support",
     "crates/ntd-tablets",
@@ -49,6 +50,7 @@ categories = ["hardware-support"]
 next_tablet_driver = { path = ".", default-features = false }
 ntd-core = { path = "crates/ntd-core" }
 ntd-pipeline = { path = "crates/ntd-pipeline" }
+ntd-platform = { path = "crates/ntd-platform" }
 ntd_plugin_api = { path = "crates/ntd-plugin-api" }
 ntd-tablets = { path = "crates/ntd-tablets" }
 ntd-test-support = { path = "crates/ntd-test-support" }
@@ -190,6 +192,7 @@ libloading = { workspace = true }
 ntd-core = { workspace = true }
 ntd_plugin_api = { workspace = true }
 ntd-pipeline = { workspace = true }
+ntd-platform = { workspace = true }
 ntd-tablets = { workspace = true }
 
 # Windows
