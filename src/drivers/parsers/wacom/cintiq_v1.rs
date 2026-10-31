@@ -2,11 +2,13 @@ use super::intuos_v1::IntuosV1Parser;
 use crate::drivers::TabletData;
 use crate::drivers::parsers::ReportParser;
 
+/// Parser for Wacom Cintiq V1 tablets, a port of the `CintiqV1ReportParser` of `OpenTabletDriver`.
 pub struct CintiqV1Parser {
     inner_v1: IntuosV1Parser,
 }
 
 impl CintiqV1Parser {
+    /// Creates a parser with its initial state.
     #[must_use]
     pub const fn new() -> Self {
         Self {

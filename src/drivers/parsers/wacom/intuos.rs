@@ -1,17 +1,26 @@
 use crate::drivers::TabletData;
 use crate::drivers::parsers::ReportParser;
 
+/// A pen report of a Wacom Intuos tablet, decoded.
 pub struct IntuosTabletReport {
+    /// Horizontal position, in raw sensor units.
     pub x: u32,
+    /// Vertical position, in raw sensor units.
     pub y: u32,
+    /// Raw pressure.
     pub pressure: u16,
+    /// The eraser end of the pen is in use.
     pub eraser: bool,
+    /// The pen is close enough to the tablet to be tracked.
     pub near_proximity: bool,
+    /// Bits of the pen buttons that are pressed.
     pub buttons: u8,
+    /// Distance of the pen above the surface, as the tablet reports it.
     pub hover_distance: u8,
 }
 
 impl IntuosTabletReport {
+    /// Decodes a raw report, or returns `None` when it is too short to be one.
     #[must_use]
     pub fn new(report: &[u8]) -> Option<Self> {
         match report {
@@ -29,6 +38,7 @@ impl IntuosTabletReport {
     }
 }
 
+/// Parser for Wacom Intuos tablets, a port of the `IntuosReportParser` of `OpenTabletDriver`.
 pub struct IntuosParser;
 
 impl ReportParser for IntuosParser {
@@ -66,6 +76,8 @@ impl ReportParser for IntuosParser {
     }
 }
 
+/// Parser for Wacom Intuos tablets driven with the Wacom driver protocol, a port of the
+/// `WacomDriverIntuosReportParser` of `OpenTabletDriver`.
 pub struct WacomDriverIntuosParser;
 
 impl ReportParser for WacomDriverIntuosParser {

@@ -203,6 +203,8 @@ use std::sync::Mutex;
 
 static WARNED_UNSUPPORTED: Mutex<Option<HashSet<(u16, u16)>>> = Mutex::new(None);
 
+/// Looks for a supported tablet among the connected HID devices and opens it. Returns the device,
+/// its driver and its vendor and product IDs, or `None` when no supported tablet is connected.
 #[must_use]
 pub fn detect_tablet(api: &HidApi) -> Option<(HidDevice, Box<dyn NextTabletDriver>, u16, u16)> {
     let global_start = Instant::now();

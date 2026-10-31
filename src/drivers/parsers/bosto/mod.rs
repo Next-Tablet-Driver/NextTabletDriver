@@ -1,6 +1,7 @@
 use crate::drivers::TabletData;
 use crate::drivers::parsers::ReportParser;
 
+/// Parser for Bosto tablets, a port of the `BostoReportParser` of `OpenTabletDriver`.
 pub struct BostoParser;
 
 impl ReportParser for BostoParser {

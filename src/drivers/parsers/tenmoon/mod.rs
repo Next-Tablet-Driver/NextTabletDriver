@@ -1,6 +1,7 @@
 use crate::drivers::TabletData;
 use crate::drivers::parsers::ReportParser;
 
+/// Parser for 10moon tablets, a port of the `10moon report parser` of `OpenTabletDriver`.
 pub struct TenMoonParser;
 
 impl ReportParser for TenMoonParser {

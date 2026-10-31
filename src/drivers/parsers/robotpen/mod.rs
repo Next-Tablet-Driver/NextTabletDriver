@@ -1,6 +1,7 @@
 use crate::drivers::TabletData;
 use crate::drivers::parsers::ReportParser;
 
+/// Parser for `RobotPen` tablets, a port of the `RobotPenReportParser` of `OpenTabletDriver`.
 pub struct RobotPenParser;
 
 impl ReportParser for RobotPenParser {

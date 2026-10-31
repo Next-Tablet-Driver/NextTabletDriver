@@ -1,6 +1,8 @@
 use crate::drivers::TabletData;
 use crate::drivers::parsers::ReportParser;
 
+/// Parser for Huion Inspiroy and Giano tablets, a port of the `GianoReportParser` of
+/// `OpenTabletDriver`.
 pub struct InspiroyParser;
 
 impl ReportParser for InspiroyParser {

@@ -1,6 +1,7 @@
 use crate::drivers::TabletData;
 use crate::drivers::parsers::ReportParser;
 
+/// Parser for `FlooGoo` tablets, a port of the `FlooGooReportParser` of `OpenTabletDriver`.
 pub struct FlooGooParser;
 
 impl ReportParser for FlooGooParser {

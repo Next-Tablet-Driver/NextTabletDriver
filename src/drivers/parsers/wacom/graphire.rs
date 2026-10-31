@@ -1,6 +1,7 @@
 use crate::drivers::TabletData;
 use crate::drivers::parsers::ReportParser;
 
+/// Parser for Wacom Graphire tablets, a port of the `GraphireReportParser` of `OpenTabletDriver`.
 pub struct GraphireParser;
 
 impl ReportParser for GraphireParser {

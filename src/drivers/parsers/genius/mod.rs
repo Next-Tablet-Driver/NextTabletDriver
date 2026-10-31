@@ -1,6 +1,7 @@
 use crate::drivers::TabletData;
 use crate::drivers::parsers::ReportParser;
 
+/// Parser for Genius tablets, a port of the `GeniusReportParser` of `OpenTabletDriver`.
 pub struct GeniusParserV1;
 
 impl ReportParser for GeniusParserV1 {
@@ -78,6 +79,7 @@ impl ReportParser for GeniusParserV1 {
     }
 }
 
+/// Parser for newer Genius tablets, a port of the `GeniusReportParserV2` of `OpenTabletDriver`.
 pub struct GeniusParserV2;
 
 impl ReportParser for GeniusParserV2 {

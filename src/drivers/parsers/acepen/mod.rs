@@ -2,11 +2,13 @@ use crate::drivers::TabletData;
 use crate::drivers::parsers::ReportParser;
 use std::sync::atomic::{AtomicU8, Ordering};
 
+/// Parser for Acepen tablets, a port of the `AcepenReportParser` of `OpenTabletDriver`.
 pub struct AcepenParser {
     aux_state: AtomicU8,
 }
 
 impl AcepenParser {
+    /// Creates a parser with its initial state.
     #[must_use]
     pub const fn new() -> Self {
         Self {

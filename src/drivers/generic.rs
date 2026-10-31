@@ -27,6 +27,8 @@ pub struct GenericNextTabletDriver {
 }
 
 impl GenericNextTabletDriver {
+    /// Creates the driver for the tablet described by `config`, using the parser that `digitizer`
+    /// names.
     #[must_use]
     pub fn new(
         config: TabletConfiguration,

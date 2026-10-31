@@ -1,6 +1,7 @@
 use crate::drivers::TabletData;
 use crate::drivers::parsers::ReportParser;
 
+/// Parser for Xencelabs tablets, a port of the `XenceLabsReportParser` of `OpenTabletDriver`.
 pub struct XenceLabsParser;
 
 impl ReportParser for XenceLabsParser {

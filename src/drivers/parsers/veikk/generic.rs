@@ -72,6 +72,7 @@ fn parse_veikk_tablet(data: &[u8], has_tilt: bool) -> Option<TabletData> {
     }
 }
 
+/// Parser for Veikk tablets, a port of the `VeikkReportParser` of `OpenTabletDriver`.
 pub struct VeikkParser;
 
 impl ReportParser for VeikkParser {
@@ -85,6 +86,8 @@ impl ReportParser for VeikkParser {
     }
 }
 
+/// Parser for Veikk tablets of the first generation, a port of the `VeikkV1ReportParser` of
+/// `OpenTabletDriver`.
 pub struct VeikkV1Parser;
 
 impl ReportParser for VeikkV1Parser {
@@ -98,6 +101,7 @@ impl ReportParser for VeikkV1Parser {
     }
 }
 
+/// Parser for the Veikk A15, a port of the `VeikkA15ReportParser` of `OpenTabletDriver`.
 pub struct VeikkA15Parser;
 
 impl ReportParser for VeikkA15Parser {
@@ -111,6 +115,8 @@ impl ReportParser for VeikkA15Parser {
     }
 }
 
+/// Parser for Veikk tablets that report pen tilt, a port of the `VeikkTiltReportParser` of
+/// `OpenTabletDriver`.
 pub struct VeikkTiltParser;
 
 impl ReportParser for VeikkTiltParser {

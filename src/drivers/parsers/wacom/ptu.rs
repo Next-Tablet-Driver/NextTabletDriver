@@ -1,6 +1,7 @@
 use crate::drivers::TabletData;
 use crate::drivers::parsers::ReportParser;
 
+/// Parser for Wacom PTU tablets, a port of the `PTUReportParser` of `OpenTabletDriver`.
 pub struct PTUParser;
 
 impl ReportParser for PTUParser {

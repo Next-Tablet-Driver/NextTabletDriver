@@ -5,6 +5,7 @@ use std::sync::Mutex;
 
 // Intuos V1
 
+/// Parser for Wacom Intuos V1 tablets, a port of the `IntuosV1ReportParser` of `OpenTabletDriver`.
 pub struct IntuosV1Parser {
     pressure: Mutex<u16>,
     tilt_x: Mutex<i8>,
@@ -13,6 +14,7 @@ pub struct IntuosV1Parser {
 }
 
 impl IntuosV1Parser {
+    /// Creates a parser with its initial state.
     #[must_use]
     pub const fn new() -> Self {
         Self {
@@ -156,11 +158,14 @@ impl ReportParser for IntuosV1Parser {
     }
 }
 
+/// Parser for Wacom Intuos V1 tablets driven with the Wacom driver protocol, a port of the
+/// `WacomDriverIntuosV1ReportParser` of `OpenTabletDriver`.
 pub struct WacomDriverIntuosV1Parser {
     inner: IntuosV1Parser,
 }
 
 impl WacomDriverIntuosV1Parser {
+    /// Creates a parser with its initial state.
     #[must_use]
     pub const fn new() -> Self {
         Self {

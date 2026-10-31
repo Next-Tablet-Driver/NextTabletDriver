@@ -1,6 +1,7 @@
 use crate::drivers::TabletData;
 use crate::drivers::parsers::ReportParser;
 
+/// Parser for `ViewSonic` tablets, a port of the `WoodPad report parser` of `OpenTabletDriver`.
 pub struct ViewSonicParser;
 
 impl ReportParser for ViewSonicParser {

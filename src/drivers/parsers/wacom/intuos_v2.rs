@@ -3,9 +3,11 @@ use crate::drivers::parsers::ReportParser;
 
 // Intuos V2
 
+/// Parser for Wacom Intuos V2 tablets, a port of the `IntuosV2ReportParser` of `OpenTabletDriver`.
 pub struct IntuosV2Parser;
 
 impl IntuosV2Parser {
+    /// Creates a parser with its initial state.
     #[must_use]
     pub const fn new() -> Self {
         Self
@@ -151,9 +153,12 @@ impl ReportParser for IntuosV2Parser {
     }
 }
 
+/// Parser for Wacom Intuos V2 tablets driven with the Wacom driver protocol, a port of the
+/// `WacomDriverIntuosV2ReportParser` of `OpenTabletDriver`.
 pub struct WacomDriverIntuosV2Parser;
 
 impl WacomDriverIntuosV2Parser {
+    /// Creates a parser with its initial state.
     #[must_use]
     pub const fn new() -> Self {
         Self

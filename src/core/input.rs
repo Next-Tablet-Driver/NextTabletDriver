@@ -85,7 +85,7 @@ macro_rules! keys {
         #[repr(u8)]
         pub enum Key {
             $(
-                #[doc = concat!("The key printed as \"", $label, "\".")]
+                #[doc = concat!("The `", stringify!($variant), "` key.")]
                 $variant,
             )+
         }

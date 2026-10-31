@@ -1,6 +1,7 @@
 use crate::drivers::TabletData;
 use crate::drivers::parsers::ReportParser;
 
+/// Parser for the XP-Pen Star G640, a port of the `XP_PenReportParser` of `OpenTabletDriver`.
 pub struct XpPenStarG640Parser;
 
 impl ReportParser for XpPenStarG640Parser {

@@ -1,6 +1,7 @@
 use crate::drivers::TabletData;
 use crate::drivers::parsers::ReportParser;
 
+/// Parser for the Wacom Bamboo Pad, a port of the `BambooPadReportParser` of `OpenTabletDriver`.
 pub struct BambooPadParser;
 
 impl ReportParser for BambooPadParser {

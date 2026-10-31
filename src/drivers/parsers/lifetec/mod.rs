@@ -1,6 +1,7 @@
 use crate::drivers::TabletData;
 use crate::drivers::parsers::ReportParser;
 
+/// Parser for Lifetec tablets, a port of the `LifetecReportParser` of `OpenTabletDriver`.
 pub struct LifetecParser;
 
 impl ReportParser for LifetecParser {

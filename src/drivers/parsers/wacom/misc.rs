@@ -1,6 +1,8 @@
 use crate::drivers::TabletData;
 use crate::drivers::parsers::ReportParser;
 
+/// Parser for the 64-bit auxiliary reports of some Wacom tablets, a port of the
+/// `Wacom64bAuxReportParser` of `OpenTabletDriver`.
 pub struct Wacom64bAuxParser;
 
 impl ReportParser for Wacom64bAuxParser {

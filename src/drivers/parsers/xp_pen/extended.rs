@@ -122,6 +122,8 @@ fn parse_offset_pressure(data: &[u8], has_tilt: bool) -> Option<TabletData> {
     }
 }
 
+/// Parser for XP-Pen second-generation tablets, a port of the `XP_PenGen2ReportParser` of
+/// `OpenTabletDriver`.
 pub struct XpPenGen2Parser;
 
 impl ReportParser for XpPenGen2Parser {
@@ -134,6 +136,7 @@ impl ReportParser for XpPenGen2Parser {
     }
 }
 
+/// Parser for the XP-Pen Deco 03, a port of the `XP_PenDeco03ReportParser` of `OpenTabletDriver`.
 pub struct XpPenDeco03Parser;
 
 impl ReportParser for XpPenDeco03Parser {
@@ -146,6 +149,8 @@ impl ReportParser for XpPenDeco03Parser {
     }
 }
 
+/// Parser for XP-Pen tablets whose pressure is offset, a port of the
+/// `XP_PenOffsetPressureReportParser` of `OpenTabletDriver`.
 pub struct XpPenOffsetPressureParser;
 
 impl ReportParser for XpPenOffsetPressureParser {
@@ -158,6 +163,8 @@ impl ReportParser for XpPenOffsetPressureParser {
     }
 }
 
+/// Parser for XP-Pen tablets whose auxiliary buttons are offset, a port of the
+/// `XP_PenOffsetAuxReportParser` of `OpenTabletDriver`.
 pub struct XpPenOffsetAuxParser;
 
 impl ReportParser for XpPenOffsetAuxParser {
@@ -169,6 +176,7 @@ impl ReportParser for XpPenOffsetAuxParser {
     }
 }
 
+/// Parser for XP-Pen tablets, a port of the `XP_PenReportParser` of `OpenTabletDriver`.
 pub struct XpPenParser;
 
 impl ReportParser for XpPenParser {

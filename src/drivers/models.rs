@@ -3,22 +3,35 @@ use std::time::{Duration, Instant};
 /// The operational status of a tablet input tool.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 pub enum TabletStatus {
+    /// No supported tablet is connected.
     #[default]
     Disconnected,
+    /// The tablet is connected, but no pen is near it.
     OutOfRange,
+    /// The pen is near the surface without touching it.
     Hover,
+    /// The pen tip touches the surface.
     Contact,
+    /// The pen is in use, without saying whether it touches the surface.
     Active,
+    /// The eraser end of the pen is in use.
     Eraser,
+    /// A pen is in use, as the SDK reports it.
     Pen,
+    /// A finger touches the surface, as the SDK reports it.
     Touch,
+    /// A button of the tablet itself (an express key) was pressed.
     Aux,
+    /// A rotation dial or ring moved.
     Rotation,
+    /// A tool other than the standard pen is in use.
     Tool,
+    /// The tablet reports mouse movement.
     Mouse,
 }
 
 impl TabletStatus {
+    /// Returns the name shown in the interface and sent to WebSocket clients.
     #[must_use]
     pub const fn as_str(&self) -> &'static str {
         match self {
@@ -112,18 +125,27 @@ pub struct DriverStats {
     pub total_distance_mm: f32,
     /// Last recorded time to read from the HID interface (ms).
     pub hid_read_ms: f32,
+    /// Shortest time to read a report from the HID interface, in milliseconds.
     pub min_hid_read_ms: f32,
+    /// Longest time to read a report from the HID interface, in milliseconds.
     pub max_hid_read_ms: f32,
+    /// Average time to read a report from the HID interface, in milliseconds.
     pub avg_hid_read_ms: f32,
     /// Last recorded time to parse the packet (ms).
     pub parser_ms: f32,
+    /// Shortest time to parse a packet, in milliseconds.
     pub min_parser_ms: f32,
+    /// Longest time to parse a packet, in milliseconds.
     pub max_parser_ms: f32,
+    /// Average time to parse a packet, in milliseconds.
     pub avg_parser_ms: f32,
     /// Last recorded time to inject the processed frame into the OS (ms).
     pub inject_ms: f32,
+    /// Shortest time to inject a processed frame into the operating system, in milliseconds.
     pub min_inject_ms: f32,
+    /// Longest time to inject a processed frame into the operating system, in milliseconds.
     pub max_inject_ms: f32,
+    /// Average time to inject a processed frame into the operating system, in milliseconds.
     pub avg_inject_ms: f32,
     /// Total number of packets processed since start.
     pub total_packets: u64,

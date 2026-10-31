@@ -26,7 +26,9 @@ pub struct TabletConfiguration {
 #[derive(Debug, Deserialize, Clone)]
 #[serde(rename_all = "PascalCase")]
 pub struct Specifications {
+    /// Size, resolution and report layout of the digitizer.
     pub digitizer: DigitizerSpecs,
+    /// Pen capabilities: buttons and pressure range.
     pub pen: PenSpecs,
     /// The keys on the tablet itself (`ExpressKeys`), when it has any.
     pub auxiliary_buttons: Option<AuxiliarySpecs>,
@@ -76,6 +78,7 @@ pub struct DigitizerIdentifier {
     pub product_id: u16,
     /// Expected byte length of incoming HID packets.
     pub input_report_length: Option<usize>,
+    /// Expected byte length of outgoing HID reports.
     pub output_report_length: Option<usize>,
     /// Regex patterns keyed by HID string-descriptor index (e.g. `201` for
     /// the firmware-version string), used to disambiguate configs that
@@ -88,12 +91,16 @@ pub struct DigitizerIdentifier {
     pub output_init_report: Option<Vec<String>>,
     /// Base64 encoded byte array(s) to send via `Device::send_feature_report` to put the tablet in Absolute/Pro mode.
     pub feature_init_report: Option<Vec<String>>,
+    /// Optional overrides for specific operating systems or backends.
     pub attributes: Option<Attributes>,
 }
 
+/// Optional overrides of a definition for specific operating systems or backends.
 #[derive(Debug, Deserialize, Clone)]
 pub struct Attributes {
+    /// Name of the libinput driver override the Linux backend should use, if any.
     pub libinputoverride: Option<String>,
+    /// Backend-specific interface selection, kept as the JSON of the definition.
     #[serde(rename = "Interface")]
     pub interface: Option<serde_json::Value>,
 }

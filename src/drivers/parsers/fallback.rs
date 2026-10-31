@@ -1,6 +1,8 @@
 use crate::drivers::TabletData;
 use crate::drivers::parsers::ReportParser;
 
+/// Parser for tablets that have no dedicated parser. It expects a report ID, a status byte, then
+/// 16-bit little-endian X, Y and pressure.
 pub struct FallbackParser;
 
 impl ReportParser for FallbackParser {

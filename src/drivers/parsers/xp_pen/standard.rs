@@ -1,5 +1,7 @@
 use crate::drivers::TabletData;
 
+/// Decodes the standard XP-Pen pen report: a report ID, a status byte, then 16-bit little-endian X,
+/// Y and pressure. Returns `None` for a shorter report.
 #[must_use]
 pub fn parse(data: &[u8]) -> Option<TabletData> {
     match data {

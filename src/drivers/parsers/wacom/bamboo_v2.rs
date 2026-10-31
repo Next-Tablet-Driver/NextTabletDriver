@@ -1,6 +1,8 @@
 use crate::drivers::TabletData;
 use crate::drivers::parsers::ReportParser;
 
+/// Parser for the auxiliary reports of Wacom Bamboo V2 tablets, a port of the
+/// `BambooV2AuxReportParser` of `OpenTabletDriver`.
 pub struct BambooV2AuxParser;
 
 impl ReportParser for BambooV2AuxParser {

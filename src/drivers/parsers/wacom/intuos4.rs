@@ -4,11 +4,13 @@ use crate::drivers::parsers::ReportParser;
 
 // Intuos 4
 
+/// Parser for Wacom Intuos4 tablets, a port of the `Intuos4ReportParser` of `OpenTabletDriver`.
 pub struct Intuos4Parser {
     inner_v1: IntuosV1Parser,
 }
 
 impl Intuos4Parser {
+    /// Creates a parser with its initial state.
     #[must_use]
     pub const fn new() -> Self {
         Self {
@@ -96,11 +98,14 @@ impl ReportParser for Intuos4Parser {
     }
 }
 
+/// Parser for Wacom Intuos4 tablets driven with the Wacom driver protocol, a port of the
+/// `WacomDriverIntuos4ReportParser` of `OpenTabletDriver`.
 pub struct WacomDriverIntuos4Parser {
     inner: Intuos4Parser,
 }
 
 impl WacomDriverIntuos4Parser {
+    /// Creates a parser with its initial state.
     #[must_use]
     pub const fn new() -> Self {
         Self {

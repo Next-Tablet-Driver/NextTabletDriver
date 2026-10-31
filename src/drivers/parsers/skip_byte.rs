@@ -1,6 +1,8 @@
 use crate::drivers::TabletData;
 use crate::drivers::parsers::{ReportParser, fallback::FallbackParser};
 
+/// Parser for tablets whose reports start with a byte that is not data: it skips that byte and
+/// parses the rest with the fallback layout.
 pub struct SkipByteParser;
 
 impl ReportParser for SkipByteParser {

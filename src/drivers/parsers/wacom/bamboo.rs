@@ -1,17 +1,26 @@
 use crate::drivers::TabletData;
 use crate::drivers::parsers::ReportParser;
 
+/// A pen report of a Wacom Bamboo tablet, decoded.
 pub struct BambooTabletReport {
+    /// Horizontal position, in raw sensor units.
     pub x: u32,
+    /// Vertical position, in raw sensor units.
     pub y: u32,
+    /// Raw pressure; 0 while the tip does not touch.
     pub pressure: u16,
+    /// The eraser end of the pen is in use.
     pub eraser: bool,
+    /// The pen is close enough to the tablet to be tracked.
     pub near_proximity: bool,
+    /// Bits of the pen buttons that are pressed.
     pub buttons: u8,
+    /// State of the four auxiliary buttons of the tablet.
     pub aux_buttons: [bool; 4],
 }
 
 impl BambooTabletReport {
+    /// Decodes a raw report, or returns `None` when it is too short to be one.
     #[must_use]
     pub fn new(report: &[u8]) -> Option<Self> {
         match report {
@@ -45,6 +54,7 @@ impl BambooTabletReport {
     }
 }
 
+/// Parser for Wacom Bamboo tablets, a port of the `BambooReportParser` of `OpenTabletDriver`.
 pub struct BambooParser;
 
 impl ReportParser for BambooParser {

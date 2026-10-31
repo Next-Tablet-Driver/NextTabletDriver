@@ -5,6 +5,7 @@ use std::fs;
 use std::path::Path;
 use std::time::Instant;
 
+/// The tablet definitions of `OpenTabletDriver`, embedded in the binary at compile time.
 pub static TABLET_CONFIGS_DIR: Dir = include_dir!(
     "$CARGO_MANIFEST_DIR/tablets/OpenTabletDriver/OpenTabletDriver.Configurations/Configurations"
 );
@@ -32,6 +33,8 @@ fn load_and_index_configurations() -> ConfigIndex {
     index
 }
 
+/// Loads every tablet definition: the ones in the local `tablets` folder first, then the embedded
+/// ones.
 #[must_use]
 pub fn load_configurations() -> Vec<TabletConfiguration> {
     load_configurations_from(Path::new("tablets"))
