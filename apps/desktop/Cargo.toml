@@ -26,7 +26,7 @@ serde_json = { workspace = true }
 serde = { workspace = true }
 log = { workspace = true }
 tauri = { workspace = true, features = ["tray-icon"] }
-next_tablet_driver = { workspace = true, features = ["desktop", "specta"] }
+next_tablet_driver = { workspace = true, features = ["specta"] }
 ntd-core = { workspace = true, features = ["specta"] }
 ntd-platform = { workspace = true }
 ntd-settings = { workspace = true, features = ["specta"] }

@@ -6,5 +6,4 @@
 //! virtual events into the operating system.
 
 pub mod state;
-#[cfg(feature = "desktop")]
 pub mod tablet_manager;

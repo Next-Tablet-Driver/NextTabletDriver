@@ -2131,6 +2131,12 @@ Goal: every OS access behind a trait, with a fake and room for each platform (§
   - Depends on: P3.3, P3.4, P3.5
   - Done when: the feature no longer exists; `apps/sdk` depends only on `ntd-core`,
     `ntd-tablets`, `ntd-hid`, `ntd-pipeline`.
+  - Notes (partial, box left open): the `desktop` feature is gone (`ntd-output` and
+    `tablet_manager` are always built; `apps/desktop` and the SDK no longer name it). The SDK
+    still depends on the root crate for `SharedState`, `EngineStatus`, `DeviceState` and
+    `detect_tablet`, plus `ntd-interop`, `ntd-settings`, `ntd-platform` and `ntd-plugin-host`:
+    cutting that needs the state and detection moved out of the root crate, which §4 puts in
+    `ntd-engine` (P4.1). Decided with the maintainer to defer that part to P4.1.
 - [ ] **P3.9** CI `check-targets` job (§16.2)
   - Depends on: P3.2, P3.3, P3.4, P3.5
   - Done when: `cargo clippy` passes on every tier 3 target, and the job is blocking.

@@ -136,7 +136,7 @@ Code that only makes sense on one system is behind `#[cfg(windows)]` or `#[cfg(t
 - `drivers::hid_caps` (Windows only: asks the OS for the real report length)
 - `startup`: autostart (registry on Windows, a desktop entry on Linux) and the high-resolution timer (Windows only)
 
-The Cargo feature `desktop` (on by default) switches on HID polling and injection. The SDK turns it off and runs its own engine loop that never injects input.
+There is no Cargo feature to switch input injection off. The SDK links the root crate for its state and tablet detection and runs its own engine loop, which never injects input; it stops depending on the root crate when the engine is extracted (roadmap P4.1).
 
 ## Safety rules in the code
 
