@@ -1,0 +1,99 @@
+name: Toolchain beta
+
+# Runs clippy and the tests on the beta Rust toolchain every week. The project follows stable, so a
+# new lint or a breaking change shows up in beta about six weeks before it reaches stable. This job
+# is not part of `ci-success`: it never blocks a pull request, it opens an issue when it fails.
+
+on:
+  schedule:
+    - cron: "0 4 * * 1"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: toolchain-beta
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: -D warnings
+  # rust-toolchain.toml selects stable; this overrides it for every cargo command of the job.
+  RUSTUP_TOOLCHAIN: beta
+
+jobs:
+  beta:
+    name: Clippy and tests on beta
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          submodules: recursive
+
+      - name: System dependencies
+        uses: ./.github/actions/linux-deps
+
+      - name: Install the beta toolchain
+        uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          toolchain: beta
+          components: clippy
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
+        with:
+          key: beta
+          save-if: false
+
+      - name: Install cargo-nextest
+        uses: taiki-e/install-action@68a389c788b2cd04016ce8c80ee23b80d2ab3d68 # v2
+        with:
+          tool: nextest
+
+      - name: Show the toolchain
+        run: rustc -Vv
+
+      - name: Clippy
+        run: cargo clippy --locked --workspace --all-targets --all-features -- -D warnings
+
+      - name: Tests
+        run: cargo nextest run --locked --workspace --all-features --profile ci
+
+      - name: Open an issue
+        if: failure()
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        with:
+          script: |
+            const title = 'The beta Rust toolchain breaks the build';
+            const { owner, repo } = context.repo;
+            const open = await github.paginate(github.rest.issues.listForRepo, {
+              owner,
+              repo,
+              state: 'open',
+              per_page: 100,
+            });
+            if (open.some((issue) => issue.title === title)) {
+              core.info('An issue about the beta toolchain is already open.');
+              return;
+            }
+            const run = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
+            await github.rest.issues.create({
+              owner,
+              repo,
+              title,
+              body: [
+                'The weekly `Toolchain beta` job failed: clippy or the tests do not pass on the beta',
+                'Rust toolchain. That release reaches stable in about six weeks.',
+                '',
+                `Run: ${run}`,
+                '',
+                'Fix it in a dedicated pull request titled `chore: fix lints for Rust 1.xx` that',
+                'contains nothing else, and never downgrade a lint to get CI green again.',
+              ].join('\n'),
+            });

@@ -1545,8 +1545,8 @@ just the application.
 | | |
 |---|---|
 | **Current phase** | Phase 1: Workspace, quality, CI, contribution rules |
-| **Last completed task** | P1.15 |
-| **Next task** | P1.16 |
+| **Last completed task** | P1.17 |
+| **Next task** | P1.18 |
 | **v1 bridge release** | not started (P7.5a) |
 | **Last updated** | 2026-10-31 |
 
@@ -1807,9 +1807,12 @@ phase 1; §12, §13, §14).
     `deny.toml` with its reason. `npm audit` reports 0 vulnerabilities.
   - **Still to do, in the GitHub settings** (secret scanning and push protection are disabled
     today): not changed without the maintainer's go-ahead.
-- [ ] **P1.17** `toolchain-beta.yml` (§12.6)
+- [x] **P1.17** `toolchain-beta.yml` (§12.6) (branch `chore/v3-phase-1`)
   - Depends on: P1.15
   - Done when: weekly non-blocking job that opens an issue on failure.
+  - Notes: every Monday at 04:00 UTC, clippy and the tests on beta (`RUSTUP_TOOLCHAIN=beta` overrides
+    `rust-toolchain.toml`); on failure it opens one issue (not a second while one is open). It cannot
+    be tried before it is on `main`; trigger it with `workflow_dispatch` once merged.
 - [ ] **P1.18** Protect `main` (§14.4)
   - Depends on: P1.15
   - Done when: `ci-success` is the only required check; direct pushes to `main` are forbidden;
