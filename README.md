@@ -18,7 +18,7 @@
   </p>
 </div>
 
-> **Attribution notice:** The tablet definitions in [`tablets/OpenTabletDriver`](tablets/OpenTabletDriver) are a git submodule that points to the [OpenTabletDriver](https://github.com/OpenTabletDriver/OpenTabletDriver) project. That project uses the **GNU Lesser General Public License v3.0 (LGPLv3)**. The submodule keeps this content separate from NextTabletDriver's own MIT license. It is not copied into the MIT-licensed source code. See [License](#license).
+> **Attribution notice:** The tablet definitions in [`tablets/OpenTabletDriver`](tablets/OpenTabletDriver) are a git submodule that points to the [OpenTabletDriver](https://github.com/OpenTabletDriver/OpenTabletDriver) project. That project uses the **GNU Lesser General Public License v3.0 (LGPLv3)**. The tablet definitions are embedded unmodified in the application, and the report parsers in `src/drivers/parsers/` are ports of OpenTabletDriver's C# parsers, so those parts are LGPLv3, not MIT. See [License](#license).
 
 ## What is NextTabletDriver?
 
@@ -127,6 +127,6 @@ NextTabletDriver is distributed under the MIT License. See [`LICENSE`](LICENSE).
 
 ### Third-party licenses
 
-The tablet definitions in [`tablets/OpenTabletDriver`](tablets/OpenTabletDriver) come from [OpenTabletDriver](https://github.com/OpenTabletDriver/OpenTabletDriver), which uses the **GNU Lesser General Public License v3.0 (LGPLv3)**. This submodule is a separate component under the terms of the LGPLv3. It is not relicensed under NextTabletDriver's MIT license. You can read the full LGPLv3 text at [gnu.org/licenses/lgpl-3.0](https://www.gnu.org/licenses/lgpl-3.0.html).
+The tablet definitions in [`tablets/OpenTabletDriver`](tablets/OpenTabletDriver) come from [OpenTabletDriver](https://github.com/OpenTabletDriver/OpenTabletDriver), which uses the **GNU Lesser General Public License v3.0 (LGPLv3)**. The definitions are embedded unmodified in the application and remain under the LGPLv3. The report parsers in `src/drivers/parsers/` are Rust ports of OpenTabletDriver's C# parsers, so they are derivative works and are also under the LGPLv3; the rest of NextTabletDriver stays under the MIT license. See [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) and [`licenses/`](licenses/). You can read the full LGPLv3 text at [gnu.org/licenses/lgpl-3.0](https://www.gnu.org/licenses/lgpl-3.0.html).
 
 Copyright © OpenTabletDriver contributors.

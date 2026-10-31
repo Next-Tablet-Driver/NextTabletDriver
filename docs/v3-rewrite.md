@@ -836,6 +836,11 @@ These points are handled **in phase 0**, independently of the rewrite:
 2. **Licence of `tablets/OpenTabletDriver`**: it is a git submodule of the OpenTabletDriver
    repository. Identify its licence, check compatibility with the project's MIT licence, and add
    the required attribution.
+   **Finding (P0.3)**: the licence is **LGPL-3.0**. The tablet configurations are embedded in the
+   binary, and the Rust report parsers are ports of the C# ones, so they are derivative works and
+   also LGPL-3.0. Consequence: the parsers must live in their own LGPL-3.0 crate (the `ntd-tablets`
+   crate of §4), with SPDX headers and a notice; the rest may stay MIT. Notices are in
+   `THIRD_PARTY_NOTICES.md` and `licenses/`.
 3. **Two icon libraries** in `frontend/package.json` (`@lucide/svelte` and `lucide-svelte`).
 
 ---
