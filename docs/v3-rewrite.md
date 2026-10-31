@@ -1545,8 +1545,8 @@ just the application.
 | | |
 |---|---|
 | **Current phase** | Phase 1: Workspace, quality, CI, contribution rules |
-| **Last completed task** | P1.10 |
-| **Next task** | P1.11 |
+| **Last completed task** | P1.11 |
+| **Next task** | P1.12 |
 | **v1 bridge release** | not started (P7.5a) |
 | **Last updated** | 2026-10-31 |
 
@@ -1738,10 +1738,14 @@ phase 1; §12, §13, §14).
     the desktop app is a false positive (the `tauri::generate_context!` macro needs it) and is
     listed in `[package.metadata.cargo-machete]`. Seven French comments in two Svelte components
     were translated.
-- [ ] **P1.11** `cargo xtask ci-plan` (§15.6)
+- [x] **P1.11** `cargo xtask ci-plan` (§15.6) (branch `chore/v3-phase-1`)
   - Depends on: P1.9
   - Done when: the command produces the list of touched crates + dependents and the matrix, with
     tests on a fake graph.
+  - Notes: 11 tests on a fake graph (documentation only, a leaf crate, transitive dependents, the
+    root crate's own folders, global files, non-PR events, the matrix, the `cargo metadata`
+    reader). It reads `cargo metadata --no-deps`, so it needs no network. The ARM64 runner labels in
+    the full-run matrix (`ubuntu-24.04-arm`, `windows-11-arm`) are not verified: P1.15 wires them.
 - [ ] **P1.12** Frontend quality tooling as warnings (§12.7)
   - Depends on: —
   - Done when: Prettier (`printWidth: 100`), the TypeScript options and the ESLint rules of §12.7

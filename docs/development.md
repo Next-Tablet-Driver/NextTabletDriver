@@ -191,6 +191,14 @@ UPDATE_BINDINGS=1 cargo test --manifest-path apps/desktop/Cargo.toml --test bind
 
 The CI runs the same test without the variable and fails when the committed file is out of date.
 
+## Which crates does my change touch?
+
+```bash
+cargo xtask ci-plan --base origin/main
+```
+
+It lists the crates your branch changes and every crate that depends on them, which are the ones the CI has to check. It runs everything instead when a global file changed (`Cargo.toml`, `Cargo.lock`, the toolchain and lint files, `deny.toml`, `.github/`, `.cargo/`) or when the event is not a pull request. In the CI it also writes `crates`, `packages` (`-p name` arguments), `matrix` and `full` to `$GITHUB_OUTPUT`.
+
 ## Benchmarks and fuzzing
 
 These live in `qa/`:
