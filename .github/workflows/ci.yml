@@ -520,7 +520,7 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci --prefix frontend
       - name: Rust coverage
-        run: cargo llvm-cov nextest --locked -p next_tablet_driver --all-features --profile ci --lcov --output-path lcov.info
+        run: cargo llvm-cov nextest --locked -p next_tablet_driver -p ntd-core -p ntd-tablets -p ntd-pipeline --all-features --profile ci --lcov --output-path lcov.info
       - name: Frontend coverage
         run: npm --prefix frontend run test -- --run --coverage
       - name: Test the coverage gate
