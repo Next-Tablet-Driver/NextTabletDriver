@@ -767,7 +767,9 @@ behind a trait with a fake in `ntd-test-support`.
      `cfg(target_os = "...")`, and an unhandled OS falls into a branch that returns
      `Unsupported`, never into a silent or empty branch.
 108. **DO NOT** put OS-specific code outside `ntd-hid`, `ntd-output`, `ntd-interop`,
-     `ntd-platform`, `ntd-plugin-host` (loading a native library) and `apps/desktop`.
+     `ntd-platform`, `ntd-plugin-host` (loading a native library) and `apps/desktop`. One named
+     exception: the Linux report-id adjustment in `ntd-tablets/src/generic.rs`, because it is part
+     of a parser (rules 80 and 103).
 109. **DO NOT** read HID or network bytes with `from_ne_bytes`, `transmute` or a pointer cast.
      Always an explicit `from_le_bytes` / `from_be_bytes`.
 110. **DO NOT** use SIMD intrinsics or architecture-specific instructions without an equivalent
@@ -1547,8 +1549,8 @@ just the application.
 | | |
 |---|---|
 | **Current phase** | Phase 3: Extract the I/O adapters |
-| **Last completed task** | P3.9 |
-| **Next task** | GATE 3 |
+| **Last completed task** | GATE 3 |
+| **Next task** | P4.1 |
 | **v1 bridge release** | not started (P7.5a) |
 | **Last updated** | 2026-11-01 |
 
@@ -2158,17 +2160,19 @@ Goal: every OS access behind a trait, with a fake and room for each platform (§
     test tripped `unused_self`, `missing_const_for_fn` and `drop_non_drop`, as did one `drop` in
     the SDK). `libxdo-dev` has no i386 package and is not needed by the checked crates. An
     unrelated E2E test (credits) was flaky on CI and now waits for the contributors.
-- [ ] **GATE 3**
+- [x] **GATE 3**
   - Done when: P3.1 to P3.9 are `[x]`; no OS-specific code outside the allowed crates (rule 108);
     golden files, latency and E2E identical.
-  - Notes (box left open): checked on 2026-10-31 and 2026-11-01. P3.1 to P3.9 are done. Golden
+  - Notes: checked on 2026-10-31 and 2026-11-01. P3.1 to P3.9 are done. Golden
     files (in `nextest`) and the E2E tests pass, locally and on GitHub; latency was not measured
     (`bench` only compiles, §13.1). Rule 108: `startup.rs` and `owner.rs` no longer hold OS code (the
     system information moved to `ntd-platform`). Two places still match `grep target_os`: the
     Linux report-id quirk in `ntd-tablets/src/generic.rs` (a parser: rules 80 and 103), and
     `ntd-plugin-host` (`dlopen` of a pinned file, the `.dll`/`.so` extension), which the
-    maintainer added to rule 108 on 2026-11-01. The parser quirk is still to be decided by a
-    maintainer.
+    maintainer added to rule 108 on 2026-11-01, together with the named exception for the parser
+    quirk. Latency: accepted by the maintainer without a measurement. It is not zero risk: the
+    `is_down` field of `PluginPacket` became a `u8` (ABI v3) on the hot path, and `bench` only
+    compiles; compare against `docs/perf-baseline.md` by hand before the first release.
 
 ---
 
