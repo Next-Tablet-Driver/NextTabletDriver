@@ -7,6 +7,8 @@ import {
   useMappingSnapshot,
   useMappingStore,
 } from "@/features/mapping/MappingProvider";
+import { DebuggerPage } from "@/pages/DebuggerPage";
+import { PerformancePage } from "@/pages/PerformancePage";
 import { PageView } from "@/pages/PageView";
 import { events } from "@/infrastructure/tauri/events";
 import { useTauriEvent } from "@/hooks/useTauriEvent";
@@ -34,10 +36,7 @@ const onNavigateToUpdates = (callback: NoData) =>
 function MainWindow() {
   const page = useHashPage();
   const mapping = useMappingStore();
-  const { config } = useMappingSnapshot();
   const { version } = useAppStatus();
-
-  useTheme(config?.theme ?? "System");
 
   useEffect(() => {
     void loadAppStatus();
@@ -68,10 +67,25 @@ function MainWindow() {
   );
 }
 
+/** The windows opened from the Tablet menu are the same page with `?view=` in the address. */
+function Window() {
+  const { config } = useMappingSnapshot();
+  const view = new URLSearchParams(window.location.search).get("view");
+  useTheme(config?.theme ?? "System");
+
+  if (view === "debugger") {
+    return <DebuggerPage />;
+  }
+  if (view === "performance") {
+    return <PerformancePage />;
+  }
+  return <MainWindow />;
+}
+
 export default function App() {
   return (
     <MappingProvider>
-      <MainWindow />
+      <Window />
     </MappingProvider>
   );
 }
