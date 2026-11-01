@@ -37,10 +37,17 @@ function CurvePlot({ curve }: { curve: PressureCurve }) {
         y="0"
         width={PLOT}
         height={PLOT}
-        className="fill-secondary stroke-secondary"
+        className="fill-bg-secondary stroke-border-secondary"
         strokeWidth="1"
       />
-      <line x1="0" y1={PLOT} x2={PLOT} y2="0" className="stroke-tertiary" strokeDasharray="4 4" />
+      <line
+        x1="0"
+        y1={PLOT}
+        x2={PLOT}
+        y2="0"
+        className="stroke-border-primary"
+        strokeDasharray="4 4"
+      />
       <polyline
         fill="none"
         points={curvePath(curve, PLOT)}

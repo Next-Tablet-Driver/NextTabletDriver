@@ -24,7 +24,7 @@ export class App {
   async open(query = ""): Promise<void> {
     await this.page.goto(`/?mock${query}`);
     await expect(this.page.getByText("Profile:")).toBeVisible();
-    await expect(this.page.getByRole("link", { name: "Output", exact: true })).toBeVisible();
+    await expect(this.content.getByRole("heading", { level: 1 })).toBeVisible();
   }
 
   async goTo(tab: TabName): Promise<void> {

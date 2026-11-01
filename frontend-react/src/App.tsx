@@ -56,7 +56,7 @@ function MainWindow() {
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-secondary">
       <TitleBar title={`NextTabletDriver ${version}`} />
-      <div className="flex min-h-0 flex-1">
+      <div className="flex min-h-0 flex-1 flex-col md:flex-row">
         <Sidebar current={page} />
         <main className="min-w-0 flex-1 overflow-y-auto bg-secondary" id="content">
           <PageView page={page} />

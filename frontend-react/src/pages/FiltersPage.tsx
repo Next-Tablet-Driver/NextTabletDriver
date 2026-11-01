@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { FolderPlus, Plus, RefreshCcw01 } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
-import { Tab, TabList, Tabs } from "@/components/application/tabs/tabs";
+import { Tab, TabList, TabPanel, Tabs } from "@/components/application/tabs/tabs";
 import { EmptyState } from "@/components/application/empty-state/empty-state";
 import { PluginDetails } from "@/features/filters/PluginDetails";
 import { UntrustedPlugins } from "@/features/filters/UntrustedPlugins";
@@ -130,19 +130,21 @@ export function FiltersPage() {
           </TabList>
           <div className="min-w-0 flex-1">
             {current !== undefined && (
-              <PluginDetails
-                key={current.id}
-                plugin={current}
-                onDelete={() => {
-                  void os
-                    .confirm(`Delete the plugin "${current.name}" from your computer?`)
-                    .then((yes) => {
-                      if (yes) {
-                        run(() => deletePlugin(current.id))();
-                      }
-                    });
-                }}
-              />
+              <TabPanel id={current.id}>
+                <PluginDetails
+                  key={current.id}
+                  plugin={current}
+                  onDelete={() => {
+                    void os
+                      .confirm(`Delete the plugin "${current.name}" from your computer?`)
+                      .then((yes) => {
+                        if (yes) {
+                          run(() => deletePlugin(current.id))();
+                        }
+                      });
+                  }}
+                />
+              </TabPanel>
             )}
           </div>
         </Tabs>

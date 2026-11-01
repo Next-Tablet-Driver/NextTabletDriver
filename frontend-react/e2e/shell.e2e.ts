@@ -119,3 +119,15 @@ test.describe("menu bar", () => {
       .toContain("You are already on the latest version.");
   });
 });
+
+test.describe("narrow window", () => {
+  test.use({ viewport: { width: 420, height: 800 } });
+
+  test("offers the pages in a menu when the sidebar does not fit", async ({ app, page }) => {
+    await app.open("");
+    await expect(page.getByRole("navigation", { name: "Pages" })).toBeHidden();
+    await page.getByRole("button", { name: /Page/ }).click();
+    await page.getByRole("option", { name: "Settings", exact: true }).click();
+    await expect(app.content.getByRole("heading", { name: "Settings", level: 1 })).toBeVisible();
+  });
+});

@@ -162,9 +162,11 @@ export function DisplayEditor() {
           onPointerCancel={onPointerUp}
           onKeyDown={onKeyDown}
         >
-          <span>{target.h === 0 ? "0.0000" : (target.w / target.h).toFixed(4)}</span>
-          <span>
-            {target.w} × {target.h} px
+          <span className="flex flex-col items-center rounded-md bg-brand-solid px-2 py-1 text-white">
+            <span>{target.h === 0 ? "0.0000" : (target.w / target.h).toFixed(4)}</span>
+            <span>
+              {target.w} × {target.h} px
+            </span>
           </span>
         </div>
       </AreaStage>

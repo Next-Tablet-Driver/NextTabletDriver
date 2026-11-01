@@ -38,8 +38,8 @@ test.describe("Pen Settings page", () => {
   });
 
   test("picking a preset sets the binding", async ({ app, page }) => {
-    await app.content.getByRole("button", { name: /Eraser binding: presets/ }).click();
-    await page.getByRole("option", { name: "Back", exact: true }).click();
+    await app.content.getByRole("button", { name: "Eraser binding: presets" }).click();
+    await page.getByRole("menuitem", { name: "Back", exact: true }).click();
     expect(
       (await app.savedConfigWhere((config) => config.eraser_binding === "Back")).eraser_binding,
     ).toBe("Back");

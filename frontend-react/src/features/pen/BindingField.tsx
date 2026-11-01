@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { Keyboard01 } from "@untitledui/icons";
+import { ChevronDown, Keyboard01 } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
+import { Dropdown } from "@/components/base/dropdown/dropdown";
 import { Input } from "@/components/base/input/input";
-import { Select } from "@/components/base/select/select";
 import { buildChord, heldModifiers, keyName, modifierName } from "@/features/pen/binding-capture";
 import { normalizeBinding } from "@/infrastructure/tauri/commands";
 
@@ -124,20 +124,29 @@ export function BindingField({
             }}
           />
         </div>
-        <div className="w-40">
-          <Select
+        <Dropdown.Root>
+          <Button
+            color="secondary"
             aria-label={`${label}: presets`}
-            placeholder="Presets"
-            items={PRESETS}
-            value={null}
-            onChange={(key) => {
-              setError(null);
-              onEdit(String(key));
-            }}
+            iconTrailing={ChevronDown}
+            isDisabled={recording}
           >
-            {(item) => <Select.Item {...item} />}
-          </Select>
-        </div>
+            Presets
+          </Button>
+          <Dropdown.Popover placement="bottom end">
+            <Dropdown.Menu
+              aria-label={`${label}: presets`}
+              onAction={(key) => {
+                setError(null);
+                onEdit(String(key));
+              }}
+            >
+              {PRESETS.map((preset) => (
+                <Dropdown.Item key={preset.id} id={preset.id} label={preset.label} />
+              ))}
+            </Dropdown.Menu>
+          </Dropdown.Popover>
+        </Dropdown.Root>
         <Button
           color={recording ? "primary" : "secondary"}
           aria-label={`Record ${label}`}

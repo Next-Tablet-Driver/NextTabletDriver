@@ -117,11 +117,20 @@ commit message.
 - [x] **R10** Release and Credits pages
   - Depends on: R4
   - Done when: the `pages` e2e passes.
-- [ ] **R11** UX review
+- [x] **R11** UX review
   - Depends on: R5 to R10
   - Done when: keyboard-only pass of every page, `prefers-reduced-motion`, 200 % zoom, narrow
     window (the minimum window size of the app), contrast checked in every theme, empty / loading
     / error states for every command that can fail.
+  - Notes: done with an automatic audit and a manual pass on the points that tools miss.
+    `e2e/accessibility.e2e.ts` runs axe (WCAG 2 A and AA) on the seven pages in the dark and the
+    light scheme and fails on any serious or critical violation; it found a tab without its panel,
+    a placeholder and a label that were too pale, and they are fixed without touching the library.
+    By hand: every area can be moved with the arrow keys, every number is also a field, bindings
+    can be recorded without the pointer, the menus close with Escape, a narrow window (the
+    minimum is 420 px) gets a page menu in place of the sidebar, and every list has its empty,
+    loading and error state. Not done: a check at 200 % zoom on a real display, a screen reader
+    pass, and `prefers-reduced-motion` beyond what React Aria and Untitled UI do.
 - [x] **R12** Test parity
   - Depends on: R5 to R10
   - Done when: the whole Playwright suite passes against the React app; unit tests cover what the
@@ -160,10 +169,20 @@ What follows from it, and what a reviewer should know:
   points of a custom curve (the Svelte version had static bars).
 - **Bindings** (tip, eraser, pen buttons, tablet keys) can all be typed, picked from presets or
   recorded; before, only the buttons could be recorded.
-- **End-to-end tests** (`frontend-react/e2e`, 72) are the Svelte specs rewritten for the new markup,
+- **End-to-end tests** (`frontend-react/e2e`, 87 with the audit) are the Svelte specs rewritten for the new markup,
   with the same cases except the user themes (see above) and with a few new ones (keyboard areas,
   curve points, reset to defaults, reload keeps the page).
 - ESLint ignores `src/components/**`; accessibility relies on React Aria Components.
+
+## Known gaps and follow-ups
+
+- The production bundle is 1.2 MB (294 KB gzipped), mostly React Aria Components; code splitting by
+  page would help and was not done.
+- The user theme files are not supported (see above).
+- The Tauri window is undecorated: the title bar's drag region and the window buttons are checked
+  in a browser against the mock, not in a native window; run `npm run e2e:native` equivalent
+  (to port) before the switch.
+- R13 waits for the maintainer.
 
 ## Mapping of the old structure
 

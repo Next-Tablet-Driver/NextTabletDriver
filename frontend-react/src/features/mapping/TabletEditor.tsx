@@ -207,9 +207,11 @@ export function TabletEditor() {
               }}
             />
           )}
-          <span>{area.h === 0 ? "0.0000" : (area.w / area.h).toFixed(4)}</span>
-          <span>
-            {area.w.toFixed(2)} × {area.h.toFixed(2)} mm
+          <span className="flex flex-col items-center rounded-md bg-brand-solid px-2 py-1 text-white">
+            <span>{area.h === 0 ? "0.0000" : (area.w / area.h).toFixed(4)}</span>
+            <span>
+              {area.w.toFixed(2)} × {area.h.toFixed(2)} mm
+            </span>
           </span>
         </div>
         {pen !== null && surface.maxX > 0 && surface.maxY > 0 && (
