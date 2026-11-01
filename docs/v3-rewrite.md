@@ -767,7 +767,7 @@ behind a trait with a fake in `ntd-test-support`.
      `cfg(target_os = "...")`, and an unhandled OS falls into a branch that returns
      `Unsupported`, never into a silent or empty branch.
 108. **DO NOT** put OS-specific code outside `ntd-hid`, `ntd-output`, `ntd-interop`,
-     `ntd-platform` and `apps/desktop`.
+     `ntd-platform`, `ntd-plugin-host` (loading a native library) and `apps/desktop`.
 109. **DO NOT** read HID or network bytes with `from_ne_bytes`, `transmute` or a pointer cast.
      Always an explicit `from_le_bytes` / `from_be_bytes`.
 110. **DO NOT** use SIMD intrinsics or architecture-specific instructions without an equivalent
@@ -2166,9 +2166,9 @@ Goal: every OS access behind a trait, with a fake and room for each platform (§
     (`bench` only compiles, §13.1). Rule 108: `startup.rs` and `owner.rs` no longer hold OS code (the
     system information moved to `ntd-platform`). Two places still match `grep target_os`: the
     Linux report-id quirk in `ntd-tablets/src/generic.rs` (a parser: rules 80 and 103), and
-    `ntd-plugin-host` (`dlopen` of a pinned file, the `.dll`/`.so` extension), which rule 108 does
-    not list although rule 27 allows its `unsafe`. A maintainer has to decide whether to add
-    `ntd-plugin-host` to rule 108 and how to treat the parser quirk.
+    `ntd-plugin-host` (`dlopen` of a pinned file, the `.dll`/`.so` extension), which the
+    maintainer added to rule 108 on 2026-11-01. The parser quirk is still to be decided by a
+    maintainer.
 
 ---
 
