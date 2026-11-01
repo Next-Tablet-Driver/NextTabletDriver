@@ -84,37 +84,37 @@ commit message.
     `apps/desktop/tests/bindings.rs` regenerates (the Rust test must write to
     `frontend/src/infrastructure/tauri/bindings.ts` at R13, and that guard test goes away).
     `/?mock` installs the Tauri mock in development, as before.
-- [ ] **R3** Design system and theming
+- [x] **R3** Design system and theming
   - Depends on: R1
   - Done when: design tokens (Untitled UI theme variables) with light, dark and the user themes
     (`theme/`: `apply`, `contrast`, `validate`, `template` ported with tests); the components the
     app needs exist (button, input, select, checkbox, tabs, tooltip, dropdown menu, slider/curve
     inputs, card, badge, table, empty state, toast) from Untitled UI where it has them; a dev page
     shows them all in every theme; contrast of every token pair is tested.
-- [ ] **R4** Application shell
+- [x] **R4** Application shell
   - Depends on: R2, R3
   - Done when: title bar (window controls), menu bar, tab bar, footer (tablet status, version),
     page switching, detached windows (`?view=`), keyboard navigation and focus order work; the
     `shell` e2e passes.
-- [ ] **R5** Settings page (general, language, theme, WebSocket)
+- [x] **R5** Settings page (general, language, theme, WebSocket)
   - Depends on: R4
   - Done when: the `settings` e2e passes; the theme editor validates contrast and imports/exports.
-- [ ] **R6** Output page and the mapping visualisers (tablet and display areas)
+- [x] **R6** Output page and the mapping visualisers (tablet and display areas)
   - Depends on: R4
   - Done when: `mapping` state is a store (`useSyncExternalStore`), the two visualisers are
     accessible (keyboard moves and resizes the area, values are also numeric inputs); the `output`
     e2e passes.
-- [ ] **R7** Pen settings page (bindings, pressure curve, thresholds, hardware toggles)
+- [x] **R7** Pen settings page (bindings, pressure curve, thresholds, hardware toggles)
   - Depends on: R4
   - Done when: the `pen` e2e passes; binding capture is keyboard-accessible.
-- [ ] **R8** Filters page (plugin list, details, properties, untrusted plugins)
+- [x] **R8** Filters page (plugin list, details, properties, untrusted plugins)
   - Depends on: R4
   - Done when: the `filters` e2e passes; a plugin refused for its ABI or target is explained.
-- [ ] **R9** Console, Debugger and Performance pages
+- [x] **R9** Console, Debugger and Performance pages
   - Depends on: R4
   - Done when: the `console` e2e passes; large logs are virtualised; the live stream is throttled
     to the display rate.
-- [ ] **R10** Release and Credits pages
+- [x] **R10** Release and Credits pages
   - Depends on: R4
   - Done when: the `pages` e2e passes.
 - [ ] **R11** UX review
@@ -122,7 +122,7 @@ commit message.
   - Done when: keyboard-only pass of every page, `prefers-reduced-motion`, 200 % zoom, narrow
     window (the minimum window size of the app), contrast checked in every theme, empty / loading
     / error states for every command that can fail.
-- [ ] **R12** Test parity
+- [x] **R12** Test parity
   - Depends on: R5 to R10
   - Done when: the whole Playwright suite passes against the React app; unit tests cover what the
     Svelte unit tests covered; `e2e-native` smoke passes.
@@ -133,13 +133,45 @@ commit message.
     `docs/development.md`, `docs/architecture.md`, `.github/CONTRIBUTING.md` and dependabot
     updated; Svelte dependencies gone.
 
+## Decisions of the rewrite
+
+The maintainer gave free hands on the design, with one rule: the interface is made of the
+components of Untitled UI, **as the CLI wrote them** (`src/components/`, never edited; only our own
+code in `src/ui`, `src/shell`, `src/features`, `src/pages` composes them and adds Tailwind classes).
+What follows from it, and what a reviewer should know:
+
+- **Look**: Untitled UI's light and dark schemes (class `dark-mode` on `<html>`), Inter, the
+  default brand colour. `config.theme` keeps working as `System`, `Dark` or `Light`; the other
+  values of the Svelte interface (Catppuccin) are shown as their scheme.
+- **User theme files are not supported** here (the `--bg-app`-style token files, their import,
+  validation and contrast warnings). They need a token layer of our own on top of Untitled UI's,
+  which is what the rule forbids. The backend commands (`list_themes`, `import_theme`...) are still
+  there. If themes matter, the way is Untitled UI's own theming (`--color-brand-*` in `theme.css`),
+  decided with the maintainer.
+- **Navigation** is a sidebar of links to URL fragments (`#/output`), so a reload keeps the page.
+- **The "anonymous usage statistics" checkbox is gone**: it was not connected to any setting.
+- **Debugger and Input lag windows**, placeholders in Svelte ("will be rendered soon"), now show
+  the live packet and the report rate.
+- **Edits reach the driver after 400 ms** without a change (1.5 s in the Svelte interface), and an
+  edit that changes nothing is not sent.
+- **The area editors work with the keyboard** (arrow keys, Shift for larger steps) as well as the
+  pointer, and every number is also a field.
+- **Pressure curve** draws the driver's own arithmetic and edits the exponent and the control
+  points of a custom curve (the Svelte version had static bars).
+- **Bindings** (tip, eraser, pen buttons, tablet keys) can all be typed, picked from presets or
+  recorded; before, only the buttons could be recorded.
+- **End-to-end tests** (`frontend-react/e2e`, 72) are the Svelte specs rewritten for the new markup,
+  with the same cases except the user themes (see above) and with a few new ones (keyboard areas,
+  curve points, reset to defaults, reload keeps the page).
+- ESLint ignores `src/components/**`; accessibility relies on React Aria Components.
+
 ## Mapping of the old structure
 
 | Svelte (`frontend/src`) | React (`frontend-react/src`) |
 |---|---|
 | `App.svelte`, `main.ts` | `App.tsx`, `main.tsx` |
 | `lib/infrastructure/*` | `infrastructure/*` (same files) |
-| `lib/theme/*`, `styles/*` | `theme/*`, `styles/theme.css` (Untitled UI tokens) |
+| `lib/theme/*`, `styles/*` | `theme/theme.ts` (light, dark, system), `styles/theme.css` (Untitled UI tokens) |
 | `lib/components/ui/*` | `components/base/*` (Untitled UI) |
 | `lib/components/{TitleBar,MenuBar,TabBar,Footer}.svelte` | `components/shell/*` |
 | `lib/pages/*.svelte` | `pages/*.tsx` |

@@ -53,7 +53,12 @@ export class MappingStore {
     if (current === null) {
       return;
     }
-    this.#publish(change(current));
+    const next = change(current);
+    // An edit that changes nothing (a value clamped back to what it was) is not an edit.
+    if (JSON.stringify(next) === JSON.stringify(current)) {
+      return;
+    }
+    this.#publish(next);
     clearTimeout(this.#timer);
     this.#timer = setTimeout(() => {
       this.#commit();

@@ -37,6 +37,12 @@ export default tseslint.config(
     rules: { "no-console": "error" },
   },
 
+  // Playwright fixtures are functions called `use`, which the hooks rules mistake for React's.
+  {
+    files: ["e2e/**/*.ts"],
+    rules: { "react-hooks/rules-of-hooks": "off" },
+  },
+
   // Config files are not part of the app project.
   {
     files: ["*.config.{js,ts}"],

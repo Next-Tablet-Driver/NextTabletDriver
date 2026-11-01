@@ -150,14 +150,17 @@ export function PressureCurveEditor() {
                 Control points, from no pressure to full pressure. The first is at 0 and the last at
                 1.
               </p>
+              <div aria-hidden="true" className="flex gap-2 text-sm font-medium text-secondary">
+                <span className="w-28">Raw</span>
+                <span className="w-28">Curve</span>
+              </div>
               {points.map(([x, y], index) => {
                 const isEnd = index === 0 || index === points.length - 1;
                 return (
-                  <div key={index} className="flex items-end gap-2">
+                  <div key={index} className="flex items-center gap-2">
                     <div className="w-28">
                       <InputNumber
                         aria-label={`Point ${String(index + 1)}: raw`}
-                        label={index === 0 ? "Raw" : undefined}
                         minValue={0}
                         maxValue={1}
                         step={0.05}
@@ -176,7 +179,6 @@ export function PressureCurveEditor() {
                     <div className="w-28">
                       <InputNumber
                         aria-label={`Point ${String(index + 1)}: curve`}
-                        label={index === 0 ? "Curve" : undefined}
                         minValue={0}
                         maxValue={1}
                         step={0.05}

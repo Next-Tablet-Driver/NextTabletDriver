@@ -37,7 +37,7 @@ export function UntrustedPlugins({
       <ul className="flex flex-col gap-2">
         {plugins.map((plugin) => (
           <li
-            key={plugin.sha256}
+            key={`${plugin.file_name}:${plugin.sha256}`}
             className="flex flex-wrap items-center gap-3 rounded-lg bg-primary px-3 py-2 ring-1 ring-secondary ring-inset"
           >
             <span className="min-w-0 flex-1 truncate text-sm font-medium text-primary">
