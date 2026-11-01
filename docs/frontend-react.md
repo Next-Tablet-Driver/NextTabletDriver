@@ -57,10 +57,19 @@ commit message.
 - [x] **R0** Back up the Svelte frontend, create the branch
   - Done when: tag `frontend-svelte-v3` and branch `archive/frontend-svelte` exist;
     `feat/frontend-react` is pushed to `origin`; this plan is written.
-- [ ] **R1** Foundation: Vite + React 19 + Tailwind 4 + Untitled UI in `frontend-react/`
+- [x] **R1** Foundation: Vite + React 19 + Tailwind 4 + Untitled UI in `frontend-react/`
   - Done when: `npx untitledui@latest init --vite` ran; ESLint, Prettier, TypeScript (strict,
     `noUncheckedIndexedAccess`) and Vitest + Testing Library for React are configured; `npm run
     dev`, `build`, `check`, `lint`, `test` pass on an empty app.
+  - Notes: `npm create vite` (react-ts), then `npx untitledui@latest init . --vite -y` (it needs an
+    existing Vite project and does not set up Tailwind: `@tailwindcss/vite` and
+    `@tailwindcss/typography` were added by hand), then `npx untitledui@latest add button -y`.
+    TypeScript stays at `~6.0` like the Svelte frontend (the template wanted 7). Linting is
+    ESLint 10 with `typescript-eslint` strict type-checked and `react-hooks`, as in the Svelte
+    frontend; `eslint-plugin-jsx-a11y` is left out because it does not support ESLint 10 yet, and
+    React Aria Components carries most of the accessibility work. Vendored library files
+    (`components/base`, `components/foundations`, `utils/cx.ts`, `utils/is-react-component.ts`,
+    `styles/`) are excluded from ESLint and Prettier. Alias `@` is `src`.
 - [ ] **R2** Infrastructure layer (ported, not redesigned)
   - Depends on: R1
   - Done when: `tauri/{bindings,commands,events,window}.ts`, `os.ts`, `log.ts` and the dev
@@ -133,7 +142,6 @@ commit message.
 
 - The interface is large (about 7,000 lines of Svelte, 4,500 of them in the feature components):
   expect many sessions. Each sub-task is small enough to be reviewed on its own.
-- Untitled UI PRO components need a licence; only the free components are used unless the
-  maintainer provides a key.
+- Only the free components are used.
 - Hot path: the live pen stream must not re-render the tree on every packet (R2 and R6 decide how
   the stream is decimated and consumed).

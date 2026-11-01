@@ -1,0 +1,9 @@
+dist
+coverage
+node_modules
+package-lock.json
+src/components/base
+src/components/foundations
+src/utils/cx.ts
+src/utils/is-react-component.ts
+src/styles
