@@ -2143,24 +2143,27 @@ Goal: every OS access behind a trait, with a fake and room for each platform (§
     dependencies are the four crates of the roadmap plus what its own engine loop needs:
     `ntd-state`, `ntd-interop`, `ntd-plugin-host`, `ntd-settings` and `ntd-platform`.
     `base64` and `regex` left the root crate with the detection.
-- [ ] **P3.9** CI `check-targets` job (§16.2)
+- [x] **P3.9** CI `check-targets` job (§16.2)
   - Depends on: P3.2, P3.3, P3.4, P3.5
   - Done when: `cargo clippy` passes on every tier 3 target, and the job is blocking.
-  - Notes (box left open until the job has run green on GitHub): the `check-targets` job of
-    `ci.yml` runs `cargo clippy --locked --target <t> --workspace --exclude app --all-targets
-    --all-features -D warnings` for `aarch64-apple-darwin` and `x86_64-apple-darwin` (macOS
-    runner), `i686-pc-windows-msvc` (Windows runner), `i686-unknown-linux-gnu` and
-    `armv7-unknown-linux-gnueabihf` (Ubuntu with multiarch libraries and a cross compiler). It
-    is in the `needs` of `ci-success`, the one required check, so it blocks. `app` (Tauri) is
-    excluded. Only `i686-pc-windows-msvc` was run locally and passes; the macOS and Linux
-    targets cannot be built from a Windows machine (C build scripts of `ring` and `hidapi`), so
-    their setup, in particular the armhf apt sources, is untested.
+  - Notes: the `check-targets` job of `ci.yml` runs `cargo clippy --locked --target <t>
+    --workspace --exclude app --all-targets --all-features -D warnings` for
+    `aarch64-apple-darwin` and `x86_64-apple-darwin` (macOS runner), `i686-pc-windows-msvc`
+    (Windows runner), `i686-unknown-linux-gnu` and `armv7-unknown-linux-gnueabihf` (Ubuntu with
+    multiarch libraries and a cross compiler). It is in the `needs` of `ci-success`, the one
+    required check, so it blocks. `app` (Tauri) is excluded. Green on GitHub for all five (run
+    started by hand with `workflow_dispatch`, the branch had no pull request yet). It found what
+    a Windows machine could not: the Linux and macOS files moved in P3.5 had never been
+    compiled (`ntd-interop/src/linux.rs` lacked its `unsafe_code` allow; the macOS stub and a
+    test tripped `unused_self`, `missing_const_for_fn` and `drop_non_drop`, as did one `drop` in
+    the SDK). `libxdo-dev` has no i386 package and is not needed by the checked crates. An
+    unrelated E2E test (credits) was flaky on CI and now waits for the contributors.
 - [ ] **GATE 3**
   - Done when: P3.1 to P3.9 are `[x]`; no OS-specific code outside the allowed crates (rule 108);
     golden files, latency and E2E identical.
-  - Notes (box left open): checked on 2026-10-31. Golden files (in `nextest`) and the 65 E2E
-    tests pass; latency was not measured (`bench` only compiles, §13.1). P3.9 is waiting for its
-    first green run on GitHub. Rule 108: `startup.rs` and `owner.rs` no longer hold OS code (the
+  - Notes (box left open): checked on 2026-10-31 and 2026-11-01. P3.1 to P3.9 are done. Golden
+    files (in `nextest`) and the E2E tests pass, locally and on GitHub; latency was not measured
+    (`bench` only compiles, §13.1). Rule 108: `startup.rs` and `owner.rs` no longer hold OS code (the
     system information moved to `ntd-platform`). Two places still match `grep target_os`: the
     Linux report-id quirk in `ntd-tablets/src/generic.rs` (a parser: rules 80 and 103), and
     `ntd-plugin-host` (`dlopen` of a pinned file, the `.dll`/`.so` extension), which rule 108 does
