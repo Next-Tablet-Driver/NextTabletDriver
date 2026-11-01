@@ -1547,10 +1547,10 @@ just the application.
 | | |
 |---|---|
 | **Current phase** | Phase 3: Extract the I/O adapters |
-| **Last completed task** | P3.7 |
-| **Next task** | P3.8 |
+| **Last completed task** | P3.9 |
+| **Next task** | GATE 3 |
 | **v1 bridge release** | not started (P7.5a) |
-| **Last updated** | 2026-10-31 |
+| **Last updated** | 2026-11-01 |
 
 This table is updated by **every** PR that ticks a task.
 
