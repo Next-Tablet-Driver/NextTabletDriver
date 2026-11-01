@@ -70,11 +70,20 @@ commit message.
     React Aria Components carries most of the accessibility work. Vendored library files
     (`components/base`, `components/foundations`, `utils/cx.ts`, `utils/is-react-component.ts`,
     `styles/`) are excluded from ESLint and Prettier. Alias `@` is `src`.
-- [ ] **R2** Infrastructure layer (ported, not redesigned)
+- [x] **R2** Infrastructure layer (ported, not redesigned)
   - Depends on: R1
   - Done when: `tauri/{bindings,commands,events,window}.ts`, `os.ts`, `log.ts` and the dev
     `tauri-mock` are in `frontend-react/src/infrastructure/` with their unit tests; hooks for
     events and commands (`useCommand`, `useTabletEvent`) exist; no component imports `@tauri-apps`.
+  - Notes: the files are copied as they were (they have no framework in them), with the unit tests
+    (`window.test.ts` lost its constructor parameter properties, which `erasableSyntaxOnly`
+    refuses). `useTauriEvent(subscribe, handler)` and `useCommand(call)` are the two hooks; the
+    first keeps the latest handler without re-subscribing and releases a late subscription, the
+    second drops stale answers. `bindings.ts` is a byte copy of the generated file, excluded from
+    ESLint and Prettier; `bindings-in-sync.test.ts` fails if it drifts from the Svelte copy that
+    `apps/desktop/tests/bindings.rs` regenerates (the Rust test must write to
+    `frontend/src/infrastructure/tauri/bindings.ts` at R13, and that guard test goes away).
+    `/?mock` installs the Tauri mock in development, as before.
 - [ ] **R3** Design system and theming
   - Depends on: R1
   - Done when: design tokens (Untitled UI theme variables) with light, dark and the user themes

@@ -7,3 +7,6 @@ src/components/foundations
 src/utils/cx.ts
 src/utils/is-react-component.ts
 src/styles
+
+# Generated from the Rust code (see docs/development.md)
+src/infrastructure/tauri/bindings.ts

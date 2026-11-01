@@ -13,6 +13,8 @@ export default tseslint.config(
       "src/components/base/**",
       "src/components/foundations/**",
       "src/utils/is-react-component.ts",
+      // Generated from the Rust code.
+      "src/infrastructure/tauri/bindings.ts",
     ],
   },
 
@@ -31,7 +33,7 @@ export default tseslint.config(
   // `console` belongs to the logging module only (see docs/frontend-react.md).
   {
     files: ["src/**/*.{ts,tsx}"],
-    ignores: ["src/infrastructure/log.ts"],
+    ignores: ["src/infrastructure/log.ts", "src/**/__tests__/**"],
     rules: { "no-console": "error" },
   },
 
