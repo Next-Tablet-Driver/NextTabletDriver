@@ -20,7 +20,7 @@ A tablet sends small data packets over USB many times per second. NextTabletDriv
    │   ntd-pipeline   plugins can change the position (smoothing, ...)
    │   Projector     position → screen pixels (absolute) or movement (relative)
    ▼
- engine::injector   tell the operating system
+ ntd-output        tell the operating system
        Windows: SendInput (mouse)
        Linux:   uinput (virtual pen tablet + virtual mouse + virtual keyboard)
 ```
@@ -37,14 +37,16 @@ The desktop app is a thin shell around this engine. It adds a window (the user i
 | `apps/sdk/` | `ntd_sdk`, a library that lets other programs (games, tools) run the engine inside their own process. See [Integrations](integrations.md) and [`apps/sdk/README.md`](../apps/sdk/README.md). |
 | `crates/ntd-core/` | `ntd-core`, the pure types and maths (button bindings, coordinate transforms, `MappingConfig`). It does no input or output. |
 | `crates/ntd-tablets/` | `ntd-tablets`, the tablet definitions, the report parsers and the packet types. It does no input or output. |
-| `crates/ntd-plugin-api/` | `ntd_plugin_api`, the interface that plugins implement. See [Plugin development](plugin-development.md). |
+| `crates/ntd-plugin-api/` | `ntd_plugin_api`, the interface that plugins implement (ABI v3). See [Plugin development](plugin-development.md). |
+| `crates/ntd-state/` | `ntd-state`, `SharedState`: the thread-safe state that the engine threads, the interface and the SDK read and write. |
+| `crates/ntd-plugin-host/` | `ntd-plugin-host`, which loads the plugins: trust and signature checks before the library is opened, ABI and target checks, instances, and the filters that run them. A plugin that fails is disabled. |
 | `plugins/` | Source code of the five plugins we maintain. |
 | `tablets/OpenTabletDriver/` | A git submodule with tablet definitions from [OpenTabletDriver](https://github.com/OpenTabletDriver/OpenTabletDriver). |
 | `qa/` | Benchmarks, fuzzers and property tests. |
 | `packaging/`, `nix/`, `scripts/` | Packaging recipes, Nix modules, helper scripts, udev rules. |
 | `.github/` | CI workflows, issue and pull request templates, repository rules. |
 
-The repository is one Cargo workspace with a single `Cargo.lock`. The root crate, `apps/desktop`, `apps/sdk`, `crates/ntd-pipeline`, `crates/ntd-plugin-api`, each plugin and the example plugin are its members, so `cargo build --workspace` builds all of them into one `target/` folder (the checks of the root crate use `-p next_tablet_driver`). `tools/ntd-recorder` and `tools/ntd-codegen` are members too.
+The repository is one Cargo workspace with a single `Cargo.lock`. The root crate, `apps/desktop`, `apps/sdk`, `crates/ntd-pipeline`, `crates/ntd-test-support`, `crates/ntd-platform`, `crates/ntd-hid`, `crates/ntd-output`, `crates/ntd-interop`, `crates/ntd-settings`, `crates/ntd-plugin-api`, `crates/ntd-plugin-host`, `crates/ntd-state`, each plugin and the example plugin are its members, so `cargo build --workspace` builds all of them into one `target/` folder (the checks of the root crate use `-p next_tablet_driver`). `tools/ntd-recorder` and `tools/ntd-codegen` are members too.
 
 ## Life of a pen packet
 
@@ -60,7 +62,7 @@ This is what happens for every packet, in order. The names are the Rust modules 
     4. `FilterPipeline` (`ntd_pipeline::filter`, a chain of `Filter`s) runs the enabled plugins on `u`, `v`, pressure and tilt.
     5. `Projector` converts the result. In absolute mode it maps `u` and `v` into the target area on screen, in pixels. In relative mode it turns the movement into pixel deltas, using the sensitivity setting.
     6. The tip threshold decides if the pen counts as touching.
-5. **Inject** (`engine::injector`). The frame goes to the operating system. See [what each system receives](#what-each-system-receives).
+5. **Inject** (`crates/ntd-output`). The frame goes to the operating system. See [what each system receives](#what-each-system-receives).
 6. **Publish**. The engine saves the latest state for the interface and the WebSocket server, updates statistics, and publishes a snapshot to shared memory for other processes (see [One owner per tablet](#one-owner-per-tablet)).
 
 The math for steps 4.1, 4.2 and 4.5 lives in `ntd_core::math`. These functions are small and pure, so they are covered by property tests (`qa/tests`), benchmarks (`qa/benches`) and fuzzers (`qa/fuzz`).
@@ -79,7 +81,7 @@ The math for steps 4.1, 4.2 and 4.5 lives in `ntd_core::math`. These functions a
 
 On Linux the engine creates three devices, named `NextTabletDriver Virtual Pen`, `NextTabletDriver Virtual Mouse` and `NextTabletDriver Virtual Keyboard`. The kernel treats them as real hardware, so they work on X11, Wayland and XWayland.
 
-The injector is called directly from the polling thread. This is a deliberate choice. A separate thread would need two different ways of passing data (positions can be dropped, button events cannot), and nobody has measured a problem. The reasoning is written at the top of `src/engine/injector/mod.rs`.
+The injector is called directly from the polling thread. This is a deliberate choice. A separate thread would need two different ways of passing data (positions can be dropped, button events cannot), and nobody has measured a problem. The reasoning is written at the top of `crates/ntd-output/src/lib.rs`.
 
 ## Threads
 
@@ -106,7 +108,7 @@ The webview is not trusted with file paths. File pickers (for plugins and themes
 
 ## One owner per tablet
 
-Two programs cannot read the same tablet at the same time. NextTabletDriver solves this with a small protocol in `engine::interop`:
+Two programs cannot read the same tablet at the same time. NextTabletDriver solves this with a small protocol in `ntd-interop`:
 
 - A named lock, held by the OS for the whole machine, picks one **HID owner**. The operating system releases it if the owner crashes, so another process can take over at once.
 - The owner publishes its state in a shared memory segment. Other processes (**readers**) copy it out without blocking the owner.
@@ -130,12 +132,12 @@ See [Plugins](plugins.md) for users and [Plugin development](plugin-development.
 
 Code that only makes sense on one system is behind `#[cfg(windows)]` or `#[cfg(target_os = "linux")]`:
 
-- `engine::injector::windows` and `engine::injector::linux`
-- `engine::interop::lock`, `shm` (one file per system)
+- `ntd-output`: `windows.rs` and `linux.rs`
+- `ntd-interop`: `lock`, `shm` and `command`, with `protocol` apart (one file per system)
 - `drivers::hid_caps` (Windows only: asks the OS for the real report length)
 - `startup`: autostart (registry on Windows, a desktop entry on Linux) and the high-resolution timer (Windows only)
 
-The Cargo feature `desktop` (on by default) switches on HID polling and injection. The SDK turns it off and runs its own engine loop that never injects input.
+There is no Cargo feature to switch input injection off. The SDK does not depend on the root crate: it uses `ntd-state` and `ntd-hid` and runs its own engine loop, which never injects input.
 
 ## Safety rules in the code
 

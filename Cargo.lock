@@ -82,6 +82,10 @@ dependencies = [
  "log",
  "next_tablet_driver",
  "ntd-core",
+ "ntd-platform",
+ "ntd-plugin-host",
+ "ntd-settings",
+ "ntd-state",
  "ntd_plugin_api",
  "serde",
  "serde_json",
@@ -2541,32 +2545,30 @@ checksum = "650eef8c711430f1a879fdd01d4745a7deea475becfb90269c06775983bbf086"
 name = "next_tablet_driver"
 version = "3.0.0"
 dependencies = [
- "base64 0.23.1",
  "cargo-husky",
  "chrono",
  "criterion",
  "crossbeam-channel",
  "directories",
- "display-info",
- "evdev",
- "hidapi",
  "include_dir",
- "interprocess",
  "libc",
- "libloading 0.9.0",
  "log",
  "minisign",
- "minisign-verify 0.2.5",
  "nix 0.31.3",
  "ntd-core",
+ "ntd-hid",
+ "ntd-interop",
+ "ntd-output",
  "ntd-pipeline",
+ "ntd-platform",
+ "ntd-plugin-host",
+ "ntd-settings",
+ "ntd-state",
  "ntd-tablets",
- "ntd_plugin_api",
+ "ntd-test-support",
  "proptest",
- "regex",
  "serde",
  "serde_json",
- "sha2",
  "specta",
  "thiserror 2.0.21",
  "tungstenite",
@@ -2621,24 +2623,119 @@ dependencies = [
 ]
 
 [[package]]
+name = "ntd-hid"
+version = "0.1.0"
+dependencies = [
+ "base64 0.23.1",
+ "hidapi",
+ "log",
+ "ntd-core",
+ "ntd-tablets",
+ "ntd-test-support",
+ "regex",
+ "serde_json",
+ "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "ntd-interop"
+version = "0.1.0"
+dependencies = [
+ "interprocess",
+ "nix 0.31.3",
+ "ntd-core",
+ "ntd-platform",
+ "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "ntd-output"
+version = "0.1.0"
+dependencies = [
+ "display-info",
+ "evdev",
+ "log",
+ "ntd-core",
+ "thiserror 2.0.21",
+ "windows-sys 0.61.2",
+]
+
+[[package]]
 name = "ntd-pipeline"
 version = "0.1.0"
 dependencies = [
  "log",
  "ntd-core",
  "ntd-tablets",
+ "ntd-test-support",
  "ntd_plugin_api",
  "serde_json",
  "thiserror 2.0.21",
 ]
 
 [[package]]
+name = "ntd-platform"
+version = "0.1.0"
+dependencies = [
+ "directories",
+ "libc",
+ "log",
+ "nix 0.31.3",
+ "thiserror 2.0.21",
+ "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "ntd-plugin-host"
+version = "0.1.0"
+dependencies = [
+ "libloading 0.9.0",
+ "log",
+ "minisign",
+ "minisign-verify 0.2.5",
+ "ntd-core",
+ "ntd-pipeline",
+ "ntd-settings",
+ "ntd_plugin_api",
+ "serde",
+ "serde_json",
+ "sha2",
+ "specta",
+ "thiserror 2.0.21",
+ "windows-sys 0.61.2",
+]
+
+[[package]]
 name = "ntd-recorder"
 version = "0.1.0"
 dependencies = [
- "hidapi",
+ "ntd-hid",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "ntd-settings"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "ntd-core",
+ "serde",
+ "serde_json",
+ "specta",
+ "thiserror 2.0.21",
+ "uuid",
+]
+
+[[package]]
+name = "ntd-state"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "ntd-core",
+ "ntd-pipeline",
+ "ntd-plugin-host",
+ "ntd-tablets",
 ]
 
 [[package]]
@@ -2649,6 +2746,13 @@ dependencies = [
  "ntd-core",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "ntd-test-support"
+version = "0.1.0"
+dependencies = [
+ "ntd-core",
 ]
 
 [[package]]
@@ -2666,11 +2770,15 @@ version = "1.1.0"
 dependencies = [
  "cbindgen",
  "csbindgen",
- "hidapi",
  "log",
- "next_tablet_driver",
  "ntd-core",
+ "ntd-hid",
+ "ntd-interop",
  "ntd-pipeline",
+ "ntd-platform",
+ "ntd-plugin-host",
+ "ntd-settings",
+ "ntd-state",
  "ntd-tablets",
 ]
 

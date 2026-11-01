@@ -1,0 +1,28 @@
+[package]
+name = "ntd-output"
+version = "0.1.0"
+description = "Injects the output of NextTabletDriver into the operating system as virtual input events"
+publish = false
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+ntd-core = { workspace = true }
+log = { workspace = true }
+thiserror = { workspace = true }
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { workspace = true, features = ["Win32_Foundation", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_WindowsAndMessaging"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+display-info = { workspace = true }
+evdev = { workspace = true }
+
+[lints]
+workspace = true

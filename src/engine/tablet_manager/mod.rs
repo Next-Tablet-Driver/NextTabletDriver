@@ -27,8 +27,8 @@
 //! The responsibilities above are split across submodules: [`owner`] runs this
 //! process as the HID owner, [`polling`] drives the raw packet read/process
 //! loop, [`reader`] mirrors another process's published state, and
-//! [`sdk_bridge`] publishes/consumes state through `engine::interop`'s
-//! SHM/command layer. See `engine::interop` for the HID-owner arbitration
+//! [`sdk_bridge`] publishes/consumes state through `ntd-interop`'s
+//! SHM/command layer. See `ntd-interop` for the HID-owner arbitration
 //! mechanism: exactly one process (this desktop app, or an SDK-embedded game)
 //! opens the real HID device at a time, and every other process mirrors its
 //! state instead.
@@ -45,9 +45,9 @@ pub mod bench_support {
     pub use super::polling::{PacketLoopState, process_packet_for_bench};
 }
 
-use crate::engine::interop::lock::try_acquire_hid_owner;
-use crate::engine::state::SharedState;
 use crossbeam_channel::Sender;
+use ntd_interop::lock::try_acquire_hid_owner;
+use ntd_state::SharedState;
 use ntd_tablets::TabletData;
 use std::any::Any;
 use std::panic;

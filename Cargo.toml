@@ -19,8 +19,16 @@ members = [
     "apps/sdk",
     "apps/sdk/examples/rust_plugin",
     "crates/ntd-core",
+    "crates/ntd-hid",
+    "crates/ntd-interop",
     "crates/ntd-pipeline",
+    "crates/ntd-settings",
+    "crates/ntd-state",
+    "crates/ntd-platform",
+    "crates/ntd-output",
     "crates/ntd-plugin-api",
+    "crates/ntd-plugin-host",
+    "crates/ntd-test-support",
     "crates/ntd-tablets",
     "plugins/*",
     "tools/ntd-codegen",
@@ -45,11 +53,19 @@ categories = ["hardware-support"]
 # Every dependency version of the repository is declared here, once. A crate uses it with
 # `name = { workspace = true }` and may add features or `optional = true`, never a version.
 # In this repository
-next_tablet_driver = { path = ".", default-features = false }
+next_tablet_driver = { path = "." }
 ntd-core = { path = "crates/ntd-core" }
+ntd-hid = { path = "crates/ntd-hid" }
+ntd-interop = { path = "crates/ntd-interop" }
+ntd-output = { path = "crates/ntd-output" }
 ntd-pipeline = { path = "crates/ntd-pipeline" }
+ntd-platform = { path = "crates/ntd-platform" }
+ntd-settings = { path = "crates/ntd-settings" }
+ntd-state = { path = "crates/ntd-state" }
 ntd_plugin_api = { path = "crates/ntd-plugin-api" }
+ntd-plugin-host = { path = "crates/ntd-plugin-host" }
 ntd-tablets = { path = "crates/ntd-tablets" }
+ntd-test-support = { path = "crates/ntd-test-support" }
 # Third party
 base64 = "0.23.1"
 cargo-husky = { version = "1.5.0", default-features = false }
@@ -155,22 +171,18 @@ multiple_crate_versions = "allow"
 redundant_pub_crate = "allow"
 
 [features]
-default = ["desktop"]
-# Everything that talks to the OS: HID polling thread and input injection.
-# Disabled by the SDK, which embeds the pure processing pipeline only.
-desktop = ["dep:display-info"]
 # Derives `specta::Type` on the types the desktop shell exchanges with the frontend, so their
 # TypeScript definitions are generated from Rust (roadmap P0.9).
-specta = ["dep:specta", "ntd-core/specta", "ntd_plugin_api/specta"]
+specta = ["dep:specta", "ntd-core/specta", "ntd-settings/specta", "ntd-plugin-host/specta"]
 
 [dependencies]
 # Windows & Linux
-hidapi = { workspace = true }
-display-info = { workspace = true, optional = true }
+ntd-hid = { workspace = true }
+ntd-interop = { workspace = true }
+ntd-output = { workspace = true }
 specta = { workspace = true, optional = true, features = ["serde_json"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
-base64 = { workspace = true }
 directories = { workspace = true }
 log = { workspace = true }
 thiserror = { workspace = true }
@@ -180,14 +192,12 @@ include_dir = { workspace = true }
 tungstenite = { workspace = true }
 ureq = { workspace = true, features = ["json"] }
 uuid = { workspace = true, features = ["v4", "serde"] }
-interprocess = { workspace = true }
-regex = { workspace = true }
-sha2 = { workspace = true }
-minisign-verify = { workspace = true }
-libloading = { workspace = true }
 ntd-core = { workspace = true }
-ntd_plugin_api = { workspace = true }
+ntd-plugin-host = { workspace = true }
 ntd-pipeline = { workspace = true }
+ntd-platform = { workspace = true }
+ntd-settings = { workspace = true }
+ntd-state = { workspace = true }
 ntd-tablets = { workspace = true }
 
 # Windows
@@ -196,11 +206,11 @@ windows-sys = { workspace = true, features = ["Win32_Foundation", "Win32_System_
 
 # Linux
 [target.'cfg(target_os = "linux")'.dependencies]
-evdev = { workspace = true }
 nix = { workspace = true, features = ["sched", "fs", "mman"] }
 libc = { workspace = true }
 
 [dev-dependencies]
+ntd-test-support = { workspace = true }
 cargo-husky = { workspace = true, features = ["user-hooks"] }
 criterion = { workspace = true }
 minisign = { workspace = true }

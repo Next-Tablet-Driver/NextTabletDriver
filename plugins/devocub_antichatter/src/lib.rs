@@ -78,6 +78,7 @@ impl NextTabletPlugin for DevocubAntichatterPlugin {
             id: "devocub_antichatter".to_string(),
             name: "Devocub Antichatter".to_string(),
             version: "1.0.0".to_string(),
+            target: String::new(),
             author: "Devocub".to_string(),
             description: "Antichatter and prediction filter to eliminate sensor jitter while \
                 preserving cursor responsiveness."

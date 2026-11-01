@@ -8,7 +8,7 @@ If you only want to *use* plugins, read [Plugins](plugins.md) instead.
 | --- | --- |
 | Languages | Rust (easiest, a macro does the hard part), or any language that can export C functions. |
 | What you build | A `.dll` on Windows, a `.so` on Linux. |
-| Interface version | 1 |
+| Interface version | 3 (see [Port a plugin to ABI v3](plugin-migration-v3.md) if you wrote one for an older version) |
 | Where it runs | Inside NextTabletDriver, for every packet, on the thread that reads the tablet. |
 | Start from | [`apps/sdk/examples/rust_plugin`](../apps/sdk/examples/rust_plugin) (Rust) or [`apps/sdk/examples/c_plugin`](../apps/sdk/examples/c_plugin) (C). Both are tested. |
 
@@ -130,7 +130,7 @@ The user's choices are stored in the profile like this, under your `id`:
 | `u`, `v` | `f32` | The position of the pen inside the **active area**. `0.0, 0.0` is the top-left corner and `1.0, 1.0` the bottom-right corner. The active area's rotation is already applied. The values can be below 0 or above 1 when the pen is outside the active area. The engine clamps the final screen position, so you do not have to. |
 | `pressure` | `f32` | Pressure after the pressure curve, from 0.0 to 1.0. |
 | `tilt_x`, `tilt_y` | `i32` | Tilt in degrees. |
-| `is_down` | `bool` | The tip is touching. Read it, for example to reset your state on a new stroke. Changing it has no effect. |
+| `is_down` | `u8` | `1` when the tip is touching, else `0`. Read it, for example to reset your state on a new stroke. Changing it has no effect. |
 | `timestamp_ns` | `u64` | Reserved. Always 0 for now. If you need time, read your own clock. |
 
 The context has `active_area_width_mm`, `active_area_height_mm`, `target_area_width_px` and `target_area_height_px`. They let you work in real units:
@@ -190,7 +190,8 @@ Open the **Console** tab and look for messages from `Plugins` and `Pipeline`. Th
 | `Failed to load potential plugin library at ...: Dynamic library load error: ...` | The operating system could not load the file. Common reasons: the file is built for another CPU type (x64 or ARM64), it needs another library that is not found, or (Linux) it needs a newer C library than the system has. The text after the colon is the system's message. |
 | `Missing required plugin FFI symbol: 'ntd_plugin_...'` | One of the seven functions is not exported. In C++, use `extern "C"`. In C on Windows, use `__declspec(dllexport)`. Check the exports with `dumpbin /exports file.dll` (Windows) or `nm -D --defined-only file.so` (Linux). |
 | `Invalid plugin magic identifier: expected 0x4E540000, found ...` | `ntd_plugin_handshake` returns the wrong value. See [the handshake](#the-handshake). |
-| `Incompatible plugin ABI version: expected 1, found N` | The library was built for another interface version. Rebuild it with a matching version of the API. |
+| `Incompatible plugin ABI version: this app loads ABI v3 plugins, ...` | The library was built for another interface version. Rebuild it against ABI v3: see [Port a plugin to ABI v3](plugin-migration-v3.md). |
+| `Plugin built for another target: it was built for ..., this app runs on ...` | The library was built for another operating system or processor. Build it for the triple the message names. |
 | `Failed to parse plugin manifest: ...` | The manifest is not valid JSON, or it misses a required field. The text shows the position of the problem. |
 | `ntd_plugin_manifest returned a null pointer` | Return a pointer to a string. |
 | `Failed to create instance of plugin '...'` | `ntd_plugin_create` returned null. |
@@ -217,12 +218,12 @@ All names must be exported exactly like this, with no decoration.
 uint32_t        ntd_plugin_handshake(void);
 const char     *ntd_plugin_manifest(void);
 void           *ntd_plugin_create(void);
-NtdPluginStatus ntd_plugin_process(void *instance, NtdPluginPacket *packet,
+int32_t         ntd_plugin_process(void *instance, NtdPluginPacket *packet,
                                    const NtdPluginContext *context);
-NtdPluginStatus ntd_plugin_set_property(void *instance, const char *key,
+int32_t         ntd_plugin_set_property(void *instance, const char *key,
                                         const char *value_json);
-NtdPluginStatus ntd_plugin_reset(void *instance);
-NtdPluginStatus ntd_plugin_destroy(void *instance);
+int32_t         ntd_plugin_reset(void *instance);
+int32_t         ntd_plugin_destroy(void *instance);
 ```
 
 | Function | Called | Rules |
@@ -239,10 +240,10 @@ The engine ignores the return values of `process`, `reset` and `destroy`. For `s
 
 ### The handshake
 
-The value is the "magic" `0x4E540000` in the upper 16 bits, and the interface version in the lower 16 bits. With version 1 it is **`0x4E540001`**. The engine refuses a file when the upper part or the version is different.
+The value is the "magic" `0x4E540000` in the upper 16 bits, and the interface version in the lower 16 bits. With version 3 it is **`0x4E540003`**. The engine refuses a file when the upper part or the version is different.
 
 ```c
-return (0x4E540000u & 0xFFFF0000u) | (1u & 0x0000FFFFu);
+return (0x4E540000u & 0xFFFF0000u) | (3u & 0x0000FFFFu);
 ```
 
 ### The structures
@@ -258,13 +259,13 @@ All structures use the C layout. These offsets and sizes are checked against the
 | `pressure` | `float` | 8 |
 | `tilt_x` | `int32_t` | 12 |
 | `tilt_y` | `int32_t` | 16 |
-| `is_down` | `bool` (1 byte) | 20 |
+| `is_down` | `uint8_t` | 20 |
 | (padding) | | 21 to 23 |
 | `timestamp_ns` | `uint64_t` | 24 |
 
 `NtdPluginContext`, 16 bytes: four `float` fields at offsets 0, 4, 8 and 12: `active_area_width_mm`, `active_area_height_mm`, `target_area_width_px`, `target_area_height_px`.
 
-`NtdPluginStatus`: a 4-byte `enum`. `NTD_PLUGIN_OK = 0`, `NTD_PLUGIN_ERROR = 1`.
+The status is a plain `int32_t`: `0` is success, any other value is an error. A plugin whose `process` returns an error is disabled until the app restarts.
 
 ### The manifest as JSON
 
@@ -340,7 +341,7 @@ The macro builds the manifest by creating a temporary instance with `Default::de
 
 ## About the interface version
 
-The interface version is 1. The engine accepts exactly this version and refuses all others. If the structures or the functions ever change in an incompatible way, this number changes, and plugins have to be rebuilt.
+The interface version is 3 (ABI v3). The engine accepts exactly this version and refuses all others, with a message that names the version the library was built for. If the structures or the functions ever change in an incompatible way, this number changes, and plugins have to be rebuilt.
 
 The plugin API crate has its own crate version (`0.1.0`), which is not the interface version. It is also not published on crates.io. Depend on it with a git dependency, and pin a commit.
 

@@ -9,21 +9,21 @@
 //! losing it through an OS input event), no telemetry, no UI channel.
 //!
 //! Coexistence with the desktop app (or other SDK-embedded games) is handled
-//! by `engine::interop`, exactly as documented there: this loop becomes
+//! by `ntd-interop`, exactly as documented there: this loop becomes
 //! either the HID owner or a reader of whichever process already is one.
 
-use next_tablet_driver::drivers::detect_tablet;
+use ntd_hid::detect_tablet;
 
-use next_tablet_driver::engine::interop::command::{CommandHandler, CommandListener};
-use next_tablet_driver::engine::interop::lock::try_acquire_hid_owner;
-use next_tablet_driver::engine::interop::shm::{
-    DEVICE_NAME_CAPACITY, SdkPublicState, ShmReader, ShmWriter,
-};
-use next_tablet_driver::engine::state::SharedState;
 use ntd_core::config::models::{ActiveArea, DriverMode, MappingConfig};
+use ntd_core::hid::HidDevice;
 use ntd_core::sync::{LockRecoveryExt, WriteRecoverExt};
+use ntd_interop::command::CommandListener;
+use ntd_interop::lock::try_acquire_hid_owner;
+use ntd_interop::protocol::{CommandHandler, DEVICE_NAME_CAPACITY, SdkPublicState};
+use ntd_interop::shm::{ShmReader, ShmWriter};
 use ntd_pipeline::FilterPipeline;
 use ntd_pipeline::{Pipeline, ProcessedFrame};
+use ntd_state::SharedState;
 use ntd_tablets::{TabletData, TabletStatus};
 use std::panic;
 use std::sync::Arc;
@@ -328,14 +328,13 @@ fn owner_iteration(shared: &Arc<SharedState>, is_owner: &Arc<AtomicBool>) {
     let _owner_flag_guard = OwnerFlagGuard(is_owner);
 
     let hid_init_start = Instant::now();
-    let hid_api = match hidapi::HidApi::new() {
+    let mut hid_backend = match ntd_hid::Backend::new() {
         Ok(api) => {
             *shared
                 .lifecycle
                 .engine_status
                 .write()
-                .unwrap_or_reset("engine_status") =
-                next_tablet_driver::engine::state::EngineStatus::Running;
+                .unwrap_or_reset("engine_status") = ntd_state::EngineStatus::Running;
             api
         }
         Err(e) => {
@@ -344,8 +343,7 @@ fn owner_iteration(shared: &Arc<SharedState>, is_owner: &Arc<AtomicBool>) {
                 .lifecycle
                 .engine_status
                 .write()
-                .unwrap_or_reset("engine_status") =
-                next_tablet_driver::engine::state::EngineStatus::Failed(e.to_string());
+                .unwrap_or_reset("engine_status") = ntd_state::EngineStatus::Failed(e.to_string());
             return;
         }
     };
@@ -380,7 +378,7 @@ fn owner_iteration(shared: &Arc<SharedState>, is_owner: &Arc<AtomicBool>) {
             break;
         }
 
-        if let Some((device, driver, vid, pid)) = detect_tablet(&hid_api) {
+        if let Some((device, driver, vid, pid)) = detect_tablet(&mut hid_backend) {
             log::info!(target: "EngineLoop", "Device connected: {vid:04x}:{pid:04x}");
             on_device_connected(shared, driver.as_ref(), vid, pid, &mut local_config);
             let mut local_config_version = shared.config.version.load(Ordering::Relaxed);
@@ -393,7 +391,7 @@ fn owner_iteration(shared: &Arc<SharedState>, is_owner: &Arc<AtomicBool>) {
                 if shared.lifecycle.shutdown_requested.load(Ordering::Relaxed) {
                     break;
                 }
-                match device.read_timeout(&mut drain_buf, 10) {
+                match device.read_timeout(&mut drain_buf, Duration::from_millis(10)) {
                     Ok(0) | Err(_) => break,
                     Ok(_) => (),
                 }
@@ -401,7 +399,7 @@ fn owner_iteration(shared: &Arc<SharedState>, is_owner: &Arc<AtomicBool>) {
             pipeline.reset_relative();
 
             run_polling_loop(
-                &device,
+                device.as_ref(),
                 driver.as_ref(),
                 shared,
                 &mut pipeline,
@@ -440,7 +438,7 @@ fn on_device_connected(
     let (mw, mh, mp) = driver.get_specs();
     let (pen_button_count, aux_button_count) = driver.get_button_counts();
 
-    let new_device = next_tablet_driver::engine::state::DeviceState {
+    let new_device = ntd_state::DeviceState {
         name: driver.get_name().to_string(),
         vid,
         pid,
@@ -475,8 +473,7 @@ fn on_device_connected(
 
 fn on_disconnected(shared: &Arc<SharedState>) {
     log::info!(target: "EngineLoop", "Device disconnected, resetting shared state");
-    *shared.device.write().unwrap_or_reset("device_state") =
-        next_tablet_driver::engine::state::DeviceState::default();
+    *shared.device.write().unwrap_or_reset("device_state") = ntd_state::DeviceState::default();
     *shared
         .pipeline
         .tablet_data
@@ -494,7 +491,7 @@ fn on_disconnected(shared: &Arc<SharedState>) {
         struct would only move the list"
 )]
 fn run_polling_loop(
-    device: &hidapi::HidDevice,
+    device: &dyn HidDevice,
     driver: &dyn ntd_tablets::NextTabletDriver,
     shared: &Arc<SharedState>,
     pipeline: &mut Pipeline,
@@ -512,7 +509,7 @@ fn run_polling_loop(
             break;
         }
 
-        match device.read_timeout(&mut buf, 500) {
+        match device.read_timeout(&mut buf, Duration::from_millis(500)) {
             Ok(len) if len > 0 => {
                 if let Err(e) = panic::catch_unwind(panic::AssertUnwindSafe(|| {
                     if let Some(slice) = buf.get(..len) {

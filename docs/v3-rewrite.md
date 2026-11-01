@@ -207,11 +207,12 @@ xtask/                     # dev tasks (TS types, lint-style, CI plan)
 | `ntd-interop` | `engine/interop/*` | core | shm, OS locks |
 | `ntd-settings` | `settings/*` | core | files (paths **injected**) |
 | `ntd-platform` | autostart, single instance, thread priority and timer (today scattered across `startup.rs`, `application/`, `engine/`) | core | OS |
-| `ntd-engine` | `engine/tablet_manager/*`, `engine/state` | core, tablets, hid, pipeline, plugin-host, output, interop, settings, platform | threads |
+| `ntd-engine` | `engine/tablet_manager/*` | core, tablets, hid, pipeline, plugin-host, output, interop, settings, platform | threads |
 | `ntd-services` | `application/services/*`, `application/telemetry/*` | engine, settings | network |
 | `ntd-ipc` | implicit DTOs of `src-tauri/src/commands.rs` + `frontend/.../tauri/commands.ts` | core, settings (types) | **None** |
 | `apps/desktop` | `src-tauri` | engine, services, ipc, platform | Tauri |
-| `apps/sdk` | `sdk` | core, tablets, hid, pipeline | through its dependencies |
+| `ntd-state` | `engine/state` | core, tablets, pipeline, plugin-host | none |
+| `apps/sdk` | `sdk` | core, tablets, hid, pipeline, state, interop, plugin-host, settings, platform | through its dependencies |
 
 ### 4.3 Graph (arrows **always point down**)
 
@@ -766,7 +767,9 @@ behind a trait with a fake in `ntd-test-support`.
      `cfg(target_os = "...")`, and an unhandled OS falls into a branch that returns
      `Unsupported`, never into a silent or empty branch.
 108. **DO NOT** put OS-specific code outside `ntd-hid`, `ntd-output`, `ntd-interop`,
-     `ntd-platform` and `apps/desktop`.
+     `ntd-platform`, `ntd-plugin-host` (loading a native library) and `apps/desktop`. One named
+     exception: the Linux report-id adjustment in `ntd-tablets/src/generic.rs`, because it is part
+     of a parser (rules 80 and 103).
 109. **DO NOT** read HID or network bytes with `from_ne_bytes`, `transmute` or a pointer cast.
      Always an explicit `from_le_bytes` / `from_be_bytes`.
 110. **DO NOT** use SIMD intrinsics or architecture-specific instructions without an equivalent
@@ -1104,6 +1107,7 @@ limit, and everything that can be checked is checked in CI.
 | `machete` | `cargo machete`: no unused dependency |
 | `clippy` | `cargo clippy --locked --all-targets --all-features` on touched crates |
 | `clippy-release` | same with `--release` (code behind `cfg(not(debug_assertions))`) |
+| `check-targets` | `cargo clippy --target` on the tier 3 targets of §16.2, blocking |
 | `doc` | `cargo doc --no-deps` with `RUSTDOCFLAGS=-D warnings` |
 | `test` | `cargo nextest run` + doctests, Windows x64 and Linux x64 matrix |
 | `golden` | parser golden files (§7, phase 0) |
@@ -1545,10 +1549,10 @@ just the application.
 | | |
 |---|---|
 | **Current phase** | Phase 3: Extract the I/O adapters |
-| **Last completed task** | GATE 2 |
-| **Next task** | P3.1 |
+| **Last completed task** | GATE 3 |
+| **Next task** | P4.1 |
 | **v1 bridge release** | not started (P7.5a) |
-| **Last updated** | 2026-10-31 |
+| **Last updated** | 2026-11-01 |
 
 This table is updated by **every** PR that ticks a task.
 
@@ -1981,47 +1985,194 @@ Goal: `ntd-core`, `ntd-tablets`, `ntd-pipeline` without any I/O (§7, phase 2).
 
 Goal: every OS access behind a trait, with a fake and room for each platform (§7, phase 3; §16.3).
 
-- [ ] **P3.1** `ntd-test-support`
+- [x] **P3.1** `ntd-test-support` (branch `chore/v3-phase-3`)
   - Depends on: GATE 2
   - Done when: fakes of `HidBackend`, `OutputSink`, `Clock` usable by every crate as a
     dev-dependency.
-- [ ] **P3.2** `ntd-platform` (§16.4)
+  - Notes: the three ports exist before the crates that implement them (P3.3, P3.4), and
+    `ntd-hid` and `ntd-output` will dev-depend on `ntd-test-support`, so the traits cannot live in
+    those crates (a crate cannot dev-depend on a crate that depends on it without testing against
+    two copies of itself). They live in `ntd-core`, which has no I/O: `ntd_core::hid`
+    (`HidBackend`, `HidDevice`, `HidDeviceInfo`, `OpenOptions { exclusive }`, `HidError` with
+    `PermissionDenied`), `ntd_core::output::OutputSink` (the former `InputSink` of the injector,
+    moved to `ntd-core` and renamed, no re-export left) and `ntd_core::clock::Clock`. P3.3 and P3.4
+    implement them with `hidapi` and the OS injectors and may re-export them. `capabilities()`
+    is not on `OutputSink` yet: P3.4 adds it with the real values. The crate holds
+    `FakeHidBackend` (plug, unplug, replug, reports queued from a `FakeHidHandle`, refused
+    permission, a log of every `open` with its options), `RecordingSink` and `ManualClock` (moved
+    here from `ntd-core`). None of them sleeps or spawns a thread. `ntd-pipeline` and the root
+    crate use it as a dev-dependency (the polling tests dropped their private recorder), and the
+    coverage gate does not count it. `HidDevice` takes `&self`, as `hidapi` does, so the polling
+    loop can borrow it.
+- [x] **P3.2** `ntd-platform` (§16.4) (branch `chore/v3-phase-3`)
   - Depends on: P3.1
   - Done when: autostart, single instance, thread priority and high-resolution timer live in this
     crate, with the `windows` / `linux` / `macos` / `unsupported` structure.
-- [ ] **P3.3** `ntd-hid`
+  - Notes: `crates/ntd-platform` has `windows.rs` and `linux.rs` (each with a folder of the
+    modules `autostart`, `lock`, `priority` and, for Windows, `timer`), `macos.rs` and
+    `unsupported.rs` (every call says `Unsupported`; the crate was checked for
+    `x86_64-unknown-linux-gnu` and, for `unsupported.rs`, `x86_64-unknown-uefi`; macOS itself is
+    not built here). The two lock files were moved with `git mv` from `engine/interop/lock/`,
+    the autostart and timer code was cut out of `startup.rs`, the priority code out of
+    `tablet_manager/owner.rs`. "Single instance" is the named, machine-wide, non-blocking lock
+    that already exists as the HID owner lock: there is no other single-instance guard in the
+    application today, and none was added (a second desktop launch still becomes a reader).
+    `ntd_platform::NamedLock::HidOwner` keeps the exact legacy names
+    (`Local\NextTabletDriver_HidOwner`, `ntd_hid_owner.lock`) so an old SDK and a new app still
+    elect one owner together; `engine::interop::lock` is now a wrapper that P3.5 moves. The crate
+    never looks for folders: `startup.rs` builds `UserPaths` (home, config) with `directories`
+    and passes it in (§4.4, third inversion). Errors are typed (`PlatformError`) and the caller
+    logs them. One behaviour change: disabling the timer resolution no longer reports
+    `STATUS_TIMER_RESOLUTION_NOT_SET` as a failure (`timeEndPeriod` had already cancelled the
+    request, so the old code logged a spurious warning every time). `startup.rs` keeps the
+    hardware report (`log_system_hardware`), which is not in the list of this task. The
+    `lint-style` list of crates that may use `unsafe` gained `crates/ntd-platform/`.
+- [x] **P3.3** `ntd-hid` (branch `chore/v3-phase-3`)
   - Depends on: P3.1
   - Done when: `HidBackend` trait with an "exclusive" option and a `PermissionDenied` error; the
     only crate depending on `hidapi`; §16.3 structure.
-- [ ] **P3.4** `ntd-output`
+  - Notes: `crates/ntd-hid` has `windows.rs`, `linux.rs`, `macos.rs` and `unsupported.rs`; the
+    first two share `hidapi_backend.rs`, Windows adds the static input report length from
+    `HidP_GetCaps` (`src/drivers/hid_caps.rs` moved there with `git mv`), and the other two say
+    `Unsupported` (the crate was checked for `x86_64-unknown-uefi`; the Linux files could not be
+    compiled here, since `hidapi` needs the Linux system libraries: the CI does it). The traits
+    stay in `ntd-core` (see P3.1) and `ntd-hid` re-exports them. The port grew with what the
+    real callers need: `serial_number` and `release_number` in `HidDeviceInfo`,
+    `HidDevice::report_descriptor`, and `HidBackend::input_report_length` (the static query,
+    `None` by default). `exclusive` is accepted by every backend and only used by a macOS one,
+    which does not exist yet. A refusal of the system is `HidError::PermissionDenied`, decided in
+    one place (it used to be a string search in `detect_tablet`). `detect_tablet` now takes
+    `&mut dyn HidBackend` and returns `Box<dyn HidDevice>`; the polling loop takes
+    `&dyn HidDevice`; the desktop engine, the SDK engine, the SDK `ffi` probe and
+    `ntd-recorder` all go through `ntd_hid::Backend`, so `cargo tree -i hidapi` shows
+    `ntd-hid` alone. `detect_tablet` is tested for the first time without a tablet, with
+    `FakeHidBackend`: choice by static report length, fallback, unknown device never opened,
+    refused open. One behaviour change: `enumerate()` scans the bus again each time, where the
+    old code listed the devices seen when `HidApi` was created, so a tablet plugged after the
+    start is now found without a restart (the engine looks about twice a second while no tablet
+    is connected, which costs one enumeration each time).
+- [x] **P3.4** `ntd-output` (branch `chore/v3-phase-3`)
   - Depends on: P3.1
   - Done when: `OutputSink` trait with `capabilities()`; Windows and Linux implementations;
     `macos` returns `Unsupported`.
-- [ ] **P3.5** `ntd-interop`
+  - Notes: `crates/ntd-output` has `windows.rs`, `linux.rs`, `macos.rs` and `unsupported.rs`; the
+    first two are the old `engine/injector/{windows,linux}.rs` moved with `git mv` (`mod.rs` became
+    `lib.rs`), the other two say `OutputError::Unsupported` and cannot be created. The trait stays
+    in `ntd-core` (see P3.1) and is renamed `OutputSink` (it was `InputSink`) with
+    `capabilities() -> OutputCapabilities { absolute_pointer, relative_pointer, pressure, tilt }`:
+    Windows offers the pointer only (the pen's pressure and tilt are not passed to `SendInput`),
+    Linux offers all four (the virtual tablet reports them), `RecordingSink` offers everything
+    unless a test narrows it. The creation error is typed: `OutputError::PermissionDenied`
+    (with the udev steps) when `/dev/uinput` refuses, `Other`, `Unsupported`. `display-info`
+    moved with the Linux injector, the root `desktop` feature is now `dep:ntd-output`, and
+    `evdev` left the root crate. The Linux files were checked for `x86_64-unknown-linux-gnu` only
+    (clippy), not run. Nothing reads `capabilities()` yet: the engine and the interface will.
+- [x] **P3.5** `ntd-interop` (branch `chore/v3-phase-3`)
   - Depends on: P3.1
   - Done when: pure protocol separated from transport; shared memory names ≤ 31 characters;
     protocol fuzz target.
-- [ ] **P3.6** `ntd-settings`
+  - Notes: `crates/ntd-interop` separates the **protocol** from the **transports**.
+    `protocol.rs` is pure: `SdkPublicState` (the shared snapshot), `Request` and `Response` with
+    their fixed-size encoding, `CommandHandler`, the sizes and the names; `shm.rs` (seqlock over a
+    mapping that `windows.rs` / `linux.rs` create; `macos.rs` and `unsupported.rs` map nothing),
+    `command/` (local socket) and `lock.rs` (the owner lock, now a wrapper over `ntd-platform`)
+    are the transports. The shared memory names are constants of the protocol and a test checks
+    that both fit in 31 characters (`Local\NextTabletDriver_State_v1` is exactly 31, the POSIX
+    name `/ntd_state_v1` is 13). Two fuzz targets, `interop_request` and `interop_response`, are in
+    `qa/fuzz` and in the CI `fuzz` matrix. The first run found that a request carrying a NaN or
+    infinite active area decoded (and was then not equal to itself): `Request::decode` now refuses
+    a non-finite area, with a unit test. The socket tests bind a machine-wide name, so
+    `.config/nextest.toml` runs the whole package one test at a time. The `unsupported.rs` of the
+    crate cannot be built for a target outside Windows, Linux and macOS, because
+    `interprocess` does not support one.
+- [x] **P3.6** `ntd-settings` (branch `chore/v3-phase-3`)
   - Depends on: P3.1
   - Done when: `Paths` injected (no global `get_*_dir()` left); versioned files; atomic writes; a
     corrupted file is backed up and reported (§8).
-- [ ] **P3.7** `ntd-plugin-host` and ABI v3
+  - Notes: `crates/ntd-settings` holds the old `src/settings/*` (`git mv`) and `Paths`, which
+    replaces `get_settings_dir`, `get_profiles_dir`, `get_plugins_dir` and the thread-local test
+    hook: `grep` finds none of them. `Paths::new(root)` is built once at the entry point
+    (`apps/desktop`, and the SDK's `ffi`) from `ntd_platform::default_settings_dir()`, which is
+    the only place that calls `directories` for the settings; the root crate receives it as a
+    parameter (`ConfigService::load`, `SharedStateFactory::create`, `PluginManager::new`,
+    `ThreadSupervisor::spawn_saver`, `logger::init`, the crash report) and the desktop commands
+    get it as managed state. `SharedState::new()` has no plugin and no folder, so the tests need
+    none (`with_plugins` builds the real one). `store.rs` is the one way a file is written and
+    read: a pretty JSON object with `"version": 1`, written through a synced temporary file and
+    renamed; a file without `version` (v2) is read as legacy, one of a newer version is refused
+    and left untouched, and a file that is not valid is moved to `<name>.corrupt.bak` (or
+    `.corrupt.1.bak`: an earlier backup is never overwritten) and reported as
+    `Loaded::Corrupt { backup }` (`load_last_session_outcome` gives it to the caller; the plain
+    `load_*` functions log it and fall back to the defaults). A file the user chose (an imported
+    profile) is never moved. It applies to profiles, `last_session.json`, `session_meta.json` and
+    `app_preferences.json`; themes are copied atomically but stay the user's own format. The
+    v2 -> v3 migration functions stay in phase 6. `Locale` moved to `ntd_core::locale`, as the
+    preferences need it. Not done: the interface does not show the backup notice yet (phase 6),
+    and `trusted_plugins.json` is versioned with the plugin host (P3.7).
+- [x] **P3.7** `ntd-plugin-host` and ABI v3
   - Depends on: P2.5, P3.6
   - Done when: ABI v3 defined in `ntd-plugin-api` (target triple in the manifest, fixed-width
     types); signature verified before loading; other targets and v2 plugins refused with a clear
     message; a panicking plugin is disabled without stopping the pipeline; official plugins
     rebuilt for ABI v3; `docs/plugin-migration-v3.md` and `crates/ntd-plugin-api/AGENTS.md`
     written.
-- [ ] **P3.8** Remove the `desktop` feature
+  - Notes: `crates/ntd-plugin-host` holds the old `src/engine/plugins/*` (`git mv`);
+    `ntd_plugin_host::` replaces `engine::plugins::` in the root crate, the desktop app and the
+    SDK. ABI v3 (`NTD_PLUGIN_ABI_VERSION = 3`, handshake `0x4E540003`): `PluginManifest.target`
+    (filled by `export_ntd_plugin!` from `TARGET_TRIPLE`), `PluginPacket.is_down` is a `u8`, the
+    exported functions return an `i32` status (`PluginStatus` is only the Rust view of it), and
+    `ntd_plugin_manifest` is guarded by `catch_unwind`. The order in `PluginManager::load_all` is
+    unchanged and now documented: pinned file, SHA-256 or minisign check, then `dlopen`, then the
+    handshake (a v1/v2 library is refused with a message naming its version), then the manifest
+    target (`PluginError::WrongTarget`). A plugin that returns an error from `process` is
+    disabled for good (`PluginInstance::is_disabled`) and the filter chain goes on.
+    `trusted_plugins.json` now has `"version": 1`; a file without it is read as v2, a newer one
+    trusts nothing and is never overwritten. The five official plugins, the Rust example and the C
+    example are rebuilt for v3; `bindings.ts` gained `target`. Not done: no third-party signing
+    key is embedded in local builds (`NTD_PLUGIN_PUBKEY`, release pipeline), and publishing
+    `ntd-plugin-api` to crates.io waits for the release phase.
+- [x] **P3.8** Remove the `desktop` feature
   - Depends on: P3.3, P3.4, P3.5
   - Done when: the feature no longer exists; `apps/sdk` depends only on `ntd-core`,
     `ntd-tablets`, `ntd-hid`, `ntd-pipeline`.
-- [ ] **P3.9** CI `check-targets` job (§16.2)
+  - Notes: the `desktop` feature is gone (`ntd-output` and `tablet_manager` are always built).
+    `apps/sdk` no longer depends on the root crate, so it no longer links `ntd-output`:
+    `src/drivers/{detection,config_loader}.rs` moved to `ntd-hid` (§4.2 already listed the
+    detection there) and `src/engine/state.rs` moved to the new `crates/ntd-state` (`git mv`;
+    `SharedState` holds the `PluginManager`, so it cannot live in `ntd-pipeline`, which
+    `ntd-plugin-host` depends on). `ntd-state` is not in §4.1: P4.1 may fold it into
+    `ntd-engine`, as long as the SDK does not depend on the engine (rule 19). The SDK's
+    dependencies are the four crates of the roadmap plus what its own engine loop needs:
+    `ntd-state`, `ntd-interop`, `ntd-plugin-host`, `ntd-settings` and `ntd-platform`.
+    `base64` and `regex` left the root crate with the detection.
+- [x] **P3.9** CI `check-targets` job (§16.2)
   - Depends on: P3.2, P3.3, P3.4, P3.5
   - Done when: `cargo clippy` passes on every tier 3 target, and the job is blocking.
-- [ ] **GATE 3**
+  - Notes: the `check-targets` job of `ci.yml` runs `cargo clippy --locked --target <t>
+    --workspace --exclude app --all-targets --all-features -D warnings` for
+    `aarch64-apple-darwin` and `x86_64-apple-darwin` (macOS runner), `i686-pc-windows-msvc`
+    (Windows runner), `i686-unknown-linux-gnu` and `armv7-unknown-linux-gnueabihf` (Ubuntu with
+    multiarch libraries and a cross compiler). It is in the `needs` of `ci-success`, the one
+    required check, so it blocks. `app` (Tauri) is excluded. Green on GitHub for all five (run
+    started by hand with `workflow_dispatch`, the branch had no pull request yet). It found what
+    a Windows machine could not: the Linux and macOS files moved in P3.5 had never been
+    compiled (`ntd-interop/src/linux.rs` lacked its `unsafe_code` allow; the macOS stub and a
+    test tripped `unused_self`, `missing_const_for_fn` and `drop_non_drop`, as did one `drop` in
+    the SDK). `libxdo-dev` has no i386 package and is not needed by the checked crates. An
+    unrelated E2E test (credits) was flaky on CI and now waits for the contributors.
+- [x] **GATE 3**
   - Done when: P3.1 to P3.9 are `[x]`; no OS-specific code outside the allowed crates (rule 108);
     golden files, latency and E2E identical.
+  - Notes: checked on 2026-10-31 and 2026-11-01. P3.1 to P3.9 are done. Golden
+    files (in `nextest`) and the E2E tests pass, locally and on GitHub; latency was not measured
+    (`bench` only compiles, §13.1). Rule 108: `startup.rs` and `owner.rs` no longer hold OS code (the
+    system information moved to `ntd-platform`). Two places still match `grep target_os`: the
+    Linux report-id quirk in `ntd-tablets/src/generic.rs` (a parser: rules 80 and 103), and
+    `ntd-plugin-host` (`dlopen` of a pinned file, the `.dll`/`.so` extension), which the
+    maintainer added to rule 108 on 2026-11-01, together with the named exception for the parser
+    quirk. Latency: accepted by the maintainer without a measurement. It is not zero risk: the
+    `is_down` field of `PluginPacket` became a `u8` (ABI v3) on the hot path, and `bench` only
+    compiles; compare against `docs/perf-baseline.md` by hand before the first release.
 
 ---
 

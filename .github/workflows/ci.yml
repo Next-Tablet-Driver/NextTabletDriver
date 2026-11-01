@@ -312,6 +312,8 @@ jobs:
           - parser_xencelabs
           - parser_xenx
           - parser_xp_pen
+          - interop_request
+          - interop_response
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -520,7 +522,7 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci --prefix frontend
       - name: Rust coverage
-        run: cargo llvm-cov nextest --locked -p next_tablet_driver -p ntd-core -p ntd-tablets -p ntd-pipeline --all-features --profile ci --lcov --output-path lcov.info
+        run: cargo llvm-cov nextest --locked -p next_tablet_driver -p ntd-core -p ntd-tablets -p ntd-pipeline -p ntd-platform -p ntd-hid -p ntd-output -p ntd-interop -p ntd-settings --all-features --profile ci --lcov --output-path lcov.info
       - name: Frontend coverage
         run: npm --prefix frontend run test -- --run --coverage
       - name: Test the coverage gate
@@ -638,6 +640,84 @@ jobs:
         shell: pwsh
         run: ./scripts/smoke-windows.ps1 target/debug/app.exe
 
+  # Tier 3 targets (docs/v3-rewrite.md §16.2): prepared, not implemented. Nothing is run or shipped;
+  # the job only proves that the workspace still compiles and lints there, so code that assumes
+  # one OS or one pointer width is caught before the platform is implemented. `app` (Tauri) is
+  # left out: it needs the system libraries of the target.
+  check-targets:
+    name: Check ${{ matrix.target }}
+    needs: plan
+    if: needs.plan.outputs.any == 'true'
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: aarch64-apple-darwin
+            os: macos-latest
+          - target: x86_64-apple-darwin
+            os: macos-latest
+          - target: i686-pc-windows-msvc
+            os: windows-latest
+          - target: i686-unknown-linux-gnu
+            os: ubuntu-latest
+            deb_arch: i386
+            packages: gcc-multilib
+          - target: armv7-unknown-linux-gnueabihf
+            os: ubuntu-latest
+            deb_arch: armhf
+            packages: gcc-arm-linux-gnueabihf
+            linker: arm-linux-gnueabihf-gcc
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          submodules: recursive
+      - name: Install the cross toolchain and the target libraries
+        if: matrix.deb_arch
+        shell: bash
+        env:
+          DEB_ARCH: ${{ matrix.deb_arch }}
+          PACKAGES: ${{ matrix.packages }}
+        run: |
+          set -e
+          sudo dpkg --add-architecture "$DEB_ARCH"
+          if [ "$DEB_ARCH" = armhf ]; then
+            # armhf is not on the main mirrors: keep amd64 there and add ports.ubuntu.com.
+            sudo sed -i '/^Types: deb$/a Architectures: amd64' /etc/apt/sources.list.d/ubuntu.sources
+            codename=$(lsb_release -cs)
+            sudo tee /etc/apt/sources.list.d/ports-armhf.sources > /dev/null <<EOF
+          Types: deb
+          URIs: http://ports.ubuntu.com/ubuntu-ports
+          Suites: $codename $codename-updates
+          Components: main universe
+          Architectures: armhf
+          Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
+          EOF
+          fi
+          sudo apt-get update
+          libs="libudev-dev libx11-dev libxrandr-dev libxkbcommon-dev"
+          sudo apt-get install -y pkg-config $PACKAGES $(for lib in $libs; do echo "$lib:$DEB_ARCH"; done)
+          echo "PKG_CONFIG_ALLOW_CROSS=1" >> "$GITHUB_ENV"
+          if [ "$DEB_ARCH" = i386 ]; then
+            echo "PKG_CONFIG_PATH=/usr/lib/i386-linux-gnu/pkgconfig" >> "$GITHUB_ENV"
+          else
+            echo "PKG_CONFIG_PATH=/usr/lib/arm-linux-gnueabihf/pkgconfig" >> "$GITHUB_ENV"
+            echo "CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_LINKER=${{ matrix.linker }}" >> "$GITHUB_ENV"
+            echo "CC_armv7_unknown_linux_gnueabihf=${{ matrix.linker }}" >> "$GITHUB_ENV"
+          fi
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          toolchain: stable
+          components: clippy
+          targets: ${{ matrix.target }}
+      - uses: swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
+        with:
+          key: check-${{ matrix.target }}
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      - name: cargo clippy --target
+        run: cargo clippy --locked --target ${{ matrix.target }} --workspace --exclude app --all-targets --all-features -- -D warnings
+
   # Single required status check: the branch ruleset only has to know this name, so adding or
   # renaming jobs above never requires touching the ruleset. A skipped job counts as passed.
   ci-success:
@@ -663,6 +743,7 @@ jobs:
       - e2e
       - coverage
       - build
+      - check-targets
     runs-on: ubuntu-latest
     steps:
       - name: Require every job that ran to have succeeded

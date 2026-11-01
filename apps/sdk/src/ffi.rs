@@ -21,12 +21,12 @@
 )]
 
 use crate::engine_loop;
-use next_tablet_driver::engine::interop::command::{Request, Response, send_command};
-use next_tablet_driver::engine::interop::lock::try_acquire_hid_owner;
-use next_tablet_driver::engine::interop::shm::DEVICE_NAME_CAPACITY;
-use next_tablet_driver::engine::state::SharedState;
 use ntd_core::config::models::{ActiveArea, DriverMode};
 use ntd_core::sync::LockRecoveryExt;
+use ntd_interop::command::send_command;
+use ntd_interop::lock::try_acquire_hid_owner;
+use ntd_interop::protocol::{DEVICE_NAME_CAPACITY, Request, Response};
+use ntd_state::SharedState;
 use std::panic::{self, AssertUnwindSafe};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard, OnceLock};
@@ -35,7 +35,7 @@ use std::time::{Duration, Instant};
 
 /// Bumped whenever this FFI surface changes in a backward-incompatible way.
 ///
-/// Independent from [`next_tablet_driver::engine::interop::shm::SDK_ABI_VERSION`],
+/// Independent from [`ntd_interop::protocol::SDK_ABI_VERSION`],
 /// which versions the separate inter-process shared-memory layout.
 pub const NTD_SDK_ABI_VERSION: u32 = 1;
 
@@ -59,7 +59,7 @@ pub const NTD_ERR_PANIC: i32 = -6;
 /// Fixed capacity of [`NtdState::device_name`], in bytes.
 ///
 /// Kept as a local literal (rather than referencing
-/// [`next_tablet_driver::engine::interop::shm::DEVICE_NAME_CAPACITY`]
+/// [`ntd_interop::protocol::DEVICE_NAME_CAPACITY`]
 /// directly) so it can be emitted as a `#define` in the generated C header.
 /// [`NtdState::device_name`] itself uses the literal `64` rather than this
 /// constant, since `csbindgen`, unlike `cbindgen`, can't resolve a named
@@ -70,12 +70,12 @@ pub const NTD_DEVICE_NAME_CAPACITY: usize = 64;
 
 const _: () = assert!(
     NTD_DEVICE_NAME_CAPACITY == DEVICE_NAME_CAPACITY,
-    "NTD_DEVICE_NAME_CAPACITY must match engine::interop::shm::DEVICE_NAME_CAPACITY"
+    "NTD_DEVICE_NAME_CAPACITY must match ntd_interop::protocol::DEVICE_NAME_CAPACITY"
 );
 
 /// Live tablet + config snapshot returned by [`ntd_poll_state`].
 ///
-/// Field-for-field mirror of [`next_tablet_driver::engine::interop::shm::SdkPublicState`].
+/// Field-for-field mirror of [`ntd_interop::protocol::SdkPublicState`].
 /// The two layouts are asserted equal in size below, since both cross an
 /// FFI/ABI boundary (this one to the host process, that one to other
 /// processes).
@@ -139,7 +139,7 @@ const _: () = assert!(
 );
 
 const _: () = assert!(
-    size_of::<NtdState>() == size_of::<next_tablet_driver::engine::interop::shm::SdkPublicState>(),
+    size_of::<NtdState>() == size_of::<ntd_interop::protocol::SdkPublicState>(),
     "NtdState must stay layout-compatible with SdkPublicState"
 );
 
@@ -236,22 +236,29 @@ pub extern "C" fn ntd_init() -> i32 {
         }
 
         // Synchronous feasibility probe: if we're about to become the HID
-        // owner, validate `HidApi::new()` succeeds on this system *before*
+        // owner, validate `Backend::new()` succeeds on this system *before*
         // returning, so a caller sees a broken HID backend immediately
         // instead of only discovering it later by polling `NtdState`. The
-        // background thread performs its own `HidApi::new()` once it
+        // background thread performs its own `Backend::new()` once it
         // starts (needed regardless, since every automatic retry after a
         // crash re-initialises from scratch) rather than reusing this one.
-        let hid_owner = try_acquire_hid_owner();
-        if hid_owner.is_some()
-            && let Err(e) = hidapi::HidApi::new()
         {
-            log::error!(target: "Ffi", "CRITICAL: Failed to initialise HID API: {e}");
-            return NTD_ERR_HID_INIT_FAILED;
+            // The guard is released at the end of this block, before the engine thread starts.
+            let hid_owner = try_acquire_hid_owner();
+            if hid_owner.is_some()
+                && let Err(e) = ntd_hid::Backend::new()
+            {
+                log::error!(target: "Ffi", "CRITICAL: Failed to initialise HID API: {e}");
+                return NTD_ERR_HID_INIT_FAILED;
+            }
         }
-        drop(hid_owner);
 
-        let shared = Arc::new(SharedState::new());
+        // The same plugins folder as the desktop application: the SDK runs the filters the user
+        // installed there.
+        let paths = ntd_settings::Paths::new(ntd_platform::default_settings_dir());
+        let shared = Arc::new(SharedState::with_plugins(Arc::new(
+            ntd_plugin_host::PluginManager::new(&paths),
+        )));
         let is_owner = Arc::new(AtomicBool::new(false));
         let thread = engine_loop::spawn(Arc::clone(&shared), Arc::clone(&is_owner));
         *slot = Some(EngineHandle {

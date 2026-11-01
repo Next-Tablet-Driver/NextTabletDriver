@@ -1,0 +1,337 @@
+//! # `ntd-state`
+//!
+//! The thread-safe state shared by the engine threads, the interface and the SDK. It defines the
+//! `SharedState` structure, which provides a bridge between the high-frequency background `engine`
+//! threads and the 60Hz GUI threads.
+
+use ntd_core::config::models::MappingConfig;
+use ntd_pipeline::ProcessedFrame;
+use ntd_tablets::TabletData;
+use std::sync::atomic::{AtomicBool, AtomicU32};
+use std::sync::{Arc, RwLock};
+
+/// State of the input engine.
+#[derive(Clone, Debug, PartialEq, Eq, Default)]
+pub enum EngineStatus {
+    /// The engine is running.
+    #[default]
+    Running,
+    /// The engine stopped; the text says why.
+    Failed(String),
+}
+
+/// An atomic snapshot of device properties.
+#[derive(Clone, Debug, PartialEq)]
+pub struct DeviceState {
+    /// Name of the connected tablet.
+    pub name: String,
+    /// USB vendor ID of the connected tablet.
+    pub vid: u16,
+    /// USB product ID of the connected tablet.
+    pub pid: u16,
+    /// Width and height of the tablet surface, in millimetres.
+    pub physical_size: (f32, f32),
+    /// Largest X and Y the sensor reports, in raw units.
+    pub hardware_size: (f32, f32),
+    /// Largest raw pressure the tablet reports.
+    pub max_pressure: f32,
+    /// Number of buttons on the pen (0 when the tablet description does not say).
+    pub pen_button_count: u8,
+    /// Number of keys on the tablet body (0 when it has none or the description does not say).
+    pub aux_button_count: u8,
+}
+
+impl Default for DeviceState {
+    fn default() -> Self {
+        Self {
+            name: "No Tablet Detected".to_string(),
+            vid: 0,
+            pid: 0,
+            physical_size: (160.0, 100.0),
+            hardware_size: (32767.0, 32767.0),
+            max_pressure: 8192.0,
+            pen_button_count: 0,
+            aux_button_count: 0,
+        }
+    }
+}
+
+/// The active mapping configuration and its hot-reload bookkeeping.
+pub struct ConfigState {
+    /// The currently active settings (mapping area, filters, network, etc).
+    pub mapping: RwLock<MappingConfig>,
+    /// An atomic counter incremented by the UI whenever `mapping` is modified.
+    /// The background thread checks this to avoid acquiring read-locks continuously.
+    pub version: AtomicU32,
+    /// Flag indicating that the user requested a full HID engine reload from the tray menu.
+    pub reload_requested: AtomicBool,
+}
+
+impl Default for ConfigState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl ConfigState {
+    /// Creates the state with the default configuration and version 0.
+    #[must_use]
+    pub fn new() -> Self {
+        Self {
+            mapping: RwLock::new(MappingConfig::default()),
+            version: AtomicU32::new(0),
+            reload_requested: AtomicBool::new(false),
+        }
+    }
+}
+
+/// Live output of the polling/pipeline loop, published for consumers (UI,
+/// `ntd_interop::shm`, SDK FFI) to read without re-deriving it.
+pub struct PipelineState {
+    /// The most recent normalized packet from the tablet (X, Y, Pressure, Pen Buttons).
+    pub tablet_data: RwLock<TabletData>,
+    /// The most recent output of `Pipeline::process` (UV/screen coordinates, pressure,
+    /// tilt, tip state). Published by whichever loop drives the pipeline, the desktop
+    /// `tablet_manager` or the SDK's embedded engine.
+    pub processed_frame: RwLock<ProcessedFrame>,
+    /// A rapidly incrementing counter of USB packets received, used by the UI to calculate
+    /// real-time Hz.
+    pub packet_count: AtomicU32,
+    /// Tracking statistics for developer debugging (e.g., dropped packets, parse errors).
+    pub stats: RwLock<ntd_tablets::DriverStats>,
+}
+
+impl Default for PipelineState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl PipelineState {
+    /// Creates the state with empty tablet data and an empty processed frame.
+    #[must_use]
+    pub fn new() -> Self {
+        Self {
+            tablet_data: RwLock::new(TabletData::default()),
+            processed_frame: RwLock::new(ProcessedFrame::default()),
+            packet_count: AtomicU32::new(0),
+            stats: RwLock::new(ntd_tablets::DriverStats::default()),
+        }
+    }
+}
+
+/// Application/engine lifecycle flags, independent of tablet data or configuration.
+pub struct LifecycleState {
+    /// Flag indicating if the user has never launched the application before (triggers welcome
+    /// modal).
+    pub is_first_run: RwLock<bool>,
+    /// Status of the background polling engine (e.g. HID API initialization failure).
+    pub engine_status: RwLock<EngineStatus>,
+    /// Flag indicating that the application is shutting down and threads should terminate.
+    pub shutdown_requested: AtomicBool,
+    /// Flag indicating whether the GUI window is currently visible.
+    /// When `false` (minimized to tray), background threads skip UI-only
+    /// work (channel sends, snapshot captures) to minimize idle CPU usage.
+    pub is_visible: AtomicBool,
+}
+
+impl Default for LifecycleState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl LifecycleState {
+    /// Creates the state: not the first run, engine running, no shutdown requested, window visible.
+    #[must_use]
+    pub fn new() -> Self {
+        Self {
+            is_first_run: RwLock::new(false),
+            engine_status: RwLock::new(EngineStatus::default()),
+            shutdown_requested: AtomicBool::new(false),
+            is_visible: AtomicBool::new(true),
+        }
+    }
+}
+
+impl Default for SharedState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl SharedState {
+    /// Creates the shared state with default values and no plugin.
+    #[must_use]
+    pub fn new() -> Self {
+        Self::with_plugins(Arc::new(ntd_plugin_host::PluginManager::empty()))
+    }
+
+    /// Creates the shared state with default values and these plugins.
+    #[must_use]
+    pub fn with_plugins(plugins: Arc<ntd_plugin_host::PluginManager>) -> Self {
+        Self {
+            config: ConfigState::new(),
+            pipeline: PipelineState::new(),
+            device: RwLock::new(DeviceState::default()),
+            lifecycle: LifecycleState::new(),
+            plugins,
+        }
+    }
+
+    /// Creates the default shared state, for tests.
+    #[must_use]
+    pub fn test_default() -> Self {
+        Self::new()
+    }
+}
+
+/// The central thread-safe state store for the application.
+///
+/// Due to the disparate update rates of the background processing engine (often 100-1000Hz)
+/// and the user interface (locked to vsync/60Hz), all shared data is wrapped in `RwLock`
+/// or atomic types to ensure memory safety without creating massive mutex contention.
+///
+/// Grouped by responsibility rather than left as a flat field list: [`ConfigState`] for
+/// mapping settings, [`PipelineState`] for polling/pipeline output, [`DeviceState`] for the
+/// active hardware, and [`LifecycleState`] for app/engine lifecycle flags. Each group can be
+/// reasoned about, locked, and tested independently of the others.
+pub struct SharedState {
+    /// Active mapping configuration and its hot-reload bookkeeping.
+    pub config: ConfigState,
+    /// Live output of the polling/pipeline loop.
+    pub pipeline: PipelineState,
+    /// Cohesive properties of the active device (name, vid, pid, sizes).
+    pub device: RwLock<DeviceState>,
+    /// Application/engine lifecycle flags.
+    pub lifecycle: LifecycleState,
+    /// Dynamic plugins manager and registry.
+    pub plugins: Arc<ntd_plugin_host::PluginManager>,
+}
+
+#[cfg(test)]
+#[allow(
+    clippy::float_cmp,
+    reason = "the tests compare floats that are exact by construction or copied unchanged"
+)]
+mod tests {
+    use super::*;
+    use ntd_core::sync::{LockRecoveryExt, WriteRecoverExt};
+    use std::sync::{Arc, Mutex, RwLock};
+    use std::thread;
+
+    #[test]
+    fn mutex_unwrap_or_reset_on_poisoned_lock() {
+        let m = Arc::new(Mutex::new(String::from("dirty")));
+        let m2 = Arc::clone(&m);
+        let handle = thread::spawn(move || {
+            let _guard = m2.lock().unwrap();
+            // Panic while holding the lock to poison it
+            panic!("poison mutex");
+        });
+        let _ = handle.join(); // ignore the panic from the spawned thread
+
+        // Recover by resetting the inner value to Default
+        let guard = m.lock().unwrap_or_reset("test_mutex");
+        assert_eq!(*guard, String::default());
+
+        // Ensure the underlying data is actually reset
+        drop(guard);
+        // The lock remains poisoned in the OS-level primitive; use unwrap_or_log to access the
+        // inner value.
+        let inner = m.lock().unwrap_or_log("test_mutex_check");
+        assert_eq!(*inner, String::default());
+        drop(inner);
+    }
+
+    #[test]
+    fn rwlock_write_unwrap_or_reset_on_poison() {
+        let r = Arc::new(RwLock::new(vec![1, 2, 3]));
+        let r2 = Arc::clone(&r);
+        let handle = thread::spawn(move || {
+            let _g = r2.write().unwrap();
+            panic!("poison rwlock");
+        });
+        let _ = handle.join();
+
+        let guard = r.write().unwrap_or_reset("test_rwlock");
+        assert!(guard.is_empty());
+        drop(guard);
+    }
+
+    #[test]
+    fn mutex_unwrap_or_log_on_poison() {
+        let m = Arc::new(Mutex::new(42u32));
+        let m2 = Arc::clone(&m);
+        let handle = thread::spawn(move || {
+            let _g = m2.lock().unwrap();
+            panic!("poison");
+        });
+        let _ = handle.join();
+
+        let guard = m.lock().unwrap_or_log("test_mutex_log");
+        // The value should still be accessible (we didn't modify it before panic)
+        assert_eq!(*guard, 42u32);
+        drop(guard);
+    }
+
+    use std::sync::atomic::Ordering;
+
+    #[test]
+    fn the_default_states_are_the_new_ones() {
+        assert_eq!(ConfigState::default().version.load(Ordering::Relaxed), 0);
+        assert_eq!(
+            PipelineState::default()
+                .packet_count
+                .load(Ordering::Relaxed),
+            0
+        );
+        assert!(!*LifecycleState::default().is_first_run.read().unwrap());
+        assert_eq!(SharedState::default().device.read().unwrap().vid, 0);
+    }
+
+    fn poisoned<T: Clone + Send + Sync + 'static>(
+        value: T,
+    ) -> (Arc<RwLock<T>>, Arc<std::sync::Mutex<T>>) {
+        let rw = Arc::new(RwLock::new(value.clone()));
+        let mutex = Arc::new(std::sync::Mutex::new(value));
+        let (rw2, mutex2) = (Arc::clone(&rw), Arc::clone(&mutex));
+        let _ = std::thread::spawn(move || {
+            let _rw = rw2.write().unwrap();
+            let _mutex = mutex2.lock().unwrap();
+            panic!("poison both locks");
+        })
+        .join();
+        (rw, mutex)
+    }
+
+    #[test]
+    fn a_poisoned_lock_is_still_readable() {
+        log::set_max_level(log::LevelFilter::Trace);
+        let (rw, _) = poisoned(42u32);
+        assert_eq!(*rw.read().unwrap_or_log("test"), 42);
+    }
+
+    #[test]
+    fn a_poisoned_write_lock_is_reset_to_its_default() {
+        log::set_max_level(log::LevelFilter::Trace);
+        let (rw, _) = poisoned(42u32);
+        assert_eq!(*rw.write().unwrap_or_reset("test"), 0);
+    }
+
+    #[test]
+    fn a_poisoned_mutex_is_reset_to_its_default() {
+        log::set_max_level(log::LevelFilter::Trace);
+        let (_, mutex) = poisoned(42u32);
+        assert_eq!(*mutex.lock().unwrap_or_reset("test"), 0);
+    }
+
+    #[test]
+    fn healthy_locks_pass_through_untouched() {
+        let rw = RwLock::new(7u32);
+        assert_eq!(*rw.read().unwrap_or_log("test"), 7);
+        assert_eq!(*rw.write().unwrap_or_reset("test"), 7);
+        let mutex = std::sync::Mutex::new(8u32);
+        assert_eq!(*mutex.lock().unwrap_or_reset("test"), 8);
+    }
+}

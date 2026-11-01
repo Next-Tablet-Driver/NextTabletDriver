@@ -129,7 +129,9 @@ impl Pipeline {
             pressure: pressure_ratio,
             tilt_x: i32::from(data.tilt_x),
             tilt_y: i32::from(data.tilt_y),
-            is_down: data.pressure > 0 || data.status == ntd_tablets::TabletStatus::Contact,
+            is_down: u8::from(
+                data.pressure > 0 || data.status == ntd_tablets::TabletStatus::Contact,
+            ),
             timestamp_ns: 0,
         };
         let context = PluginContext {
@@ -400,7 +402,7 @@ mod tests {
 
     #[test]
     fn relative_tracking_restarts_after_the_configured_inactivity_on_the_injected_clock() {
-        let clock = Arc::new(ntd_core::clock::ManualClock::new());
+        let clock = Arc::new(ntd_test_support::ManualClock::new());
         let mut pipeline = Pipeline::with_clock(clock.clone());
         let mut config = MappingConfig {
             mode: DriverMode::Relative,

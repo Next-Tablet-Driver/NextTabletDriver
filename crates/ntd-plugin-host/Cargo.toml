@@ -1,0 +1,40 @@
+[package]
+name = "ntd-plugin-host"
+version = "0.1.0"
+description = "Loads the plugins of NextTabletDriver: trust verification, ABI v3 checks, instances and the filters that run them"
+publish = false
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[features]
+# Derives `specta::Type` on the types the desktop shell exchanges with the frontend.
+specta = ["dep:specta", "ntd_plugin_api/specta"]
+
+[dependencies]
+ntd-core = { workspace = true }
+ntd-pipeline = { workspace = true }
+ntd-settings = { workspace = true }
+ntd_plugin_api = { workspace = true }
+libloading = { workspace = true }
+log = { workspace = true }
+minisign-verify = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+sha2 = { workspace = true }
+specta = { workspace = true, optional = true, features = ["serde_json"] }
+thiserror = { workspace = true }
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { workspace = true, features = ["Win32_Storage_FileSystem"] }
+
+[dev-dependencies]
+minisign = { workspace = true }
+
+[lints]
+workspace = true

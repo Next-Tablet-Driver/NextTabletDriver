@@ -1,0 +1,27 @@
+[package]
+name = "ntd-interop"
+version = "0.1.0"
+description = "How the processes of NextTabletDriver talk to each other: the protocol, the shared memory, the command socket and the owner lock"
+publish = false
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+ntd-core = { workspace = true }
+ntd-platform = { workspace = true }
+interprocess = { workspace = true }
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { workspace = true, features = ["Win32_Foundation", "Win32_Security", "Win32_System_Memory"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+nix = { workspace = true, features = ["fs", "mman"] }
+
+[lints]
+workspace = true

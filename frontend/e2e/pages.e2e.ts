@@ -42,6 +42,7 @@ test.describe("Credits screen", () => {
   });
 
   test("lists the contributors with the maintainer first", async ({ app }) => {
+    await expect(app.content).toContainText("@contributor-two");
     const text = await app.content.innerText();
     expect(text.indexOf("@iSweat-exe")).toBeLessThan(text.indexOf("@contributor-one"));
     expect(text.indexOf("@contributor-one")).toBeLessThan(text.indexOf("@contributor-two"));

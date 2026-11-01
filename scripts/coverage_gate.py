@@ -14,7 +14,7 @@ Rust figures count production code only. The inline `#[cfg(test)] mod tests` of 
 dropped (every line from the first `#[cfg(test)]` on), because covering the tests themselves
 would flatter the number. The measured code is the root crate's `src/` and the `src/` of every
 crate of `crates/` (the code that left the root crate during phase 2 still counts), except the
-files written by a code generator (`generated/`). The QA crate, the SDK, the tools and the
+files written by a code generator (`generated/`) and `ntd-test-support`, which is test code. The QA crate, the SDK, the tools and the
 plugins are not measured here.
 
 The floors are a ratchet: when the measured value is at least RATCHET_MARGIN points above its
@@ -45,7 +45,7 @@ def measured_name(source: Path, root: Path) -> str | None:
     path under `root`, so two crates cannot be confused.
     """
     resolved = source.resolve()
-    if "generated" in resolved.parts:
+    if "generated" in resolved.parts or "ntd-test-support" in resolved.parts:
         return None
     try:
         return resolved.relative_to((root / "src").resolve()).as_posix()

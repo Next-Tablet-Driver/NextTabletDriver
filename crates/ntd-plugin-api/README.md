@@ -37,4 +37,4 @@ cargo doc --manifest-path crates/ntd-plugin-api/Cargo.toml --open
 
 ## Interface version
 
-The plugin interface version is `NTD_PLUGIN_ABI_VERSION` (currently 1). The engine accepts exactly this version. It is separate from the version of this crate.
+The plugin interface version is `NTD_PLUGIN_ABI_VERSION` (currently 3, ABI v3; see [the migration guide](../../docs/plugin-migration-v3.md) for plugins built for an older one). The engine accepts exactly this version. It is separate from the version of this crate.

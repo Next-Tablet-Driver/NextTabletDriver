@@ -1,0 +1,25 @@
+[package]
+name = "ntd-state"
+version = "0.1.0"
+description = "The thread-safe state shared by the engine threads, the interface and the SDK"
+publish = false
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+ntd-core = { workspace = true }
+ntd-pipeline = { workspace = true }
+ntd-plugin-host = { workspace = true }
+ntd-tablets = { workspace = true }
+
+[dev-dependencies]
+log = { workspace = true }
+
+[lints]
+workspace = true

@@ -1,5 +1,6 @@
-use crate::engine::state::{ConfigState, LifecycleState, PipelineState, SharedState};
 use ntd_core::config::models::MappingConfig;
+use ntd_settings::Paths;
+use ntd_state::{ConfigState, LifecycleState, PipelineState, SharedState};
 use std::sync::Arc;
 use std::sync::RwLock;
 
@@ -8,21 +9,21 @@ pub struct SharedStateFactory;
 
 impl SharedStateFactory {
     /// Creates the shared state from `config`; `is_first_run` records whether this is the first run
-    /// of the application.
+    /// of the application. The plugins are the ones of the plugins folder of `paths`.
     #[must_use]
-    pub fn create(config: MappingConfig, is_first_run: bool) -> Arc<SharedState> {
+    pub fn create(config: MappingConfig, is_first_run: bool, paths: &Paths) -> Arc<SharedState> {
         Arc::new(SharedState {
             config: ConfigState {
                 mapping: RwLock::new(config),
                 ..ConfigState::new()
             },
             pipeline: PipelineState::new(),
-            device: RwLock::new(crate::engine::state::DeviceState::default()),
+            device: RwLock::new(ntd_state::DeviceState::default()),
             lifecycle: LifecycleState {
                 is_first_run: RwLock::new(is_first_run),
                 ..LifecycleState::new()
             },
-            plugins: Arc::new(crate::engine::plugins::PluginManager::new()),
+            plugins: Arc::new(ntd_plugin_host::PluginManager::new(paths)),
         })
     }
 }
@@ -40,7 +41,8 @@ mod tests {
     fn the_state_starts_from_the_given_config_and_first_run_flag() {
         let mut config = MappingConfig::default();
         config.active_area.w = 33.0;
-        let shared = SharedStateFactory::create(config, true);
+        let paths = crate::test_support::test_paths();
+        let shared = SharedStateFactory::create(config, true, &paths);
         assert_eq!(shared.config.mapping.read().unwrap().active_area.w, 33.0);
         assert!(*shared.lifecycle.is_first_run.read().unwrap());
         assert_eq!(shared.config.version.load(Ordering::Relaxed), 0);
@@ -48,7 +50,8 @@ mod tests {
 
     #[test]
     fn everything_else_starts_idle() {
-        let shared = SharedStateFactory::create(MappingConfig::default(), false);
+        let paths = crate::test_support::test_paths();
+        let shared = SharedStateFactory::create(MappingConfig::default(), false, &paths);
         assert!(!*shared.lifecycle.is_first_run.read().unwrap());
         assert_eq!(shared.pipeline.packet_count.load(Ordering::Relaxed), 0);
         assert_eq!(shared.device.read().unwrap().vid, 0);
@@ -58,8 +61,9 @@ mod tests {
 
     #[test]
     fn each_call_makes_an_independent_state() {
-        let a = SharedStateFactory::create(MappingConfig::default(), false);
-        let b = SharedStateFactory::create(MappingConfig::default(), false);
+        let paths = crate::test_support::test_paths();
+        let a = SharedStateFactory::create(MappingConfig::default(), false, &paths);
+        let b = SharedStateFactory::create(MappingConfig::default(), false, &paths);
         a.pipeline.packet_count.store(9, Ordering::Relaxed);
         assert_eq!(b.pipeline.packet_count.load(Ordering::Relaxed), 0);
     }

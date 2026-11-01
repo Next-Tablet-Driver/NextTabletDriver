@@ -56,6 +56,7 @@ impl NextTabletPlugin for HawkuSmoothingPlugin {
             id: "hawku_smoothing".to_string(),
             name: "Hawku Smoothing".to_string(),
             version: "1.0.0".to_string(),
+            target: String::new(),
             author: "Hawku".to_string(),
             description: "Classic low-pass exponential smoothing filter designed to reduce cursor \
                 tremor while minimizing latency."

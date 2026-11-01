@@ -1,6 +1,6 @@
-use crate::engine::state::SharedState;
 use crossbeam_channel::{Receiver, Sender};
 use ntd_core::config::models::MappingConfig;
+use ntd_state::SharedState;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -30,8 +30,10 @@ impl ThreadSupervisor {
 
     /// Starts the thread that saves the configuration after a change, waiting a moment so that
     /// quick successive changes are written once.
-    pub fn spawn_saver(receiver: Receiver<MappingConfig>) {
-        Self::spawn_saver_with(receiver, SAVE_DEBOUNCE, crate::settings::save_last_session);
+    pub fn spawn_saver(receiver: Receiver<MappingConfig>, paths: ntd_settings::Paths) {
+        Self::spawn_saver_with(receiver, SAVE_DEBOUNCE, move |cfg| {
+            ntd_settings::save_last_session(&paths, cfg)
+        });
     }
 
     /// The saver thread: waits `debounce` after a change, keeps only the latest configuration

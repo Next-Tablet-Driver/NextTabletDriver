@@ -171,6 +171,7 @@ impl NextTabletPlugin for RadialFollowPlugin {
             id: "radial_follow".to_string(),
             name: "Radial Follow Smoothing".to_string(),
             version: "1.0.0".to_string(),
+            target: String::new(),
             author: "AbstractQbit".to_string(),
             description: "Smooths pen cursor movement within an inner and outer radial boundary \
                 using a soft-knee transition."

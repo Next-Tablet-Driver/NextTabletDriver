@@ -1,13 +1,13 @@
-//! Bridges this process's `SharedState` to/from `engine::interop`'s
+//! Bridges this process's `SharedState` to/from `ntd-interop`'s
 //! SHM/command layer, so other processes (another SDK-embedded game, or a
 //! second desktop instance) can mirror or drive this tablet's state.
 
-use crate::engine::interop::command::CommandHandler;
-use crate::engine::interop::shm::{DEVICE_NAME_CAPACITY, SdkPublicState, ShmWriter};
-use crate::engine::state::SharedState;
 use ntd_core::config::models::{ActiveArea, DriverMode, MappingConfig};
 use ntd_core::sync::{LockRecoveryExt, WriteRecoverExt};
+use ntd_interop::protocol::{CommandHandler, DEVICE_NAME_CAPACITY, SdkPublicState};
+use ntd_interop::shm::ShmWriter;
 use ntd_pipeline::ProcessedFrame;
+use ntd_state::SharedState;
 use ntd_tablets::{TabletData, TabletStatus};
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
@@ -111,7 +111,7 @@ const fn status_from_discriminant(byte: u8) -> TabletStatus {
     }
 }
 
-/// Applies a reader's [`Request`](crate::engine::interop::command::Request)
+/// Applies a reader's [`Request`](ntd_interop::protocol::Request)
 /// to this owner's real `SharedState`, through the exact same
 /// validation/write path a local caller (the desktop UI) would use.
 pub(super) struct DesktopCommandHandler {
@@ -392,7 +392,7 @@ mod tests {
 
     #[test]
     fn publishing_makes_the_live_state_visible_to_readers() {
-        use crate::engine::interop::shm::ShmReader;
+        use ntd_interop::shm::ShmReader;
         let writer = ShmWriter::create().expect("writer should create the segment");
         let reader = ShmReader::open().expect("reader should open the same segment");
 
@@ -448,7 +448,7 @@ mod tests {
 
     #[test]
     fn a_device_name_longer_than_the_segment_is_truncated() {
-        use crate::engine::interop::shm::ShmReader;
+        use ntd_interop::shm::ShmReader;
         let writer = ShmWriter::create().expect("writer should create the segment");
         let reader = ShmReader::open().expect("reader should open the same segment");
         let shared = Arc::new(SharedState::new());

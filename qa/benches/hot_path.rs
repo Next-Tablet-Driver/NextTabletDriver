@@ -39,15 +39,15 @@
 use criterion::{Criterion, Throughput, criterion_group};
 use crossbeam_channel::bounded;
 use next_tablet_driver::application::state::UiSnapshot;
-use next_tablet_driver::engine::injector::InputSink;
-use next_tablet_driver::engine::state::SharedState;
 use next_tablet_driver::engine::tablet_manager::bench_support::{
     PacketLoopState, process_packet_for_bench,
 };
 use ntd_core::config::models::{DriverMode, MappingConfig};
 use ntd_core::input::{Key, MouseButton};
+use ntd_core::output::OutputSink;
 use ntd_pipeline::FilterPipeline;
 use ntd_pipeline::Pipeline;
+use ntd_state::SharedState;
 use ntd_tablets::{NextTabletDriver, TabletData, TabletStatus};
 use std::hint::black_box;
 use std::sync::Arc;
@@ -105,7 +105,11 @@ struct NullSink {
     calls: u64,
 }
 
-impl InputSink for NullSink {
+impl OutputSink for NullSink {
+    fn capabilities(&self) -> ntd_core::output::OutputCapabilities {
+        ntd_core::output::OutputCapabilities::NONE
+    }
+
     fn set_proximity(&mut self, in_proximity: bool) {
         self.calls += u64::from(in_proximity);
     }

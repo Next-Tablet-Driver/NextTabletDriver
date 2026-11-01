@@ -26,7 +26,14 @@ apps/desktop/     Tauri wiring (commands, events, tray); crate `app`
 apps/sdk/         `ntd_sdk`, the C ABI for integrators
 crates/           `ntd-core` (pure types and maths), `ntd-tablets` (definitions and parsers),
                   `ntd-pipeline` (processing stages and the `Filter` trait),
-                  `ntd-plugin-api` (the plugin ABI); the tablet tables of
+                  `ntd-test-support` (fakes of HID, output and clock: dev-dependency only),
+                  `ntd-platform` (autostart, named locks, thread priority, timer),
+                  `ntd-hid` (the real HID backend: the only crate that uses `hidapi`),
+                  `ntd-output` (input injection), `ntd-interop` (shared memory, command socket,
+                  owner lock), `ntd-settings` (profiles and preferences, from an injected `Paths`),
+                  `ntd-plugin-api` (the plugin ABI v3), `ntd-plugin-host` (loading, trust,
+                  ABI and target checks), `ntd-state` (`SharedState`, read by the engine,
+                  the interface and the SDK); the tablet tables of
                   `ntd-tablets` are generated, never edited (`cargo run --locked -p ntd-codegen`)
 plugins/          the official plugins (workspace members)
 tools/            `ntd-recorder` (captures a tablet), `ntd-codegen` (tablet tables), more to come

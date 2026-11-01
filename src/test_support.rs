@@ -13,29 +13,37 @@ pub(crate) fn evaluate_log_arguments() {
     log::set_max_level(log::LevelFilter::Trace);
 }
 
-/// Keeps the new, empty settings folder of a test alive. The folder is removed when this is
-/// dropped.
-pub(crate) struct EmptySettingsDir(std::path::PathBuf);
+/// A new, empty settings folder for one test, removed when this is dropped.
+pub(crate) struct TestPaths {
+    root: std::path::PathBuf,
+    paths: ntd_settings::Paths,
+}
 
-impl Drop for EmptySettingsDir {
-    fn drop(&mut self) {
-        let _ = std::fs::remove_dir_all(&self.0);
+impl std::ops::Deref for TestPaths {
+    type Target = ntd_settings::Paths;
+
+    fn deref(&self) -> &Self::Target {
+        &self.paths
     }
 }
 
-/// Points the settings folder of the current test at a new, empty directory.
+impl Drop for TestPaths {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_dir_all(&self.root);
+    }
+}
+
+/// A new, empty settings folder for the current test.
 ///
-/// Code such as `PluginManager::new` reads the folders of the current user. Without this, a test
-/// that expects "no plugins" fails on any machine where a plugin is installed, which includes
-/// the machine of a developer who tries the plugins.
+/// Anything that reads or writes the settings takes its folder as a parameter, so a test gives
+/// itself a folder of its own and never meets the files of the machine it runs on.
 #[must_use]
-pub(crate) fn empty_settings_dir() -> EmptySettingsDir {
+pub(crate) fn test_paths() -> TestPaths {
     let nanos = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map_or(0, |d| d.as_nanos());
-    let path =
-        std::env::temp_dir().join(format!("ntd_empty_settings_{}_{nanos}", std::process::id()));
-    let _ = std::fs::create_dir_all(&path);
-    crate::settings::set_test_settings_dir(path.clone());
-    EmptySettingsDir(path)
+    let root =
+        std::env::temp_dir().join(format!("ntd_test_settings_{}_{nanos}", std::process::id()));
+    let paths = ntd_settings::Paths::new(root.clone());
+    TestPaths { root, paths }
 }

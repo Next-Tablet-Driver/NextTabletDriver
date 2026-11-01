@@ -1,0 +1,29 @@
+[package]
+name = "ntd-settings"
+version = "0.1.0"
+description = "What NextTabletDriver keeps on disk: profiles, sessions, preferences and themes, with versioned files and atomic writes"
+publish = false
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[features]
+# Derives `specta::Type` on the types the desktop shell exchanges with the frontend.
+specta = ["dep:specta"]
+
+[dependencies]
+ntd-core = { workspace = true }
+log = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+specta = { workspace = true, optional = true, features = ["serde_json"] }
+uuid = { workspace = true, features = ["v4", "serde"] }
+
+[lints]
+workspace = true

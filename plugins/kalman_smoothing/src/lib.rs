@@ -86,6 +86,7 @@ impl NextTabletPlugin for KalmanSmoothingPlugin {
             id: "kalman_smoothing".to_string(),
             name: "Kalman Smoothing".to_string(),
             version: "1.0.0".to_string(),
+            target: String::new(),
             author: "OpenTabletDriver Community".to_string(),
             description: "Discrete dual-axis Kalman filter reducing hardware noise with minimal \
                 phase delay."

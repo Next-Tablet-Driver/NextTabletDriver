@@ -1,19 +1,21 @@
 //! Panic hook and pending crash-report replay, with user-path anonymization.
 
 use super::capture_event;
+use ntd_settings::Paths;
 use serde_json::{Value, json};
+use std::path::{Path, PathBuf};
 
 /// Installs a panic hook that writes an anonymized crash report to the settings folder, then calls
 /// the previous hook.
-pub fn setup_panic_hook() {
+pub fn setup_panic_hook(paths: &Paths) {
+    let crash_file = crash_file(paths.settings_dir());
     let default_hook = std::panic::take_hook();
     std::panic::set_hook(Box::new(move |panic_info| {
         let payload = panic_info.to_string();
         let anonymized = anonymize_path(&payload);
 
-        let crash_file = crate::settings::get_settings_dir().join("crash_report.json");
         if let Ok(json) = serde_json::to_string(&json!({ "panic_message": anonymized })) {
-            let _ = std::fs::write(crash_file, json);
+            let _ = std::fs::write(&crash_file, json);
         }
 
         default_hook(panic_info);
@@ -22,14 +24,21 @@ pub fn setup_panic_hook() {
 
 /// Sends the crash report left by the previous run, if there is one, as a telemetry event, then
 /// deletes it.
-pub fn send_pending_crash_reports() {
-    send_pending_crash_reports_with(&|name, properties| capture_event(name, Some(properties)));
+pub fn send_pending_crash_reports(paths: &Paths) {
+    send_pending_crash_reports_with(paths.settings_dir(), &|name, properties| {
+        capture_event(name, Some(properties));
+    });
+}
+
+/// Where the report of a panic is left, in the settings folder `dir`.
+fn crash_file(dir: &Path) -> PathBuf {
+    dir.join("crash_report.json")
 }
 
 /// Replays the report left by the previous run through `send`, then deletes it; a report that
 /// cannot be read is deleted without being sent so it is not retried forever.
-fn send_pending_crash_reports_with(send: &dyn Fn(&str, Value)) {
-    let crash_file = crate::settings::get_settings_dir().join("crash_report.json");
+fn send_pending_crash_reports_with(dir: &Path, send: &dyn Fn(&str, Value)) {
+    let crash_file = crash_file(dir);
     if crash_file.exists() {
         if let Ok(content) = std::fs::read_to_string(&crash_file)
             && let Ok(json) = serde_json::from_str::<Value>(&content)
@@ -119,23 +128,10 @@ mod tests {
         );
     }
 
-    use crate::settings::set_test_settings_dir;
-
-    fn temp_settings(name: &str) -> std::path::PathBuf {
-        let nanos = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_nanos();
-        let path = std::env::temp_dir().join(format!("ntd_crash_{name}_{nanos}"));
-        std::fs::create_dir_all(&path).unwrap();
-        set_test_settings_dir(path.clone());
-        path
-    }
-
     /// Collects what a replay would hand to the telemetry worker.
-    fn replay() -> Vec<(String, Value)> {
+    fn replay(dir: &Path) -> Vec<(String, Value)> {
         let sent = std::cell::RefCell::new(Vec::new());
-        send_pending_crash_reports_with(&|name, properties| {
+        send_pending_crash_reports_with(dir, &|name, properties| {
             sent.borrow_mut().push((name.to_string(), properties));
         });
         sent.into_inner()
@@ -143,11 +139,12 @@ mod tests {
 
     #[test]
     fn a_pending_report_is_sent_once_and_then_deleted() {
-        let dir = temp_settings("pending");
+        let paths = crate::test_support::test_paths();
+        let dir = paths.settings_dir().to_path_buf();
         let file = dir.join("crash_report.json");
         std::fs::write(&file, r#"{ "panic_message": "boom" }"#).unwrap();
 
-        let sent = replay();
+        let sent = replay(&dir);
         assert_eq!(
             sent,
             [(
@@ -156,37 +153,36 @@ mod tests {
             )]
         );
         assert!(!file.exists());
-        assert!(replay().is_empty(), "the report must not be sent twice");
-        let _ = std::fs::remove_dir_all(dir);
+        assert!(replay(&dir).is_empty(), "the report must not be sent twice");
     }
 
     #[test]
     fn an_unreadable_report_is_discarded_rather_than_retried_forever() {
-        let dir = temp_settings("garbage");
+        let paths = crate::test_support::test_paths();
+        let dir = paths.settings_dir().to_path_buf();
         let file = dir.join("crash_report.json");
         std::fs::write(&file, "not json at all").unwrap();
-        assert!(replay().is_empty(), "nothing readable, nothing sent");
+        assert!(replay(&dir).is_empty(), "nothing readable, nothing sent");
         assert!(!file.exists());
-        let _ = std::fs::remove_dir_all(dir);
     }
 
     #[test]
     fn smoke_the_public_replay_does_not_fail_without_a_worker() {
         // Smoke test: with no telemetry worker the event is dropped, the file is still removed.
-        let dir = temp_settings("public");
+        let paths = crate::test_support::test_paths();
+        let dir = paths.settings_dir().to_path_buf();
         let file = dir.join("crash_report.json");
         std::fs::write(&file, r#"{ "panic_message": "boom" }"#).unwrap();
-        send_pending_crash_reports();
+        send_pending_crash_reports(&paths);
         assert!(!file.exists());
-        let _ = std::fs::remove_dir_all(dir);
     }
 
     #[test]
     fn nothing_happens_without_a_pending_report() {
-        let dir = temp_settings("none");
-        assert!(replay().is_empty());
+        let paths = crate::test_support::test_paths();
+        let dir = paths.settings_dir().to_path_buf();
+        assert!(replay(&dir).is_empty());
         assert!(!dir.join("crash_report.json").exists());
-        let _ = std::fs::remove_dir_all(dir);
     }
 
     #[test]
@@ -230,10 +226,11 @@ mod tests {
 
     #[test]
     fn the_panic_hook_writes_an_anonymized_report_for_the_next_launch() {
-        let dir = temp_settings("hook");
+        let paths = crate::test_support::test_paths();
+        let dir = paths.settings_dir().to_path_buf();
         // Process-global state: installs a panic hook and restores the default one afterwards.
         // Safe under nextest (one process per test); see `.github/CONTRIBUTING.md`.
-        setup_panic_hook();
+        setup_panic_hook(&paths);
         let result = std::panic::catch_unwind(|| {
             panic!("boom in C:\\Users\\Nobody\\src");
         });
@@ -244,6 +241,5 @@ mod tests {
         let report = std::fs::read_to_string(dir.join("crash_report.json")).unwrap();
         let json: serde_json::Value = serde_json::from_str(&report).unwrap();
         assert!(json["panic_message"].as_str().unwrap().contains("boom"));
-        let _ = std::fs::remove_dir_all(dir);
     }
 }

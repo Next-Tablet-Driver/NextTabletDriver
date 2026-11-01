@@ -8,15 +8,66 @@
 //! Functions never panic across FFI boundaries (all calls are guarded by
 //! `std::panic::catch_unwind`).
 //! Communication on the time-critical polling path is completely zero-allocation.
+//!
+//! This is **ABI v3**. Every type that crosses the boundary has a fixed width (`u8`, `i32`, `u32`,
+//! `u64`, `f32`), the manifest names the target the plugin was built for, and a library built for
+//! an older ABI is refused by the host. See `docs/plugin-migration-v3.md` to port a v2 plugin.
 
 use serde::{Deserialize, Serialize};
+
+#[doc(hidden)]
+pub use serde_json;
 
 /// 32-bit magic identifier required for handshake verification: `"NTDP"` (Next Tablet Driver
 /// Plugin).
 pub const NTD_PLUGIN_MAGIC: u32 = 0x4E54_4450;
 
 /// Current plugin ABI version.
-pub const NTD_PLUGIN_ABI_VERSION: u32 = 1;
+///
+/// Within a major version the ABI never breaks; the next incompatible change is ABI v4.
+pub const NTD_PLUGIN_ABI_VERSION: u32 = 3;
+
+/// Target triple this crate (and so the plugin that exports through [`export_ntd_plugin!`]) is
+/// compiled for, for the targets the driver supports; `"unknown"` for any other.
+///
+/// A native library only runs on the platform it was built for: the host compares this with its
+/// own value and refuses a plugin built for another target with a clear message, before the OS
+/// loader gives a cryptic one.
+pub const TARGET_TRIPLE: &str = target_triple();
+
+const fn target_triple() -> &'static str {
+    if cfg!(all(
+        target_arch = "x86_64",
+        target_os = "windows",
+        target_env = "msvc"
+    )) {
+        "x86_64-pc-windows-msvc"
+    } else if cfg!(all(
+        target_arch = "aarch64",
+        target_os = "windows",
+        target_env = "msvc"
+    )) {
+        "aarch64-pc-windows-msvc"
+    } else if cfg!(all(
+        target_arch = "x86_64",
+        target_os = "linux",
+        target_env = "gnu"
+    )) {
+        "x86_64-unknown-linux-gnu"
+    } else if cfg!(all(
+        target_arch = "aarch64",
+        target_os = "linux",
+        target_env = "gnu"
+    )) {
+        "aarch64-unknown-linux-gnu"
+    } else if cfg!(all(target_arch = "x86_64", target_os = "macos")) {
+        "x86_64-apple-darwin"
+    } else if cfg!(all(target_arch = "aarch64", target_os = "macos")) {
+        "aarch64-apple-darwin"
+    } else {
+        "unknown"
+    }
+}
 
 /// In-place packet data exchanged between `NextTabletDriver` and the plugin.
 ///
@@ -34,8 +85,9 @@ pub struct PluginPacket {
     pub tilt_x: i32,
     /// Vertical pen tilt in degrees.
     pub tilt_y: i32,
-    /// Whether the pen is contacting the tablet surface.
-    pub is_down: bool,
+    /// `1` while the pen contacts the tablet surface, `0` otherwise. A `u8` and not a `bool`
+    /// because a plugin that writes any other byte into a `bool` is undefined behaviour.
+    pub is_down: u8,
     /// Monotonic timestamp in nanoseconds when the packet was received.
     pub timestamp_ns: u64,
 }
@@ -48,7 +100,7 @@ impl Default for PluginPacket {
             pressure: 0.0,
             tilt_x: 0,
             tilt_y: 0,
-            is_down: false,
+            is_down: 0,
             timestamp_ns: 0,
         }
     }
@@ -79,14 +131,40 @@ impl Default for PluginContext {
     }
 }
 
-/// Status code returned by FFI plugin operations.
-#[repr(C)]
+/// Raw status of a successful FFI call.
+pub const NTD_STATUS_OK: i32 = 0;
+/// Raw status of a failed FFI call (an error, or a panic caught inside the plugin).
+pub const NTD_STATUS_ERROR: i32 = 1;
+
+/// Status of an FFI plugin operation.
+///
+/// Across the ABI the status is a plain `i32` ([`NTD_STATUS_OK`], [`NTD_STATUS_ERROR`]): a foreign
+/// function returning a value that is not a variant of a Rust `enum` would be undefined behaviour.
+#[repr(i32)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PluginStatus {
     /// Operation succeeded.
-    Ok = 0,
+    Ok = NTD_STATUS_OK,
     /// Operation encountered an error or panic.
-    Error = 1,
+    Error = NTD_STATUS_ERROR,
+}
+
+impl PluginStatus {
+    /// Reads a raw status: `0` is success, every other value is an error.
+    #[must_use]
+    pub const fn from_raw(raw: i32) -> Self {
+        if raw == NTD_STATUS_OK {
+            Self::Ok
+        } else {
+            Self::Error
+        }
+    }
+
+    /// The raw status to return across the ABI.
+    #[must_use]
+    pub const fn as_raw(self) -> i32 {
+        self as i32
+    }
 }
 
 /// Complete declarative metadata for a plugin, serialized to JSON across the ABI.
@@ -99,6 +177,10 @@ pub struct PluginManifest {
     pub name: String,
     /// Semver version string.
     pub version: String,
+    /// Target triple the library was built for (see [`TARGET_TRIPLE`]). Filled in by
+    /// [`export_ntd_plugin!`]; whatever [`NextTabletPlugin::manifest`] puts here is replaced.
+    #[serde(default)]
+    pub target: String,
     /// Author name and attribution.
     pub author: String,
     /// Detailed description of the plugin functionality.
@@ -213,13 +295,15 @@ macro_rules! export_ntd_plugin {
 
             MANIFEST_CSTRING
                 .get_or_init(|| {
-                    let instance = $plugin_type::default();
-                    let manifest = $crate::NextTabletPlugin::manifest(&instance);
-                    let json = match serde_json::to_string(&manifest) {
-                        Ok(s) => s,
-                        Err(_) => String::new(),
-                    };
-                    std::ffi::CString::new(json).unwrap_or_else(|_| std::ffi::CString::default())
+                    // A panic must not unwind out of an `extern "C"` function.
+                    let json = std::panic::catch_unwind(|| {
+                        let instance = $plugin_type::default();
+                        let mut manifest = $crate::NextTabletPlugin::manifest(&instance);
+                        manifest.target = $crate::TARGET_TRIPLE.to_string();
+                        $crate::serde_json::to_string(&manifest).unwrap_or_default()
+                    })
+                    .unwrap_or_default();
+                    std::ffi::CString::new(json).unwrap_or_default()
                 })
                 .as_ptr()
         }
@@ -246,9 +330,9 @@ macro_rules! export_ntd_plugin {
             instance: *mut std::ffi::c_void,
             packet: *mut $crate::PluginPacket,
             context: *const $crate::PluginContext,
-        ) -> $crate::PluginStatus {
+        ) -> i32 {
             if instance.is_null() || packet.is_null() || context.is_null() {
-                return $crate::PluginStatus::Error;
+                return $crate::NTD_STATUS_ERROR;
             }
 
             let result = std::panic::catch_unwind(|| {
@@ -263,8 +347,8 @@ macro_rules! export_ntd_plugin {
             });
 
             match result {
-                Ok(_) => $crate::PluginStatus::Ok,
-                Err(_) => $crate::PluginStatus::Error,
+                Ok(_) => $crate::NTD_STATUS_OK,
+                Err(_) => $crate::NTD_STATUS_ERROR,
             }
         }
 
@@ -275,9 +359,9 @@ macro_rules! export_ntd_plugin {
             instance: *mut std::ffi::c_void,
             key: *const std::ffi::c_char,
             value_json: *const std::ffi::c_char,
-        ) -> $crate::PluginStatus {
+        ) -> i32 {
             if instance.is_null() || key.is_null() || value_json.is_null() {
-                return $crate::PluginStatus::Error;
+                return $crate::NTD_STATUS_ERROR;
             }
 
             let result = std::panic::catch_unwind(|| {
@@ -291,19 +375,17 @@ macro_rules! export_ntd_plugin {
             });
 
             match result {
-                Ok(_) => $crate::PluginStatus::Ok,
-                Err(_) => $crate::PluginStatus::Error,
+                Ok(_) => $crate::NTD_STATUS_OK,
+                Err(_) => $crate::NTD_STATUS_ERROR,
             }
         }
 
         #[unsafe(no_mangle)]
         /// # Safety
         /// `instance` must be a valid pointer created by `ntd_plugin_create`.
-        pub unsafe extern "C" fn ntd_plugin_reset(
-            instance: *mut std::ffi::c_void,
-        ) -> $crate::PluginStatus {
+        pub unsafe extern "C" fn ntd_plugin_reset(instance: *mut std::ffi::c_void) -> i32 {
             if instance.is_null() {
-                return $crate::PluginStatus::Error;
+                return $crate::NTD_STATUS_ERROR;
             }
 
             let result = std::panic::catch_unwind(|| {
@@ -313,19 +395,17 @@ macro_rules! export_ntd_plugin {
             });
 
             match result {
-                Ok(_) => $crate::PluginStatus::Ok,
-                Err(_) => $crate::PluginStatus::Error,
+                Ok(_) => $crate::NTD_STATUS_OK,
+                Err(_) => $crate::NTD_STATUS_ERROR,
             }
         }
 
         #[unsafe(no_mangle)]
         /// # Safety
         /// `instance` must be a valid pointer created by `ntd_plugin_create` and not yet freed.
-        pub unsafe extern "C" fn ntd_plugin_destroy(
-            instance: *mut std::ffi::c_void,
-        ) -> $crate::PluginStatus {
+        pub unsafe extern "C" fn ntd_plugin_destroy(instance: *mut std::ffi::c_void) -> i32 {
             if instance.is_null() {
-                return $crate::PluginStatus::Ok;
+                return $crate::NTD_STATUS_OK;
             }
 
             let result = std::panic::catch_unwind(|| {
@@ -334,8 +414,8 @@ macro_rules! export_ntd_plugin {
             });
 
             match result {
-                Ok(_) => $crate::PluginStatus::Ok,
-                Err(_) => $crate::PluginStatus::Error,
+                Ok(_) => $crate::NTD_STATUS_OK,
+                Err(_) => $crate::NTD_STATUS_ERROR,
             }
         }
     };
@@ -356,6 +436,7 @@ mod tests {
                 id: "dummy".to_string(),
                 name: "Dummy Filter".to_string(),
                 version: "1.0.0".to_string(),
+                target: String::new(),
                 author: "Test".to_string(),
                 description: "Test description".to_string(),
                 icon: None,
@@ -402,6 +483,7 @@ mod tests {
                 id: String::new(),
                 name: String::new(),
                 version: String::new(),
+                target: String::new(),
                 author: String::new(),
                 description: String::new(),
                 icon: None,
@@ -412,8 +494,37 @@ mod tests {
     }
 
     #[test]
+    fn the_abi_types_have_a_fixed_layout() {
+        assert_eq!(std::mem::size_of::<PluginPacket>(), 32);
+        assert_eq!(std::mem::align_of::<PluginPacket>(), 8);
+        assert_eq!(std::mem::size_of::<PluginContext>(), 16);
+        assert_eq!(std::mem::size_of::<PluginStatus>(), 4);
+    }
+
+    #[test]
+    fn a_raw_status_other_than_zero_is_an_error() {
+        assert_eq!(PluginStatus::from_raw(0), PluginStatus::Ok);
+        assert_eq!(PluginStatus::from_raw(1), PluginStatus::Error);
+        assert_eq!(PluginStatus::from_raw(-7), PluginStatus::Error);
+        assert_eq!(PluginStatus::Ok.as_raw(), NTD_STATUS_OK);
+        assert_eq!(PluginStatus::Error.as_raw(), NTD_STATUS_ERROR);
+    }
+
+    #[test]
+    fn the_target_triple_is_known_on_a_supported_platform() {
+        assert!(!TARGET_TRIPLE.is_empty());
+        if cfg!(all(
+            target_arch = "x86_64",
+            target_os = "windows",
+            target_env = "msvc"
+        )) {
+            assert_eq!(TARGET_TRIPLE, "x86_64-pc-windows-msvc");
+        }
+    }
+
+    #[test]
     fn test_handshake_constants() {
         assert_eq!(NTD_PLUGIN_MAGIC, 0x4E54_4450);
-        assert_eq!(NTD_PLUGIN_ABI_VERSION, 1);
+        assert_eq!(NTD_PLUGIN_ABI_VERSION, 3);
     }
 }

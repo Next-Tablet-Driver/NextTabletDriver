@@ -4,9 +4,9 @@
 use super::owner::owner_iteration;
 use super::sdk_bridge::apply_shm_snapshot;
 use super::try_acquire_boxed;
-use crate::engine::interop::shm::ShmReader;
-use crate::engine::state::SharedState;
 use crossbeam_channel::Sender;
+use ntd_interop::shm::ShmReader;
+use ntd_state::SharedState;
 use ntd_tablets::TabletData;
 use std::any::Any;
 use std::sync::Arc;
@@ -92,8 +92,9 @@ fn reader_loop(
 )]
 mod tests {
     use super::*;
-    use crate::engine::interop::shm::{SdkPublicState, ShmWriter};
     use crossbeam_channel::bounded;
+    use ntd_interop::protocol::SdkPublicState;
+    use ntd_interop::shm::ShmWriter;
 
     fn shared() -> Arc<SharedState> {
         crate::test_support::evaluate_log_arguments();

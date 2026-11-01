@@ -311,6 +311,11 @@ export type PluginManifest_Deserialize = {
 	name: string,
 	/**  Semver version string. */
 	version: string,
+	/**
+	 *  Target triple the library was built for (see [`TARGET_TRIPLE`]). Filled in by
+	 *  [`export_ntd_plugin!`]; whatever [`NextTabletPlugin::manifest`] puts here is replaced.
+	 */
+	target?: string,
 	/**  Author name and attribution. */
 	author: string,
 	/**  Detailed description of the plugin functionality. */
@@ -329,6 +334,11 @@ export type PluginManifest_Serialize = {
 	name: string,
 	/**  Semver version string. */
 	version: string,
+	/**
+	 *  Target triple the library was built for (see [`TARGET_TRIPLE`]). Filled in by
+	 *  [`export_ntd_plugin!`]; whatever [`NextTabletPlugin::manifest`] puts here is replaced.
+	 */
+	target: string,
 	/**  Author name and attribution. */
 	author: string,
 	/**  Detailed description of the plugin functionality. */

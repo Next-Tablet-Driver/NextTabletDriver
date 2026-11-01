@@ -1,0 +1,19 @@
+[package]
+name = "ntd-test-support"
+version = "0.1.0"
+description = "Fakes of the HID, output and clock ports of NextTabletDriver, for tests and the tester"
+publish = false
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[dependencies]
+ntd-core = { workspace = true }
+
+[lints]
+workspace = true

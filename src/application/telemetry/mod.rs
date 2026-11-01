@@ -121,7 +121,7 @@ fn send_message(msg: TelemetryMessage) {
 )]
 mod tests {
     use super::*;
-    use crate::engine::state::SharedState;
+    use ntd_state::SharedState;
 
     // The tests run without a worker: no API key is embedded in test builds and `init` is
     // only called with telemetry disabled, so nothing can leave the machine.

@@ -1,23 +1,20 @@
 //! Runs this process as the HID owner: detects and polls the real device,
 //! publishes live state into the shared segment, and listens for
 //! config-write commands from reader processes.
-#![allow(
-    unsafe_code,
-    reason = "Win32 thread priority calls through windows-sys"
-)]
 
 use super::polling::run_polling_loop;
 use super::sdk_bridge::DesktopCommandHandler;
-use crate::drivers::detect_tablet;
-use crate::engine::injector::Injector;
-use crate::engine::interop::command::{CommandHandler, CommandListener};
-use crate::engine::interop::shm::ShmWriter;
-use crate::engine::state::SharedState;
 use crossbeam_channel::Sender;
 use ntd_core::config::models::MappingConfig;
 use ntd_core::sync::{LockRecoveryExt, WriteRecoverExt};
+use ntd_hid::detect_tablet;
+use ntd_interop::command::CommandListener;
+use ntd_interop::protocol::CommandHandler;
+use ntd_interop::shm::ShmWriter;
+use ntd_output::Injector;
 use ntd_pipeline::FilterPipeline;
 use ntd_pipeline::Pipeline;
+use ntd_state::SharedState;
 use ntd_tablets::TabletData;
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
@@ -29,13 +26,13 @@ use std::time::{Duration, Instant};
 /// for config-write commands from readers.
 pub(super) fn owner_iteration(shared_clone: &Arc<SharedState>, sender_clone: &Sender<TabletData>) {
     let hid_init_start = Instant::now();
-    let hid_api = match hidapi::HidApi::new() {
+    let mut hid_backend = match ntd_hid::Backend::new() {
         Ok(api) => {
             *shared_clone
                 .lifecycle
                 .engine_status
                 .write()
-                .unwrap_or_reset("engine_status") = crate::engine::state::EngineStatus::Running;
+                .unwrap_or_reset("engine_status") = ntd_state::EngineStatus::Running;
             api
         }
         Err(e) => {
@@ -52,8 +49,7 @@ pub(super) fn owner_iteration(shared_clone: &Arc<SharedState>, sender_clone: &Se
                 .lifecycle
                 .engine_status
                 .write()
-                .unwrap_or_reset("engine_status") =
-                crate::engine::state::EngineStatus::Failed(error_str);
+                .unwrap_or_reset("engine_status") = ntd_state::EngineStatus::Failed(error_str);
             return;
         }
     };
@@ -75,7 +71,7 @@ pub(super) fn owner_iteration(shared_clone: &Arc<SharedState>, sender_clone: &Se
                 .lifecycle
                 .engine_status
                 .write()
-                .unwrap_or_reset("engine_status") = crate::engine::state::EngineStatus::Failed(e);
+                .unwrap_or_reset("engine_status") = ntd_state::EngineStatus::Failed(e);
             return;
         }
     };
@@ -129,7 +125,7 @@ pub(super) fn owner_iteration(shared_clone: &Arc<SharedState>, sender_clone: &Se
             break;
         }
 
-        if let Some((device, driver, vid, pid)) = detect_tablet(&hid_api) {
+        if let Some((device, driver, vid, pid)) = detect_tablet(&mut hid_backend) {
             log::info!(target: "HID", "Device connected: {vid:04x}:{pid:04x}");
             on_device_connected(shared_clone, driver.as_ref(), vid, pid, &mut local_config);
             let mut local_config_version = shared_clone.config.version.load(Ordering::Relaxed);
@@ -146,7 +142,7 @@ pub(super) fn owner_iteration(shared_clone: &Arc<SharedState>, sender_clone: &Se
                 {
                     break;
                 }
-                match device.read_timeout(&mut drain_buf, 10) {
+                match device.read_timeout(&mut drain_buf, Duration::from_millis(10)) {
                     Ok(0) | Err(_) => break,
                     Ok(_) => (),
                 }
@@ -154,7 +150,7 @@ pub(super) fn owner_iteration(shared_clone: &Arc<SharedState>, sender_clone: &Se
             pipeline.reset_relative();
 
             run_polling_loop(
-                &device,
+                device.as_ref(),
                 driver.as_ref(),
                 shared_clone,
                 sender_clone,
@@ -194,31 +190,14 @@ pub(super) fn owner_iteration(shared_clone: &Arc<SharedState>, sender_clone: &Se
 /// On Windows, sets the thread priority to `TIME_CRITICAL`.
 /// On Linux, attempts to nice the thread to `-11` (requires `CAP_SYS_NICE` or root permissions).
 fn init_thread_priority() {
-    // SAFETY: These are standard OS-specific calls to increase thread priority
-    // for low-latency USB polling.
-    #[cfg(windows)]
-    {
-        use windows_sys::Win32::System::Threading::{
-            GetCurrentThread, SetThreadPriority, THREAD_PRIORITY_TIME_CRITICAL,
-        };
-        // SAFETY: Retrieving the handle to the current thread.
-        let thread = unsafe { GetCurrentThread() };
-        // SAFETY: Increasing thread priority to TIME_CRITICAL for low-latency USB polling.
-        if unsafe { SetThreadPriority(thread, THREAD_PRIORITY_TIME_CRITICAL) } == 0 {
-            log::warn!(target: "TabletManager", "Failed to set thread priority to TIME_CRITICAL");
-        } else {
-            log::info!(target: "TabletManager", "Thread priority set to TIME_CRITICAL");
-        }
-    }
-    #[cfg(target_os = "linux")]
-    // SAFETY: calling `libc::nice` is safe to change the current thread priority.
-    // The return value of -1 is checked to gracefully handle permission failures.
-    unsafe {
-        if libc::nice(-11) == -1 {
+    match ntd_platform::raise_current_thread_priority() {
+        Ok(()) => log::info!(target: "TabletManager", "Thread priority increased"),
+        Err(ntd_platform::PlatformError::PermissionDenied) => {
             log::info!(target: "TabletManager", "Running at normal priority (CAP_SYS_NICE not \
                 available)");
-        } else {
-            log::info!(target: "TabletManager", "Thread priority increased (nice -11)");
+        }
+        Err(e) => {
+            log::warn!(target: "TabletManager", "Failed to raise the thread priority: {e}");
         }
     }
 }
@@ -246,7 +225,7 @@ fn on_device_connected(
     let (mw, mh, mp) = driver.get_specs();
     let (pen_button_count, aux_button_count) = driver.get_button_counts();
 
-    let new_device = crate::engine::state::DeviceState {
+    let new_device = ntd_state::DeviceState {
         name: driver.get_name().to_string(),
         vid,
         pid,
@@ -299,7 +278,7 @@ fn on_device_connected(
 /// coordinate parameters to prevent incorrect pointer inputs.
 fn on_disconnected(shared: &Arc<SharedState>) {
     log::info!(target: "HID", "Device disconnected, resetting shared state");
-    *shared.device.write().unwrap_or_reset("device") = crate::engine::state::DeviceState::default();
+    *shared.device.write().unwrap_or_reset("device") = ntd_state::DeviceState::default();
     *shared
         .pipeline
         .tablet_data
@@ -314,8 +293,8 @@ fn on_disconnected(shared: &Arc<SharedState>) {
 )]
 mod tests {
     use super::*;
-    use crate::engine::state::EngineStatus;
     use crossbeam_channel::bounded;
+    use ntd_state::EngineStatus;
     use ntd_tablets::NextTabletDriver;
 
     struct StubDriver;
@@ -395,7 +374,6 @@ mod tests {
     #[test]
     fn the_filter_pipeline_starts_empty_without_plugins() {
         // The shared state loads the plugins folder of the current user: use an empty one.
-        let _settings = crate::test_support::empty_settings_dir();
         let shared = shared(false);
         let pipeline = init_filter_pipeline(&shared, &MappingConfig::default());
         assert!(pipeline.entries.is_empty());
