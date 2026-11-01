@@ -7,7 +7,11 @@ use std::ffi::c_void;
 pub(crate) struct Mapping(());
 
 impl Mapping {
-    pub(crate) fn as_ptr(&self) -> *mut c_void {
+    #[allow(
+        clippy::unused_self,
+        reason = "the same signature as the other systems, where the view is read"
+    )]
+    pub(crate) const fn as_ptr(&self) -> *mut c_void {
         std::ptr::null_mut()
     }
 }

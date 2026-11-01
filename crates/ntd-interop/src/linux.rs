@@ -1,5 +1,9 @@
 //! Linux shared memory backing for the seqlock segment, via a POSIX shared
 //! memory object (`shm_open`/`mmap`).
+#![allow(
+    unsafe_code,
+    reason = "mmap/munmap calls and raw pointers over the shared segment"
+)]
 
 use nix::fcntl::OFlag;
 use nix::sys::mman::{MapFlags, ProtFlags, mmap, munmap, shm_open};
