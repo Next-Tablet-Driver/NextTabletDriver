@@ -242,14 +242,16 @@ pub extern "C" fn ntd_init() -> i32 {
         // background thread performs its own `Backend::new()` once it
         // starts (needed regardless, since every automatic retry after a
         // crash re-initialises from scratch) rather than reusing this one.
-        let hid_owner = try_acquire_hid_owner();
-        if hid_owner.is_some()
-            && let Err(e) = ntd_hid::Backend::new()
         {
-            log::error!(target: "Ffi", "CRITICAL: Failed to initialise HID API: {e}");
-            return NTD_ERR_HID_INIT_FAILED;
+            // The guard is released at the end of this block, before the engine thread starts.
+            let hid_owner = try_acquire_hid_owner();
+            if hid_owner.is_some()
+                && let Err(e) = ntd_hid::Backend::new()
+            {
+                log::error!(target: "Ffi", "CRITICAL: Failed to initialise HID API: {e}");
+                return NTD_ERR_HID_INIT_FAILED;
+            }
         }
-        drop(hid_owner);
 
         // The same plugins folder as the desktop application: the SDK runs the filters the user
         // installed there.
