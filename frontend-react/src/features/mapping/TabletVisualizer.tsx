@@ -31,7 +31,7 @@ export function TabletVisualizer() {
   const mapping = useMappingStore();
   const surface = useSurface();
   const pen = usePen();
-  const [areaRef, area] = useElementSize<HTMLDivElement>();
+  const [areaRef, area] = useElementSize();
   const canvas = useRef<HTMLDivElement>(null);
   const drag = useRef<{ x: number; y: number; start: ActiveArea } | null>(null);
 

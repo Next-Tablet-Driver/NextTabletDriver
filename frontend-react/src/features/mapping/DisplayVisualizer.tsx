@@ -32,7 +32,7 @@ export function DisplayVisualizer() {
   const { config } = useMappingSnapshot();
   const mapping = useMappingStore();
   const [monitors, setMonitors] = useState<MonitorRect[]>([]);
-  const [areaRef, area] = useElementSize<HTMLDivElement>();
+  const [areaRef, area] = useElementSize();
   const canvas = useRef<HTMLDivElement>(null);
   const drag = useRef<{ x: number; y: number; start: Rect } | null>(null);
 

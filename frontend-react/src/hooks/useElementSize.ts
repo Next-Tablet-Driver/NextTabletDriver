@@ -1,25 +1,27 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
-/** The size of an element, kept up to date while it is on screen. */
-export function useElementSize<T extends HTMLElement>(): readonly [
-  ref: React.RefObject<T | null>,
+/**
+ * The size of an element, kept up to date while it is on screen. Attach the returned callback as
+ * the element's `ref`: it works even when the element only appears after the first render.
+ */
+export function useElementSize(): readonly [
+  ref: (element: HTMLElement | null) => void,
   size: { width: number; height: number },
 ] {
-  const ref = useRef<T>(null);
+  const [element, setElement] = useState<HTMLElement | null>(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
   useEffect(() => {
-    const el = ref.current;
-    if (el === null) {
+    if (element === null) {
       return undefined;
     }
+    // Observing reports the initial size too.
     const observer = new ResizeObserver(() => {
-      setSize({ width: el.clientWidth, height: el.clientHeight });
+      setSize({ width: element.clientWidth, height: element.clientHeight });
     });
-    observer.observe(el);
-    setSize({ width: el.clientWidth, height: el.clientHeight });
+    observer.observe(element);
     return () => {
       observer.disconnect();
     };
-  }, []);
-  return [ref, size] as const;
+  }, [element]);
+  return [setElement, size] as const;
 }
