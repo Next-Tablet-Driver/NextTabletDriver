@@ -11,9 +11,6 @@ extend-exclude = [
     "*.lock",
     "frontend/package-lock.json",
     "frontend-react/package-lock.json",
-    # Components copied in by `npx untitledui add`: the library's code (it has country codes such
-    # as "PN"), not ours.
-    "frontend-react/src/components/",
     # The French translation is French, not misspelt English.
     "resources/locales/fr.json",
 ]

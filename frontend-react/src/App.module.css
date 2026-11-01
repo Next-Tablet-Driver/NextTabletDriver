@@ -1,0 +1,6 @@
+.content-area {
+  flex-grow: 1;
+  background-color: var(--bg-app);
+  position: relative;
+  overflow: hidden;
+}

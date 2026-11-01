@@ -1,0 +1,24 @@
+/* Copied from frontend/src/lib/pages/Filters.svelte. */
+.filters-container {
+  display: flex;
+  height: 100%;
+  background-color: var(--bg-app);
+  color: var(--text-main);
+  font-family: var(--font-sans);
+}
+
+.main-panel {
+  flex: 1;
+  padding: var(--space-12);
+  overflow-y: auto;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-muted);
+  gap: var(--space-4);
+}

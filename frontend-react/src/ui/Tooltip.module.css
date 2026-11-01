@@ -1,0 +1,34 @@
+/* Copied from frontend/src/lib/components/ui/Tooltip.svelte. */
+.tooltip-wrapper {
+  display: inline-flex;
+  /* This ensures it doesn't break the layout of wrapped elements */
+  width: fit-content;
+}
+
+.tooltip-content {
+  position: fixed;
+  z-index: var(--z-tooltip);
+  background-color: var(--bg-panel);
+  color: var(--text-main);
+  padding: var(--space-2) var(--space-4);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-md);
+  line-height: 1.4;
+  max-width: 300px;
+  box-shadow: var(--shadow-popover);
+  pointer-events: none;
+  animation: fadeIn var(--transition-normal) ease-out forwards;
+  white-space: pre-wrap; /* Allows formatting with newlines */
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

@@ -1,0 +1,24 @@
+/* Copied from frontend/src/lib/features/pen/Thresholds.svelte. */
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.card-title {
+  font-size: var(--font-md);
+  font-weight: var(--font-weight-bold);
+  color: var(--text-muted);
+}
+
+.flex-row {
+  display: flex;
+  gap: var(--space-4);
+  align-items: center;
+}
+
+.input-group {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}

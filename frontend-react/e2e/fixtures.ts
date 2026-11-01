@@ -24,11 +24,11 @@ export class App {
   async open(query = ""): Promise<void> {
     await this.page.goto(`/?mock${query}`);
     await expect(this.page.getByText("Profile:")).toBeVisible();
-    await expect(this.content.getByRole("heading", { level: 1 })).toBeVisible();
+    await expect(this.page.getByRole("button", { name: "Output", exact: true })).toBeVisible();
   }
 
   async goTo(tab: TabName): Promise<void> {
-    await this.page.getByRole("tab", { name: tab, exact: true }).click();
+    await this.page.getByRole("button", { name: tab, exact: true }).click();
   }
 
   /** Types a value and leaves the field, which is what commits a number input in this app. */
@@ -37,24 +37,12 @@ export class App {
     await field.press("Tab");
   }
 
-  /** A switch of the current page: its visible track is what a person clicks. */
-  async toggle(name: string): Promise<void> {
-    await this.content
-      .locator("label", { has: this.page.getByRole("switch", { name, exact: true }) })
-      .click();
-  }
-
-  /** A text or number field of the current page, by its label. */
-  field(label: string): Locator {
-    return this.content.getByRole("textbox", { name: label, exact: true });
-  }
-
   get content(): Locator {
-    return this.page.locator("#content");
+    return this.page.locator(".content-area");
   }
 
   get footer(): Locator {
-    return this.page.locator("footer");
+    return this.page.locator("main > :last-child");
   }
 
   /** The IPC calls made so far, optionally only those of one command. */

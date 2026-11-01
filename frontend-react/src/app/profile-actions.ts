@@ -47,50 +47,50 @@ export function profileActions(mapping: MappingStore) {
   };
 
   return {
-    async open(): Promise<void> {
+    open: async (): Promise<void> => {
       const path = await pickJson();
       if (path !== null) {
         await reporting("load settings", () => loadFrom(path, loadProfile));
       }
     },
 
-    async import(): Promise<void> {
+    import: async (): Promise<void> => {
       const path = await pickJson();
       if (path !== null) {
         await reporting("import", () => loadFrom(path, loadProfile));
       }
     },
 
-    async importOtd(): Promise<void> {
+    importOtd: async (): Promise<void> => {
       const path = await pickJson();
       if (path !== null) {
         await reporting("import OTD settings", () => loadFrom(path, importOtdProfile));
       }
     },
 
-    async loadPreset(preset: { name: string; path: string }): Promise<void> {
+    loadPreset: async (preset: { name: string; path: string }): Promise<void> => {
       await reporting("load preset", () => loadFrom(preset.path, loadProfile, preset.name));
     },
 
-    async save(): Promise<void> {
+    save: async (): Promise<void> => {
       await mapping.save();
     },
 
-    async saveAs(): Promise<void> {
+    saveAs: async (): Promise<void> => {
       const path = await os.saveFileDialog({ filters: JSON_FILTER });
       if (path !== null) {
         await reporting("save settings as", () => exportProfile(path));
       }
     },
 
-    async export(): Promise<void> {
+    export: async (): Promise<void> => {
       const path = await os.saveFileDialog({ filters: JSON_FILTER });
       if (path !== null) {
         await reporting("export", () => exportProfile(path));
       }
     },
 
-    async reset(): Promise<void> {
+    reset: async (): Promise<void> => {
       await reporting("reset config", async () => {
         await resetConfig();
         setProfileName("Default Profile");

@@ -1,24 +1,20 @@
-import type { FC } from "react";
-import { Code, Filter, Gears, Grid, Heart, Pen, Sparkles } from "@getpapillon/papicons";
-
 export type PageId =
   "output" | "filters" | "penSettings" | "console" | "settings" | "release" | "credits";
 
 export interface PageInfo {
   id: PageId;
   label: string;
-  icon: FC<{ className?: string }>;
 }
 
 /** The pages of the main window, in the order of the tabs. */
 export const PAGES: readonly PageInfo[] = [
-  { id: "output", label: "Output", icon: Grid },
-  { id: "filters", label: "Filters", icon: Filter },
-  { id: "penSettings", label: "Pen Settings", icon: Pen },
-  { id: "console", label: "Console", icon: Code },
-  { id: "settings", label: "Settings", icon: Gears },
-  { id: "release", label: "Release", icon: Sparkles },
-  { id: "credits", label: "Credits", icon: Heart },
+  { id: "output", label: "Output" },
+  { id: "filters", label: "Filters" },
+  { id: "penSettings", label: "Pen Settings" },
+  { id: "console", label: "Console" },
+  { id: "settings", label: "Settings" },
+  { id: "release", label: "Release" },
+  { id: "credits", label: "Credits" },
 ];
 
 export const DEFAULT_PAGE: PageId = "output";

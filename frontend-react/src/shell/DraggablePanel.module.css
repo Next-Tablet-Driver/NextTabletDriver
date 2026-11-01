@@ -1,0 +1,61 @@
+/* Copied from frontend/src/lib/components/DraggablePanel.svelte. */
+.draggable-panel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 500px;
+  height: 400px;
+  background: var(--bg-app);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-floating);
+  z-index: var(--z-floating);
+  overflow: hidden;
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-2) var(--space-3);
+  background: var(--bg-panel);
+  border-bottom: var(--border-width) solid var(--border);
+  cursor: grab;
+  user-select: none;
+}
+
+.panel-header:active {
+  cursor: grabbing;
+}
+
+.title {
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-md);
+  color: var(--text-main);
+}
+
+.close-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: var(--space-0-5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+}
+
+.close-btn:hover {
+  background: var(--overlay-10);
+  color: var(--text-main);
+}
+
+.panel-content {
+  flex: 1;
+  padding: var(--space-4);
+  overflow-y: auto;
+  color: var(--text-main);
+}

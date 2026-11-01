@@ -1,0 +1,28 @@
+/* Copied from frontend/src/lib/components/TabBar.svelte. */
+.tabs {
+  display: flex;
+  background: var(--bg-app);
+  padding: var(--space-1) var(--space-1);
+  gap: var(--space-1);
+  flex-shrink: 0;
+}
+
+.tab {
+  background: var(--bg-tab);
+  border: none;
+  color: var(--text-main);
+  padding: var(--space-1-5) var(--space-3-5);
+  font-size: var(--font-md);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.tab:hover {
+  background: var(--bg-panel);
+  color: var(--text-active);
+}
+
+.tab.active {
+  background: var(--bg-tab-active);
+  color: var(--text-on-accent);
+}

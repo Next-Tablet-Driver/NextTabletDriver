@@ -1,12 +1,9 @@
 import { useState } from "react";
-import { Add } from "@getpapillon/papicons";
-import { Button } from "@/components/base/buttons/button";
-import { Tab, TabList, TabPanel, Tabs } from "@/components/application/tabs/tabs";
+import { Box } from "lucide-react";
+import { FiltersSidebar } from "@/features/filters/FiltersSidebar";
 import { PluginDetails } from "@/features/filters/PluginDetails";
 import { UntrustedPlugins } from "@/features/filters/UntrustedPlugins";
-import { settingsOf } from "@/features/filters/plugin-settings";
 import { useCommand } from "@/hooks/useCommand";
-import { useMappingSnapshot } from "@/features/mapping/MappingProvider";
 import { log } from "@/infrastructure/log";
 import { os } from "@/infrastructure/os";
 import {
@@ -20,7 +17,7 @@ import {
   type PluginManifest,
   type UntrustedPlugin,
 } from "@/infrastructure/tauri/commands";
-import { Page } from "@/ui/Page";
+import styles from "@/pages/FiltersPage.module.css";
 
 async function loadPlugins(): Promise<{ plugins: PluginManifest[]; untrusted: UntrustedPlugin[] }> {
   const [plugins, untrusted] = await Promise.all([getAvailablePlugins(), getUntrustedPlugins()]);
@@ -29,15 +26,15 @@ async function loadPlugins(): Promise<{ plugins: PluginManifest[]; untrusted: Un
 
 /** The filters (plugins) that run between the tablet and the cursor. */
 export function FiltersPage() {
-  const { config } = useMappingSnapshot();
   const { state, reload } = useCommand(loadPlugins);
   const [chosen, setChosen] = useState<string | null>(null);
 
   const plugins = state.status === "ready" ? state.data.plugins : [];
   const untrusted = state.status === "ready" ? state.data.untrusted : [];
-  const error = state.status === "error" ? state.message : null;
+  const fetchError = state.status === "error" ? state.message : null;
   // Keep the plugin on screen if it is still there, else show the first one.
-  const active = plugins.some((p) => p.id === chosen) ? chosen : (plugins[0]?.id ?? null);
+  const activeId = plugins.some((p) => p.id === chosen) ? chosen : (plugins[0]?.id ?? null);
+  const active = plugins.find((p) => p.id === activeId);
 
   /** Runs a plugin-folder action, then reads the list again; a failure is logged. */
   const run = (action: () => Promise<unknown>) => (): void => {
@@ -46,87 +43,50 @@ export function FiltersPage() {
     });
   };
 
-  const current = plugins.find((p) => p.id === active);
-
   return (
-    <Page
-      title="Filters"
-      description="Plugins that smooth or adjust the pen before it moves the cursor."
-      actions={
-        <div className="flex flex-wrap gap-2">
-          <Button color="secondary" size="sm" iconLeading={Add} onPress={run(installPlugin)}>
-            Add a plugin
-          </Button>
-          <Button color="secondary" size="sm" onPress={run(openPluginsFolder)}>
-            Open the folder
-          </Button>
-          <Button color="secondary" size="sm" onPress={run(reloadPlugins)}>
-            Reload
-          </Button>
-        </div>
-      }
-    >
-      <UntrustedPlugins
-        plugins={untrusted}
-        onTrust={(sha256) => {
-          run(() => trustPlugin(sha256))();
-        }}
+    <div className={styles["filters-container"]}>
+      <FiltersSidebar
+        plugins={plugins}
+        activePluginId={activeId}
+        onSelect={setChosen}
+        onAdd={run(installPlugin)}
+        onOpenFolder={run(openPluginsFolder)}
+        onReload={run(reloadPlugins)}
       />
-
-      {error !== null && (
-        <p role="alert" className="text-sm text-error-primary">
-          Could not read the plugins: {error}
-        </p>
-      )}
-
-      {plugins.length === 0 ? (
-        error === null && (
-          <p className="border-t border-primary pt-5 text-sm text-tertiary">
-            No filter is installed. Add a plugin, or put its library in the plugins folder and
-            reload.
-          </p>
-        )
-      ) : (
-        <Tabs
-          selectedKey={active ?? undefined}
-          onSelectionChange={(key) => {
-            setChosen(String(key));
+      <div className={styles["main-panel"]}>
+        <UntrustedPlugins
+          plugins={untrusted}
+          onTrust={(sha256) => {
+            run(() => trustPlugin(sha256))();
           }}
-          className="flex flex-col gap-6"
-        >
-          <div className="overflow-x-auto">
-            <TabList aria-label="Filters" type="button-border" size="sm" className="min-w-max">
-              {plugins.map((plugin) => (
-                <Tab
-                  key={plugin.id}
-                  id={plugin.id}
-                  label={plugin.name}
-                  badge={
-                    config !== null && settingsOf(config, plugin.id).enabled ? "On" : undefined
+        />
+        {active !== undefined ? (
+          <PluginDetails
+            key={active.id}
+            plugin={active}
+            onDelete={() => {
+              void os
+                .confirm(`Delete the plugin "${active.name}" from your computer?`)
+                .then((yes) => {
+                  if (yes) {
+                    run(() => deletePlugin(active.id))();
                   }
-                />
-              ))}
-            </TabList>
+                });
+            }}
+          />
+        ) : (
+          <div className={styles["empty-state"]}>
+            <Box className={styles["empty-icon"]} size={48} />
+            {fetchError !== null ? (
+              <p style={{ color: "red", maxWidth: "400px", textAlign: "center" }}>
+                Error fetching plugins: {fetchError}
+              </p>
+            ) : (
+              <p>No filters available. Click the + button to install a .dll plugin.</p>
+            )}
           </div>
-          {current !== undefined && (
-            <TabPanel key={current.id} id={current.id} className="flex flex-col gap-8">
-              <PluginDetails
-                key={current.id}
-                plugin={current}
-                onDelete={() => {
-                  void os
-                    .confirm(`Delete the plugin "${current.name}" from your computer?`)
-                    .then((yes) => {
-                      if (yes) {
-                        run(() => deletePlugin(current.id))();
-                      }
-                    });
-                }}
-              />
-            </TabPanel>
-          )}
-        </Tabs>
-      )}
-    </Page>
+        )}
+      </div>
+    </div>
   );
 }

@@ -1,0 +1,34 @@
+/* Copied from frontend/src/lib/components/MenuBar.svelte. */
+.menu-bar {
+  display: flex;
+  padding: var(--space-1);
+  gap: var(--space-1);
+  background: var(--bg-app);
+  flex-shrink: 0;
+  border-bottom: var(--border-width) solid var(--border);
+}
+
+.menu-container {
+  position: relative;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--font-md);
+  color: var(--text-main);
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  transition: background var(--transition-fast);
+  user-select: none;
+  background: transparent;
+  border: none;
+  font-family: inherit;
+}
+
+.menu-item:hover,
+.menu-item.active {
+  background: var(--bg-panel-hover);
+}

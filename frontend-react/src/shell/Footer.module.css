@@ -1,0 +1,19 @@
+/* Copied from frontend/src/lib/components/Footer.svelte. */
+.footer {
+  height: 40px;
+  background: var(--bg-app);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--space-3);
+  flex-shrink: 0;
+  font-size: var(--font-md);
+  color: var(--text-main);
+  border-top: var(--border-width) solid var(--border);
+}
+
+.right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}

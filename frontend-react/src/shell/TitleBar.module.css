@@ -1,0 +1,82 @@
+/* Copied from frontend/src/lib/components/TitleBar.svelte. */
+.titlebar {
+  height: 32px;
+  background: var(--bg-app);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  user-select: none;
+  flex-shrink: 0;
+  border-bottom: var(--border-width) solid var(--overlay-20);
+}
+
+.icon-container {
+  width: 32px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.app-icon {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  aspect-ratio: 1/1;
+}
+
+.title {
+  font-size: var(--font-md);
+  color: var(--text-muted);
+  flex-grow: 1;
+  text-align: left;
+  padding-left: var(--space-0-5);
+  pointer-events: none;
+}
+
+:global(.update-btn) {
+  margin-right: var(--space-2);
+  padding: var(--space-0-5) var(--space-3);
+  font-size: var(--font-md);
+  font-weight: var(--font-weight-bold);
+}
+
+.window-controls {
+  display: flex;
+  height: 100%;
+}
+
+.control {
+  width: 46px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+.control:hover {
+  background: var(--bg-panel);
+  color: var(--text-main);
+}
+
+.control.close:hover {
+  background: var(--titlebar-close-bg);
+  color: var(--titlebar-close-fg);
+}
+
+:global(.spinning) {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  100% {
+    transform: rotate(360deg);
+  }
+}

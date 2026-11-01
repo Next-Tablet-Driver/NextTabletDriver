@@ -4,15 +4,12 @@ import globals from "globals";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  // Code copied in by `npx untitledui add` is the library's, not ours: it is updated with
-  // `--overwrite`, so it is not linted or reformatted by hand.
   {
     ignores: [
       "dist",
+      // Plain scripts served as they are (the first-paint theme).
+      "public",
       "coverage",
-      "src/components/**",
-      "src/hooks/use-*.ts",
-      "src/utils/is-react-component.ts",
       // Generated from the Rust code.
       "src/infrastructure/tauri/bindings.ts",
     ],

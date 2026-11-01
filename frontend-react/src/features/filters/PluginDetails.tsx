@@ -1,8 +1,5 @@
-import { Button } from "@/components/base/buttons/button";
-import { Input } from "@/components/base/input/input";
-import { InputNumber } from "@/components/base/input/input-number";
-import { Select } from "@/components/base/select/select";
-import { Toggle } from "@/components/base/toggle/toggle";
+import { Info, RefreshCw, Trash } from "lucide-react";
+import { PluginIcon } from "@/features/filters/FiltersSidebar";
 import {
   settingsOf,
   withDefaults,
@@ -15,100 +12,70 @@ import type {
   PropertyDescriptor,
   PropertyValue,
 } from "@/infrastructure/tauri/commands";
-import { Row, Section } from "@/ui/Page";
+import { Button } from "@/ui/Button";
+import { Checkbox } from "@/ui/Checkbox";
+import { classes } from "@/ui/classes";
+import { Input } from "@/ui/Input";
+import { Select } from "@/ui/Select";
+import styles from "@/features/filters/PluginDetails.module.css";
 
-function PropertyRow({
+function PropertyInput({
   prop,
   value,
-  disabled,
   onChange,
 }: {
   prop: PropertyDescriptor;
   value: PropertyValue | undefined;
-  disabled: boolean;
   onChange: (value: PropertyValue) => void;
 }) {
-  const hint = prop.tooltip ?? undefined;
   const { kind } = prop;
   switch (kind.type) {
     case "Float":
     case "Int": {
       const { config } = kind;
-      const unit = config.unit === "" ? "" : ` (${config.unit})`;
       return (
-        <Row label={`${prop.name}${unit}`} hint={hint}>
-          <div className="w-32">
-            <InputNumber
-              aria-label={`${prop.name}${unit}`}
-              size="sm"
-              isDisabled={disabled}
-              minValue={config.min ?? undefined}
-              maxValue={config.max ?? undefined}
-              step={config.step ?? undefined}
-              formatOptions={{
-                maximumFractionDigits: kind.type === "Int" ? 0 : 4,
-                useGrouping: false,
-              }}
-              value={typeof value === "number" ? value : (config.default ?? 0)}
-              onChange={(next) => {
-                if (Number.isFinite(next)) {
-                  onChange(next);
-                }
-              }}
-            />
-          </div>
-        </Row>
+        <div className={styles["number-input-wrapper"]}>
+          <Input
+            type="number"
+            max={config.max ?? undefined}
+            min={config.min ?? undefined}
+            step={config.step ?? undefined}
+            unit={config.unit}
+            value={typeof value === "number" ? value : (config.default ?? 0)}
+            onCommit={onChange}
+          />
+        </div>
       );
     }
     case "Bool":
       return (
-        <Row label={prop.name} hint={hint}>
-          <Toggle
-            aria-label={prop.name}
-            isDisabled={disabled}
-            isSelected={typeof value === "boolean" ? value : kind.config.default}
+        <Checkbox
+          checked={typeof value === "boolean" ? value : kind.config.default}
+          onChange={onChange}
+          aria-label={prop.name}
+        />
+      );
+    case "Choice":
+      return (
+        <div className={styles["theme-select-wrapper"]}>
+          <Select
+            value={typeof value === "number" ? value : kind.config.default_index}
+            options={kind.config.options.map((label, index) => ({ value: index, label }))}
             onChange={onChange}
           />
-        </Row>
+        </div>
       );
-    case "Choice": {
-      const { config } = kind;
-      return (
-        <Row label={prop.name} hint={hint}>
-          <div className="w-44">
-            <Select
-              aria-label={prop.name}
-              size="sm"
-              isDisabled={disabled}
-              items={config.options.map((label, id) => ({ id, label }))}
-              value={typeof value === "number" ? value : config.default_index}
-              onChange={(key) => {
-                onChange(Number(key));
-              }}
-            >
-              {(item) => <Select.Item {...item} />}
-            </Select>
-          </div>
-        </Row>
-      );
-    }
     case "String":
       return (
-        <Row label={prop.name} hint={hint}>
-          <div className="w-44">
-            <Input
-              aria-label={prop.name}
-              size="sm"
-              isDisabled={disabled}
-              value={typeof value === "string" ? value : kind.config.default}
-              onChange={onChange}
-            />
-          </div>
-        </Row>
+        <Input
+          type="text"
+          aria-label={prop.name}
+          value={typeof value === "string" ? value : kind.config.default}
+          onText={onChange}
+        />
       );
   }
-  // A plugin of another version may declare a kind this interface does not know.
-  return <Row label={prop.name} hint="This filter sent a setting this version does not know." />;
+  return null;
 }
 
 /** What a filter is, whether it is on, and its settings. */
@@ -128,58 +95,67 @@ export function PluginDetails({
 
   return (
     <>
-      <Section
-        title={plugin.name}
-        description={`Version ${plugin.version}, by ${plugin.author}`}
-        actions={
-          <Button color="tertiary-destructive" size="sm" onPress={onDelete}>
-            Delete this plugin
-          </Button>
-        }
-      >
-        <p className="pb-2 text-sm text-secondary">{plugin.description}</p>
-        <Row label="Enable this filter">
-          <Toggle
-            aria-label="Enable this filter"
-            isSelected={settings.enabled}
-            onChange={(enabled) => {
-              mapping.update((c) => withEnabled(c, plugin.id, enabled));
-            }}
-          />
-        </Row>
-      </Section>
-
-      <Section
-        title="Settings"
-        description={settings.enabled ? undefined : "Enable the filter to change its settings."}
-        actions={
-          <Button
-            color="secondary"
-            size="sm"
-            onPress={() => {
-              mapping.update((c) => withDefaults(c, plugin));
-            }}
-          >
-            Reset to defaults
-          </Button>
-        }
-      >
-        {plugin.properties.length === 0 ? (
-          <p className="py-2 text-sm text-tertiary">This filter has no settings.</p>
-        ) : (
-          plugin.properties.map((prop) => (
-            <PropertyRow
-              key={prop.id}
-              prop={prop}
-              value={settings.properties[prop.id]}
-              disabled={!settings.enabled}
-              onChange={(value) => {
-                mapping.update((c) => withProperty(c, plugin.id, prop.id, value));
+      <div className={styles["plugin-header-area"]}>
+        <div className={styles["plugin-title-row"]}>
+          <span className={styles["header-icon"]}>
+            <PluginIcon pluginId={plugin.id} size={24} />
+          </span>
+          <h2>{plugin.name}</h2>
+          <span className={styles.badge}>v{plugin.version}</span>
+        </div>
+        <div className={styles["plugin-by-row"]}>By {plugin.author}</div>
+        <div className={styles["plugin-desc-row"]}>
+          <div className={styles["desc-text"]}>{plugin.description}</div>
+          <div className={styles["plugin-actions"]}>
+            <Checkbox
+              label="Enable Plugin"
+              checked={settings.enabled}
+              onChange={(enabled) => {
+                mapping.update((c) => withEnabled(c, plugin.id, enabled));
               }}
             />
-          ))
-        )}
-      </Section>
+            <Button variant="danger-ghost" onClick={onDelete}>
+              <Trash size={12} /> Delete this plugin
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      <div className={styles["properties-section"]}>
+        <h3>Settings</h3>
+        <div className={classes(styles["properties-list"], !settings.enabled && styles.disabled)}>
+          {plugin.properties.map((prop) => (
+            <div key={prop.id} className={styles["property-row"]}>
+              <div className={styles["prop-label-wrapper"]}>
+                <span className={styles["prop-name"]}>{prop.name}</span>
+                {prop.tooltip !== null && prop.tooltip !== "" && (
+                  <span className={styles["info-icon"]} title={prop.tooltip}>
+                    <Info size={12} />
+                  </span>
+                )}
+              </div>
+              <div className={styles["prop-input"]}>
+                <PropertyInput
+                  prop={prop}
+                  value={settings.properties[prop.id]}
+                  onChange={(value) => {
+                    mapping.update((c) => withProperty(c, plugin.id, prop.id, value));
+                  }}
+                />
+              </div>
+            </div>
+          ))}
+          <div className={styles["reset-row"]}>
+            <Button
+              onClick={() => {
+                mapping.update((c) => withDefaults(c, plugin));
+              }}
+            >
+              <RefreshCw size={14} /> Reset to Defaults
+            </Button>
+          </div>
+        </div>
+      </div>
     </>
   );
 }

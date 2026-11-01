@@ -1,0 +1,6 @@
+/* Copied from frontend/src/lib/components/ui/Title.svelte. */
+.title {
+  color: var(--text-active);
+  font-size: var(--font-xl);
+  font-weight: var(--font-weight-bold);
+}

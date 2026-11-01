@@ -1,0 +1,180 @@
+/*
+ * Built-in themes. Each one overrides the SEMANTIC tokens (see tokens.css); everything derived
+ * from them (component tokens, tints, hover states) follows automatically. The default (dark)
+ * theme lives in tokens.css.
+ *
+ * Every theme must define the same core set: `design-tokens.test.ts` fails otherwise, so a
+ * theme can never silently inherit a color meant for another brightness.
+ *
+ * The class is set on <html> by `src/lib/theme/apply.ts` (and, before the first paint, by
+ * `public/theme-boot.js`). Catppuccin palettes: https://catppuccin.com/palette
+ */
+/* Light */
+:root.theme-light {
+  color-scheme: light;
+  --bg-app: #f3f3f3;
+  --bg-panel: #ffffff;
+  --bg-panel-hover: #e5e5e5;
+  --bg-input: #ffffff;
+  --text-main: #333333;
+  --text-muted: #666666;
+  --text-active: #000000;
+  --text-strong: #1a1a1a;
+  --text-emphasis: #000000;
+  --text-on-accent: #ffffff;
+  --text-number: #0b5cad;
+  --accent: #007acc;
+  --accent-hover: #0098ff;
+  --border: #cccccc;
+  --info: #0b6fc2;
+  --warning: #9a6700;
+  --error: #c62828;
+  --danger: #d92d20;
+  --danger-hover: #b42318;
+  --success: #1a7f37;
+  --debug: #6b7280;
+  --overlay-rgb: 0 0 0;
+  --shade-rgb: 0 0 0;
+  --input-bg: #f8f8f8;
+  --input-bg-hover: #f0f0f0;
+  --input-bg-focus: #ffffff;
+  --input-border: #d0d0d0;
+  --input-border-hover: #bbbbbb;
+  --console-text: #333333;
+}
+
+/* Catppuccin Latte */
+:root.theme-catppuccinlatte {
+  color-scheme: light;
+  --bg-app: #eff1f5;
+  --bg-panel: #e6e9ef;
+  --bg-panel-hover: #ccd0da;
+  --bg-input: #dce0e8;
+  --text-main: #4c4f69;
+  --text-muted: #6c6f85;
+  --text-active: #7287fd;
+  --text-strong: #35374a;
+  --text-emphasis: #000000;
+  --text-on-accent: #ffffff;
+  --text-number: #1e66f5;
+  --accent: #8839ef;
+  --accent-hover: #7287fd;
+  --border: #bcc0cc;
+  --info: #1e66f5;
+  --warning: #df8e1d;
+  --error: #d20f39;
+  --danger: #d20f39;
+  --danger-hover: #e64553;
+  --success: #40a02b;
+  --debug: #6c6f85;
+  --overlay-rgb: 76 79 105;
+  --shade-rgb: 220 224 232;
+  --input-bg: #dce0e8;
+  --input-bg-hover: #eff1f5;
+  --input-bg-focus: #ccd0da;
+  --input-border: #bcc0cc;
+  --input-border-hover: #acb0be;
+  --console-text: #4c4f69;
+}
+
+/* Catppuccin Frappe */
+:root.theme-catppuccinfrappe {
+  color-scheme: dark;
+  --bg-app: #303446;
+  --bg-panel: #292c3c;
+  --bg-panel-hover: #414559;
+  --bg-input: #232634;
+  --text-main: #c6d0f5;
+  --text-muted: #a5adce;
+  --text-active: #babbf1;
+  --text-strong: #f2d5cf;
+  --text-emphasis: #ffffff;
+  --text-on-accent: #232634;
+  --text-number: #8caaee;
+  --accent: #ca9ee6;
+  --accent-hover: #babbf1;
+  --border: #51576d;
+  --info: #8caaee;
+  --warning: #e5c890;
+  --error: #e78284;
+  --danger: #e78284;
+  --danger-hover: #ea999c;
+  --success: #a6d189;
+  --debug: #a5adce;
+  --overlay-rgb: 198 208 245;
+  --shade-rgb: 35 38 52;
+  --input-bg: #232634;
+  --input-bg-hover: #303446;
+  --input-bg-focus: #414559;
+  --input-border: #51576d;
+  --input-border-hover: #626880;
+  --console-text: #c6d0f5;
+}
+
+/* Catppuccin Macchiato */
+:root.theme-catppuccinmacchiato {
+  color-scheme: dark;
+  --bg-app: #24273a;
+  --bg-panel: #1e2030;
+  --bg-panel-hover: #363a4f;
+  --bg-input: #181926;
+  --text-main: #cad3f5;
+  --text-muted: #a5adcb;
+  --text-active: #b7bdf8;
+  --text-strong: #f4dbd6;
+  --text-emphasis: #ffffff;
+  --text-on-accent: #181926;
+  --text-number: #8aadf4;
+  --accent: #c6a0f6;
+  --accent-hover: #b7bdf8;
+  --border: #494d64;
+  --info: #8aadf4;
+  --warning: #eed49f;
+  --error: #ed8796;
+  --danger: #ed8796;
+  --danger-hover: #ee99a0;
+  --success: #a6da95;
+  --debug: #a5adcb;
+  --overlay-rgb: 202 211 245;
+  --shade-rgb: 24 25 38;
+  --input-bg: #181926;
+  --input-bg-hover: #24273a;
+  --input-bg-focus: #363a4f;
+  --input-border: #494d64;
+  --input-border-hover: #5b6078;
+  --console-text: #cad3f5;
+}
+
+/* Catppuccin Mocha */
+:root.theme-catppuccinmocha {
+  color-scheme: dark;
+  --bg-app: #1e1e2e;
+  --bg-panel: #181825;
+  --bg-panel-hover: #313244;
+  --bg-input: #11111b;
+  --text-main: #cdd6f4;
+  --text-muted: #a6adc8;
+  --text-active: #b4befe;
+  --text-strong: #f5e0dc;
+  --text-emphasis: #ffffff;
+  --text-on-accent: #11111b;
+  --text-number: #89b4fa;
+  --accent: #cba6f7;
+  --accent-hover: #b4befe;
+  --border: #45475a;
+  --info: #89b4fa;
+  --warning: #f9e2af;
+  --error: #f38ba8;
+  --danger: #f38ba8;
+  --danger-hover: #eba0ac;
+  --success: #a6e3a1;
+  --debug: #a6adc8;
+  --overlay-rgb: 205 214 244;
+  --shade-rgb: 17 17 27;
+  --input-bg: #11111b;
+  --input-bg-hover: #1e1e2e;
+  --input-bg-focus: #313244;
+  --input-border: #45475a;
+  --input-border-hover: #585b70;
+  --console-text: #cdd6f4;
+}

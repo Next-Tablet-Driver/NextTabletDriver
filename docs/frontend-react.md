@@ -1,4 +1,4 @@
-# Frontend rewrite: Svelte 5 to React + Untitled UI
+# Frontend rewrite: Svelte 5 to React
 
 Status: **in progress** on the branch `feat/frontend-react`. Nothing here is merged; the maintainer
 decides after seeing the result. This is a decision of the maintainer taken on 2026-11-01, between
@@ -7,13 +7,14 @@ rewrite the frontend") for this branch only.
 
 ## Goals
 
-- Rebuild the whole interface in **React 19 + TypeScript**, designed with
-  [Untitled UI React](https://www.untitledui.com/react/docs/installation) (`untitledui@latest`:
-  Tailwind CSS 4, React Aria Components).
-- Re-design freely: the current look does not have to be kept, as long as the interface respects
-  the application's purpose and the UI/UX rules (keyboard access, contrast, focus, reduced motion,
-  no state hidden from the user, honest empty and error states).
+- Rebuild the whole interface in **React 19 + TypeScript**, with the **same design as the Svelte
+  frontend, 1:1**: same markup, same classes, same styles, same texts, same behaviours.
 - **Do not lose the Svelte frontend**: see [Where the old frontend is](#where-the-old-frontend-is).
+
+History: the branch first tried a redesign with Untitled UI, then a second one without a
+sidebar. The maintainer rejected both on 2026-11-01 and asked for the Svelte design copied
+as it was. Both redesigns, and every dependency they brought (Tailwind, React Aria, Untitled UI,
+Papicons, Atkinson Hyperlegible), are removed; they stay in the git history of this branch.
 
 ## Where the old frontend is
 
@@ -53,6 +54,10 @@ Only `src/infrastructure/` talks to Tauri. No dependency is added without a reas
 commit message.
 
 ## Sub-tasks
+
+R1 to R12 were done for the Untitled UI attempt; where their notes name Tailwind, Untitled UI,
+React Aria or Papicons, that is history: the 1:1 Svelte port replaced it (see Decisions). The
+tasks themselves (infrastructure, shell, pages, tests) are all done again on the Svelte design.
 
 - [x] **R0** Back up the Svelte frontend, create the branch
   - Done when: tag `frontend-svelte-v3` and branch `archive/frontend-svelte` exist;
@@ -144,67 +149,30 @@ commit message.
 
 ## Decisions of the rewrite
 
-The maintainer gave free hands on the design, with one rule: the interface is made of the
-components of Untitled UI, **as the CLI wrote them** (`src/components/`, never edited; only our own
-code in `src/ui`, `src/shell`, `src/features`, `src/pages` composes them and adds Tailwind classes).
-What follows from it, and what a reviewer should know:
-
-- **Design review of 2026-11-01, after the first version was rejected.** The first version had
-  the tells that the articles on "AI slop" agree on ([925 Studios](https://www.925studios.co/blog/ai-slop-design-tells),
-  [vibecodekit](https://vibecodekit.dev/ai-slop-design), [hey.com/kostac](https://world.hey.com/kostac/spot-the-slop-a-ui-designer-s-guide-to-fixing-ai-defaults-4c448c9c)):
-  the library's purple, Inter, a sidebar, every group in the same rounded card with the same
-  shadow, pastel icon tiles, three identical statistic cards. They are replaced, not just removed:
-  - **No sidebar.** The window is the one of the old application: a title bar with the File,
-    Tablet and Help menus and the window buttons, the pages as tabs under it, the status bar.
-    In a narrow window the tabs scroll sideways.
-  - **No cards.** A page is a list: a title, then groups separated by a rule, each setting a row
-    (its name and what it does on the left, its control on the right). The numbers of the
-    credits are a line of text, not three tiles.
-  - **One thing is coloured: the drawing stage** of the two area editors, a cyanotype with a
-    millimetre or pixel grid, rulers on two edges, and the pen as an amber crosshair with its
-    position. It is the part of the interface that is about the subject: a pen on a surface in
-    millimetres. Everything around it is quiet.
-  - **Colour**: the library's brand ramp is replaced by a cool slate (`src/styles/app.css`, a
-    token override, the components are untouched), so buttons, switches and focus are ink.
-  - **Type**: Atkinson Hyperlegible Next, made to tell characters apart, in a screen of
-    coordinates and key names. Numbers are tabular, headings balanced.
-  - **Icons**: [Papicons](https://github.com/PapillonApp/papicons) (`@getpapillon/papicons`, MIT)
-    for every icon placed by our own code. The few icons inside the Untitled UI components
-    (chevrons of a select, the tick of a checkbox) stay the library's: editing them would mean
-    editing the components. There is no maximise glyph in Papicons, so that button draws a square.
-- **Theme**: Untitled UI's light and dark schemes (class `dark-mode` on `<html>`).
-  `config.theme` keeps working as `System`, `Dark` or `Light`; the other values of the Svelte
-  interface (Catppuccin) are shown as their scheme.
-- **User theme files are not supported** here (the `--bg-app`-style token files, their import,
-  validation and contrast warnings). They need a token layer of our own on top of Untitled UI's,
-  which is what the rule forbids. The backend commands (`list_themes`, `import_theme`...) are still
-  there. If themes matter, the way is Untitled UI's own theming (`--color-brand-*` in `theme.css`),
-  decided with the maintainer.
-- **Navigation** is a row of tabs, each a URL fragment (`#/output`), so a reload keeps the page.
-- **The "anonymous usage statistics" checkbox is gone**: it was not connected to any setting.
-- **Debugger and Input lag windows**, placeholders in Svelte ("will be rendered soon"), now show
-  the live packet and the report rate.
-- **Edits reach the driver after 400 ms** without a change (1.5 s in the Svelte interface), and an
-  edit that changes nothing is not sent.
-- **The area editors work with the keyboard** (arrow keys, Shift for larger steps) as well as the
-  pointer, and every number is also a field.
-- **Pressure curve** draws the driver's own arithmetic and edits the exponent and the control
-  points of a custom curve (the Svelte version had static bars).
-- **Bindings** (tip, eraser, pen buttons, tablet keys) can all be typed, picked from presets or
-  recorded; before, only the buttons could be recorded.
-- **End-to-end tests** (`frontend-react/e2e`, 87 with the audit) are the Svelte specs rewritten for the new markup,
-  with the same cases except the user themes (see above) and with a few new ones (keyboard areas,
-  curve points, reset to defaults, reload keeps the page).
-- ESLint ignores `src/components/**`; accessibility relies on React Aria Components.
+- **The design is the Svelte one.** The `<style>` blocks of every Svelte component were extracted
+  verbatim into CSS Modules (`*.module.css` next to each component); `styles/tokens.css`,
+  `styles/themes.css`, `app.css`, the fonts, `theme-boot.js` and the icon are copied unchanged.
+  Where a Svelte rule reaches into another component (`:global(.btn)`), the React component also
+  sets the plain global class (`btn`, `dropdown-item`, `update-btn`, `icon-btn`, `spinning`,
+  `content-area`). Three stylesheets were scoped by hand because Svelte scoped them implicitly
+  (`UntrustedPlugins`, `Checkbox`, `ThemeSettings`).
+- **Icons** are `lucide-react`, the React build of the icon set the Svelte frontend used.
+- **Themes keep working**: Dark, Light, Catppuccin and the user theme files (import, validation,
+  contrast warnings) are ported (`src/theme`, with their unit tests).
+- **Inputs behave as before**: label drag, touch swipe, wheel when focused, precision formatting,
+  commit on blur or Enter (`Input`, `onCommit`).
+- **The end-to-end specs are the Svelte ones, unchanged**, and are the acceptance test of the
+  1:1 port (65 tests, run against the Tauri mock at `/?mock`).
+- **State**: a small `Store<T>` + `useStore` (`useSyncExternalStore`) replaces the Svelte runes
+  stores; the mapping store keeps its undo history and its debounce.
+- **Navigation** is the URL fragment (`#/output`), as in Svelte.
+- ESLint is the same bar as the Svelte frontend plus `react-hooks` (React Compiler rules).
 
 ## Known gaps and follow-ups
 
-- The production bundle is 785 KB (233 KB gzipped), mostly React Aria Components; code splitting
-  by page would help and was not done.
-- The user theme files are not supported (see above).
+- The Debugger and Input lag windows are the placeholders of the Svelte frontend.
 - The Tauri window is undecorated: the title bar's drag region and the window buttons are checked
-  in a browser against the mock, not in a native window; run `npm run e2e:native` equivalent
-  (to port) before the switch.
+  in a browser against the mock, not in a native window; check them before the switch.
 - R13 waits for the maintainer.
 
 ## Mapping of the old structure
@@ -213,18 +181,16 @@ What follows from it, and what a reviewer should know:
 |---|---|
 | `App.svelte`, `main.ts` | `App.tsx`, `main.tsx` |
 | `lib/infrastructure/*` | `infrastructure/*` (same files) |
-| `lib/theme/*`, `styles/*` | `theme/theme.ts` (light, dark, system), `styles/theme.css` (Untitled UI tokens) |
-| `lib/components/ui/*` | `components/base/*` (Untitled UI) |
-| `lib/components/{TitleBar,MenuBar,TabBar,Footer}.svelte` | `components/shell/*` |
-| `lib/pages/*.svelte` | `pages/*.tsx` |
+| `lib/theme/*`, `styles/*` | `theme/*`, `styles/*` |
+| `lib/components/ui/*` | `ui/*` |
+| `lib/components/{TitleBar,MenuBar,TabBar,Footer}.svelte` | `shell/*` |
+| `lib/pages/*.svelte` | `pages/*Page.tsx` |
 | `lib/features/*/*.svelte` | `features/*/*.tsx` |
 | `*.svelte.ts` stores (runes) | `*.store.ts` with `useSyncExternalStore` |
-| `dev/DesignSystem.svelte` | `dev/DesignSystem.tsx` |
 
 ## Risks
 
 - The interface is large (about 7,000 lines of Svelte, 4,500 of them in the feature components):
   expect many sessions. Each sub-task is small enough to be reviewed on its own.
-- Only the free components are used.
 - Hot path: the live pen stream must not re-render the tree on every packet (R2 and R6 decide how
   the stream is decimated and consumed).

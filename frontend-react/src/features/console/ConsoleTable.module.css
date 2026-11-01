@@ -1,0 +1,66 @@
+/* Copied from frontend/src/lib/features/console/ConsoleTable.svelte. */
+.table-container {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.logs-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.logs-table th {
+  text-align: left;
+  padding: var(--space-2-5) var(--space-4);
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-sm);
+  text-transform: uppercase;
+  color: var(--text-muted);
+  border-bottom: var(--border-width) solid var(--overlay-5);
+  background-color: var(--shade-15);
+}
+
+.table-body-scroll {
+  flex-grow: 1;
+  overflow-y: auto;
+}
+
+.body-table td {
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--font-md);
+  vertical-align: top;
+  word-wrap: break-word;
+  border-bottom: var(--border-width) solid var(--overlay-3);
+}
+
+.body-table tr:hover {
+  background-color: var(--overlay-4);
+}
+
+.empty-row td {
+  text-align: center;
+  padding: var(--space-10);
+  color: var(--text-muted);
+  font-family: inherit;
+}
+
+.col-time {
+  width: 110px;
+  color: var(--text-muted);
+}
+.col-level {
+  width: 80px;
+  font-weight: var(--font-weight-medium);
+}
+.col-group {
+  width: 150px;
+  font-weight: var(--font-weight-bold);
+  color: var(--overlay-90);
+}
+.col-msg {
+  width: auto;
+  color: var(--console-text);
+}

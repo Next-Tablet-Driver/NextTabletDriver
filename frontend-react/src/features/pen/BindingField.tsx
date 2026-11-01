@@ -1,15 +1,16 @@
 import { useEffect, useRef, useState } from "react";
-import { Button } from "@/components/base/buttons/button";
-import { Dropdown } from "@/components/base/dropdown/dropdown";
-import { Input } from "@/components/base/input/input";
+import { Keyboard } from "lucide-react";
 import { buildChord, heldModifiers, keyName, modifierName } from "@/features/pen/binding-capture";
 import { normalizeBinding } from "@/infrastructure/tauri/commands";
-import { Row } from "@/ui/Page";
+import { Button } from "@/ui/Button";
+import { classes } from "@/ui/classes";
+import { Select } from "@/ui/Select";
+import styles from "@/features/pen/BindingField.module.css";
 
-/** The bindings that need no keyboard: nothing, or one of the mouse buttons. */
-const PRESETS = ["None", "Left Click", "Right Click", "Middle Click", "Back", "Forward"].map(
-  (name) => ({ id: name, label: name }),
-);
+/** The bindings that need no keyboard: nothing, or one of the five mouse buttons. */
+const PRESETS = ["None", "Left Click", "Right Click", "Middle Click", "Back", "Forward"];
+/** What the preset list shows: always its title, because the field next to it shows the binding. */
+const PRESET_TITLE = "Presets";
 
 function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -20,10 +21,12 @@ function messageOf(error: unknown): string {
  * whether the text is a binding and gives it back in its plain spelling (`ctrl + z` is `Ctrl+Z`).
  */
 export function BindingField({
+  id,
   label,
   value,
   onEdit,
 }: {
+  id: string;
   label: string;
   value: string;
   /** Called with the new binding text, as typed, picked or recorded. */
@@ -31,6 +34,7 @@ export function BindingField({
 }) {
   const [error, setError] = useState<string | null>(null);
   const [recording, setRecording] = useState(false);
+  /** What has been held so far while recording, shown in the field. */
   const [preview, setPreview] = useState("");
   const seen = useRef<string[]>([]);
   const onEditRef = useRef(onEdit);
@@ -38,6 +42,7 @@ export function BindingField({
     onEditRef.current = onEdit;
   });
 
+  /** Asks the driver whether the text is a binding, and stores it in its plain spelling. */
   const check = (text: string): void => {
     normalizeBinding(text).then(
       (plain) => {
@@ -104,70 +109,73 @@ export function BindingField({
   }, [recording]);
 
   return (
-    <>
-      <Row label={label} hint={recording ? "Press a key or a combination." : undefined}>
-        <div className="w-44">
-          <Input
-            aria-label={label}
-            size="sm"
-            value={recording ? preview : value}
-            placeholder={recording ? "Press the keys…" : "None"}
-            isReadOnly={recording}
-            isInvalid={error !== null}
-            onChange={(text) => {
-              setError(null);
-              onEdit(text);
-            }}
-            onBlur={() => {
-              if (!recording) {
-                check(value);
-              }
-            }}
-          />
-        </div>
-        <Dropdown.Root>
-          <Button
-            color="secondary"
-            size="sm"
-            aria-label={`${label}: presets`}
-            isDisabled={recording}
-          >
-            Presets
-          </Button>
-          <Dropdown.Popover placement="bottom end">
-            <Dropdown.Menu
-              aria-label={`${label}: presets`}
-              onAction={(key) => {
-                setError(null);
-                onEdit(String(key));
-              }}
-            >
-              {PRESETS.map((preset) => (
-                <Dropdown.Item key={preset.id} id={preset.id} label={preset.label} />
-              ))}
-            </Dropdown.Menu>
-          </Dropdown.Popover>
-        </Dropdown.Root>
+    <div className={styles["binding-row"]}>
+      <label htmlFor={id}>{label}</label>
+      <div
+        className={classes(
+          styles["binding-input"],
+          error !== null && styles.invalid,
+          recording && styles.recording,
+        )}
+      >
+        <input
+          id={id}
+          aria-invalid={error !== null}
+          autoComplete="off"
+          placeholder={recording ? "Press the keys…" : ""}
+          readOnly={recording}
+          spellCheck={false}
+          type="text"
+          value={recording ? preview : value}
+          onChange={(event) => {
+            setError(null);
+            onEdit(event.currentTarget.value);
+          }}
+          onBlur={(event) => {
+            if (!recording) {
+              check(event.currentTarget.value);
+            }
+          }}
+        />
+        <Select
+          value={PRESET_TITLE}
+          options={PRESETS}
+          onChange={(preset) => {
+            setError(null);
+            onEdit(preset);
+          }}
+        />
         <Button
-          color={recording ? "primary" : "secondary"}
-          size="sm"
           aria-label={`Record ${label}`}
           aria-pressed={recording}
-          onPress={() => {
+          variant="segment"
+          onClick={() => {
+            if (recording) {
+              setRecording(false);
+              setPreview("");
+              seen.current = [];
+              return;
+            }
             setError(null);
+            setRecording(true);
             setPreview("");
             seen.current = [];
-            setRecording((on) => !on);
           }}
         >
-          {recording ? "Cancel" : "Record"}
+          <Keyboard size={14} />
         </Button>
-      </Row>
-      {error !== null && (
-        <p role="alert" className="pb-2 text-sm text-error-primary">
+      </div>
+      {error !== null ? (
+        <p className={styles["binding-error"]} role="alert">
           {error}
         </p>
+      ) : (
+        recording && (
+          <p className={styles["binding-hint"]}>
+            Press a key or a combination. Click the keyboard again to cancel.
+          </p>
+        )
       )}
-    </>
+    </div>
   );
 }

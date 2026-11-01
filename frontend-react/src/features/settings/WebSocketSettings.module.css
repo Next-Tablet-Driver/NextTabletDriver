@@ -1,0 +1,77 @@
+/* Copied from frontend/src/lib/features/settings/WebSocketSettings.svelte. */
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-6);
+  color: var(--text-active);
+}
+
+.section-header h2 {
+  font-size: var(--font-xl);
+  font-weight: var(--font-weight-bold);
+  margin: 0;
+}
+
+.settings-group {
+  padding-left: var(--space-7);
+  gap: var(--space-4);
+}
+
+.flex-column {
+  display: flex;
+  flex-direction: column;
+}
+
+.flex-row {
+  display: flex;
+  gap: var(--space-8);
+  align-items: center;
+}
+
+.input-group {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.ws-group {
+  gap: var(--space-5);
+}
+
+.ws-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 400px;
+}
+
+.badge {
+  font-size: var(--font-sm);
+  font-weight: var(--font-weight-bold);
+  padding: var(--space-0-5) var(--space-2);
+  border-radius: var(--radius-md);
+  border: var(--border-width) solid var(--error-border);
+  color: var(--error);
+}
+
+.badge.running {
+  border-color: var(--success-border);
+  color: var(--success);
+}
+
+.payload-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.payload-label {
+  font-size: var(--font-base);
+  color: var(--text-muted);
+}
+
+.payload-checkboxes {
+  gap: var(--space-4);
+}

@@ -1,0 +1,6 @@
+/* Copied from frontend/src/lib/components/ui/DropdownSeparator.svelte. */
+.separator {
+  height: 1px;
+  background-color: var(--border);
+  margin: var(--space-1) 0;
+}

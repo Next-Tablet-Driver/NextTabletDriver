@@ -1,149 +1,24 @@
 import { useEffect, useState } from "react";
-import { ArrowDownBox, Cross, Minus } from "@getpapillon/papicons";
-import { profileActions } from "@/app/profile-actions";
-import { checkForUpdatesInteractive } from "@/app/updates";
-import { Button } from "@/components/base/buttons/button";
-import { Dropdown } from "@/components/base/dropdown/dropdown";
-import { useMappingSnapshot, useMappingStore } from "@/features/mapping/MappingProvider";
+import { Minus, RefreshCcw, Square, X } from "lucide-react";
+import iconUrl from "@/assets/icon.png";
 import { log } from "@/infrastructure/log";
 import { os, type Update } from "@/infrastructure/os";
-import { getPresets, type PresetInfo } from "@/infrastructure/tauri/commands";
 import { windowControls } from "@/infrastructure/tauri/window";
+import { Button } from "@/ui/Button";
+import { classes } from "@/ui/classes";
+import styles from "@/shell/TitleBar.module.css";
 
-const REPOSITORY = "https://github.com/Next-Tablet-Driver/NextTabletDriver";
-
-const DETACHED_WINDOW = { decorations: false, transparent: true, minWidth: 400, minHeight: 300 };
-
-function MenuTrigger({ label }: { label: string }) {
-  return (
-    <Button color="tertiary" size="sm">
-      {label}
-    </Button>
-  );
-}
-
-function FileMenu() {
-  const mapping = useMappingStore();
-  const actions = profileActions(mapping);
-  const [presets, setPresets] = useState<PresetInfo[]>([]);
-
-  useEffect(() => {
-    getPresets().then(setPresets, log.error);
-  }, []);
-
-  return (
-    <Dropdown.Root>
-      <MenuTrigger label="File" />
-      <Dropdown.Popover placement="bottom start">
-        <Dropdown.Menu>
-          <Dropdown.Item id="open" label="Load Settings..." onAction={() => void actions.open()} />
-          <Dropdown.Item id="save" label="Save Settings" onAction={() => void actions.save()} />
-          <Dropdown.Item
-            id="save-as"
-            label="Save Settings As..."
-            onAction={() => void actions.saveAs()}
-          />
-          <Dropdown.Item
-            id="reset"
-            label="Reset to default"
-            onAction={() => void actions.reset()}
-          />
-          <Dropdown.Separator />
-          <Dropdown.Item id="export" label="Export .json" onAction={() => void actions.export()} />
-          <Dropdown.Item id="import" label="Import .json" onAction={() => void actions.import()} />
-          <Dropdown.Item
-            id="import-otd"
-            label="Import OTD Settings"
-            onAction={() => void actions.importOtd()}
-          />
-          <Dropdown.Separator />
-          <Dropdown.Section>
-            <Dropdown.SectionHeader className="px-3 pt-1 pb-1 text-sm font-semibold text-tertiary">
-              Presets
-            </Dropdown.SectionHeader>
-            {presets.length === 0 ? (
-              <Dropdown.Item id="no-presets" isDisabled label="No presets" />
-            ) : (
-              presets.map((preset) => (
-                <Dropdown.Item
-                  key={preset.path}
-                  id={preset.path}
-                  label={preset.name}
-                  onAction={() => void actions.loadPreset(preset)}
-                />
-              ))
-            )}
-          </Dropdown.Section>
-        </Dropdown.Menu>
-      </Dropdown.Popover>
-    </Dropdown.Root>
-  );
-}
-
-function TabletMenu() {
-  return (
-    <Dropdown.Root>
-      <MenuTrigger label="Tablet" />
-      <Dropdown.Popover placement="bottom start">
-        <Dropdown.Menu>
-          <Dropdown.Item
-            id="debugger"
-            label="Open Debugger"
-            onAction={() => {
-              os.openWindow("debugger", {
-                url: "index.html?view=debugger",
-                title: "Debugger",
-                width: 600,
-                height: 500,
-                ...DETACHED_WINDOW,
-              });
-            }}
-          />
-          <Dropdown.Item
-            id="performance"
-            label="Input Lag Analysis"
-            onAction={() => {
-              os.openWindow("performance", {
-                url: "index.html?view=performance",
-                title: "Input Lag Analysis",
-                width: 500,
-                height: 400,
-                ...DETACHED_WINDOW,
-              });
-            }}
-          />
-        </Dropdown.Menu>
-      </Dropdown.Popover>
-    </Dropdown.Root>
-  );
-}
-
-function HelpMenu() {
-  return (
-    <Dropdown.Root>
-      <MenuTrigger label="Help" />
-      <Dropdown.Popover placement="bottom start">
-        <Dropdown.Menu>
-          <Dropdown.Item
-            id="github"
-            label="Github Repository"
-            onAction={() => void os.openUrl(REPOSITORY)}
-          />
-          <Dropdown.Item
-            id="updates"
-            label="Check for Updates"
-            onAction={() => void checkForUpdatesInteractive()}
-          />
-        </Dropdown.Menu>
-      </Dropdown.Popover>
-    </Dropdown.Root>
-  );
-}
-
-/** The update button appears when the updater found a newer version. */
-function UpdateButton() {
+/** The window's own title bar: the window is undecorated, so this draws its controls. */
+export function TitleBar({
+  title = "NextTabletDriver",
+  systemTrayOnMinimize = false,
+}: {
+  title?: string;
+  systemTrayOnMinimize?: boolean;
+}) {
   const [update, setUpdate] = useState<Update | null>(null);
-  const [progress, setProgress] = useState<number | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [progress, setProgress] = useState(0);
 
   useEffect(() => {
     os.checkForUpdate().then(setUpdate, (e: unknown) => {
@@ -151,94 +26,78 @@ function UpdateButton() {
     });
   }, []);
 
-  if (update === null) {
-    return null;
-  }
-
   const install = async (): Promise<void> => {
-    let downloaded = 0;
-    let total = 0;
-    setProgress(0);
+    if (update === null || isUpdating) {
+      return;
+    }
     try {
+      setIsUpdating(true);
+      let downloaded = 0;
+      let contentLength = 0;
       await update.downloadAndInstall((event) => {
-        if (event.event === "Started") {
-          total = event.data.contentLength ?? 0;
-        } else if (event.event === "Progress") {
-          downloaded += event.data.chunkLength;
-          setProgress(total > 0 ? Math.round((downloaded / total) * 100) : 0);
-        } else {
-          setProgress(100);
+        switch (event.event) {
+          case "Started":
+            contentLength = event.data.contentLength ?? 0;
+            break;
+          case "Progress":
+            downloaded += event.data.chunkLength;
+            if (contentLength > 0) {
+              setProgress(Math.round((downloaded / contentLength) * 100));
+            }
+            break;
+          case "Finished":
+            setProgress(100);
+            break;
         }
       });
       await os.relaunch();
     } catch (e) {
       log.error("Update installation failed:", e);
-      setProgress(null);
+      setIsUpdating(false);
     }
   };
 
   return (
-    <Button
-      color="primary"
-      size="sm"
-      iconLeading={ArrowDownBox}
-      isLoading={progress !== null}
-      showTextWhileLoading
-      onPress={() => void install()}
-    >
-      {progress === null ? "Update" : `Updating (${String(progress)}%)`}
-    </Button>
-  );
-}
-
-/** The window's own title bar: the window is undecorated, so this draws its controls. */
-export function TitleBar({ title }: { title: string }) {
-  const { config } = useMappingSnapshot();
-  const toTray = config?.system_tray_on_minimize ?? false;
-
-  return (
-    <header
-      data-tauri-drag-region
-      className="flex h-11 shrink-0 items-center gap-1 bg-primary pl-4"
-    >
-      <span
-        data-tauri-drag-region
-        className="mr-4 truncate text-sm font-semibold text-primary select-none"
-      >
-        {title}
-      </span>
-      <nav aria-label="Application menu" className="flex items-center">
-        <FileMenu />
-        <TabletMenu />
-        <HelpMenu />
-      </nav>
-      <div data-tauri-drag-region className="h-full flex-1" />
-      <UpdateButton />
-      <div className="flex items-center pr-1">
-        <Button
-          color="tertiary"
-          size="sm"
-          aria-label="Minimize"
-          iconLeading={Minus}
-          onPress={() => void (toTray ? windowControls.hide() : windowControls.minimize())}
-        />
-        <Button
-          color="tertiary"
-          size="sm"
-          aria-label="Maximize"
-          iconLeading={
-            <span aria-hidden="true" className="size-3 rounded-[2px] border-2 border-current" />
-          }
-          onPress={() => void windowControls.toggleMaximize()}
-        />
-        <Button
-          color="tertiary-destructive"
-          size="sm"
-          aria-label="Close"
-          iconLeading={Cross}
-          onPress={() => void windowControls.close()}
-        />
+    <div className={styles.titlebar} data-tauri-drag-region>
+      <div className={styles["icon-container"]} data-tauri-drag-region>
+        <img className={styles["app-icon"]} alt="App Icon" src={iconUrl} />
       </div>
-    </header>
+
+      <div className={styles.title} data-tauri-drag-region>
+        {title}
+      </div>
+
+      {update !== null && (
+        <Button
+          className="update-btn"
+          disabled={isUpdating}
+          variant="primary"
+          onClick={() => void install()}
+        >
+          <RefreshCcw className={classes(isUpdating && "spinning")} size={13} strokeWidth={2.5} />
+          <span>{isUpdating ? `Updating (${String(progress)}%)` : "Update"}</span>
+        </Button>
+      )}
+
+      <div className={styles["window-controls"]}>
+        <button
+          className={styles.control}
+          onClick={() =>
+            void (systemTrayOnMinimize ? windowControls.hide() : windowControls.minimize())
+          }
+        >
+          <Minus size={16} strokeWidth={1.8} />
+        </button>
+        <button className={styles.control} onClick={() => void windowControls.toggleMaximize()}>
+          <Square size={12} strokeWidth={2} />
+        </button>
+        <button
+          className={classes(styles.control, styles.close)}
+          onClick={() => void windowControls.close()}
+        >
+          <X size={18} strokeWidth={1.8} />
+        </button>
+      </div>
+    </div>
   );
 }

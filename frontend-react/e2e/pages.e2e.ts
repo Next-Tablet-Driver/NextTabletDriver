@@ -1,13 +1,13 @@
 import { expect, test } from "./fixtures";
 
-test.describe("Release page", () => {
+test.describe("Release screen", () => {
   test.beforeEach(async ({ app }) => {
     await app.open();
     await app.goTo("Release");
   });
 
   test("lists the releases, newest first, and marks the latest one", async ({ app }) => {
-    await expect(app.content).toContainText("Release notes");
+    await expect(app.content).toContainText("Release Notes");
     const text = await app.content.innerText();
     expect(text.indexOf("v2.0.0")).toBeGreaterThanOrEqual(0);
     expect(text.indexOf("v2.0.0")).toBeLessThan(text.indexOf("v1.9.0"));
@@ -28,7 +28,7 @@ test.describe("Release page", () => {
   });
 });
 
-test.describe("Credits page", () => {
+test.describe("Credits screen", () => {
   test.beforeEach(async ({ app }) => {
     await app.open();
     await app.goTo("Credits");

@@ -1,0 +1,18 @@
+/* Copied from frontend/src/lib/features/pen/HardwareToggles.svelte. */
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.card-title {
+  font-size: var(--font-md);
+  font-weight: var(--font-weight-bold);
+  color: var(--text-muted);
+}
+
+.flex-column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}

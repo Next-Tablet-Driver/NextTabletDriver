@@ -1,0 +1,36 @@
+/* Copied from frontend/src/lib/features/pen/BindingCard.svelte. */
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.card-title {
+  font-size: var(--font-md);
+  font-weight: var(--font-weight-bold);
+  color: var(--text-muted);
+}
+
+.binding-input {
+  display: flex;
+  align-items: center;
+  background: var(--bg-input);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.binding-input input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--font-md);
+  text-align: left;
+  outline: none;
+}
+
+.binding-input input:focus {
+  color: var(--text-active);
+}

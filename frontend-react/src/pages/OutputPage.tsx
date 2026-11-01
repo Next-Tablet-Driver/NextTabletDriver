@@ -1,8 +1,8 @@
 import { useEffect } from "react";
-import { DisplayEditor } from "@/features/mapping/DisplayEditor";
-import { TabletEditor } from "@/features/mapping/TabletEditor";
+import { DisplayVisualizer } from "@/features/mapping/DisplayVisualizer";
 import { useMappingStore } from "@/features/mapping/MappingProvider";
-import { Page } from "@/ui/Page";
+import { TabletVisualizer } from "@/features/mapping/TabletVisualizer";
+import styles from "@/pages/OutputPage.module.css";
 
 /** Ctrl+Z undoes, Ctrl+Shift+Z goes back to the loaded profile, Ctrl+Y redoes, Ctrl+S saves. */
 function useEditShortcuts(): void {
@@ -39,9 +39,9 @@ function useEditShortcuts(): void {
 export function OutputPage() {
   useEditShortcuts();
   return (
-    <Page title="Output" description="Map a part of the tablet to a part of your screens.">
-      <DisplayEditor />
-      <TabletEditor />
-    </Page>
+    <div className={styles.page}>
+      <DisplayVisualizer />
+      <TabletVisualizer />
+    </div>
   );
 }

@@ -1,0 +1,121 @@
+/* Copied from frontend/src/lib/components/ui/Input.svelte. */
+.measure-input-group {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-sans);
+}
+
+/* Label */
+.label {
+  font-size: var(--font-md);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-main);
+  user-select: none;
+  -webkit-user-select: none;
+  white-space: nowrap;
+  transition: color var(--transition-normal) ease;
+}
+
+.label.draggable {
+  cursor: ew-resize;
+  touch-action: none;
+}
+
+.label.draggable:hover {
+  color: var(--text-active);
+}
+
+.label.draggable:focus-visible {
+  outline: 2px solid var(--input-border-focus);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm-plus);
+}
+
+/* Champ */
+.input-wrapper {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  cursor: text;
+  background-color: var(--input-bg);
+  border: var(--border-width) solid transparent;
+  border-radius: var(--input-radius);
+  padding: var(--input-padding);
+  transition:
+    border-color var(--transition-normal) ease,
+    background-color var(--transition-normal) ease,
+    box-shadow var(--transition-normal) ease;
+}
+
+.input-wrapper:hover {
+  background-color: var(--input-bg-hover);
+  border-color: var(--input-border);
+}
+
+.input-wrapper:focus-within {
+  background-color: var(--input-bg-focus);
+  border-color: var(--input-border-focus);
+  box-shadow: 0 0 0 1px var(--input-border-focus);
+}
+
+/* Input */
+.input-wrapper input {
+  min-width: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--text-main);
+  font-family: inherit;
+  font-size: var(--input-font-size);
+  font-weight: var(--font-weight-medium);
+  border: none;
+  outline: none;
+  caret-color: var(--input-border-focus);
+}
+
+.input-wrapper input::placeholder {
+  color: var(--text-muted);
+  opacity: 0.5;
+}
+
+.input-wrapper input::selection {
+  background-color: color-mix(in srgb, var(--input-border-focus) 35%, transparent);
+}
+
+.input-wrapper input.is-number {
+  color: var(--text-active);
+  text-align: right;
+  touch-action: pan-y;
+  font-variant-numeric: tabular-nums;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.input-wrapper input[type="number"]::-webkit-inner-spin-button,
+.input-wrapper input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.unit {
+  font-size: var(--font-sm);
+  font-family: var(--font-sans);
+  color: var(--text-muted);
+  opacity: 0.7;
+  user-select: none;
+  -webkit-user-select: none;
+  white-space: nowrap;
+  transition: opacity var(--transition-normal) ease;
+}
+
+.input-wrapper:focus-within .unit {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .label,
+  .input-wrapper,
+  .unit {
+    transition: none;
+  }
+}

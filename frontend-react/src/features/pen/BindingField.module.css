@@ -1,0 +1,58 @@
+/* Copied from frontend/src/lib/features/pen/BindingField.svelte. */
+.binding-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-bottom: var(--space-4);
+}
+
+.binding-row label {
+  font-size: var(--font-md);
+  color: var(--text-active);
+  font-weight: var(--font-weight-medium);
+}
+
+.binding-input {
+  display: flex;
+  align-items: center;
+  background: var(--bg-input);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.binding-input.invalid {
+  border-color: var(--danger);
+}
+
+.binding-input.recording {
+  border-color: var(--accent);
+}
+
+.binding-input input {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--font-md);
+  text-align: left;
+  outline: none;
+}
+
+.binding-input input:focus {
+  color: var(--text-active);
+}
+
+.binding-error {
+  margin: 0;
+  font-size: var(--font-sm, 0.8em);
+  color: var(--danger);
+}
+
+.binding-hint {
+  margin: 0;
+  font-size: var(--font-sm, 0.8em);
+  color: var(--text-muted);
+}

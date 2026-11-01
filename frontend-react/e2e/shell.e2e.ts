@@ -6,48 +6,38 @@ test.describe("application shell", () => {
     await expect(page.getByText("NextTabletDriver v2.0.0")).toBeVisible();
     await expect(app.footer).toContainText("Wacom Intuos Pro M");
     await expect(app.footer).toContainText("Default Profile");
-    await expect(app.footer.getByRole("radio", { name: "Absolute" })).toBeChecked();
+    await expect(app.footer).toContainText("Absolute Mode");
   });
 
-  test("offers every page and opens each one without errors", async ({ app, page }) => {
+  test("offers every screen and opens each one without errors", async ({ app, page }) => {
     await app.open();
     for (const tab of TABS) {
       await app.goTo(tab);
-      await expect(page).toHaveURL(new RegExp(`#/`));
-      await expect(app.content.getByRole("heading", { level: 1 })).toBeVisible();
+      await expect(app.content).not.toBeEmpty();
+      await expect(page.getByText("under construction")).toHaveCount(0);
     }
   });
 
-  test("starts on the Output page", async ({ app }) => {
+  test("starts on the Output screen", async ({ app }) => {
     await app.open();
-    await expect(app.content.getByRole("heading", { name: "Display" })).toBeVisible();
-    await expect(app.content.getByRole("heading", { name: "Tablet", exact: true })).toBeVisible();
+    await expect(app.content).toContainText("Display");
+    await expect(app.content).toContainText("Tablet");
   });
 
-  test("keeps the page across a reload", async ({ app, page }) => {
+  test("applies the configured theme to the document", async ({ app, page }) => {
     await app.open();
-    await app.goTo("Console");
-    await page.reload();
-    await expect(app.content.getByRole("heading", { name: "Console", level: 1 })).toBeVisible();
-  });
-
-  test("marks the current page in the navigation", async ({ app, page }) => {
-    await app.open();
-    await app.goTo("Settings");
-    await expect(page.getByRole("tab", { name: "Settings", exact: true })).toHaveAttribute(
-      "aria-selected",
-      "true",
+    const theme = await page.evaluate(
+      () => document.documentElement.dataset.theme ?? document.documentElement.className,
     );
+    expect(theme.toLowerCase()).toContain("dark");
   });
 
-  test("shows the dark scheme by default", async ({ app, page }) => {
-    await app.open();
-    await expect(page.locator("html")).toHaveClass(/dark-mode/);
-  });
-
-  test("shows the light scheme when the configuration asks for it", async ({ app, page }) => {
+  test("can run with the light theme", async ({ app, page }) => {
     await app.open("&theme=Light");
-    await expect(page.locator("html")).not.toHaveClass(/dark-mode/);
+    const theme = await page.evaluate(
+      () => document.documentElement.dataset.theme ?? document.documentElement.className,
+    );
+    expect(theme.toLowerCase()).toContain("light");
   });
 });
 
@@ -62,15 +52,15 @@ test.describe("menu bar", () => {
       "Reset to default",
       "Import OTD Settings",
     ]) {
-      await expect(page.getByRole("menuitem", { name: item, exact: true })).toBeVisible();
+      await expect(page.getByText(item, { exact: true })).toBeVisible();
     }
   });
 
   test("Save Settings asks the backend to save", async ({ app, page }) => {
     await app.open();
     await page.getByRole("button", { name: "File" }).click();
-    await page.getByRole("menuitem", { name: "Save Settings", exact: true }).click();
-    await expect.poll(async () => (await app.invocations("save_config")).length).toBe(1);
+    await page.getByText("Save Settings", { exact: true }).click();
+    expect(await app.invocations("save_config")).toHaveLength(1);
   });
 
   test("Reset to default asks the backend to reset and reloads the configuration", async ({
@@ -80,58 +70,48 @@ test.describe("menu bar", () => {
     await app.open();
     const before = (await app.invocations("get_config")).length;
     await page.getByRole("button", { name: "File" }).click();
-    await page.getByRole("menuitem", { name: "Reset to default", exact: true }).click();
+    await page.getByText("Reset to default", { exact: true }).click();
     await expect.poll(async () => (await app.invocations("reset_config")).length).toBe(1);
     await expect
       .poll(async () => (await app.invocations("get_config")).length)
       .toBeGreaterThan(before);
   });
 
-  test("the menu closes with Escape", async ({ app, page }) => {
+  test("the menu closes when clicking elsewhere", async ({ app, page }) => {
     await app.open();
     await page.getByRole("button", { name: "File" }).click();
-    await expect(page.getByRole("menu")).toBeVisible();
-    await page.keyboard.press("Escape");
-    await expect(page.getByRole("menu")).toHaveCount(0);
+    await expect(page.getByText("Save Settings", { exact: true })).toBeVisible();
+    await app.content.click({ position: { x: 900, y: 500 } });
+    await expect(page.getByText("Save Settings", { exact: true })).toHaveCount(0);
   });
 
   test("Tablet menu offers the diagnostic windows", async ({ app, page }) => {
     await app.open();
     await page.getByRole("button", { name: "Tablet" }).click();
-    await expect(page.getByRole("menuitem", { name: "Open Debugger" })).toBeVisible();
-    await expect(page.getByRole("menuitem", { name: "Input Lag Analysis" })).toBeVisible();
+    await expect(page.getByText("Open Debugger")).toBeVisible();
+    await expect(page.getByText("Input Lag Analysis")).toBeVisible();
   });
 
-  test("Help menu links to the project", async ({ app, page }) => {
+  test("Help menu links to the project and offers the bug and feature forms", async ({
+    app,
+    page,
+  }) => {
     await app.open();
     await page.getByRole("button", { name: "Help" }).click();
-    await expect(page.getByRole("menuitem", { name: "Github Repository" })).toBeVisible();
+    await expect(page.getByText("Github Repository")).toBeVisible();
+    await page.getByText("Report Bug / Suggest Feature").hover();
+    await expect(page.getByText("Report a Bug")).toBeVisible();
+    await expect(page.getByText("Suggest a Feature")).toBeVisible();
   });
 
-  test("Check for Updates tells the user when they are up to date", async ({ app, page }) => {
+  test("Check for Update tells the user when they are up to date", async ({ app, page }) => {
     await app.open();
     await page.getByRole("button", { name: "Help" }).click();
-    await page.getByRole("menuitem", { name: "Check for Updates" }).click();
+    await page.getByText("Check for Update").click();
     await expect
       .poll(async () =>
         (await app.invocations("plugin:dialog|message")).map((call) => call.args.message),
       )
       .toContain("You are already on the latest version.");
-  });
-});
-
-test.describe("narrow window", () => {
-  test.use({ viewport: { width: 420, height: 800 } });
-
-  test("keeps every page reachable: the tabs scroll sideways", async ({ app, page }) => {
-    await app.open();
-    const credits = page.getByRole("tab", { name: "Credits", exact: true });
-    await credits.scrollIntoViewIfNeeded();
-    await credits.click();
-    await expect(app.content.getByRole("heading", { name: "Credits", level: 1 })).toBeVisible();
-    // The page itself does not scroll sideways.
-    expect(
-      await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
-    ).toBe(true);
   });
 });

@@ -1,0 +1,46 @@
+/* Copied from frontend/src/lib/features/filters/UntrustedPlugins.svelte. */
+.untrusted-banner {
+  border: var(--border-width) solid var(--warning);
+  background: color-mix(in srgb, var(--warning) 10%, transparent);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  margin-bottom: var(--space-6);
+  font-size: var(--font-md);
+}
+
+.banner-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-active);
+}
+
+.untrusted-banner p {
+  margin: var(--space-2) 0;
+  color: var(--text-muted);
+}
+
+.untrusted-banner ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.untrusted-banner li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.file {
+  flex: 1;
+  font-family: var(--font-mono);
+}
+
+.hash {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}

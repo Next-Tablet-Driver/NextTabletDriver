@@ -1,0 +1,11 @@
+/* Copied from frontend/src/lib/components/ui/Text.svelte. */
+.text {
+  color: var(--text-main);
+  font-size: var(--font-md);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.text.muted {
+  color: var(--text-muted);
+}

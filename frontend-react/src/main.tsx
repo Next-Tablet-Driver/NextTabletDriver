@@ -1,7 +1,6 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import "@fontsource-variable/atkinson-hyperlegible-next";
-import "@/styles/app.css";
+import "@/app.css";
 import App from "@/App";
 
 // Development-only tooling (stripped from production builds): `/?mock` runs the real app against
@@ -11,9 +10,9 @@ if (import.meta.env.DEV && new URLSearchParams(window.location.search).has("mock
   installTauriMock();
 }
 
-const root = document.getElementById("root");
+const root = document.getElementById("app");
 if (root === null) {
-  throw new Error("index.html has no #root element");
+  throw new Error("index.html has no #app element");
 }
 
 createRoot(root).render(

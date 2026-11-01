@@ -1,0 +1,189 @@
+/* Copied from frontend/src/lib/features/release/ReleaseCard.svelte. */
+.release-card {
+  background-color: var(--bg-panel);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-md, var(--radius-xl));
+  padding: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  transition:
+    border-color var(--transition-moderate),
+    box-shadow var(--transition-moderate);
+}
+
+.release-card:hover {
+  border-color: var(--border-hover, var(--overlay-15));
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.title-group {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.card-header h2 {
+  margin: 0;
+  font-size: var(--font-3xl);
+  font-weight: var(--font-weight-heavy);
+  color: var(--text-main);
+  letter-spacing: -0.5px;
+}
+
+.badge {
+  font-size: var(--font-sm);
+  font-weight: var(--font-weight-bold);
+  text-transform: uppercase;
+  padding: var(--space-0-5) var(--space-2);
+  background-color: var(--border);
+  color: var(--text-muted);
+}
+
+.date {
+  font-size: var(--font-md);
+  color: var(--text-muted);
+  font-weight: var(--font-weight-medium);
+}
+
+.changelog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.changelog-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  font-size: var(--font-lg);
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+
+.bullet {
+  margin-top: var(--space-2);
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--text-muted);
+  opacity: 0.5;
+  flex-shrink: 0;
+}
+
+.item-text {
+  color: var(--text-muted);
+}
+
+.link-url {
+  color: var(--accent);
+  text-decoration: none;
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  border: var(--border-width) solid color-mix(in srgb, var(--accent) 20%, transparent);
+  padding: var(--space-0-5) var(--space-1-5);
+  border-radius: var(--radius-md);
+  font-family: var(--font-mono, monospace);
+  font-size: var(--font-sm);
+  font-weight: var(--font-weight-bold);
+  margin: 0 var(--space-1);
+  transition: all var(--transition-moderate) ease;
+}
+
+.link-url:hover {
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+  transform: translateY(-1px);
+}
+
+.user-mention {
+  color: var(--text-main);
+  font-weight: var(--font-weight-bold);
+  text-decoration: none;
+  transition: color var(--transition-moderate);
+}
+
+.user-mention:hover {
+  color: var(--accent);
+}
+
+.card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: var(--space-2);
+  padding-top: var(--space-5);
+  border-top: var(--border-width) solid var(--border);
+}
+
+.contributors {
+  display: flex;
+  align-items: center;
+}
+
+.avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid var(--bg-panel);
+  margin-left: calc(var(--space-2) * -1);
+  cursor: pointer;
+  transition:
+    transform var(--transition-moderate),
+    z-index 0s;
+  position: relative;
+}
+
+.avatar:first-child {
+  margin-left: 0;
+}
+
+.avatar:hover {
+  transform: translateY(-2px) scale(1.1);
+  z-index: 10;
+}
+
+.avatar-more {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid var(--bg-panel);
+  background-color: var(--border);
+  margin-left: calc(var(--space-2) * -1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-sm);
+  font-weight: var(--font-weight-bold);
+  color: var(--text-main);
+  z-index: 1;
+}
+
+.actions {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.btn-link {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  padding: var(--space-1-5) var(--space-3);
+  border-radius: var(--radius-md-plus);
+  background-color: var(--bg-app);
+  border: var(--border-width) solid var(--border);
+  color: var(--text-main);
+  font-size: var(--font-md);
+  font-weight: var(--font-weight-medium);
+  text-decoration: none;
+  transition: all var(--transition-moderate);
+}
+
+.btn-link:hover {
+  background-color: var(--border);
+  border-color: var(--overlay-20);
+}

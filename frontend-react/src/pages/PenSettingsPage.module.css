@@ -1,0 +1,27 @@
+/* Copied from frontend/src/lib/pages/PenSettings.svelte. */
+.page-container {
+  padding: var(--space-8);
+  height: 100%;
+  overflow-y: auto;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-8);
+  color: var(--text-active);
+}
+
+.section-header h2 {
+  font-size: var(--font-xl-plus);
+  font-weight: var(--font-weight-bold);
+  margin: 0;
+}
+
+.grid-layout {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-8);
+  max-width: 900px;
+}

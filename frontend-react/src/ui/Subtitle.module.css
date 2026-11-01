@@ -1,0 +1,7 @@
+/* Copied from frontend/src/lib/components/ui/Subtitle.svelte. */
+.subtitle {
+  color: var(--text-main);
+  font-size: var(--font-lg);
+  font-weight: var(--font-weight-medium);
+  margin: 0 0 var(--space-2) 0;
+}

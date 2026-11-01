@@ -1,0 +1,32 @@
+import { log } from "@/infrastructure/log";
+/**
+ * Theming entry point.
+ *
+ * `themeStore` is the single instance that decides which theme is on screen; the rest of the
+ * app only calls `themeStore.select(...)` and reads its state.
+ */
+import { listThemes } from "@/infrastructure/tauri/commands";
+import { ThemeStore } from "@/theme/theme-store";
+
+export const themeStore = new ThemeStore();
+
+/**
+ * Reads the theme files from disk (through the backend) and hands them to the store.
+ * Outside the desktop app, or if the backend call fails, there are simply no user themes.
+ */
+export async function refreshUserThemes(): Promise<void> {
+  try {
+    const files = await listThemes();
+    themeStore.setUserThemes(
+      files.map((f) => ({ id: f.id, fileName: f.file_name, content: f.content })),
+    );
+  } catch (e) {
+    log.error("Failed to load user themes:", e);
+    themeStore.setUserThemes([]);
+  }
+}
+
+export { BUILTIN_THEMES, CUSTOM_PREFIX, SYSTEM_THEME } from "@/theme/apply";
+export { buildThemeTemplate, documentTokenReader } from "@/theme/template";
+export type { UserThemeEntry, UserThemeSource } from "@/theme/theme-store";
+export type { ThemeDefinition, ValidationIssue } from "@/theme/validate";

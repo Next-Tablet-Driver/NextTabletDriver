@@ -1,0 +1,121 @@
+/* Copied from frontend/src/lib/features/mapping/TabletVisualizer.svelte. */
+.section-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.visual-area {
+  background-color: var(--bg-app);
+  height: 250px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  border: var(--border-width) solid var(--border);
+}
+
+.tablet-canvas {
+  position: relative;
+  background-color: var(--bg-panel);
+  border: var(--border-width) solid var(--border);
+}
+
+.active-area {
+  position: absolute;
+  background-color: var(--area-tablet);
+  outline: var(--border-width) solid var(--area-border-main);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-active);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.active-area:active {
+  cursor: grabbing;
+}
+
+/* Center dot for the active area - Tablet Area */
+.active-area::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 4px;
+  height: 4px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background-color: var(--area-border-main);
+  pointer-events: none;
+  z-index: var(--z-floating);
+}
+
+.osu-playfield {
+  position: absolute;
+  outline: var(--border-width) solid var(--area-border-pink);
+  background-color: var(--area-playfield);
+  z-index: 1;
+  pointer-events: none;
+}
+
+.ratio-text {
+  font-size: var(--font-sm);
+  font-weight: var(--font-weight-bold);
+  z-index: 2;
+  transform: translateY(1.2em);
+}
+
+.dimensions {
+  z-index: 2;
+}
+
+.dim-top {
+  position: absolute;
+  top: var(--space-1);
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: var(--font-xs);
+}
+
+.dim-left {
+  position: absolute;
+  left: 2px;
+  top: 50%;
+  transform-origin: top left;
+  transform: rotate(-90deg) translateX(-50%);
+  font-size: var(--font-xs);
+}
+
+.pen-cursor {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  background-color: var(--area-contrast);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 100;
+}
+
+.controls {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin-top: var(--space-2);
+}
+
+.checkbox-row {
+  display: flex;
+  gap: var(--space-6);
+}
+
+.input-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
