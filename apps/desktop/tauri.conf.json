@@ -4,10 +4,10 @@
   "version": "3.0.0",
   "identifier": "com.nexttabletdriver.app",
   "build": {
-    "frontendDist": "../../frontend/dist",
+    "frontendDist": "../../frontend-react/dist",
     "devUrl": "http://localhost:5173",
-    "beforeDevCommand": "npm run dev --prefix ./frontend",
-    "beforeBuildCommand": "npm run build --prefix ./frontend"
+    "beforeDevCommand": "npm run dev --prefix ./frontend-react",
+    "beforeBuildCommand": "npm run build --prefix ./frontend-react"
   },
   "app": {
     "windows": [
