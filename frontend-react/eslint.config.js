@@ -10,8 +10,8 @@ export default tseslint.config(
     ignores: [
       "dist",
       "coverage",
-      "src/components/base/**",
-      "src/components/foundations/**",
+      "src/components/**",
+      "src/hooks/use-*.ts",
       "src/utils/is-react-component.ts",
       // Generated from the Rust code.
       "src/infrastructure/tauri/bindings.ts",
