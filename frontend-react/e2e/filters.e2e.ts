@@ -12,15 +12,15 @@ test.describe("Filters page", () => {
   test("lists the available filters and shows the first one", async ({ app }) => {
     await expect(app.content.getByRole("tab", { name: /Kalman Smoothing/ })).toBeVisible();
     await expect(app.content.getByRole("tab", { name: /Hand Speed/ })).toBeVisible();
-    await expect(app.content).toContainText("v1.0.0");
-    await expect(app.content).toContainText("By NextTablet");
+    await expect(app.content).toContainText("Version 1.0.0");
+    await expect(app.content).toContainText("by NextTablet");
   });
 
   test("selecting another filter shows its details", async ({ app }) => {
     await app.content.getByRole("tab", { name: /Hand Speed/ }).click();
     await expect(app.content).toContainText("Tracks hand speed and travel distance.");
-    await expect(app.content).toContainText("v1.2.0");
-    await expect(app.content).toContainText("By nzbasic");
+    await expect(app.content).toContainText("Version 1.2.0");
+    await expect(app.content).toContainText("by nzbasic");
   });
 
   test("renders one control per setting of a filter", async ({ app }) => {
@@ -41,7 +41,7 @@ test.describe("Filters page", () => {
   });
 
   test("disabling a filter is saved, and locks its settings", async ({ app }) => {
-    await app.content.getByText("Enable this filter").click();
+    await app.toggle("Enable this filter");
     const saved = await app.savedConfigWhere(
       (config) => (config.plugins as PluginsConfig)?.kalman_smoothing?.enabled === false,
     );

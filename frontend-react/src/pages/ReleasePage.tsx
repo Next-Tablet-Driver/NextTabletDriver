@@ -1,5 +1,3 @@
-import { LinkExternal01 } from "@untitledui/icons";
-import { Badge } from "@/components/base/badges/badges";
 import { LoadingIndicator } from "@/components/application/loading-indicator/loading-indicator";
 import { formatDate, parseBody, parseTextWithLinks } from "@/features/release/release-notes";
 import { useCommand } from "@/hooks/useCommand";
@@ -23,59 +21,52 @@ function Link({ href, children }: { href: string; children: string }) {
   );
 }
 
-function ReleaseCard({ release, isLatest }: { release: Release; isLatest: boolean }) {
+function ReleaseNotes({ release, isLatest }: { release: Release; isLatest: boolean }) {
   const { items, fullChangelog } = parseBody(release.body);
   return (
-    <article className="rounded-xl bg-primary shadow-xs ring-1 ring-secondary">
-      <header className="flex flex-wrap items-center justify-between gap-2 border-b border-secondary px-5 py-4">
-        <div className="flex items-center gap-2">
-          <h2 className="text-lg font-semibold text-primary">{release.tag_name}</h2>
-          {isLatest && (
-            <Badge type="pill-color" size="md" color="success">
-              Latest
-            </Badge>
-          )}
-        </div>
+    <article className="flex flex-col gap-3 border-t border-primary pt-5">
+      <header className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <h2 className="text-md font-semibold text-primary">
+          {release.tag_name}
+          {isLatest && <span className="ml-2 text-sm font-medium text-secondary">Latest</span>}
+        </h2>
         <time className="text-sm text-tertiary" dateTime={release.published_at ?? undefined}>
           {formatDate(release.published_at)}
         </time>
       </header>
-      <div className="flex flex-col gap-3 px-5 py-4">
-        {items.length === 0 ? (
-          <p className="text-sm text-tertiary">No notes for this release.</p>
-        ) : (
-          <ul className="flex list-disc flex-col gap-2 pl-5 text-sm text-secondary marker:text-quaternary">
-            {items.map((item, index) => (
-              <li key={index}>
-                {parseTextWithLinks(item).map((part, i) => {
-                  switch (part.type) {
-                    case "url":
-                      return (
-                        <Link key={i} href={part.content}>
-                          {part.display}
-                        </Link>
-                      );
-                    case "user":
-                      return (
-                        <Link key={i} href={`https://github.com/${part.content}`}>
-                          {`@${part.content}`}
-                        </Link>
-                      );
-                    case "text":
-                      return <span key={i}>{part.content}</span>;
-                  }
-                })}
-              </li>
-            ))}
-          </ul>
-        )}
-        {fullChangelog !== null && (
-          <p className="flex items-center gap-1.5 text-sm text-tertiary">
-            <LinkExternal01 className="size-4" />
-            <Link href={fullChangelog}>Full changelog</Link>
-          </p>
-        )}
-      </div>
+      {items.length === 0 ? (
+        <p className="text-sm text-tertiary">No notes for this release.</p>
+      ) : (
+        <ul className="flex list-disc flex-col gap-1.5 pl-5 text-sm text-secondary marker:text-quaternary">
+          {items.map((item, index) => (
+            <li key={index}>
+              {parseTextWithLinks(item).map((part, i) => {
+                switch (part.type) {
+                  case "url":
+                    return (
+                      <Link key={i} href={part.content}>
+                        {part.display}
+                      </Link>
+                    );
+                  case "user":
+                    return (
+                      <Link key={i} href={`https://github.com/${part.content}`}>
+                        {`@${part.content}`}
+                      </Link>
+                    );
+                  case "text":
+                    return <span key={i}>{part.content}</span>;
+                }
+              })}
+            </li>
+          ))}
+        </ul>
+      )}
+      {fullChangelog !== null && (
+        <p className="text-sm">
+          <Link href={fullChangelog}>Full changelog</Link>
+        </p>
+      )}
     </article>
   );
 }
@@ -98,9 +89,9 @@ export function ReleasePage() {
         </p>
       )}
       {state.status === "ready" && (
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-8">
           {state.data.map((release, index) => (
-            <ReleaseCard key={release.tag_name} release={release} isLatest={index === 0} />
+            <ReleaseNotes key={release.tag_name} release={release} isLatest={index === 0} />
           ))}
         </div>
       )}

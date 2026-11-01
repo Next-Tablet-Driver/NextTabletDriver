@@ -13,6 +13,8 @@ export default defineConfig({
     environment: "jsdom",
     globals: true,
     setupFiles: ["./src/setupTests.ts"],
+    // Papicons imports its own files without an extension, which Node refuses: let Vite do it.
+    server: { deps: { inline: ["@getpapillon/papicons"] } },
     // The end-to-end specs are run by Playwright (`npm run e2e`).
     exclude: ["**/node_modules/**", "e2e/**", "e2e-native/**"],
     coverage: {

@@ -1,8 +1,7 @@
 import { useState } from "react";
-import { FolderPlus, Plus, RefreshCcw01 } from "@untitledui/icons";
+import { Add } from "@getpapillon/papicons";
 import { Button } from "@/components/base/buttons/button";
 import { Tab, TabList, TabPanel, Tabs } from "@/components/application/tabs/tabs";
-import { EmptyState } from "@/components/application/empty-state/empty-state";
 import { PluginDetails } from "@/features/filters/PluginDetails";
 import { UntrustedPlugins } from "@/features/filters/UntrustedPlugins";
 import { settingsOf } from "@/features/filters/plugin-settings";
@@ -55,23 +54,13 @@ export function FiltersPage() {
       description="Plugins that smooth or adjust the pen before it moves the cursor."
       actions={
         <div className="flex flex-wrap gap-2">
-          <Button color="secondary" size="sm" iconLeading={Plus} onPress={run(installPlugin)}>
+          <Button color="secondary" size="sm" iconLeading={Add} onPress={run(installPlugin)}>
             Add a plugin
           </Button>
-          <Button
-            color="secondary"
-            size="sm"
-            iconLeading={FolderPlus}
-            onPress={run(openPluginsFolder)}
-          >
+          <Button color="secondary" size="sm" onPress={run(openPluginsFolder)}>
             Open the folder
           </Button>
-          <Button
-            color="secondary"
-            size="sm"
-            iconLeading={RefreshCcw01}
-            onPress={run(reloadPlugins)}
-          >
+          <Button color="secondary" size="sm" onPress={run(reloadPlugins)}>
             Reload
           </Button>
         </div>
@@ -92,61 +81,50 @@ export function FiltersPage() {
 
       {plugins.length === 0 ? (
         error === null && (
-          <EmptyState size="md">
-            <EmptyState.Header>
-              <EmptyState.FeaturedIcon color="gray" />
-            </EmptyState.Header>
-            <EmptyState.Content>
-              <EmptyState.Title>No filter installed</EmptyState.Title>
-              <EmptyState.Description>
-                Add a plugin, or put its library in the plugins folder and reload.
-              </EmptyState.Description>
-            </EmptyState.Content>
-          </EmptyState>
+          <p className="border-t border-primary pt-5 text-sm text-tertiary">
+            No filter is installed. Add a plugin, or put its library in the plugins folder and
+            reload.
+          </p>
         )
       ) : (
         <Tabs
-          orientation="vertical"
           selectedKey={active ?? undefined}
           onSelectionChange={(key) => {
             setChosen(String(key));
           }}
-          className="flex flex-col gap-6 md:flex-row md:items-start"
+          className="flex flex-col gap-6"
         >
-          <TabList
-            aria-label="Filters"
-            type="button-gray"
-            orientation="vertical"
-            className="max-md:w-full md:w-56 md:shrink-0"
-          >
-            {plugins.map((plugin) => (
-              <Tab
-                key={plugin.id}
-                id={plugin.id}
-                label={plugin.name}
-                badge={config !== null && settingsOf(config, plugin.id).enabled ? "On" : undefined}
-              />
-            ))}
-          </TabList>
-          <div className="min-w-0 flex-1">
-            {current !== undefined && (
-              <TabPanel id={current.id}>
-                <PluginDetails
-                  key={current.id}
-                  plugin={current}
-                  onDelete={() => {
-                    void os
-                      .confirm(`Delete the plugin "${current.name}" from your computer?`)
-                      .then((yes) => {
-                        if (yes) {
-                          run(() => deletePlugin(current.id))();
-                        }
-                      });
-                  }}
+          <div className="overflow-x-auto">
+            <TabList aria-label="Filters" type="button-border" size="sm" className="min-w-max">
+              {plugins.map((plugin) => (
+                <Tab
+                  key={plugin.id}
+                  id={plugin.id}
+                  label={plugin.name}
+                  badge={
+                    config !== null && settingsOf(config, plugin.id).enabled ? "On" : undefined
+                  }
                 />
-              </TabPanel>
-            )}
+              ))}
+            </TabList>
           </div>
+          {current !== undefined && (
+            <TabPanel key={current.id} id={current.id} className="flex flex-col gap-8">
+              <PluginDetails
+                key={current.id}
+                plugin={current}
+                onDelete={() => {
+                  void os
+                    .confirm(`Delete the plugin "${current.name}" from your computer?`)
+                    .then((yes) => {
+                      if (yes) {
+                        run(() => deletePlugin(current.id))();
+                      }
+                    });
+                }}
+              />
+            </TabPanel>
+          )}
         </Tabs>
       )}
     </Page>

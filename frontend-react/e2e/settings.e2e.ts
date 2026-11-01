@@ -17,7 +17,7 @@ test.describe("Settings page", () => {
   });
 
   test("a general option is saved when toggled", async ({ app }) => {
-    await app.content.getByText("Run at startup").click();
+    await app.toggle("Run at startup");
     expect(
       (await app.savedConfigWhere((config) => config.run_at_startup === true)).run_at_startup,
     ).toBe(true);
@@ -41,13 +41,13 @@ test.describe("Settings page", () => {
     await expect(app.content.getByRole("button", { name: /Interface language/ })).toContainText(
       "English",
     );
-    await expect(app.content).toContainText("Running");
+    await expect(app.content).toContainText("Running.");
     await expect(app.field("Port")).toHaveValue("8765");
   });
 
   test("stopping the WebSocket server is saved and updates the state", async ({ app }) => {
-    await app.content.getByText("Enable the WebSocket server").click();
-    await expect(app.content).toContainText("Stopped");
+    await app.toggle("Enable the WebSocket server");
+    await expect(app.content).toContainText("Stopped.");
     const saved = await app.savedConfigWhere(
       (config) => (config.websocket as { enabled?: boolean } | undefined)?.enabled === false,
     );

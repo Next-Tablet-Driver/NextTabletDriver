@@ -128,7 +128,7 @@ commit message.
     a placeholder and a label that were too pale, and they are fixed without touching the library.
     By hand: every area can be moved with the arrow keys, every number is also a field, bindings
     can be recorded without the pointer, the menus close with Escape, a narrow window (the
-    minimum is 420 px) gets a page menu in place of the sidebar, and every list has its empty,
+    minimum is 420 px) scrolls the tabs sideways, and every list has its empty,
     loading and error state. Not done: a check at 200 % zoom on a real display, a screen reader
     pass, and `prefers-reduced-motion` beyond what React Aria and Untitled UI do.
 - [x] **R12** Test parity
@@ -149,15 +149,38 @@ components of Untitled UI, **as the CLI wrote them** (`src/components/`, never e
 code in `src/ui`, `src/shell`, `src/features`, `src/pages` composes them and adds Tailwind classes).
 What follows from it, and what a reviewer should know:
 
-- **Look**: Untitled UI's light and dark schemes (class `dark-mode` on `<html>`), Inter, the
-  default brand colour. `config.theme` keeps working as `System`, `Dark` or `Light`; the other
-  values of the Svelte interface (Catppuccin) are shown as their scheme.
+- **Design review of 2026-11-01, after the first version was rejected.** The first version had
+  the tells that the articles on "AI slop" agree on ([925 Studios](https://www.925studios.co/blog/ai-slop-design-tells),
+  [vibecodekit](https://vibecodekit.dev/ai-slop-design), [hey.com/kostac](https://world.hey.com/kostac/spot-the-slop-a-ui-designer-s-guide-to-fixing-ai-defaults-4c448c9c)):
+  the library's purple, Inter, a sidebar, every group in the same rounded card with the same
+  shadow, pastel icon tiles, three identical statistic cards. They are replaced, not just removed:
+  - **No sidebar.** The window is the one of the old application: a title bar with the File,
+    Tablet and Help menus and the window buttons, the pages as tabs under it, the status bar.
+    In a narrow window the tabs scroll sideways.
+  - **No cards.** A page is a list: a title, then groups separated by a rule, each setting a row
+    (its name and what it does on the left, its control on the right). The numbers of the
+    credits are a line of text, not three tiles.
+  - **One thing is coloured: the drawing stage** of the two area editors, a cyanotype with a
+    millimetre or pixel grid, rulers on two edges, and the pen as an amber crosshair with its
+    position. It is the part of the interface that is about the subject: a pen on a surface in
+    millimetres. Everything around it is quiet.
+  - **Colour**: the library's brand ramp is replaced by a cool slate (`src/styles/app.css`, a
+    token override, the components are untouched), so buttons, switches and focus are ink.
+  - **Type**: Atkinson Hyperlegible Next, made to tell characters apart, in a screen of
+    coordinates and key names. Numbers are tabular, headings balanced.
+  - **Icons**: [Papicons](https://github.com/PapillonApp/papicons) (`@getpapillon/papicons`, MIT)
+    for every icon placed by our own code. The few icons inside the Untitled UI components
+    (chevrons of a select, the tick of a checkbox) stay the library's: editing them would mean
+    editing the components. There is no maximise glyph in Papicons, so that button draws a square.
+- **Theme**: Untitled UI's light and dark schemes (class `dark-mode` on `<html>`).
+  `config.theme` keeps working as `System`, `Dark` or `Light`; the other values of the Svelte
+  interface (Catppuccin) are shown as their scheme.
 - **User theme files are not supported** here (the `--bg-app`-style token files, their import,
   validation and contrast warnings). They need a token layer of our own on top of Untitled UI's,
   which is what the rule forbids. The backend commands (`list_themes`, `import_theme`...) are still
   there. If themes matter, the way is Untitled UI's own theming (`--color-brand-*` in `theme.css`),
   decided with the maintainer.
-- **Navigation** is a sidebar of links to URL fragments (`#/output`), so a reload keeps the page.
+- **Navigation** is a row of tabs, each a URL fragment (`#/output`), so a reload keeps the page.
 - **The "anonymous usage statistics" checkbox is gone**: it was not connected to any setting.
 - **Debugger and Input lag windows**, placeholders in Svelte ("will be rendered soon"), now show
   the live packet and the report rate.
@@ -176,8 +199,8 @@ What follows from it, and what a reviewer should know:
 
 ## Known gaps and follow-ups
 
-- The production bundle is 1.2 MB (294 KB gzipped), mostly React Aria Components; code splitting by
-  page would help and was not done.
+- The production bundle is 785 KB (233 KB gzipped), mostly React Aria Components; code splitting
+  by page would help and was not done.
 - The user theme files are not supported (see above).
 - The Tauri window is undecorated: the title bar's drag region and the window buttons are checked
   in a browser against the mock, not in a native window; run `npm run e2e:native` equivalent

@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
-import { Checkbox } from "@/components/base/checkbox/checkbox";
+import { Toggle } from "@/components/base/toggle/toggle";
 import { InputNumber } from "@/components/base/input/input-number";
 import { useMappingSnapshot, useMappingStore } from "@/features/mapping/MappingProvider";
 import { BindingField } from "@/features/pen/BindingField";
 import { PressureCurveEditor } from "@/features/pen/PressureCurveEditor";
 import type { Config } from "@/infrastructure/tauri/commands";
 import { getTabletStatus } from "@/infrastructure/tauri/commands";
-import { Page, Section } from "@/ui/Page";
+import { Page, Row, Section } from "@/ui/Page";
 
 type Kind = "pen" | "aux";
 
@@ -55,14 +55,12 @@ export function PenSettingsPage() {
 
   return (
     <Page title="Pen Settings" description="How the pen tip, the eraser and the buttons behave.">
-      <Section
-        title="Thresholds"
-        description="The raw pressure at which the tip or the eraser counts."
-      >
-        <div className="flex flex-wrap gap-4">
-          <div className="w-40">
+      <Section title="Pressure">
+        <Row label="Tip threshold" hint="The raw pressure at which the tip counts as touching.">
+          <div className="w-28">
             <InputNumber
-              label="Tip"
+              aria-label="Tip"
+              size="sm"
               minValue={0}
               maxValue={1024}
               formatOptions={{ useGrouping: false }}
@@ -74,9 +72,12 @@ export function PenSettingsPage() {
               }}
             />
           </div>
-          <div className="w-40">
+        </Row>
+        <Row label="Eraser threshold" hint="The same, for the eraser end of the pen.">
+          <div className="w-28">
             <InputNumber
-              label="Eraser"
+              aria-label="Eraser"
+              size="sm"
               minValue={0}
               maxValue={1024}
               formatOptions={{ useGrouping: false }}
@@ -88,30 +89,30 @@ export function PenSettingsPage() {
               }}
             />
           </div>
-        </div>
+        </Row>
+        <Row label="Ignore pressure" hint="Every touch is sent at full pressure.">
+          <Toggle
+            aria-label="Disable pressure"
+            isSelected={config.disable_pressure}
+            onChange={(disable_pressure) => {
+              set({ disable_pressure });
+            }}
+          />
+        </Row>
+        <Row label="Ignore tilt" hint="The angle of the pen is not sent.">
+          <Toggle
+            aria-label="Disable tilt"
+            isSelected={config.disable_tilt}
+            onChange={(disable_tilt) => {
+              set({ disable_tilt });
+            }}
+          />
+        </Row>
       </Section>
 
-      <Section title="Hardware" description="Ignore data your tablet or your style does not need.">
-        <Checkbox
-          label="Disable pressure"
-          isSelected={config.disable_pressure}
-          onChange={(disable_pressure) => {
-            set({ disable_pressure });
-          }}
-        />
-        <Checkbox
-          label="Disable tilt"
-          isSelected={config.disable_tilt}
-          onChange={(disable_tilt) => {
-            set({ disable_tilt });
-          }}
-        />
-      </Section>
+      <PressureCurveEditor />
 
-      <Section
-        title="Tip and eraser"
-        description="What touching the tablet with the tip or the eraser does."
-      >
+      <Section title="Tip and eraser" description="What touching the tablet does.">
         <BindingField
           label="Tip binding"
           value={config.tip_binding}
@@ -128,11 +129,9 @@ export function PenSettingsPage() {
         />
       </Section>
 
-      <PressureCurveEditor />
-
       <Section title="Pen buttons" description="What each button on the side of the pen does.">
         {rows("pen") === 0 ? (
-          <p className="text-sm text-tertiary">
+          <p className="py-2 text-sm text-tertiary">
             No pen button is known yet. Connect a tablet to set them.
           </p>
         ) : (

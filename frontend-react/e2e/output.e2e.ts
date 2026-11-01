@@ -67,30 +67,29 @@ test.describe("Output page", () => {
     await app.savedConfigWhere(
       (config) => (config.active_area as { w?: number } | undefined)?.w === 100,
     );
-    await page.locator("main").press("Control+z");
+    await page.keyboard.press("Control+z");
     await expect(width).toHaveValue("224");
-    await page.locator("main").press("Control+y");
+    await page.keyboard.press("Control+y");
     await expect(width).toHaveValue("100");
   });
 
   test("Ctrl+S saves the profile", async ({ app, page }) => {
     await app.enter(app.field("Width (mm)"), "100");
     await expect(page.getByText("Default Profile*")).toBeVisible();
-    await page.locator("main").press("Control+s");
+    await page.keyboard.press("Control+s");
     await expect.poll(async () => (await app.invocations("save_config")).length).toBe(1);
     await expect(page.getByText("Default Profile*")).toHaveCount(0);
   });
 
   test("switching to Relative mode is saved", async ({ app, page }) => {
-    await page.getByRole("button", { name: /Driver mode/ }).click();
-    await page.getByRole("option", { name: "Relative Mode" }).click();
+    await page.getByRole("radio", { name: "Relative" }).click();
     expect((await app.savedConfigWhere((config) => config.mode === "Relative")).mode).toBe(
       "Relative",
     );
   });
 
   test("unchecking edge snapping is saved", async ({ app }) => {
-    await app.content.getByText("Snap to the edges of the screens").click();
+    await app.toggle("Snap to the edges of the screens");
     expect(
       (await app.savedConfigWhere((config) => config.display_snapping === false)).display_snapping,
     ).toBe(false);

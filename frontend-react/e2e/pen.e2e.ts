@@ -8,8 +8,8 @@ test.describe("Pen Settings page", () => {
 
   test("shows the current thresholds, switches and bindings", async ({ app }) => {
     await expect(app.field("Tip")).toHaveValue("10");
-    await expect(app.content.getByRole("checkbox", { name: "Disable pressure" })).not.toBeChecked();
-    await expect(app.content.getByRole("checkbox", { name: "Disable tilt" })).not.toBeChecked();
+    await expect(app.content.getByRole("switch", { name: "Disable pressure" })).not.toBeChecked();
+    await expect(app.content.getByRole("switch", { name: "Disable tilt" })).not.toBeChecked();
     await expect(app.field("Tip binding")).toHaveValue("Left Click");
     await expect(app.field("Eraser binding")).toHaveValue("Disabled");
     await expect(app.field("Pen button 1")).toHaveValue("Right Click");
@@ -24,7 +24,7 @@ test.describe("Pen Settings page", () => {
   });
 
   test("disabling pressure is saved", async ({ app }) => {
-    await app.content.getByText("Disable pressure").click();
+    await app.toggle("Disable pressure");
     expect(
       (await app.savedConfigWhere((config) => config.disable_pressure === true)).disable_pressure,
     ).toBe(true);
@@ -136,7 +136,7 @@ test.describe("Pen Settings page", () => {
   });
 
   test("the profile is marked modified after a change", async ({ app, page }) => {
-    await app.content.getByText("Disable tilt").click();
+    await app.toggle("Disable tilt");
     await expect(page.getByText("Default Profile*")).toBeVisible();
   });
 });

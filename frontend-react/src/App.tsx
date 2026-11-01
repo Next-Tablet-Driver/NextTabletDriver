@@ -12,7 +12,7 @@ import { PerformancePage } from "@/pages/PerformancePage";
 import { PageView } from "@/pages/PageView";
 import { events } from "@/infrastructure/tauri/events";
 import { useTauriEvent } from "@/hooks/useTauriEvent";
-import { Sidebar } from "@/shell/Sidebar";
+import { PageTabs } from "@/shell/PageTabs";
 import { StatusBar } from "@/shell/StatusBar";
 import { TitleBar } from "@/shell/TitleBar";
 import { useTheme } from "@/theme/useTheme";
@@ -56,12 +56,11 @@ function MainWindow() {
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-secondary">
       <TitleBar title={`NextTabletDriver ${version}`} />
-      <div className="flex min-h-0 flex-1 flex-col md:flex-row">
-        <Sidebar current={page} />
-        <main className="min-w-0 flex-1 overflow-y-auto bg-secondary" id="content">
+      <PageTabs current={page}>
+        <main id="content">
           <PageView page={page} />
         </main>
-      </div>
+      </PageTabs>
       <StatusBar />
     </div>
   );

@@ -1,4 +1,4 @@
-import { Plus, Trash01 } from "@untitledui/icons";
+import { Add, Trash } from "@getpapillon/papicons";
 import { Button } from "@/components/base/buttons/button";
 import { ButtonGroup, ButtonGroupItem } from "@/components/base/button-group/button-group";
 import { InputNumber } from "@/components/base/input/input-number";
@@ -204,7 +204,7 @@ export function PressureCurveEditor() {
                       color="tertiary-destructive"
                       size="md"
                       aria-label={`Remove point ${String(index + 1)}`}
-                      iconLeading={Trash01}
+                      iconLeading={Trash}
                       isDisabled={points.length <= 2 || isEnd}
                       onPress={() => {
                         setPoints(points.filter((_, i) => i !== index));
@@ -217,7 +217,7 @@ export function PressureCurveEditor() {
                 <Button
                   color="secondary"
                   size="sm"
-                  iconLeading={Plus}
+                  iconLeading={Add}
                   onPress={() => {
                     setPoints([...points, [0.5, 0.5]]);
                   }}

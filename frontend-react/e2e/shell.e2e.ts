@@ -6,7 +6,7 @@ test.describe("application shell", () => {
     await expect(page.getByText("NextTabletDriver v2.0.0")).toBeVisible();
     await expect(app.footer).toContainText("Wacom Intuos Pro M");
     await expect(app.footer).toContainText("Default Profile");
-    await expect(app.footer).toContainText("Absolute Mode");
+    await expect(app.footer.getByRole("radio", { name: "Absolute" })).toBeChecked();
   });
 
   test("offers every page and opens each one without errors", async ({ app, page }) => {
@@ -34,9 +34,9 @@ test.describe("application shell", () => {
   test("marks the current page in the navigation", async ({ app, page }) => {
     await app.open();
     await app.goTo("Settings");
-    await expect(page.getByRole("link", { name: "Settings", exact: true })).toHaveAttribute(
-      "aria-current",
-      "page",
+    await expect(page.getByRole("tab", { name: "Settings", exact: true })).toHaveAttribute(
+      "aria-selected",
+      "true",
     );
   });
 
@@ -123,11 +123,15 @@ test.describe("menu bar", () => {
 test.describe("narrow window", () => {
   test.use({ viewport: { width: 420, height: 800 } });
 
-  test("offers the pages in a menu when the sidebar does not fit", async ({ app, page }) => {
-    await app.open("");
-    await expect(page.getByRole("navigation", { name: "Pages" })).toBeHidden();
-    await page.getByRole("button", { name: /Page/ }).click();
-    await page.getByRole("option", { name: "Settings", exact: true }).click();
-    await expect(app.content.getByRole("heading", { name: "Settings", level: 1 })).toBeVisible();
+  test("keeps every page reachable: the tabs scroll sideways", async ({ app, page }) => {
+    await app.open();
+    const credits = page.getByRole("tab", { name: "Credits", exact: true });
+    await credits.scrollIntoViewIfNeeded();
+    await credits.click();
+    await expect(app.content.getByRole("heading", { name: "Credits", level: 1 })).toBeVisible();
+    // The page itself does not scroll sideways.
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+    ).toBe(true);
   });
 });

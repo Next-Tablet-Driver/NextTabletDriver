@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Minus, Square, XClose } from "@untitledui/icons";
+import { Cross, Minus } from "@getpapillon/papicons";
 import { Button } from "@/components/base/buttons/button";
 import { windowControls } from "@/infrastructure/tauri/window";
 
@@ -9,7 +9,7 @@ export function DetachedFrame({ title, children }: { title: string; children: Re
     <div className="flex h-screen flex-col overflow-hidden bg-secondary">
       <header
         data-tauri-drag-region
-        className="flex h-12 shrink-0 items-center justify-between border-b border-secondary bg-primary pl-4"
+        className="flex h-11 shrink-0 items-center justify-between bg-primary pl-4"
       >
         <span data-tauri-drag-region className="truncate text-sm font-semibold text-primary">
           {title}
@@ -26,14 +26,16 @@ export function DetachedFrame({ title, children }: { title: string; children: Re
             color="tertiary"
             size="sm"
             aria-label="Maximize"
-            iconLeading={Square}
+            iconLeading={
+              <span aria-hidden="true" className="size-3 rounded-[2px] border-2 border-current" />
+            }
             onPress={() => void windowControls.toggleMaximize()}
           />
           <Button
             color="tertiary-destructive"
             size="sm"
             aria-label="Close"
-            iconLeading={XClose}
+            iconLeading={Cross}
             onPress={() => void windowControls.close()}
           />
         </div>

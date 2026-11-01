@@ -6,7 +6,7 @@ import {
   type KeyboardEvent,
   type PointerEvent,
 } from "react";
-import { Checkbox } from "@/components/base/checkbox/checkbox";
+import { Toggle } from "@/components/base/toggle/toggle";
 import { InputNumber } from "@/components/base/input/input-number";
 import { AreaStage } from "@/features/mapping/AreaStage";
 import { activeOf, targetOf, withActive } from "@/features/mapping/config-areas";
@@ -25,7 +25,7 @@ import { useTauriEvent } from "@/hooks/useTauriEvent";
 import { log } from "@/infrastructure/log";
 import { getTabletStatus, type TabletStatus } from "@/infrastructure/tauri/commands";
 import { events, type TabletEventData } from "@/infrastructure/tauri/events";
-import { Section } from "@/ui/Page";
+import { Row, Section } from "@/ui/Page";
 
 const HIDE_PEN_AFTER_MS = 500;
 const KEY_STEP_MM = 0.5;
@@ -170,18 +170,20 @@ export function TabletEditor() {
 
   const percent = (value: number, total: number): string => `${String((value / total) * 100)}%`;
   const playfield = osuPlayfield(target);
+  const penX = pen !== null && surface.maxX > 0 ? (pen.x / surface.maxX) * width : 0;
+  const penY = pen !== null && surface.maxY > 0 ? (pen.y / surface.maxY) * height : 0;
 
   return (
     <Section
       title="Tablet"
       description="The part of the tablet that is used. Drag it, or use the arrow keys."
     >
-      <AreaStage ratio={width / height} label="Tablet surface" stageRef={stage}>
+      <AreaStage width={width} height={height} unit="mm" label="Tablet surface" stageRef={stage}>
         <div
           role="group"
           tabIndex={0}
           aria-label="Active area. Arrow keys move it, Shift makes the step larger."
-          className="absolute flex cursor-move touch-none flex-col items-center justify-center bg-brand-solid/60 text-xs font-medium text-white ring-2 ring-brand outline-focus-ring ring-inset focus-visible:outline-2 focus-visible:outline-offset-2"
+          className="absolute cursor-move touch-none border-[1.5px] border-white bg-(--stage-area) outline-focus-ring focus-visible:outline-2 focus-visible:outline-offset-2"
           style={{
             left: percent(area.x - area.w / 2, width),
             top: percent(area.y - area.h / 2, height),
@@ -198,7 +200,7 @@ export function TabletEditor() {
           {config.show_osu_playfield && target.w > 0 && target.h > 0 && (
             <div
               aria-hidden="true"
-              className="pointer-events-none absolute ring-2 ring-fg-error-secondary ring-inset"
+              className="pointer-events-none absolute border border-dashed border-white/70"
               style={{
                 left: `${String(playfield.left)}%`,
                 top: `${String(playfield.top)}%`,
@@ -207,43 +209,60 @@ export function TabletEditor() {
               }}
             />
           )}
-          <span className="flex flex-col items-center rounded-md bg-brand-solid px-2 py-1 text-white">
-            <span>{area.h === 0 ? "0.0000" : (area.w / area.h).toFixed(4)}</span>
-            <span>
-              {area.w.toFixed(2)} × {area.h.toFixed(2)} mm
-            </span>
+          <span className="absolute top-1.5 left-2 text-xs font-medium text-white tabular-nums">
+            {area.w.toFixed(2)} × {area.h.toFixed(2)} mm
+          </span>
+          <span className="absolute bottom-1.5 left-2 text-xs text-(--stage-ink)/80 tabular-nums">
+            ratio {area.h === 0 ? "0" : (area.w / area.h).toFixed(4)}
           </span>
         </div>
         {pen !== null && surface.maxX > 0 && surface.maxY > 0 && (
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-fg-success-primary ring-2 ring-white"
-            style={{
-              left: percent(pen.x, surface.maxX),
-              top: percent(pen.y, surface.maxY),
-            }}
-          />
+          <div aria-hidden="true" className="pointer-events-none absolute inset-0">
+            <div
+              className="absolute inset-y-0 w-px bg-(--stage-pen)/60"
+              style={{ left: percent(penX, width) }}
+            />
+            <div
+              className="absolute inset-x-0 h-px bg-(--stage-pen)/60"
+              style={{ top: percent(penY, height) }}
+            />
+            <div
+              className="absolute size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-(--stage-pen)"
+              style={{ left: percent(penX, width), top: percent(penY, height) }}
+            />
+            <span
+              className="absolute -translate-y-full pb-1.5 pl-2 text-xs text-(--stage-pen) tabular-nums"
+              style={{ left: percent(penX, width), top: percent(penY, height) }}
+            >
+              {penX.toFixed(1)}, {penY.toFixed(1)}
+            </span>
+          </div>
         )}
       </AreaStage>
 
-      <div className="flex flex-wrap gap-x-6 gap-y-3">
-        <Checkbox
-          label="Keep the aspect ratio"
+      <Row label="Keep the aspect ratio" hint="Changing the width changes the height with it.">
+        <Toggle
+          aria-label="Keep the aspect ratio"
           isSelected={lock}
           onChange={(lock_aspect_ratio) => {
             mapping.update((c) => ({ ...c, lock_aspect_ratio }));
           }}
         />
-        <Checkbox
-          label="Show the osu! playfield"
+      </Row>
+      <Row
+        label="Show the osu! playfield"
+        hint="A dashed guide of the part of the screen osu! draws on."
+      >
+        <Toggle
+          aria-label="Show the osu! playfield"
           isSelected={config.show_osu_playfield}
           onChange={(show_osu_playfield) => {
             mapping.update((c) => ({ ...c, show_osu_playfield }));
           }}
         />
-      </div>
+      </Row>
 
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
+      <div className="grid grid-cols-2 gap-4 pt-4 md:grid-cols-5">
         <InputNumber
           label="Width (mm)"
           minValue={1}

@@ -1,19 +1,5 @@
 import { useEffect, useState } from "react";
-import {
-  BarChart07,
-  ChevronDown,
-  Download01,
-  File06,
-  Folder,
-  LinkExternal01,
-  Minus,
-  RefreshCcw01,
-  Save01,
-  Square,
-  Tablet01,
-  Upload01,
-  XClose,
-} from "@untitledui/icons";
+import { ArrowDownBox, Cross, Minus } from "@getpapillon/papicons";
 import { profileActions } from "@/app/profile-actions";
 import { checkForUpdatesInteractive } from "@/app/updates";
 import { Button } from "@/components/base/buttons/button";
@@ -30,7 +16,7 @@ const DETACHED_WINDOW = { decorations: false, transparent: true, minWidth: 400, 
 
 function MenuTrigger({ label }: { label: string }) {
   return (
-    <Button color="tertiary" size="sm" iconTrailing={ChevronDown}>
+    <Button color="tertiary" size="sm">
       {label}
     </Button>
   );
@@ -48,54 +34,31 @@ function FileMenu() {
   return (
     <Dropdown.Root>
       <MenuTrigger label="File" />
-      <Dropdown.Popover>
+      <Dropdown.Popover placement="bottom start">
         <Dropdown.Menu>
-          <Dropdown.Item
-            id="open"
-            icon={Folder}
-            label="Load Settings..."
-            onAction={() => void actions.open()}
-          />
-          <Dropdown.Item
-            id="save"
-            icon={Save01}
-            label="Save Settings"
-            onAction={() => void actions.save()}
-          />
+          <Dropdown.Item id="open" label="Load Settings..." onAction={() => void actions.open()} />
+          <Dropdown.Item id="save" label="Save Settings" onAction={() => void actions.save()} />
           <Dropdown.Item
             id="save-as"
-            icon={Save01}
             label="Save Settings As..."
             onAction={() => void actions.saveAs()}
           />
           <Dropdown.Item
             id="reset"
-            icon={RefreshCcw01}
             label="Reset to default"
             onAction={() => void actions.reset()}
           />
           <Dropdown.Separator />
-          <Dropdown.Item
-            id="export"
-            icon={Upload01}
-            label="Export .json"
-            onAction={() => void actions.export()}
-          />
-          <Dropdown.Item
-            id="import"
-            icon={Download01}
-            label="Import .json"
-            onAction={() => void actions.import()}
-          />
+          <Dropdown.Item id="export" label="Export .json" onAction={() => void actions.export()} />
+          <Dropdown.Item id="import" label="Import .json" onAction={() => void actions.import()} />
           <Dropdown.Item
             id="import-otd"
-            icon={Download01}
             label="Import OTD Settings"
             onAction={() => void actions.importOtd()}
           />
           <Dropdown.Separator />
           <Dropdown.Section>
-            <Dropdown.SectionHeader className="px-3 pt-1 pb-1 text-xs font-semibold text-tertiary">
+            <Dropdown.SectionHeader className="px-3 pt-1 pb-1 text-sm font-semibold text-tertiary">
               Presets
             </Dropdown.SectionHeader>
             {presets.length === 0 ? (
@@ -105,7 +68,6 @@ function FileMenu() {
                 <Dropdown.Item
                   key={preset.path}
                   id={preset.path}
-                  icon={File06}
                   label={preset.name}
                   onAction={() => void actions.loadPreset(preset)}
                 />
@@ -122,11 +84,10 @@ function TabletMenu() {
   return (
     <Dropdown.Root>
       <MenuTrigger label="Tablet" />
-      <Dropdown.Popover>
+      <Dropdown.Popover placement="bottom start">
         <Dropdown.Menu>
           <Dropdown.Item
             id="debugger"
-            icon={Tablet01}
             label="Open Debugger"
             onAction={() => {
               os.openWindow("debugger", {
@@ -140,7 +101,6 @@ function TabletMenu() {
           />
           <Dropdown.Item
             id="performance"
-            icon={BarChart07}
             label="Input Lag Analysis"
             onAction={() => {
               os.openWindow("performance", {
@@ -162,17 +122,15 @@ function HelpMenu() {
   return (
     <Dropdown.Root>
       <MenuTrigger label="Help" />
-      <Dropdown.Popover>
+      <Dropdown.Popover placement="bottom start">
         <Dropdown.Menu>
           <Dropdown.Item
             id="github"
-            icon={LinkExternal01}
             label="Github Repository"
             onAction={() => void os.openUrl(REPOSITORY)}
           />
           <Dropdown.Item
             id="updates"
-            icon={RefreshCcw01}
             label="Check for Updates"
             onAction={() => void checkForUpdatesInteractive()}
           />
@@ -223,7 +181,7 @@ function UpdateButton() {
     <Button
       color="primary"
       size="sm"
-      iconLeading={RefreshCcw01}
+      iconLeading={ArrowDownBox}
       isLoading={progress !== null}
       showTextWhileLoading
       onPress={() => void install()}
@@ -241,11 +199,11 @@ export function TitleBar({ title }: { title: string }) {
   return (
     <header
       data-tauri-drag-region
-      className="flex h-12 shrink-0 items-center gap-1 border-b border-secondary bg-primary pl-4"
+      className="flex h-11 shrink-0 items-center gap-1 bg-primary pl-4"
     >
       <span
         data-tauri-drag-region
-        className="mr-3 truncate text-sm font-semibold text-primary select-none"
+        className="mr-4 truncate text-sm font-semibold text-primary select-none"
       >
         {title}
       </span>
@@ -268,14 +226,16 @@ export function TitleBar({ title }: { title: string }) {
           color="tertiary"
           size="sm"
           aria-label="Maximize"
-          iconLeading={Square}
+          iconLeading={
+            <span aria-hidden="true" className="size-3 rounded-[2px] border-2 border-current" />
+          }
           onPress={() => void windowControls.toggleMaximize()}
         />
         <Button
           color="tertiary-destructive"
           size="sm"
           aria-label="Close"
-          iconLeading={XClose}
+          iconLeading={Cross}
           onPress={() => void windowControls.close()}
         />
       </div>

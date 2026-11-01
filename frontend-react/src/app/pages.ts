@@ -1,13 +1,5 @@
 import type { FC } from "react";
-import {
-  Download01,
-  Monitor01,
-  PenTool01,
-  Settings01,
-  Sliders04,
-  Terminal,
-  Users01,
-} from "@untitledui/icons";
+import { Code, Filter, Gears, Grid, Heart, Pen, Sparkles } from "@getpapillon/papicons";
 
 export type PageId =
   "output" | "filters" | "penSettings" | "console" | "settings" | "release" | "credits";
@@ -18,15 +10,15 @@ export interface PageInfo {
   icon: FC<{ className?: string }>;
 }
 
-/** The pages of the main window, in the order of the navigation. */
+/** The pages of the main window, in the order of the tabs. */
 export const PAGES: readonly PageInfo[] = [
-  { id: "output", label: "Output", icon: Monitor01 },
-  { id: "filters", label: "Filters", icon: Sliders04 },
-  { id: "penSettings", label: "Pen Settings", icon: PenTool01 },
-  { id: "console", label: "Console", icon: Terminal },
-  { id: "settings", label: "Settings", icon: Settings01 },
-  { id: "release", label: "Release", icon: Download01 },
-  { id: "credits", label: "Credits", icon: Users01 },
+  { id: "output", label: "Output", icon: Grid },
+  { id: "filters", label: "Filters", icon: Filter },
+  { id: "penSettings", label: "Pen Settings", icon: Pen },
+  { id: "console", label: "Console", icon: Code },
+  { id: "settings", label: "Settings", icon: Gears },
+  { id: "release", label: "Release", icon: Sparkles },
+  { id: "credits", label: "Credits", icon: Heart },
 ];
 
 export const DEFAULT_PAGE: PageId = "output";

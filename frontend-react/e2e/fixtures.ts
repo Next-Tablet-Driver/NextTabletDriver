@@ -28,13 +28,20 @@ export class App {
   }
 
   async goTo(tab: TabName): Promise<void> {
-    await this.page.getByRole("link", { name: tab, exact: true }).click();
+    await this.page.getByRole("tab", { name: tab, exact: true }).click();
   }
 
   /** Types a value and leaves the field, which is what commits a number input in this app. */
   async enter(field: Locator, value: string): Promise<void> {
     await field.fill(value);
     await field.press("Tab");
+  }
+
+  /** A switch of the current page: its visible track is what a person clicks. */
+  async toggle(name: string): Promise<void> {
+    await this.content
+      .locator("label", { has: this.page.getByRole("switch", { name, exact: true }) })
+      .click();
   }
 
   /** A text or number field of the current page, by its label. */

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
-import { Checkbox } from "@/components/base/checkbox/checkbox";
+import { Toggle } from "@/components/base/toggle/toggle";
 import { InputNumber } from "@/components/base/input/input-number";
 import { AreaStage } from "@/features/mapping/AreaStage";
 import { targetOf, withTarget } from "@/features/mapping/config-areas";
@@ -16,7 +16,7 @@ import {
 import { useMappingSnapshot, useMappingStore } from "@/features/mapping/MappingProvider";
 import { log } from "@/infrastructure/log";
 import { windowControls } from "@/infrastructure/tauri/window";
-import { Section } from "@/ui/Page";
+import { Row, Section } from "@/ui/Page";
 
 const KEY_STEP_PX = 10;
 const ARROWS: Record<string, [number, number]> = {
@@ -130,11 +130,19 @@ export function DisplayEditor() {
       title="Display"
       description="The part of your screens the tablet is mapped to. Drag it, or use the arrow keys."
     >
-      <AreaStage ratio={desktop.width / desktop.height} label="Screens" stageRef={stage}>
+      <AreaStage
+        width={desktop.width}
+        height={desktop.height}
+        originX={desktop.minX}
+        originY={desktop.minY}
+        unit="px"
+        label="Screens"
+        stageRef={stage}
+      >
         {monitors.map((m, index) => (
           <div
             key={`${String(m.x)}:${String(m.y)}:${String(index)}`}
-            className="absolute flex items-center justify-center bg-secondary text-xs text-quaternary ring-1 ring-primary ring-inset"
+            className="absolute border border-(--stage-line-major) bg-white/5"
             style={{
               left: percent(m.x - desktop.minX, desktop.width),
               top: percent(m.y - desktop.minY, desktop.height),
@@ -142,14 +150,16 @@ export function DisplayEditor() {
               height: percent(m.height, desktop.height),
             }}
           >
-            {m.width}×{m.height}
+            <span className="absolute right-1.5 bottom-1 text-xs text-(--stage-ink)/75 tabular-nums">
+              {m.width}×{m.height}
+            </span>
           </div>
         ))}
         <div
           role="group"
           tabIndex={0}
           aria-label="Target area. Arrow keys move it, Shift makes the step larger."
-          className="absolute flex cursor-move touch-none flex-col items-center justify-center bg-brand-solid/60 text-xs font-medium text-white ring-2 ring-brand outline-focus-ring ring-inset focus-visible:outline-2 focus-visible:outline-offset-2"
+          className="absolute cursor-move touch-none border-[1.5px] border-white bg-(--stage-area) outline-focus-ring focus-visible:outline-2 focus-visible:outline-offset-2"
           style={{
             left: percent(target.x - desktop.minX, desktop.width),
             top: percent(target.y - desktop.minY, desktop.height),
@@ -162,24 +172,29 @@ export function DisplayEditor() {
           onPointerCancel={onPointerUp}
           onKeyDown={onKeyDown}
         >
-          <span className="flex flex-col items-center rounded-md bg-brand-solid px-2 py-1 text-white">
-            <span>{target.h === 0 ? "0.0000" : (target.w / target.h).toFixed(4)}</span>
-            <span>
-              {target.w} × {target.h} px
-            </span>
+          <span className="absolute top-1.5 left-2 text-xs font-medium text-white tabular-nums">
+            {target.w} × {target.h} px
+          </span>
+          <span className="absolute bottom-1.5 left-2 text-xs text-(--stage-ink)/80 tabular-nums">
+            ratio {target.h === 0 ? "0" : (target.w / target.h).toFixed(4)}
           </span>
         </div>
       </AreaStage>
 
-      <Checkbox
+      <Row
         label="Snap to the edges of the screens"
-        isSelected={snapping}
-        onChange={(display_snapping) => {
-          mapping.update((c) => ({ ...c, display_snapping }));
-        }}
-      />
+        hint="The area sticks to a screen edge when it is near."
+      >
+        <Toggle
+          aria-label="Snap to the edges of the screens"
+          isSelected={snapping}
+          onChange={(display_snapping) => {
+            mapping.update((c) => ({ ...c, display_snapping }));
+          }}
+        />
+      </Row>
 
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 pt-4 md:grid-cols-4">
         <InputNumber
           label="Width (px)"
           minValue={1}

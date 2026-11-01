@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, Keyboard01 } from "@untitledui/icons";
 import { Button } from "@/components/base/buttons/button";
 import { Dropdown } from "@/components/base/dropdown/dropdown";
 import { Input } from "@/components/base/input/input";
 import { buildChord, heldModifiers, keyName, modifierName } from "@/features/pen/binding-capture";
 import { normalizeBinding } from "@/infrastructure/tauri/commands";
+import { Row } from "@/ui/Page";
 
 /** The bindings that need no keyboard: nothing, or one of the mouse buttons. */
 const PRESETS = ["None", "Left Click", "Right Click", "Middle Click", "Back", "Forward"].map(
@@ -104,11 +104,12 @@ export function BindingField({
   }, [recording]);
 
   return (
-    <div className="flex flex-col gap-1.5">
-      <div className="flex flex-wrap items-end gap-2">
-        <div className="min-w-48 flex-1">
+    <>
+      <Row label={label} hint={recording ? "Press a key or a combination." : undefined}>
+        <div className="w-44">
           <Input
-            label={label}
+            aria-label={label}
+            size="sm"
             value={recording ? preview : value}
             placeholder={recording ? "Press the keys…" : "None"}
             isReadOnly={recording}
@@ -127,8 +128,8 @@ export function BindingField({
         <Dropdown.Root>
           <Button
             color="secondary"
+            size="sm"
             aria-label={`${label}: presets`}
-            iconTrailing={ChevronDown}
             isDisabled={recording}
           >
             Presets
@@ -149,28 +150,24 @@ export function BindingField({
         </Dropdown.Root>
         <Button
           color={recording ? "primary" : "secondary"}
+          size="sm"
           aria-label={`Record ${label}`}
           aria-pressed={recording}
-          iconLeading={Keyboard01}
           onPress={() => {
             setError(null);
             setPreview("");
             seen.current = [];
             setRecording((on) => !on);
           }}
-        />
-      </div>
-      {error !== null ? (
-        <p role="alert" className="text-sm text-error-primary">
+        >
+          {recording ? "Cancel" : "Record"}
+        </Button>
+      </Row>
+      {error !== null && (
+        <p role="alert" className="pb-2 text-sm text-error-primary">
           {error}
         </p>
-      ) : (
-        recording && (
-          <p className="text-sm text-tertiary">
-            Press a key or a combination. Click the keyboard again to cancel.
-          </p>
-        )
       )}
-    </div>
+    </>
   );
 }

@@ -1,6 +1,5 @@
-import { ShieldTick } from "@untitledui/icons";
+import { Alert } from "@getpapillon/papicons";
 import { Button } from "@/components/base/buttons/button";
-import { FeaturedIcon } from "@/components/foundations/featured-icon/featured-icon";
 import type { UntrustedPlugin } from "@/infrastructure/tauri/commands";
 
 /** Libraries in the plugins folder that were not loaded because nobody approved them. */
@@ -15,14 +14,11 @@ export function UntrustedPlugins({
     return null;
   }
   return (
-    <section
-      role="alert"
-      className="flex flex-col gap-4 rounded-xl bg-warning-primary p-5 ring-1 ring-warning ring-inset"
-    >
+    <section role="alert" className="flex flex-col gap-3 bg-warning-primary px-4 py-3">
       <div className="flex items-start gap-3">
-        <FeaturedIcon icon={ShieldTick} color="warning" theme="light" size="md" />
-        <div className="flex flex-col gap-1">
-          <h2 className="text-md font-semibold text-primary">
+        <Alert className="mt-0.5 size-5 shrink-0 text-fg-warning-primary" aria-hidden="true" />
+        <div className="flex flex-col gap-0.5">
+          <h2 className="text-sm font-semibold text-primary">
             {plugins.length === 1
               ? "1 plugin was not loaded"
               : `${String(plugins.length)} plugins were not loaded`}
@@ -34,11 +30,11 @@ export function UntrustedPlugins({
           </p>
         </div>
       </div>
-      <ul className="flex flex-col gap-2">
+      <ul className="flex flex-col divide-y divide-warning">
         {plugins.map((plugin) => (
           <li
             key={`${plugin.file_name}:${plugin.sha256}`}
-            className="flex flex-wrap items-center gap-3 rounded-lg bg-primary px-3 py-2 ring-1 ring-secondary ring-inset"
+            className="flex flex-wrap items-center gap-3 py-2"
           >
             <span className="min-w-0 flex-1 truncate text-sm font-medium text-primary">
               {plugin.file_name}

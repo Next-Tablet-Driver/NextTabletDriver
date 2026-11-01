@@ -1,0 +1,68 @@
+@import "./globals.css";
+
+/*
+ * The look of NextTabletDriver, on top of Untitled UI's tokens (the components are untouched).
+ *
+ * - The brand ramp is a cool slate, not the library's purple: buttons, switches and focus rings
+ *   are ink, so the interface stays quiet and the one coloured thing on screen is the drawing
+ *   stage of the area editors (see `features/mapping/AreaStage.tsx`).
+ * - The typeface is Atkinson Hyperlegible Next: made for telling characters apart, which matters
+ *   in a screen full of coordinates, thresholds and key names.
+ */
+@theme {
+    --font-body: "Atkinson Hyperlegible Next Variable", ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+    --font-display: var(--font-body);
+
+    --color-brand-25: rgb(247 249 251);
+    --color-brand-50: rgb(240 243 246);
+    --color-brand-100: rgb(228 233 239);
+    --color-brand-200: rgb(204 213 223);
+    --color-brand-300: rgb(169 184 200);
+    --color-brand-400: rgb(127 147 169);
+    --color-brand-500: rgb(95 118 144);
+    --color-brand-600: rgb(74 95 120);
+    --color-brand-700: rgb(60 77 98);
+    --color-brand-800: rgb(47 61 78);
+    --color-brand-900: rgb(36 48 64);
+    --color-brand-950: rgb(21 29 40);
+}
+
+@layer base {
+    html {
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        text-rendering: optimizeLegibility;
+    }
+
+    h1,
+    h2,
+    h3 {
+        text-wrap: balance;
+    }
+
+    p {
+        text-wrap: pretty;
+    }
+
+    /* Numbers that change (coordinates, rates) must not make their neighbours jump. */
+    input,
+    output,
+    time,
+    dd {
+        font-variant-numeric: tabular-nums;
+    }
+}
+
+/*
+ * The drawing stage of the area editors: a cyanotype, the blue print of a drafting table. It is
+ * the same in the light and the dark scheme, because it is a surface to draw on, not part of the
+ * page. The pen is the only thing that is amber.
+ */
+:root {
+    --stage-paper: rgb(16 52 86);
+    --stage-line: rgb(143 190 235 / 0.2);
+    --stage-line-major: rgb(143 190 235 / 0.38);
+    --stage-ink: rgb(214 232 250);
+    --stage-area: rgb(255 255 255 / 0.13);
+    --stage-pen: rgb(255 184 0);
+}

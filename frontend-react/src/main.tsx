@@ -1,7 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import "@fontsource-variable/inter";
-import "@/styles/globals.css";
+import "@fontsource-variable/atkinson-hyperlegible-next";
+import "@/styles/app.css";
 import App from "@/App";
 
 // Development-only tooling (stripped from production builds): `/?mock` runs the real app against

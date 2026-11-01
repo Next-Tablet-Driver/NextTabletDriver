@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { Copy01, Download01, SearchLg, Trash01 } from "@untitledui/icons";
+import { Search, Trash } from "@getpapillon/papicons";
 import { Badge } from "@/components/base/badges/badges";
 import { ButtonGroup, ButtonGroupItem } from "@/components/base/button-group/button-group";
 import { Button } from "@/components/base/buttons/button";
 import { Input } from "@/components/base/input/input";
-import { Table, TableCard } from "@/components/application/table/table";
+import { Table } from "@/components/application/table/table";
 import {
   LEVELS,
   MAX_ROWS,
@@ -50,18 +50,20 @@ export function ConsolePage() {
 
   return (
     <Page title="Console" description="What the driver is doing, and what went wrong.">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div className="w-full max-w-sm">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="w-full max-w-xs">
           <Input
             aria-label="Search the logs"
             placeholder="Search logs…"
-            icon={SearchLg}
+            size="sm"
+            icon={Search}
             value={query}
             onChange={setQuery}
           />
         </div>
         <ButtonGroup
           aria-label="Levels to show"
+          size="sm"
           selectionMode="multiple"
           selectedKeys={shown as Set<string>}
           onSelectionChange={(keys) => {
@@ -76,48 +78,8 @@ export function ConsolePage() {
         </ButtonGroup>
       </div>
 
-      <TableCard.Root size="sm">
-        <TableCard.Header
-          title="Logs"
-          badge={`${String(visible.length)} / ${String(entries.length)}`}
-          contentTrailing={
-            <div className="flex flex-wrap gap-2">
-              <Button
-                color="secondary"
-                size="sm"
-                iconLeading={Trash01}
-                onPress={() => {
-                  clearLogs().then(() => {
-                    setEntries([]);
-                  }, log.error);
-                }}
-              >
-                Clear
-              </Button>
-              <Button
-                color="secondary"
-                size="sm"
-                iconLeading={Copy01}
-                onPress={() => {
-                  copy(formatLogs(visible));
-                }}
-              >
-                Copy visible
-              </Button>
-              <Button
-                color="secondary"
-                size="sm"
-                iconLeading={Download01}
-                onPress={() => {
-                  downloadText("NextTabletDriver_logs.txt", formatLogs(entries));
-                }}
-              >
-                Export all
-              </Button>
-            </div>
-          }
-        />
-        <div className="max-h-[28rem] overflow-auto">
+      <div className="flex flex-col gap-3">
+        <div className="max-h-[26rem] overflow-auto rounded-md ring-1 ring-secondary">
           <Table aria-label="Logs" size="sm">
             <Table.Header>
               <Table.Head id="time" isRowHeader label="Time" />
@@ -135,7 +97,7 @@ export function ConsolePage() {
                 <Table.Row id={id}>
                   <Table.Cell className="font-mono whitespace-nowrap">{entry.time}</Table.Cell>
                   <Table.Cell>
-                    <Badge type="pill-color" size="sm" color={LEVEL_COLOR[levelOf(entry)]}>
+                    <Badge type="color" size="sm" color={LEVEL_COLOR[levelOf(entry)]}>
                       {entry.level}
                     </Badge>
                   </Table.Cell>
@@ -148,7 +110,44 @@ export function ConsolePage() {
             </Table.Body>
           </Table>
         </div>
-      </TableCard.Root>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-tertiary tabular-nums">
+            {visible.length} / {entries.length}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              color="secondary"
+              size="sm"
+              iconLeading={Trash}
+              onPress={() => {
+                clearLogs().then(() => {
+                  setEntries([]);
+                }, log.error);
+              }}
+            >
+              Clear
+            </Button>
+            <Button
+              color="secondary"
+              size="sm"
+              onPress={() => {
+                copy(formatLogs(visible));
+              }}
+            >
+              Copy visible
+            </Button>
+            <Button
+              color="secondary"
+              size="sm"
+              onPress={() => {
+                downloadText("NextTabletDriver_logs.txt", formatLogs(entries));
+              }}
+            >
+              Export all
+            </Button>
+          </div>
+        </div>
+      </div>
     </Page>
   );
 }

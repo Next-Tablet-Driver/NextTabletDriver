@@ -1,5 +1,3 @@
-import { RefreshCcw01, Trash01 } from "@untitledui/icons";
-import { Badge } from "@/components/base/badges/badges";
 import { Button } from "@/components/base/buttons/button";
 import { Input } from "@/components/base/input/input";
 import { InputNumber } from "@/components/base/input/input-number";
@@ -17,16 +15,14 @@ import type {
   PropertyDescriptor,
   PropertyValue,
 } from "@/infrastructure/tauri/commands";
-import { Section } from "@/ui/Page";
+import { Row, Section } from "@/ui/Page";
 
-function PropertyControl({
-  plugin,
+function PropertyRow({
   prop,
   value,
   disabled,
   onChange,
 }: {
-  plugin: PluginManifest;
   prop: PropertyDescriptor;
   value: PropertyValue | undefined;
   disabled: boolean;
@@ -38,68 +34,81 @@ function PropertyControl({
     case "Float":
     case "Int": {
       const { config } = kind;
-      const current = typeof value === "number" ? value : (config.default ?? 0);
       const unit = config.unit === "" ? "" : ` (${config.unit})`;
       return (
-        <InputNumber
-          label={`${prop.name}${unit}`}
-          hint={hint}
-          isDisabled={disabled}
-          minValue={config.min ?? undefined}
-          maxValue={config.max ?? undefined}
-          step={config.step ?? undefined}
-          formatOptions={{ maximumFractionDigits: kind.type === "Int" ? 0 : 4, useGrouping: false }}
-          value={current}
-          onChange={(next) => {
-            if (Number.isFinite(next)) {
-              onChange(next);
-            }
-          }}
-        />
+        <Row label={`${prop.name}${unit}`} hint={hint}>
+          <div className="w-32">
+            <InputNumber
+              aria-label={`${prop.name}${unit}`}
+              size="sm"
+              isDisabled={disabled}
+              minValue={config.min ?? undefined}
+              maxValue={config.max ?? undefined}
+              step={config.step ?? undefined}
+              formatOptions={{
+                maximumFractionDigits: kind.type === "Int" ? 0 : 4,
+                useGrouping: false,
+              }}
+              value={typeof value === "number" ? value : (config.default ?? 0)}
+              onChange={(next) => {
+                if (Number.isFinite(next)) {
+                  onChange(next);
+                }
+              }}
+            />
+          </div>
+        </Row>
       );
     }
     case "Bool":
       return (
-        <Toggle
-          label={prop.name}
-          hint={hint}
-          isDisabled={disabled}
-          isSelected={typeof value === "boolean" ? value : kind.config.default}
-          onChange={onChange}
-        />
+        <Row label={prop.name} hint={hint}>
+          <Toggle
+            aria-label={prop.name}
+            isDisabled={disabled}
+            isSelected={typeof value === "boolean" ? value : kind.config.default}
+            onChange={onChange}
+          />
+        </Row>
       );
     case "Choice": {
       const { config } = kind;
       return (
-        <Select
-          label={prop.name}
-          hint={hint}
-          isDisabled={disabled}
-          items={config.options.map((label, id) => ({ id, label }))}
-          value={typeof value === "number" ? value : config.default_index}
-          onChange={(key) => {
-            onChange(Number(key));
-          }}
-        >
-          {(item) => <Select.Item {...item} />}
-        </Select>
+        <Row label={prop.name} hint={hint}>
+          <div className="w-44">
+            <Select
+              aria-label={prop.name}
+              size="sm"
+              isDisabled={disabled}
+              items={config.options.map((label, id) => ({ id, label }))}
+              value={typeof value === "number" ? value : config.default_index}
+              onChange={(key) => {
+                onChange(Number(key));
+              }}
+            >
+              {(item) => <Select.Item {...item} />}
+            </Select>
+          </div>
+        </Row>
       );
     }
     case "String":
       return (
-        <Input
-          label={prop.name}
-          hint={hint}
-          isDisabled={disabled}
-          value={typeof value === "string" ? value : kind.config.default}
-          onChange={onChange}
-        />
+        <Row label={prop.name} hint={hint}>
+          <div className="w-44">
+            <Input
+              aria-label={prop.name}
+              size="sm"
+              isDisabled={disabled}
+              value={typeof value === "string" ? value : kind.config.default}
+              onChange={onChange}
+            />
+          </div>
+        </Row>
       );
   }
   // A plugin of another version may declare a kind this interface does not know.
-  return (
-    <p className="text-sm text-tertiary">{`${prop.name}: ${plugin.id} sent an unknown setting.`}</p>
-  );
+  return <Row label={prop.name} hint="This filter sent a setting this version does not know." />;
 }
 
 /** What a filter is, whether it is on, and its settings. */
@@ -118,29 +127,26 @@ export function PluginDetails({
   const settings = settingsOf(config, plugin.id);
 
   return (
-    <div className="flex flex-col gap-6">
+    <>
       <Section
         title={plugin.name}
-        description={`By ${plugin.author}`}
+        description={`Version ${plugin.version}, by ${plugin.author}`}
         actions={
-          <Badge type="pill-color" size="md" color="gray">
-            v{plugin.version}
-          </Badge>
+          <Button color="tertiary-destructive" size="sm" onPress={onDelete}>
+            Delete this plugin
+          </Button>
         }
       >
-        <p className="text-md text-secondary">{plugin.description}</p>
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="pb-2 text-sm text-secondary">{plugin.description}</p>
+        <Row label="Enable this filter">
           <Toggle
-            label="Enable this filter"
+            aria-label="Enable this filter"
             isSelected={settings.enabled}
             onChange={(enabled) => {
               mapping.update((c) => withEnabled(c, plugin.id, enabled));
             }}
           />
-          <Button color="tertiary-destructive" size="sm" iconLeading={Trash01} onPress={onDelete}>
-            Delete this plugin
-          </Button>
-        </div>
+        </Row>
       </Section>
 
       <Section
@@ -150,7 +156,6 @@ export function PluginDetails({
           <Button
             color="secondary"
             size="sm"
-            iconLeading={RefreshCcw01}
             onPress={() => {
               mapping.update((c) => withDefaults(c, plugin));
             }}
@@ -160,24 +165,21 @@ export function PluginDetails({
         }
       >
         {plugin.properties.length === 0 ? (
-          <p className="text-sm text-tertiary">This filter has no settings.</p>
+          <p className="py-2 text-sm text-tertiary">This filter has no settings.</p>
         ) : (
-          <div className="grid gap-5 md:grid-cols-2">
-            {plugin.properties.map((prop) => (
-              <PropertyControl
-                key={prop.id}
-                plugin={plugin}
-                prop={prop}
-                value={settings.properties[prop.id]}
-                disabled={!settings.enabled}
-                onChange={(value) => {
-                  mapping.update((c) => withProperty(c, plugin.id, prop.id, value));
-                }}
-              />
-            ))}
-          </div>
+          plugin.properties.map((prop) => (
+            <PropertyRow
+              key={prop.id}
+              prop={prop}
+              value={settings.properties[prop.id]}
+              disabled={!settings.enabled}
+              onChange={(value) => {
+                mapping.update((c) => withProperty(c, plugin.id, prop.id, value));
+              }}
+            />
+          ))
         )}
       </Section>
-    </div>
+    </>
   );
 }
