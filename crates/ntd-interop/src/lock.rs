@@ -51,6 +51,8 @@ mod tests {
     /// Note: this contends on the real machine-wide lock name, so it will
     /// spuriously fail if a desktop instance or another SDK consumer happens
     /// to be running as the owner at the same time this test runs.
+    // macOS and other systems have no lock yet: nobody is ever the owner there.
+    #[cfg(any(windows, target_os = "linux"))]
     #[test]
     fn only_one_owner_at_a_time() {
         let guard = try_acquire_hid_owner();
